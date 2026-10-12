@@ -30,7 +30,8 @@ export async function outstandingCompanyForms(req: Request) {
     : sql`true`;
   const source = sql`
     WITH eligible_assignments AS (
-      SELECT a.assign_uuid,a.assignment_type,
+      SELECT a.assign_uuid,
+        CASE WHEN NULLIF(a.sign_off_date,'') IS NOT NULL THEN 'Signed off' ELSE a.assignment_type END AS assignment_type,
         concat_ws(' ',nullif(c.first_name,''),nullif(c.middle_name,''),nullif(c.family_name,'')) AS seafarer,
         CASE WHEN rc.contract_rank_uuid IS NOT NULL THEN coalesce(rc.contract_rank_label,'Not recorded')
           ELSE 'Not recorded' END AS rank,
@@ -71,15 +72,17 @@ export async function outstandingCompanyForms(req: Request) {
         CASE failure.stage_key WHEN 'before_joining' THEN 'Before joining'
           WHEN 'on_board' THEN 'On board' WHEN 'at_sign_off' THEN 'At sign-off' ELSE 'Other' END,
         'Rules check','Not yet determined','Rules check failed',failure.recorded_at,
-        a.assignment_type,'check',a.assign_uuid,failure.stage_key,NULL::text,NULL::text,NULL::text,NULL::text,
-        'The stage check could not be recorded. Open the stage to review the failure and recovery instructions.'
+        a.assignment_type,'check',a.assign_uuid,failure.stage_key,NULL::text,failure.audit_uuid,NULL::text,NULL::text,
+        'The check could not record its original facts. Open the stage to retry without using changed facts.'
       FROM eligible_assignments a JOIN (
-        SELECT DISTINCT ON(subject_ref,stage_key) subject_ref,stage_key,recorded_at
+        SELECT DISTINCT ON(subject_ref,stage_key) audit_uuid,subject_ref,stage_key,recorded_at
           FROM frm_stage_audit WHERE event='CAPTURE_FAILED'
           ORDER BY subject_ref,stage_key,recorded_at DESC
       ) failure ON failure.subject_ref=a.assign_uuid
       WHERE NOT EXISTS(SELECT 1 FROM frm_stage_events e WHERE e.subject_ref=a.assign_uuid
         AND e.stage_key=failure.stage_key AND e.recorded_at>=failure.recorded_at)
+      AND NOT EXISTS(SELECT 1 FROM frm_stage_audit d WHERE d.subject_ref=a.assign_uuid
+        AND d.stage_key=failure.stage_key AND d.event='DEFERRED' AND d.recorded_at>=failure.recorded_at)
     ) SELECT * FROM report_rows`;
   const conditions = [sql`true`];
   for (const [key, column] of Object.entries({

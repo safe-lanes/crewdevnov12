@@ -95,6 +95,42 @@ export async function checkLifecycle(input: LifecycleCheck, executor: any = getD
   }
 }
 
+/** Recover the identity of an unrecorded check, never reconstruct its missing facts. */
+export async function recoverCaptureFailure(auditUuid: string, subjectRef: string, actor: string): Promise<string | null> {
+  return getDb().transaction(async (tx: any) => {
+    if (!await companyFormSubjectRegistry.get(subjectType).lockForStart(subjectRef, tx)) return null;
+    const failure = (await tx.execute(sql`SELECT * FROM frm_stage_audit WHERE audit_uuid=${auditUuid}
+      AND subject_ref=${subjectRef} AND event='CAPTURE_FAILED'`)).rows[0];
+    if (!failure || !["before_joining","on_board","at_sign_off"].includes(failure.stage_key)) return null;
+    const newer = (await tx.execute(sql`SELECT event_uuid FROM frm_stage_events WHERE subject_ref=${subjectRef}
+      AND stage_key=${failure.stage_key} AND recorded_at>=${failure.recorded_at} LIMIT 1`)).rows[0];
+    if (newer) return newer.event_uuid === auditUuid ? auditUuid : null;
+    const deferredAfter = (await tx.execute(sql`SELECT audit_uuid FROM frm_stage_audit WHERE subject_ref=${subjectRef}
+      AND stage_key=${failure.stage_key} AND event='DEFERRED' AND recorded_at>=${failure.recorded_at} LIMIT 1`)).rows[0];
+    if (deferredAfter) return null;
+    const evidence = failure.evidence ?? {};
+    if (!["deploy","sign_on","relief","sign_off"].includes(evidence.source)) return null;
+    let cycle = (await tx.execute(sql`SELECT * FROM frm_stage_cycles WHERE subject_ref=${subjectRef}
+      AND stage_key=${failure.stage_key} FOR UPDATE`)).rows[0];
+    if (!cycle || cycle.deferred) {
+      cycle = { cycle_uuid: randomUUID() };
+      await tx.execute(sql`INSERT INTO frm_stage_cycles(subject_ref,stage_key,cycle_uuid,deferred)
+        VALUES(${subjectRef},${failure.stage_key},${cycle.cycle_uuid},false)
+        ON CONFLICT(subject_ref,stage_key) DO UPDATE SET cycle_uuid=excluded.cycle_uuid,deferred=false`);
+    }
+    const snapshot: StageSnapshot = { facts:null, candidates:[],
+      captureError:"Original deciding facts were not captured; they cannot be reconstructed from changed facts." };
+    const date = typeof evidence.businessDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(evidence.businessDate)
+      ? evidence.businessDate : null;
+    await tx.execute(sql`INSERT INTO frm_stage_events(event_uuid,subject_ref,stage_key,cycle_uuid,
+      source,source_key,occurred_at,business_date,actor_uuid,snapshot)
+      VALUES(${auditUuid},${subjectRef},${failure.stage_key},${cycle.cycle_uuid},${evidence.source},
+        ${`capture-failure:${auditUuid}`},${failure.recorded_at},${date},${failure.actor_uuid},${JSON.stringify(snapshot)}::jsonb)`);
+    await appendAttempt(auditUuid,actor,"FAILED",snapshot.captureError!,null,tx);
+    return auditUuid;
+  });
+}
+
 export async function finishLifecycle(eventUuid: string | undefined, actor: string, executor: any = getDb()) {
   if (!eventUuid) return;
   try { await resolveStageEvent(eventUuid, actor, executor); }

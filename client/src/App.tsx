@@ -141,7 +141,7 @@ function AuthenticatedApp() {
                     <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
                   </Route>
                   <Route path="/reports">
-                    <ProtectedRoute menuName="Reports"><ReportsPage /></ProtectedRoute>
+                    <ProtectedRoute menuName="Reports" companyFormsReports><ReportsPage /></ProtectedRoute>
                   </Route>
                   <Route path="/admin/*">
                     <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>

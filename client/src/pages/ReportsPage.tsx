@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useNationalitiesV2, useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { CompanyFormsOutstandingReport } from "@/components/reports/CompanyFormsOutstandingReport";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface ReportLeaf {
   id: string;
@@ -735,6 +736,9 @@ function buildFiltersPayload(
 
 function ReportsContent(): JSX.Element {
   const { toast } = useToast();
+  const { canView, canCompanyFormAction } = usePermissions();
+  const canLegacyReports = canView("Reports");
+  const canFormsReport = canCompanyFormAction("view");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -840,7 +844,9 @@ function ReportsContent(): JSX.Element {
     }
   }, [filter, selectedReportId]);
 
-  const selected = selectedReportId ? findReport(selectedReportId) : null;
+  const requestedReport = selectedReportId ? findReport(selectedReportId) : null;
+  const selected = requestedReport && (requestedReport.category.id === "company-forms" ? canFormsReport : canLegacyReports)
+    ? requestedReport : null;
   const selectedFilters = selected
     ? REPORT_FILTERS[selected.leaf.id] ?? DEFAULT_FILTERS
     : [];
@@ -1009,6 +1015,7 @@ function ReportsContent(): JSX.Element {
           {/* Tree body */}
           <div className="py-1 max-h-[70vh] overflow-y-auto">
             {REPORT_TREE.map((cat) => {
+              if (cat.id === "company-forms" ? !canFormsReport : !canLegacyReports) return null;
               if (!isVisible(cat.id)) return null;
               const expanded = isExpanded(cat.id);
               const Icon = cat.icon;

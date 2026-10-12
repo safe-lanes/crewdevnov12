@@ -11,6 +11,7 @@ import type { Server } from "http";
 import { vesselPlanningRepository } from "@server/v2/vessel/repositories";
 import { rotationDeployService } from "@server/v2/rotation/services";
 import { importCrewAssignments } from "@server/v2/vessel/services/vesselCrewListImportService";
+import { retainFixtureReferences } from "../../helpers/fixture-retention";
 
 const TEST_SECRET = "reliever-unassign-test-secret";
 const ACTOR_ID = 990312;
@@ -18,6 +19,7 @@ const u = () => randomUUID();
 
 let db: Client;
 let server: Server;
+let actorUserUuid: string;
 const planUuids: string[] = [];
 const assignUuids: string[] = [];
 const crewUuids: string[] = [];
@@ -46,9 +48,9 @@ function clearRequest(planUuid: string, bearer: string, crewUuid: string, reason
     .set("Authorization", `Bearer ${bearer}`).send({ expectedCrewUuid: crewUuid, reason });
 }
 
-function token(): string {
+function token(userType: "Office" | "Admin" = "Office"): string {
   return jwt.sign(
-    { id: ACTOR_ID, domain: "test", userType: "Admin" },
+    { id: ACTOR_ID, domain: "test", userType },
     TEST_SECRET,
     { expiresIn: "1h" },
   );
@@ -94,7 +96,9 @@ async function seedPlanning(relieverCrewUuid: string | null) {
     reliever_contract_period_months: 4,
     reliever_contract_end_range_start_months: 3,
     reliever_contract_end_range_end_months: 5,
-    deployment_checklist_completed: true,
+    // Unassignment fixtures do not certify Company Forms completion. A fresh,
+    // unlinked planning row must never manufacture checklist Yes by direct SQL.
+    deployment_checklist_completed: false,
     applicable_docs_checked: true,
   });
   return { planUuid, vesselUuid, rankId, rank };
@@ -237,6 +241,13 @@ async function unassign(planUuid: string) {
 beforeAll(async () => {
   db = new Client({ connectionString: process.env.DATABASE_URL });
   await db.connect();
+  // Server-derived audit identity requires a real, retained parent user, not
+  // just the numeric claim that the older test token supplied.
+  await db.query(`INSERT INTO master_users(id,user_type,role,user_uuid)
+    VALUES($1,'Office','Admin',$2) ON CONFLICT(id) DO NOTHING`,[ACTOR_ID,u()]);
+  const actorFixture=await db.query("SELECT user_uuid FROM master_users WHERE id=$1",[ACTOR_ID]);
+  actorUserUuid=actorFixture.rows[0].user_uuid;
+  retainFixtureReferences("Unassignment trusted parent audit actor",actorFixture.rows);
 
   process.env.JWT_SECRET = TEST_SECRET;
   delete process.env.AUTH_BYPASS;
@@ -431,21 +442,23 @@ describe("reliever assignment cancellation on planning unassign", () => {
     expect((await request(server).get(url).set("Authorization", `Bearer ${officeToken}`)).status).toBe(403);
     expect((await request(server).post(url).set("Authorization", `Bearer ${officeToken}`)
       .send({ assignUuid: selectedUuid, evidenceNote: "Signed voyage contract and embarkation sheet reviewed" })).status).toBe(403);
-    const choices = await request(server).get(url).set("Authorization", `Bearer ${token()}`);
+    // This legacy reconciliation endpoint still has its separate Admin-token
+    // contract; ordinary planning writes use the verified Office parent actor.
+    const choices = await request(server).get(url).set("Authorization", `Bearer ${token("Admin")}`);
     expect(choices.status).toBe(200);
     expect(choices.body.candidates.map((c: any) => c.assignUuid).sort())
       .toEqual([selectedUuid, otherUuid].sort());
-    const incomplete = await request(server).post(url).set("Authorization", `Bearer ${token()}`)
+    const incomplete = await request(server).post(url).set("Authorization", `Bearer ${token("Admin")}`)
       .send({ assignUuid: selectedUuid, evidenceNote: "guess" });
     expect(incomplete.status).toBe(400);
-    const wrong = await request(server).post(url).set("Authorization", `Bearer ${token()}`)
+    const wrong = await request(server).post(url).set("Authorization", `Bearer ${token("Admin")}`)
       .send({ assignUuid: u(), evidenceNote: "Signed voyage contract and embarkation sheet reviewed" });
     expect(wrong.status).toBe(409);
     const decision = { assignUuid: selectedUuid, evidenceNote: "Signed voyage contract and embarkation sheet reviewed" };
-    const linked = await request(server).post(url).set("Authorization", `Bearer ${token()}`).send(decision);
+    const linked = await request(server).post(url).set("Authorization", `Bearer ${token("Admin")}`).send(decision);
     expect(linked.status).toBe(200);
     expect(linked.body.crewAssignUuid).toBe(selectedUuid);
-    expect((await request(server).post(url).set("Authorization", `Bearer ${token()}`).send(decision)).status).toBe(200);
+    expect((await request(server).post(url).set("Authorization", `Bearer ${token("Admin")}`).send(decision)).status).toBe(200);
     const audit = await db.query(
       "SELECT assign_uuid, reviewed_by, evidence_note FROM vessel_planning_assignment_reconciliations WHERE plan_uuid = $1", [planUuid],
     );
@@ -678,7 +691,7 @@ describe("reliever assignment cancellation on planning unassign", () => {
       reliever_contract_end_range_end_months: null,
       deployment_checklist_completed: null,
       applicable_docs_checked: null,
-      updated_by_uuid: String(ACTOR_ID),
+      updated_by_uuid: actorUserUuid,
     });
 
     const cancelled = await db.query(

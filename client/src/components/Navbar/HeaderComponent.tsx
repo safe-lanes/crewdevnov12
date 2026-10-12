@@ -189,12 +189,12 @@ export default function HeaderComponent({
     const profileRef = useRef<HTMLDivElement>(null);
     const viewport = useViewport();
     const layoutConfig = getLayoutConfig(viewport);
-    const { canView, permissions } = usePermissions();
+    const { canView, canCompanyFormAction, permissions } = usePermissions();
 
     const filteredNavItems = useMemo(() => {
         if (permissions.length === 0) return navItems;
-        return navItems.filter(item => canView(item.menuName));
-    }, [permissions, canView]);
+        return navItems.filter(item => canView(item.menuName) || (item.menuName === "Reports" && canCompanyFormAction("view")));
+    }, [permissions, canView, canCompanyFormAction]);
 
     const extractStringValue = (val: any): string => {
         if (!val) return '';

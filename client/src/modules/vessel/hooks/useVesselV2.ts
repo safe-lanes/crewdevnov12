@@ -48,7 +48,7 @@ export function useCreatePlanningV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CreatePlanningInput) => vesselApiV2.createPlanning(withAuditUser(data)),
+    mutationFn: (data: CreatePlanningInput) => vesselApiV2.createPlanning(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, variables.vesselUuid, 'planning'] });
     },
@@ -60,7 +60,7 @@ export function useUpdatePlanningV2() {
   
   return useMutation({
     mutationFn: ({ planUuid, data }: { planUuid: string; data: UpdatePlanningInput }) => 
-      vesselApiV2.updatePlanning(planUuid, withAuditUser(data)),
+      vesselApiV2.updatePlanning(planUuid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY] });
     },

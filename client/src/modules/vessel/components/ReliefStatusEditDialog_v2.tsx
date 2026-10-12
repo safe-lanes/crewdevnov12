@@ -33,6 +33,7 @@ import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDetails";
 import { JoiningCompanyForms } from "./JoiningCompanyForms";
 
 const reliefStatusFormSchema = z.object({
@@ -124,6 +125,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
+    const [blockerForm, setBlockerForm] = useState<{ subjectRef: string; requirementUuid: string; name: string } | null>(null);
     const { permissions, roleName, userType, canCompanyFormAction } = usePermissions();
     const canOverrideChecklist = canCompanyFormAction("override_checklist");
     const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
@@ -604,10 +606,17 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         <AlertDialogDescription>{checklistConflict?.message}</AlertDialogDescription>
                     </AlertDialogHeader>
                     {checklistConflict?.blockers.map((blocker, index) => (
-                        <p key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`} className="text-sm text-amber-900">
+                        <div key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
+                          data-testid={`checklist-blocker-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
+                          className="text-sm text-amber-900">
                             {blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")} · {blocker.status}
                             {blocker.reason ? ` — ${blocker.reason}` : ""}
-                        </p>
+                            {blocker.requirementUuid && planningData?.relieverAssignUuid && canCompanyFormAction("view") &&
+                              <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => {
+                                setBlockerForm({ subjectRef: planningData.relieverAssignUuid!, requirementUuid: blocker.requirementUuid!, name: blocker.formName || "Required form" });
+                                setChecklistConflict(null);
+                              }}>Open form</Button>}
+                        </div>
                     ))}
                     {checklistConflict?.canOverride && canOverrideChecklist &&
                         checklistConflict.blockers.length > 0 &&
@@ -639,7 +648,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Dialog open={open && !joiningFormsOpen} onOpenChange={onOpenChange}>
+            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
@@ -1130,6 +1139,13 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             </AlertDialogContent>
         </AlertDialog>
 
+        <Dialog open={Boolean(blockerForm)} onOpenChange={value => { if (!value) setBlockerForm(null); }}>
+          <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+            <DialogHeader><DialogTitle>{blockerForm?.name}</DialogTitle></DialogHeader>
+            {blockerForm && <RequiredFormDetails subjectRef={blockerForm.subjectRef}
+              requirementUuid={blockerForm.requirementUuid} onBack={() => setBlockerForm(null)} />}
+          </DialogContent>
+        </Dialog>
         <Dialog open={open && joiningFormsOpen} onOpenChange={(value) => {
             if (!value) setJoiningFormsOpen(false);
         }}>

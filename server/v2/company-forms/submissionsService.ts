@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { resolveStageEvent } from "./stageResolutionService";
+import { recoverCaptureFailure, resolveStageEvent } from "./stageResolutionService";
 import { stageStatus, assertStageReady } from "./stageEventRepository";
 import { eq } from "drizzle-orm";
 import { masterUsers } from "../../../shared/schema";
@@ -1162,8 +1162,10 @@ export class CompanyFormSubmissionsService {
     await this.authorize(adapter, principal, "create_submission", subject.context);
     const event = (await getDb().execute(sql`SELECT event_uuid FROM frm_stage_events WHERE event_uuid=${input.eventUuid}
       AND subject_ref=${input.subjectRef}`)).rows[0];
-    if (!event || input.subjectType !== "crew_assignment") throw new CompanyFormNotFoundError("Stage check not found.");
-    return resolveStageEvent(event.event_uuid, String(principal.userId));
+    if (input.subjectType !== "crew_assignment") throw new CompanyFormNotFoundError("Stage check not found.");
+    const eventUuid = event?.event_uuid ?? await recoverCaptureFailure(input.eventUuid,input.subjectRef,String(principal.userId));
+    if (!eventUuid) throw new CompanyFormNotFoundError("Stage check not found. Refresh the stage and retry the current check.");
+    return resolveStageEvent(eventUuid, String(principal.userId));
   }
 
   async startRequirement(input: { req: Request; subjectType: string; subjectRef: string; requirementUuid: string }) {

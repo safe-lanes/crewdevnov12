@@ -24,12 +24,24 @@ export async function stageStatus(subjectRef: string, executor: any = getDb()) {
     a.outcome,a.reason,a.recorded_at
     FROM frm_stage_cycles c
     LEFT JOIN LATERAL (SELECT * FROM frm_stage_events e WHERE e.subject_ref=c.subject_ref
-      AND e.stage_key=c.stage_key AND e.cycle_uuid=c.cycle_uuid ORDER BY recorded_at,event_uuid LIMIT 1) e ON true
+      AND e.stage_key=c.stage_key AND e.cycle_uuid=c.cycle_uuid ORDER BY recorded_at DESC,event_uuid DESC LIMIT 1) e ON true
     LEFT JOIN LATERAL (SELECT * FROM frm_stage_attempts a WHERE a.event_uuid=e.event_uuid
       ORDER BY recorded_at DESC,attempt_uuid DESC LIMIT 1) a ON true
     WHERE c.subject_ref=${subjectRef}`)).rows;
-  const failures = (await executor.execute(sql`SELECT stage_key,evidence,recorded_at FROM frm_stage_audit
-    WHERE subject_ref=${subjectRef} AND event='CAPTURE_FAILED' ORDER BY recorded_at DESC`)).rows;
+  const failures = (await executor.execute(sql`SELECT DISTINCT ON(f.stage_key) f.audit_uuid,f.stage_key,f.evidence,f.recorded_at
+    FROM frm_stage_audit f WHERE f.subject_ref=${subjectRef} AND f.event='CAPTURE_FAILED'
+    AND NOT EXISTS(SELECT 1 FROM frm_stage_events e WHERE e.subject_ref=f.subject_ref
+      AND e.stage_key=f.stage_key AND e.recorded_at>=f.recorded_at)
+    AND NOT EXISTS(SELECT 1 FROM frm_stage_audit d WHERE d.subject_ref=f.subject_ref
+      AND d.stage_key=f.stage_key AND d.event='DEFERRED' AND d.recorded_at>=f.recorded_at)
+    ORDER BY f.stage_key,f.recorded_at DESC`)).rows;
+  for (const failure of failures) {
+    const index = stages.findIndex((stage: any) => stage.stage_key === failure.stage_key);
+    const failed = { ...(index < 0 ? {} : stages[index]), stage_key:failure.stage_key,
+      event_uuid:failure.audit_uuid, outcome:"FAILED", deferred:false, recorded_at:failure.recorded_at,
+      reason:"The check could not record its original facts. Retry records the failure without using changed facts; ask the office to review." };
+    if (index < 0) stages.push(failed); else stages[index] = failed;
+  }
   const activationFailure = !rollout?.enforcement_enabled
     ? (await executor.execute(sql`SELECT evidence->>'reason' AS reason FROM frm_stage_audit
         WHERE event='GO_LIVE_FAILED' ORDER BY recorded_at DESC LIMIT 1`)).rows[0]?.reason ?? null : null;

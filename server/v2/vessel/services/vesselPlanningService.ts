@@ -2,13 +2,14 @@ import { captureJoiningHistory } from "../../company-forms/subjects/crewAssignme
 import type { Request } from "express";
 import { verifyChecklistYes } from "../../company-forms/checklistGate";
 import { ChecklistGateError } from "../../company-forms/checklistPolicy";
+import { authenticatedActor } from "../../admin/services/accessControlManagement";
 import { checkLifecycle, checkReliefTransition, finishLifecycle, deferStageCycle } from "../../company-forms/stageResolutionService";
 import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from "../repositories";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2, vesselPlanningRelieverClearAudit } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
+import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries, masterUsers } from "../../../../shared/schema";
 import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable, inArray, ne } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
@@ -22,6 +23,16 @@ import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
 async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
   if (!filePath || filePath.startsWith("data:")) return;
   await fileStorageService.deleteAttachment(filePath);
+}
+
+async function trustedPlanningAudit<T extends object>(data: T, req?: Request): Promise<T & { auditUserUuid?: string }> {
+  if (!req) return data;
+  const db = getDb();
+  const actor = await authenticatedActor(req, db);
+  const [user] = await db.select({ uuid: masterUsers.userUuid }).from(masterUsers)
+    .where(eq(masterUsers.id, actor.masterUserId));
+  if (!user?.uuid) throw new ChecklistGateError("Your signed-in identity could not be verified. Reload and retry, or contact the office.", [], false);
+  return { ...data, auditUserUuid: user.uuid };
 }
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
@@ -948,7 +959,7 @@ export const vesselPlanningService = {
     if (data.deploymentChecklistCompleted === true)
       throw new ChecklistGateError("Deploy the reliever first, then complete the checklist on its linked Planning record.");
     // Apply audit user fields
-    const auditedData = applyAuditUser(data, true);
+    const auditedData = applyAuditUser(await trustedPlanningAudit(data, req), true);
     delete (auditedData as any).relieverAssignUuid;
     delete (auditedData as any).crewAssignUuid;
     
@@ -1043,7 +1054,7 @@ export const vesselPlanningService = {
     && !["Planned", "Confirmed", "Signed Off"].includes(data.reliefStatus || ""))
     throw new Error("Use Defer relief with a written reason to reverse planned relief.");
 
-  const auditedData = applyAuditUser(data, false);
+  const auditedData = applyAuditUser(await trustedPlanningAudit(data, req), false);
 
   const incomingTravelEndDate = (auditedData as any).travelEndDate;
   if (typeof incomingTravelEndDate === 'string' && incomingTravelEndDate !== '') {

@@ -747,7 +747,7 @@ describe.sequential("stage-less Company Form submission service", () => {
     expect(frozenRender.body.systemSnapshotAt).toBeTruthy();
     expect(frozenRender.body.systemValuesChanged).toBe(true);
     expect(frozenRender.body.systemValuesChangedNotice).toBe(
-      "The record has changed since signing began. This declaration shows the values at the time of first signature.",
+      "The record has changed since signing began. This form shows the values at the time of first signature.",
     );
     const frozenSubjectPoint = frozenRender.body.parts.flatMap((part: any) => part.sections)
       .flatMap((section: any) => section.questions)
@@ -806,7 +806,7 @@ describe.sequential("stage-less Company Form submission service", () => {
     expect(comparisonUnavailable.body.systemValuesComparisonError).toBe(true);
     expect(comparisonUnavailable.body.systemValuesChanged).toBe(true);
     expect(comparisonUnavailable.body.systemValuesChangedNotice).toBe(
-      "The record has changed since signing began. This declaration shows the values at the time of first signature.",
+      "The record has changed since signing began. This form shows the values at the time of first signature.",
     );
     comparisonFailureSubjectRefs.delete(subjectRef);
     declarationDateDriftSubjectRefs.delete(subjectRef);

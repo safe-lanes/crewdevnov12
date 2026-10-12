@@ -67,7 +67,10 @@ export async function verifyChecklistYes(tx: any, planning: {
     }));
   const state = await stageStatus(planning.relieverAssignUuid, tx);
   const stage = state.stages.find((s: any) => s.stage_key === "before_joining");
-  if (!stage || stage.deferred || stage.outcome !== "COMPLETED")
+  // Go-live checked legacy crews' current stage only. Do not invent a
+  // retrospective before-joining check for an already on-board contract.
+  if ((stage && (stage.deferred || stage.outcome !== "COMPLETED")) ||
+      (!stage && assignment.assignment_type === "Planned"))
     blockers.push({ kind: "check", status: stage?.outcome === "FAILED" ? "FAILED" :
       stage?.event_uuid ? "PENDING" : "NOT_CHECKED", eventUuid: stage?.event_uuid });
   const hasOverride = await assertCompanyFormPermission(principal, "override_checklist", {}, tx)
