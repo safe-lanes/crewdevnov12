@@ -38,6 +38,7 @@ import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { seaServiceRankLabel, type SeaServiceRankMaster } from "./seaServicePresentation";
 import { CrewCompanyFormsHistory } from './components/CrewCompanyFormsHistory';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
@@ -805,6 +806,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankOptions, error: ranksError } = useCompanyRanks();
+  const { data: seaServiceRankMasters = [] } = useQuery<SeaServiceRankMaster[]>({
+    queryKey: ["/api/v2/admin/available-ranks"],
+  });
   
   // Get rank normalization functions to convert positions to actual ranks
   const {
@@ -6105,16 +6109,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
-                          <span className="text-[13px] text-[#4f5863]">{service.rank || '—'}</span>
+                          <span className="text-[13px] text-[#4f5863]">{seaServiceRankLabel(service.rank || "", seaServiceRankMasters)}</span>
                         ) : (
                           <Select
-                            value={normalizeRank(service.rank || '') || service.rank}
+                            value={seaServiceRankMasters.some(r => r.arUuid === service.rank) ? service.rank : normalizeRank(service.rank || '') || service.rank}
                             onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
                             <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select rank" />
                             </SelectTrigger>
                             <SelectContent>
+                              {seaServiceRankMasters.some(r => r.arUuid === service.rank) && <SelectItem value={service.rank}>
+                                {seaServiceRankLabel(service.rank, seaServiceRankMasters)}
+                              </SelectItem>}
                               {ranksLoading ? (
                                 <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                               ) : ranksError ? (
@@ -6165,11 +6172,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                       style={{ color: '#3b82f6' }}
                                       data-testid={`date-to-active-${service.id}`}
                                     >
-                                      {formatDate(todayDate)}
+                                      On board
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Currently on board</p>
+                                    <p>Current contract is open; no sign-off date has been recorded.</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
