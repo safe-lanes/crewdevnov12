@@ -16,7 +16,8 @@ export function evaluateRule(policy: ApplicabilityDraft, facts: AssignmentDimens
       const label = fact?.label ?? "Unavailable condition";
       if (!fact || fact.status !== "resolved" || fact.value === null) return {
         label, outcome: "unresolved" as RuleOutcome, observed: "Unresolved",
-        explanation: "A reliable recorded value is missing. This condition cannot be decided; review Form rule facts.",
+        explanation: fact?.reason && !/[0-9a-f]{8}-[0-9a-f-]{27}|[a-z]+_[a-z]+/i.test(fact.reason)
+          ? fact.reason : "A reliable recorded value is missing. This condition cannot be decided; review Form rule facts.",
       };
       const expected = condition.value;
       const actual = fact.value;

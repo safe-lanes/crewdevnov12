@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { evaluateRule } from "../../server/v2/company-forms/evaluateRule";
 import type { AssignmentDimensionReport } from "../../shared/v2/forms-engine/ruleDimensions";
 import type { ApplicabilityDraft } from "../../shared/v2/admin/applicabilityPreview";
+import { createCrewAssignmentSubject } from "../../server/v2/company-forms/subjects/crewAssignmentSubject";
+import type { CompanyFormPrincipal } from "../../server/v2/company-forms/contracts";
 const fact = (key: string, value: string | boolean | string[] | null) => ({
   key, value, label: key, available: true, kind: "scalar" as const,
   operators: ["in" as const], labels: [], source: {}, status: value === null ? "unresolved" as const : "resolved" as const,
@@ -38,5 +40,17 @@ describe("Company Form read-only rule evaluation", () => {
   it("does not mutate policy or facts", () => {
     const report = facts(fact("rank", "Master")); const before = JSON.stringify([rule, report]);
     evaluateRule(rule, report); expect(JSON.stringify([rule,report])).toBe(before);
+  });
+  it("authoring reads do not invoke operational grants and vessel reads keep their exact scope", () => {
+    const adapter = createCrewAssignmentSubject({ authorizeOffice: async () => { throw Error("Operational permission must not be queried"); } });
+    const subject = { assignUuid: "assignment", crewUuid: "crew", vesselUuid: "vessel",
+      isDeleted: false, isCurrent: true, signOnDate: null, signOffDate: null, assignmentType: "OnBoard" };
+    const office: CompanyFormPrincipal = { kind: "office", userId: 1, roleId: "author", roleName: "Forms Author", roleType: "Office" };
+    expect(adapter.authorizeRuleRead!(office, subject)).toBe(true);
+    const ship: CompanyFormPrincipal = { kind: "vessel", userId: 2, roleId: "ship", roleName: "Author aboard",
+      roleType: "Ship", vesselUuids: ["vessel"] };
+    expect(adapter.authorizeRuleRead!(ship, subject)).toBe(true);
+    expect(adapter.authorizeRuleRead!({ ...ship, vesselUuids: ["other"] }, subject)).toBe(false);
+    expect(adapter.authorizeRuleRead!(office, { ...subject, isDeleted: true })).toBe(false);
   });
 });

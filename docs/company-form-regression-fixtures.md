@@ -6864,3 +6864,19 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-11T13:03:40.157Z): tests/integration/api/accounts-reports.test.ts; target acc_pay_elements_v2; references `ce8ad356-0031-4d47-93e8-30db73e0d6fb`, `0f91b273-1f54-42ad-a865-cd4c78b54581`, `56925aa0-1005-4606-9c14-8e9973ef6064`, `9781161a-92e8-4288-8cc7-e30139091db8`, `0db190dd-3da5-4799-9f26-197bff3d6360`.
 
 - Retained test context (2026-10-11T13:03:55.312Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:12:03.790Z): rule editor definition; target registered_fixture_context; references `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+
+- Retained test context (2026-10-12T03:12:33.435Z): rule editor definition; target registered_fixture_context; references `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`.
+
+- Retained test context (2026-10-12T03:12:33.614Z): rule editor automatically created versions and parts; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:12:33.615Z): rule editor draft; target registered_fixture_context; references `2d3a7626-80da-43d8-919c-3074357f063a`.
+
+- Retained test context (2026-10-12T03:12:33.741Z): rule trial seafarer 1; target registered_fixture_context; references `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `4ef77925-0cc6-4535-8b29-1220f754a85a`.
+
+- Retained test context (2026-10-12T03:12:33.898Z): rule trial seafarer 2; target registered_fixture_context; references `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `ba5c35af-17b5-4213-9c51-d924639d92c3`.
+
+- Retained test context (2026-10-12T03:12:34.478Z): rule editor saved sets; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:21:03.527Z): rule editor complete API fixture inventory including the initial interrupted setup; target registered_fixture_context; references `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `2d3a7626-80da-43d8-919c-3074357f063a`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`, `60f25422-64c8-465c-9f02-3611d820471e`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `9306905d-861d-4c58-a7e4-e683954a6560`, `b8628b0e-2f56-406a-a264-5871887b278d`, `493a9fa8-9dbb-4900-9844-499cef14f652`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `ba5c35af-17b5-4213-9c51-d924639d92c3`.

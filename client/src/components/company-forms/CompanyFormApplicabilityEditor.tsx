@@ -15,6 +15,7 @@ import {
 } from "./CompanyFormConditionCard";
 import type { EditableApplicabilityPolicy, EditableApplicabilitySet } from "./companyFormApplicabilityTypes";
 import { summarizeApplicability } from "./applicabilitySummary";
+import { CompanyFormRuleTrial } from "./CompanyFormRuleTrial";
 
 export interface CompanyFormApplicabilityEditorProps {
   formId: number;
@@ -23,6 +24,7 @@ export interface CompanyFormApplicabilityEditorProps {
   status: string;
   stageKey: string;
   readOnly?: boolean;
+  stageBusy?: boolean;
   onBusyChange?: (busy: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: () => void | Promise<void>;
@@ -111,6 +113,7 @@ export function CompanyFormApplicabilityEditor({
   status,
   stageKey,
   readOnly = false,
+  stageBusy = false,
   onBusyChange,
   onDirtyChange,
   onSaved,
@@ -425,6 +428,18 @@ export function CompanyFormApplicabilityEditor({
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
             <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
           </div>
+          {status === "draft" && (
+            <CompanyFormRuleTrial
+              versionId={versionId}
+              versionUuid={versionUuid}
+              status={status}
+              stageKey={stageKey}
+              stageBusy={stageBusy}
+              policyBusy={loading || saving}
+              policyDirty={isDirty}
+              policy={toPayload(draft)}
+            />
+          )}
           {saveError && <p className="mt-3 text-sm text-[#a44738]" role="alert">{saveError}</p>}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">
             <p className="text-xs text-[#6a808b]">

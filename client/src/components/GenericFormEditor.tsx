@@ -1958,6 +1958,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           versionUuid={selectedVersion.fvUuid}
           status={selectedVersion.status}
           stageKey={currentStageKey}
+          stageBusy={isSavingStage}
           readOnly={readOnly}
           onBusyChange={setIsApplicabilityBusy}
           onDirtyChange={setIsApplicabilityDirty}

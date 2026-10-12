@@ -48,10 +48,17 @@ export function retainFixtureReferences(origin: string, references: unknown[]) {
 }
 function register(origin: string, sql: string, values: unknown[]) {
   // Only UUIDs, never SQL literals, names, credentials or arbitrary parameters.
-  const ids = [...new Set(values.flatMap(v => {
-    const text = typeof v === "string" ? v : Array.isArray(v) ? v.join(" ") : "";
-    return text.match(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi) ?? [];
-  }))];
+  const visited = new Set<object>();
+  const identifiers = (value: unknown): string[] => {
+    if (typeof value === "string")
+      return value.match(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi) ?? [];
+    if (!value || typeof value !== "object" || visited.has(value)) return [];
+    visited.add(value);
+    if (Array.isArray(value)) return value.flatMap(identifiers);
+    return Object.entries(value).filter(([key]) => !/password|secret|token|credential/i.test(key))
+      .flatMap(([, item]) => identifiers(item));
+  };
+  const ids = [...new Set(values.flatMap(identifiers))];
   const target = sql.match(/\b(?:FROM|TABLE|SCHEMA)\s+(?:IF\s+EXISTS\s+)?("?[\w.]+"?)/i)?.[1] ?? "cleanup context";
   const key = `${origin}:${target}:${ids.join(",")}`;
   if (registered.has(key)) return;

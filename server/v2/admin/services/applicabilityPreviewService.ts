@@ -40,9 +40,13 @@ export async function previewApplicability(req: Request, id: number): Promise<Ru
   if (p.mode === "manual_only" && (p.obligation || p.effectiveKind || p.specificDate || p.sets?.length))
     throw new ApplicabilityError("Manual only has no obligation, effective date or conditions.");
   if (p.mode !== "manual_only" && !p.obligation) throw new ApplicabilityError("Choose Mandatory or Optional.");
-  if (p.effectiveKind === "specific_date" && (!p.specificDate ||
-    new Date(p.specificDate).toISOString().slice(0,10) !== p.specificDate))
+  const date = p.specificDate ? new Date(`${p.specificDate}T00:00:00Z`) : null;
+  if (p.effectiveKind === "specific_date" && !date ||
+    date && (p.effectiveKind !== "specific_date" || !Number.isFinite(date.getTime()) ||
+      date.toISOString().slice(0,10) !== p.specificDate))
     throw new ApplicabilityError("Choose a real effective date.");
+  if (p.specificDate && p.specificDate < new Date().toISOString().slice(0,10))
+    throw new ApplicabilityError("This effective date is before the earliest possible release date. Choose On release or a later date; rules never apply retrospectively.");
   if (p.mode !== "conditional" && p.sets?.length) throw new ApplicabilityError("Only conditional rules have cards.");
   if (p.mode === "conditional" && (!p.sets?.length || p.sets.some(s => !s.conditions.length)))
     throw new ApplicabilityError("Add at least one condition to every card.");
