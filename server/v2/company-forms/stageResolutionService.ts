@@ -41,7 +41,7 @@ export type LifecycleCheck = {
 };
 
 /** After the authoritative operation commits. Forms failures never escape this boundary. */
-export async function checkLifecycle(input: LifecycleCheck, executor: any = getDb()) {
+export async function checkLifecycle(input: LifecycleCheck, executor: any = getDb(), captureOnly = false) {
   try {
     const rollout = (await executor.execute(sql`SELECT capture_from FROM frm_stage_rollout WHERE singleton`)).rows[0];
     if (!rollout?.capture_from) return;
@@ -83,7 +83,8 @@ export async function checkLifecycle(input: LifecycleCheck, executor: any = getD
       await appendAttempt(eventUuid, input.actor, "PENDING", null, null, tx);
       return event;
     });
-    if (event) await resolveStageEvent(event.event_uuid, input.actor, executor);
+    if (event && !captureOnly) await finishLifecycle(event.event_uuid, input.actor, executor);
+    return event as StageEvent | null;
   } catch (error) {
     console.error("[CompanyForms] lifecycle check failed; operation retained", input.subjectRef, error);
     try {
@@ -92,6 +93,25 @@ export async function checkLifecycle(input: LifecycleCheck, executor: any = getD
           reason: "The check could not capture its original facts. The lifecycle operation succeeded." }, executor);
     } catch (auditError) { console.error("[CompanyForms] failure audit unavailable", auditError); }
   }
+}
+
+export async function finishLifecycle(eventUuid: string | undefined, actor: string, executor: any = getDb()) {
+  if (!eventUuid) return;
+  try { await resolveStageEvent(eventUuid, actor, executor); }
+  catch (error) { console.error("[CompanyForms] evaluation deferred; lifecycle operation retained", eventUuid, error); }
+}
+
+export async function checkReliefTransition(previous: any, next: any, actor: string, executor: any) {
+  const eligible = (value: unknown) => value === "Planned" || value === "Confirmed";
+  if (eligible(previous?.reliefStatus) || !eligible(next?.reliefStatus)) return;
+  if (!next.crewAssignUuid) {
+    try { await stageAudit(actor, null, "at_sign_off", "CAPTURE_FAILED",
+      { planUuid: next.planUuid, reason: "The incumbent assignment link is missing; no assignment was guessed." }, executor); }
+    catch (error) { console.error("[CompanyForms] missing assignment check audit failed", error); }
+    return;
+  }
+  return checkLifecycle({ subjectRef: next.crewAssignUuid, stage: "at_sign_off", source: "relief",
+    sourceKey: next.planUuid, actor, businessDate: new Date().toISOString().slice(0, 10) }, executor, true);
 }
 
 /** Replay only the immutable event. Caller already performed scoped Fill in authorization. */

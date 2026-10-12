@@ -1,4 +1,5 @@
 import { captureJoiningHistory } from "../../company-forms/subjects/crewAssignmentHistory";
+import { checkLifecycle, checkReliefTransition, finishLifecycle } from "../../company-forms/stageResolutionService";
 import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from "../repositories";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2, vesselPlanningRelieverClearAudit } from "../../../../shared/v2/vessel/schema";
@@ -954,7 +955,15 @@ export const vesselPlanningService = {
     if (auditedData.signOffPortUuid) {
       resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
     }
-    return vesselPlanningRepository.create(resolvedData);
+    let eventUuid: string | undefined;
+    const created = await getDb().transaction(async (tx: any) => {
+      const row = await vesselPlanningRepository.create(resolvedData, tx);
+      const event = await checkReliefTransition(null, row, data.auditUserUuid || "system", tx);
+      eventUuid = event?.event_uuid;
+      return row;
+    });
+    await finishLifecycle(eventUuid, data.auditUserUuid || "system");
+    return created;
   },
 
   async getUnlinkedRelieverClearAudit(planUuid: string) {
@@ -1078,6 +1087,7 @@ export const vesselPlanningService = {
    };
 
   let updated;
+  let reliefEventUuid: string | undefined;
   if (isRelieverClearRequest) {
     // Clearing the slot has historically serialized behind a concurrent
     // deployment. Its new exact link must be locked in a NEW transaction,
@@ -1134,6 +1144,8 @@ export const vesselPlanningService = {
         throw new Error(`Planning record not found: ${planUuid}`);
       }
        await syncIncumbent(tx, lockedPlanning);
+      const event = await checkReliefTransition(lockedPlanning, planning, data.auditUserUuid || "system", tx);
+      reliefEventUuid = event?.event_uuid;
       return planning;
     });
     let expected = existing;
@@ -1160,9 +1172,13 @@ export const vesselPlanningService = {
          throw new Error("Planning crew changed; reload before editing");
        }
        await syncIncumbent(tx, lockedPlanning);
-       return vesselPlanningRepository.update(planUuid, resolvedData, tx);
+       const row = await vesselPlanningRepository.update(planUuid, resolvedData, tx);
+       const event = await checkReliefTransition(lockedPlanning, row, data.auditUserUuid || "system", tx);
+       reliefEventUuid = event?.event_uuid;
+       return row;
      });
   }
+  await finishLifecycle(reliefEventUuid, data.auditUserUuid || "system");
   return updated;
 },
 
@@ -1285,6 +1301,7 @@ export const vesselPlanningService = {
       ? await resolvePortToUuid(data.signOffPortUuid) 
       : undefined;
 
+    let signOffEventUuid: string | undefined;
     const { signedOff, crewUuid, vesselUuid } = await db.transaction(async (tx: typeof db) => {
       // Company Form starts/signatures lock subject first, then planning when
       // validating their entry context. Use the same order for departure.
@@ -1328,6 +1345,10 @@ export const vesselPlanningService = {
                    eq(crewAssignments.isCurrent, true)))
         .returning({ assignUuid: crewAssignments.assignUuid });
       if (!signedAssignment) throw new Error("Linked incumbent assignment changed during sign-off");
+      const formEvent = await checkLifecycle({ subjectRef: signedAssignment.assignUuid, stage: "at_sign_off",
+        source: "sign_off", sourceKey: planUuid, actor: data.auditUserUuid || "system",
+        businessDate: data.signOffDate }, tx, true);
+      signOffEventUuid = formEvent?.event_uuid;
 
       await tx
         .update(vesselPlanningV2)
@@ -1397,6 +1418,7 @@ export const vesselPlanningService = {
       }
     }
 
+    await finishLifecycle(signOffEventUuid, data.auditUserUuid || "system");
     return vesselPlanningRepository.findByPlanUuid(planUuid);
   },
 
@@ -1599,6 +1621,7 @@ export const vesselPlanningService = {
       }
     }
 
+    let signOnEventUuid: string | undefined;
     const result = await db.transaction(async (tx: typeof db) => {
       const locked = await lockPlanningAfterAssignments(tx, planning);
       if (!locked || locked.isArchived || locked.relieverCrewUuid !== relieverCrewUuid ||
@@ -1735,7 +1758,9 @@ export const vesselPlanningService = {
             eq(crewAssignments.isDeleted, false),
           )).returning({ assignUuid: crewAssignments.assignUuid });
         if (!promoted) throw new Error("Linked reliever assignment changed during sign-on");
-
+        const formEvent = await checkLifecycle({ subjectRef: linkedAssignUuid, stage: "on_board", source: "sign_on",
+          sourceKey: planUuid, actor: data.auditUserUuid || "system", businessDate: signOnDate }, tx, true);
+        signOnEventUuid = formEvent?.event_uuid;
         return updated;
       } else {
         console.log(`🔄 [VESSEL-PLANNING-V2] CASE B: Position vacant — promoting reliever ${relieverCrewUuid} to primary`);
@@ -1785,11 +1810,14 @@ export const vesselPlanningService = {
             eq(crewAssignments.isDeleted, false),
           )).returning({ assignUuid: crewAssignments.assignUuid });
         if (!promoted) throw new Error("Linked reliever assignment changed during sign-on");
-
+        const formEvent = await checkLifecycle({ subjectRef: linkedAssignUuid, stage: "on_board", source: "sign_on",
+          sourceKey: planUuid, actor: data.auditUserUuid || "system", businessDate: signOnDate }, tx, true);
+        signOnEventUuid = formEvent?.event_uuid;
         return updated;
       }
     });
 
+    await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
     // E1 Sea Service sync: auto-create entry on sign-on
     try {
       const db3 = getDb();

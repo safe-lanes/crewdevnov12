@@ -230,7 +230,7 @@ export const vesselPlanningController = {
       const validatedData = insertVesselPlanningV2Schema
         .omit({ planUuid: true, relieverAssignUuid: true, crewAssignUuid: true })
         .parse(req.body);
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const auditUserUuid = getAuditUserUuid(req);
       const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
       res.status(201).json(planning);
     } catch (error: any) {
@@ -400,7 +400,7 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths, plannedConfirmedDate, travelStartDate } = req.body;
-      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
+      const auditUserUuid = getAuditUserUuid(req);
       
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
         signOnDate,
@@ -443,7 +443,7 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
-      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
+      const auditUserUuid = getAuditUserUuid(req);
       
       if (!joiningStatus) {
         return res.status(400).json({ error: "joiningStatus is required" });

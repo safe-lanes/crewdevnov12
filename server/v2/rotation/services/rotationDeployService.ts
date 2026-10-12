@@ -8,6 +8,7 @@ import { vesselPlanningRepository } from "../../vessel/repositories";
 import { v4 as uuidv4 } from "uuid";
 import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 import { captureDeployRank } from "../../company-forms/subjects/crewAssignmentRuleContext";
+import { checkLifecycle, finishLifecycle } from "../../company-forms/stageResolutionService";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -29,7 +30,8 @@ export const rotationDeployService = {
     
     try {
       const deployedDate = new Date().toISOString().split("T")[0];
-      return await db.transaction(async (tx: any) => {
+      let formEventUuid: string | undefined;
+      const result = await db.transaction(async (tx: any) => {
         const [entry] = await tx
           .select()
           .from(rotationEntriesV2)
@@ -223,12 +225,17 @@ export const rotationDeployService = {
           })
           .returning();
 
+        const formEvent = await checkLifecycle({ subjectRef: relieverAssignUuid, stage: "before_joining",
+          source: "deploy", sourceKey: entryUuid, actor: effectiveAuditUser, businessDate: deployedDate }, tx, true);
+        formEventUuid = formEvent?.event_uuid;
         return {
           success: true,
           planUuid,
           archiveUuid: archive.archiveUuid,
         };
       });
+      await finishLifecycle(formEventUuid, effectiveAuditUser);
+      return result;
     } catch (error: any) {
       console.error("Deploy error:", error);
       return { success: false, error: error.message };
