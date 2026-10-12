@@ -47,7 +47,10 @@ import { COMPANY_FORM_SUBJECT_TYPES, getSystemFieldsForSubject } from "@shared/v
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
-import { CompanyFormApplicabilityEditor } from "@/components/company-forms/CompanyFormApplicabilityEditor";
+import {
+  CompanyFormApplicabilityEditor,
+  type CompanyFormApplicabilitySummaryState,
+} from "@/components/company-forms/CompanyFormApplicabilityEditor";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -621,6 +624,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [isSavingAndContinuing, setIsSavingAndContinuing] = useState(false);
   const [isApplicabilityBusy, setIsApplicabilityBusy] = useState(() => form.category === "dynamic");
   const [isApplicabilityDirty, setIsApplicabilityDirty] = useState(false);
+  const [isApplicabilitySettingsOpen, setIsApplicabilitySettingsOpen] = useState(false);
+  const [applicabilitySummary, setApplicabilitySummary] = useState("Loading applicability policy…");
+  const [applicabilitySummaryState, setApplicabilitySummaryState] = useState<CompanyFormApplicabilitySummaryState>({
+    loading: true,
+    error: "",
+    canView: true,
+    canEdit: false,
+  });
   const [isReleasing, setIsReleasing] = useState(false);
   const [isPartMutating, setIsPartMutating] = useState(false);
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -669,6 +680,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         applicabilitySaveHandlerRef.current = null;
       }
     };
+  }, []);
+  const handleApplicabilitySummaryChange = useCallback((
+    summary: string,
+    state: CompanyFormApplicabilitySummaryState,
+  ) => {
+    setApplicabilitySummary(summary);
+    setApplicabilitySummaryState(state);
   }, []);
   const baselineRef = useRef<string | null>(null);
   const treeLoadGenerationRef = useRef(0);
@@ -2031,62 +2049,99 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           </Button>
         </div>
       </div>
-      <div
-        className="max-h-[min(42vh,26rem)] overflow-y-auto overscroll-contain pr-1"
-        tabIndex={0}
-        aria-label="Company Form stage and applicability settings"
-        data-testid="company-form-header-settings-scroll"
-      >
-      {isCompanyForm && (subjectStages.length > 0 || subjectStagesError) && (
-        <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3" data-testid="company-form-stage-editor">
-          <label htmlFor="company-form-stage" className="text-sm font-medium text-gray-700">Subject stage</label>
-          {subjectStagesError ? (
-            <span className="text-sm text-red-700">Unable to load subject stages.</span>
-          ) : (
-            <>
-              <Select
-                value={currentStageKey || "none"}
-                onValueChange={(value) => void updateVersionStage(value)}
-                disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages}
-              >
-                <SelectTrigger id="company-form-stage" className="w-[240px] bg-white" data-testid="select-company-form-stage">
-                  <SelectValue placeholder={isLoadingSubjectStages ? "Loading stages..." : "No stage selected"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No stage selected</SelectItem>
-                  {subjectStages.map((stage) => (
-                    <SelectItem value={stage.stageKey} key={stage.stageKey}>{stage.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-xs text-gray-500">
-                {selectedVersion?.status === "released"
-                  ? "Released stages are read-only."
-                  : isSavingStage
-                    ? "Saving stage…"
-                    : "Optional while drafting; required before release."}
-              </span>
-            </>
-          )}
-        </div>
-      )}
       {isCompanyForm && selectedVersion && (
-        <CompanyFormApplicabilityEditor
-          formId={realFormId}
-          versionId={selectedVersion.id}
-          versionUuid={selectedVersion.fvUuid}
-          status={selectedVersion.status}
-          stageKey={currentStageKey}
-          stageBusy={isSavingStage}
-          navigationBusy={isSavingAndContinuing}
-          readOnly={readOnly}
-          onBusyChange={setIsApplicabilityBusy}
-          onDirtyChange={setIsApplicabilityDirty}
-          onRegisterSaveHandler={registerApplicabilitySaveHandler}
-          onSaved={async () => { await refetchVersions(); }}
-        />
+        <section
+          className="mt-3 border-t pt-3"
+          aria-label="Company Form stage and applicability settings"
+          data-testid="company-form-header-settings"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {(subjectStages.length > 0 || subjectStagesError) && (
+              <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="company-form-stage-editor">
+                <label htmlFor="company-form-stage" className="sr-only">Subject stage</label>
+                {subjectStagesError ? (
+                  <span className="text-xs text-red-700">Unable to load subject stages.</span>
+                ) : (
+                  <>
+                    <Select
+                      value={currentStageKey || "none"}
+                      onValueChange={(value) => void updateVersionStage(value)}
+                      disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages}
+                    >
+                      <SelectTrigger id="company-form-stage" className="h-9 w-[min(13rem,65vw)] bg-white" data-testid="select-company-form-stage">
+                        <SelectValue placeholder={isLoadingSubjectStages ? "Loading stages..." : "No stage selected"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No stage selected</SelectItem>
+                        {subjectStages.map((stage) => (
+                          <SelectItem value={stage.stageKey} key={stage.stageKey}>{stage.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isSavingStage && <span className="text-xs text-gray-500" role="status">Saving stage…</span>}
+                  </>
+                )}
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <div className="min-w-0 flex-1" aria-live="polite" data-testid="company-form-applicability-summary">
+                <p className="text-sm leading-5 text-gray-700">
+                  {applicabilitySummaryState.loading
+                    ? "Loading applicability policy…"
+                    : applicabilitySummaryState.error
+                      ? "Policy summary unavailable."
+                      : applicabilitySummaryState.canView
+                        ? applicabilitySummary
+                        : "Applicability policy unavailable."}
+                </p>
+                {isApplicabilityDirty && <span className="text-xs font-medium text-amber-700">Unsaved policy changes</span>}
+                {applicabilitySummaryState.loading && (
+                  <span className="block text-xs text-gray-500" role="status">Loading applicability settings…</span>
+                )}
+                {applicabilitySummaryState.error && (
+                  <span className="block text-xs text-red-700" role="alert">{applicabilitySummaryState.error}</span>
+                )}
+                {!applicabilitySummaryState.loading && !applicabilitySummaryState.canView && (
+                  <span className="block text-xs text-gray-600">You do not have permission to view applicability settings.</span>
+                )}
+                {!applicabilitySummaryState.loading && applicabilitySummaryState.canView
+                  && selectedVersion.status === "draft" && !applicabilitySummaryState.canEdit && (
+                    <span className="block text-xs text-gray-600">Forms edit permission is needed to change this policy.</span>
+                  )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0"
+                onClick={() => setIsApplicabilitySettingsOpen((open) => !open)}
+                aria-expanded={isApplicabilitySettingsOpen}
+                aria-controls="company-form-applicability-settings"
+                data-testid="button-toggle-applicability-settings"
+              >
+                {applicabilitySummaryState.canEdit ? "Edit settings" : "View settings"}
+              </Button>
+            </div>
+          </div>
+          <div id="company-form-applicability-settings" hidden={!isApplicabilitySettingsOpen}>
+            <CompanyFormApplicabilityEditor
+              formId={realFormId}
+              versionId={selectedVersion.id}
+              versionUuid={selectedVersion.fvUuid}
+              status={selectedVersion.status}
+              stageKey={currentStageKey}
+              stageBusy={isSavingStage}
+              navigationBusy={isSavingAndContinuing}
+              readOnly={readOnly}
+              onBusyChange={setIsApplicabilityBusy}
+              onDirtyChange={setIsApplicabilityDirty}
+              onRegisterSaveHandler={registerApplicabilitySaveHandler}
+              onSaved={async () => { await refetchVersions(); }}
+              onSummaryChange={handleApplicabilitySummaryChange}
+            />
+          </div>
+        </section>
       )}
-      </div>
     </div>
   );
 

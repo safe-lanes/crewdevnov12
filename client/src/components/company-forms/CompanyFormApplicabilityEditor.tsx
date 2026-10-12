@@ -34,6 +34,17 @@ export interface CompanyFormApplicabilityEditorProps {
     handler: () => Promise<boolean>,
   ) => (() => void) | void;
   onSaved?: () => void | Promise<void>;
+  onSummaryChange?: (
+    summary: string,
+    state: CompanyFormApplicabilitySummaryState,
+  ) => void;
+}
+
+export interface CompanyFormApplicabilitySummaryState {
+  loading: boolean;
+  error: string;
+  canView: boolean;
+  canEdit: boolean;
 }
 
 type PolicyDraft = EditableApplicabilityPolicy;
@@ -120,6 +131,7 @@ export function CompanyFormApplicabilityEditor({
   onDirtyChange,
   onRegisterSaveHandler,
   onSaved,
+  onSummaryChange,
 }: CompanyFormApplicabilityEditorProps) {
   const { permissions, isLoading: permissionsLoading } = usePermissions();
   const formsPermission = permissions.find((permission) => permission.menuName.trim().toLowerCase() === "forms");
@@ -273,6 +285,14 @@ export function CompanyFormApplicabilityEditor({
   const conditionSetsValid = draft.mode !== "conditional"
     || (draft.sets.length > 0 && draft.sets.every((set) => isApplicabilitySetValid(set, dimensions)));
   const summary = summarizeApplicability(draft, dimensions, { status });
+  useEffect(() => {
+    onSummaryChange?.(summary, {
+      loading: loading || permissionsLoading,
+      error: loadError,
+      canView: permissionToView,
+      canEdit: !policySaveForbidden,
+    });
+  }, [loadError, loading, onSummaryChange, permissionToView, permissionsLoading, policySaveForbidden, summary]);
 
   const updateSet = (setKey: string, nextSet: EditableApplicabilitySet) => {
     setDraft((current) => ({
