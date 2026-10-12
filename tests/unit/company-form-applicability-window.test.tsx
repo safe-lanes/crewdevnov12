@@ -35,6 +35,18 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const ready = () => screen.findByText(/Policy saved/);
 
 describe("Company Form applicability window state", () => {
+  it("shows the draft trial inside the window only for conditional rules", async () => {
+    render(<Harness />);
+    await ready();
+    expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
+    expect(screen.getByTestId("company-form-applicability-window").contains(screen.getByTestId("company-form-rule-trial"))).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
+    expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
+    expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+  });
+
   it("asks before closing dirty settings and keeps edits when cancelled", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<Harness />);

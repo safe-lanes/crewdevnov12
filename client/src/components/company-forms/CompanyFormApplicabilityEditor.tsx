@@ -506,7 +506,7 @@ export function CompanyFormApplicabilityEditor({
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
             <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
           </div>
-          {status === "draft" && (
+          {status === "draft" && draft.mode === "conditional" && (
             <CompanyFormRuleTrial
               versionId={versionId}
               versionUuid={versionUuid}
