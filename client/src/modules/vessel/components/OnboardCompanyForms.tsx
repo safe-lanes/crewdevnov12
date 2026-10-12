@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
@@ -57,8 +58,8 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
   return <div className="space-y-4" data-testid="onboard-company-forms">
     <p className="text-sm text-muted-foreground">{readOnly ? "Historical assignment · read-only" : "On-board Company Forms"}</p>
     {history.isFetching && <p role="status">Loading saved forms…</p>}
-    {history.error && <p role="alert" className="text-destructive">{history.error.message}</p>}
-    {eligible.error && <p role="alert" className="text-destructive">{eligible.error.message}</p>}
+    {history.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(history.error, "loadHistory")}</p>}
+    {eligible.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(eligible.error, "loadEligible")}</p>}
     {!readOnly && history.isSuccess && eligible.isSuccess && <div className="space-y-2">
       <label className="block text-sm font-medium" htmlFor="onboard-form-version">Select a released on-board form</label>
       <select id="onboard-form-version" data-testid="select-onboard-form-version" className="h-10 w-full rounded-md border px-3 text-sm"
@@ -84,7 +85,7 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
             { formUuid: chosen.formUuid, formVersionUuid: chosen.formVersionUuid })).json();
           if (!result.submissionUuid) throw new Error("No form submission link was returned.");
           setActive(result.submissionUuid); changed();
-        } catch (err) { setError(err instanceof Error ? err.message : "Unable to open form."); }
+        } catch (err) { setError(companyFormErrorMessage(err, "start")); }
         finally { setBusy(false); }
       }}>{busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}</Button>
     </div>}

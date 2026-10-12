@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
@@ -127,7 +128,7 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
       if (!result.submissionUuid) throw new Error("The form service did not return a submission link.");
       if (mounted.current) setActiveSubmission(result.submissionUuid);
     } catch (error) {
-      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this form.");
+      if (mounted.current) setActionError(companyFormErrorMessage(error, "start"));
     } finally {
       creating.current = false;
       if (mounted.current) setBusy(false);
@@ -147,9 +148,9 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     </p>
     {!hasLink && <p role="alert">No recorded reliever assignment is linked. Reconciliation is required; starting a form is disabled.</p>}
     {verification.isFetching && <p role="status">Verifying the recorded planning assignment…</p>}
-    {verification.error && <p role="alert" className="text-destructive">{verification.error.message}</p>}
-    {eligible.error && <p role="alert" className="text-destructive">{eligible.error.message}</p>}
-    {history.error && <p role="alert" className="text-destructive">{history.error.message}</p>}
+    {verification.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(verification.error, "verifyAssignment")}</p>}
+    {eligible.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(eligible.error, "loadEligible")}</p>}
+    {history.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(history.error, "loadHistory")}</p>}
     {previouslyVerified && assignmentRequirements.isError && <p role="alert" className="text-destructive">Form stage availability could not be verified. Starting a manual form is disabled until the check can be loaded.</p>}
     {previouslyVerified && assignmentRequirements.isSuccess && stageCheckBlocksActions(assignmentRequirements.data, "before_joining") && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
       Required form entry is unavailable until the enforced before-joining check is completed.

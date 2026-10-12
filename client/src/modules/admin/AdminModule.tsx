@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -3690,7 +3691,7 @@ const AdminModuleInner = (): JSX.Element => {
       setEditingForm(form);
     },
     onError: (error: Error) => {
-      toast({ title: "Unable to create Company Form", description: error.message, variant: "destructive" });
+      toast({ title: "Unable to create Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" });
     },
   });
 
@@ -3704,7 +3705,7 @@ const AdminModuleInner = (): JSX.Element => {
       setEditingCompanyMetadata(null);
       toast({ title: "Company Form updated" });
     },
-    onError: (error: Error) => toast({ title: "Unable to update Company Form", description: error.message, variant: "destructive" }),
+    onError: (error: Error) => toast({ title: "Unable to update Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" }),
   });
 
   const archiveCompanyMutation = useMutation({
@@ -3713,7 +3714,7 @@ const AdminModuleInner = (): JSX.Element => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       toast({ title: "Company Form archived" });
     },
-    onError: (error: Error) => toast({ title: "Unable to archive Company Form", description: error.message, variant: "destructive" }),
+    onError: (error: Error) => toast({ title: "Unable to archive Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" }),
   });
 
   const deleteFormMutation = useMutation({
@@ -3732,17 +3733,9 @@ const AdminModuleInner = (): JSX.Element => {
       // Also invalidate cache on error to refresh state
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
 
-      // Extract specific error message from server response
-      let errorMessage = "Failed to delete form";
-      if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
       toast({
         title: "Error",
-        description: errorMessage,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -3822,7 +3815,7 @@ const AdminModuleInner = (): JSX.Element => {
     } catch (error: any) {
       toast({
         title: "Copy failed",
-        description: error?.message || "Failed to copy form configuration.",
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     }
@@ -3903,7 +3896,7 @@ const AdminModuleInner = (): JSX.Element => {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: `Failed to save form configuration: ${error.message}`,
+        description: companyFormErrorMessage(error, "editorSave"),
         variant: "destructive",
       });
     },
@@ -3930,7 +3923,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
       toast({
         title: "Error",
-        description: `Failed to update Lock Form setting: ${error.message}`,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -3973,7 +3966,7 @@ const AdminModuleInner = (): JSX.Element => {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: `Failed to save rank group configuration: ${error.message}`,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -8554,7 +8547,7 @@ const AdminModuleInner = (): JSX.Element => {
           ) : (
             <>
               <div className="text-red-500 text-sm">Error loading forms. Please try again.</div>
-              <div className="text-red-500 text-xs">{error instanceof Error ? error.message : String(error)}</div>
+              <div className="text-red-500 text-xs">{companyFormErrorMessage(error, "editorLoad")}</div>
             </>
           )}
         </div>

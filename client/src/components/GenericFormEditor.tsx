@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { getCrewUserId } from "@/lib/crewUser";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +59,11 @@ export interface ConfigurableFormPart {
 }
 
 const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
+
+function editorErrorMessage(error: unknown, action: Parameters<typeof companyFormErrorMessage>[1], isCompanyForm: boolean): string {
+  if (isCompanyForm) return companyFormErrorMessage(error, action);
+  return error instanceof Error ? error.message : String(error);
+}
 
 async function loadVersionParts(formId: number, versionUuid: string, allowEmpty = false): Promise<ConfigurableFormPart[]> {
   const response = await apiRequest("GET",
@@ -859,7 +865,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (saveTransitionRef.current) return;
     if (isLoadingParts) return;
     if (partsError) {
-      setSaveError(partsError.message);
+      setSaveError(editorErrorMessage(partsError, "editorLoad", isCompanyForm));
       baselineRef.current = null;
       return;
     }
@@ -905,7 +911,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           setTrees(emptyTrees);
           setOptionSets(emptyOptionSets);
           baselineRef.current = JSON.stringify({ trees: emptyTrees, optionSets: emptyOptionSets });
-          setSaveError(error.message);
+          setSaveError(editorErrorMessage(error, "editorLoad", isCompanyForm));
         }
       })
       .finally(() => {
@@ -1518,7 +1524,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       await refetchVersions();
       return draft;
     } catch (error: any) {
-      const message = error?.message || "Failed to save form structure";
+      const message = editorErrorMessage(error, "editorSave", isCompanyForm);
       setSaveError(message);
       toast({ title: "Unable to save form", description: message, variant: "destructive" });
       return null;
@@ -1573,7 +1579,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         description: "The version has been released successfully.",
       });
     } catch (error: any) {
-      const message = error?.message || "Failed to release form version";
+      const message = editorErrorMessage(error, "release", isCompanyForm);
       setSaveError(message);
       toast({ title: "Unable to release form", description: message, variant: "destructive" });
     } finally {
@@ -1601,7 +1607,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setStageSelection((current) => current?.versionUuid === version.fvUuid
         ? { versionUuid: version.fvUuid, stageKey: version.stageKey ?? "" }
         : current);
-      const message = error?.message || "Unable to save the draft stage.";
+      const message = editorErrorMessage(error, "manageVersion", isCompanyForm);
       setSaveError(message);
       toast({ title: "Unable to save stage", description: message, variant: "destructive" });
     } finally {
@@ -1751,11 +1757,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       }
       toast({ title: success });
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
-      const body = raw.replace(/^\d+:\s*/, "");
-      let message = body;
-      try { message = JSON.parse(body).error || body; } catch { /* Non-JSON error */ }
-      setSaveError(message);
+      setSaveError(editorErrorMessage(error, "manageVersion", isCompanyForm));
     } finally {
       setIsPartMutating(false);
     }
@@ -1830,7 +1832,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       await refetchVersions();
       toast({ title: "Draft ready", description: "You can now edit this form version." });
     } catch (error: any) {
-      toast({ title: "Unable to create draft", description: error?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Unable to create draft", description: editorErrorMessage(error, "manageVersion", isCompanyForm), variant: "destructive" });
     }
   };
 

@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage, safeCompanyFormReason } from "@/lib/companyFormErrors";
 import { stageCheckBlocksActions, stageCheckFor, useAssignmentFormRequirements, type AssignmentFormRequirement as Requirement } from "./assignmentFormRequirementsQuery";
 
 const stageNames: Record<string, string> = {
@@ -13,18 +14,6 @@ function humanDate(date?: string | null) {
   if (!date) return "Date unavailable";
   const parsed = new Date(date);
   return Number.isNaN(parsed.getTime()) ? "Date unavailable" : parsed.toLocaleDateString();
-}
-
-function failureReason(evidence: unknown): string {
-  if (typeof evidence === "string" && evidence.trim()) return evidence.trim();
-  if (evidence && typeof evidence === "object") {
-    const record = evidence as Record<string, unknown>;
-    for (const key of ["reason", "message", "failure_reason", "error"]) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim()) return value.trim();
-    }
-  }
-  return "No server reason was provided.";
 }
 
 function statusKind(status: string) {
@@ -87,7 +76,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
       await queryClient.invalidateQueries({ queryKey });
       onOpenSubmission?.(result.submissionUuid);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to start this required form.");
+      setError(companyFormErrorMessage(cause, "start"));
     } finally {
       setBusyId(null);
     }
@@ -104,7 +93,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
       );
       await queryClient.invalidateQueries({ queryKey });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to retry this form stage check.");
+      setError(companyFormErrorMessage(cause, "retryCheck"));
     } finally {
       setRetryingEvent(null);
     }
@@ -117,13 +106,13 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
     </div>
     {query.isLoading && <div role="status" className="mt-3 space-y-2"><span className="sr-only">Loading form requirements…</span><div className="h-8 animate-pulse rounded bg-sky-100" /><div className="h-8 animate-pulse rounded bg-sky-100" /></div>}
     {query.error && <div role="alert" className="mt-3 text-sm text-rose-800">
-      <p>Assignment requirements could not be loaded: {query.error instanceof Error ? query.error.message : "Please try again."}</p>
+       <p>{companyFormErrorMessage(query.error, "loadRequirements")}</p>
       <button className="mt-1 font-semibold underline" type="button" onClick={() => void query.refetch()}>Retry</button>
     </div>}
     {query.isSuccess && stageChecks && !stageChecks.enforcementEnabled && <p className="mt-2 rounded bg-slate-100 px-2.5 py-2 text-xs text-slate-700">
       Stage-check enforcement is off for this assignment. Existing form controls remain available under the legacy behavior.
     </p>}
-    {query.isSuccess && stageChecks?.activationFailure && <p role="alert" className="mt-2 text-sm text-amber-900">{stageChecks.activationFailure}</p>}
+    {query.isSuccess && stageChecks?.activationFailure && <p role="alert" className="mt-2 text-sm text-amber-900">{safeCompanyFormReason(stageChecks.activationFailure)}</p>}
     {query.isSuccess && (stageChecks?.failures ?? []).filter(failure =>
       (!stageKey || failure.stage_key === stageKey) && !visibleStageChecks.some(check => check.stage_key === failure.stage_key))
       .map((failure, index) => <p key={`capture-failure-${index}`} role="alert" className="mt-2 text-sm text-amber-900">
@@ -141,8 +130,8 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
               {retryingEvent === check.event_uuid ? "Retrying…" : "Retry check"}
             </button>}
           </div>
-          <p className="mt-1">{check.reason || (check.recorded_at ? `Recorded ${humanDate(check.recorded_at)}` : "Recorded time unavailable.")}</p>
-          {failures.map((failure, index) => <p key={`${failure.stage_key}-${index}`} className="mt-1 break-words">Server reason: {failureReason(failure.evidence)}</p>)}
+           <p className="mt-1">{check.reason ? safeCompanyFormReason(check.reason) : check.recorded_at ? `Recorded ${humanDate(check.recorded_at)}` : "Recorded time unavailable."}</p>
+           {failures.map((failure, index) => <p key={`${failure.stage_key}-${index}`} className="mt-1 break-words">{safeCompanyFormReason(failure.evidence)}</p>)}
           {check.outcome === "COMPLETED" && !deferred && !query.data?.requirements.some((requirement) => requirement.stage_key === check.stage_key) && <p className="mt-1 font-medium">The completed stage check found no forms that apply.</p>}
           {deferred && check.stage_key === "at_sign_off" && <p className="mt-1">Available once Relief Status is Planned or Confirmed.</p>}
         </li>;
@@ -155,7 +144,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
     {query.isSuccess && !stageChecks?.enforcementEnabled && runs.length > 0 && <ul className="mt-3 space-y-1 text-xs text-slate-600">
       {runs.map((run, index) => <li key={`${run.stage_key}-${index}`}>
         {stageNames[run.stage_key] ?? "Form stage"} check recorded {humanDate(run.recorded_at)} · {run.outcome === "FAILED" ? "Failed" : run.outcome === "PENDING" ? "Pending" : "Completed"}
-        {run.failure_reason ? ` · ${run.failure_reason}` : ""}
+         {run.failure_reason ? ` · ${safeCompanyFormReason(run.failure_reason)}` : ""}
       </li>)}
     </ul>}
     {query.isSuccess && runs.length === 0 && !stageChecks?.enforcementEnabled && <p className="mt-2 text-xs text-slate-600">No legacy requirement check is recorded for this stage yet. Existing manual form actions remain available.</p>}
@@ -185,7 +174,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
               {displayKind === "unresolved" ? "Needs attention" : displayKind === "withdrawn" ? "Withdrawn" : displayKind === "completed" ? "Completed" : displayKind === "voided" ? "Voided" : displayKind === "manual" ? "Manual form conflict" : requirement.status === "STARTED" ? "Started" : "Outstanding"}
             </span>
           </div>
-          {kind === "unresolved" && <p className="mt-2 text-xs text-amber-900">{requirement.unresolved_reason || "The obligation cannot be resolved yet."} This required form cannot be started until resolved.</p>}
+          {kind === "unresolved" && <p className="mt-2 text-xs text-amber-900">{requirement.unresolved_reason ? safeCompanyFormReason(requirement.unresolved_reason) : "The obligation cannot be resolved yet."} This required form cannot be started until resolved.</p>}
           {displayKind === "manual" && <p className="mt-2 text-xs text-amber-900">An existing manual form conflicts with this obligation. Open it below; an authorized user must explicitly void it before starting a required replacement.</p>}
             {requirementBlocked && <p className="mt-2 text-xs text-amber-900">This required form remains visible, but cannot be started until its enforced stage check is completed.</p>}
           {kind === "withdrawn" && <p className="mt-2 text-xs text-slate-600">This obligation is retained for history only.</p>}
@@ -203,7 +192,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
             <ul className="mt-1 space-y-1">
               {requirement.history.map((event, index) => <li key={`${event.event}-${event.recorded_at}-${index}`}>
                 {historyEventLabel(event.event)} · {humanDate(event.recorded_at)}
-                {event.reason ? ` · ${event.reason}` : ""}
+                 {event.reason ? ` · ${safeCompanyFormReason(event.reason)}` : ""}
               </li>)}
             </ul>
           </details>}

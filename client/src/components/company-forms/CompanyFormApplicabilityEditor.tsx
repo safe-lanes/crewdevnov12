@@ -3,6 +3,7 @@ import { CalendarDays, Check, CircleHelp, LoaderCircle, LockKeyhole, Plus, Save 
 import type { VersionApplicability } from "@shared/v2/admin/applicability";
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,14 +100,9 @@ function toPayload(draft: PolicyDraft): ApplicabilityDraft {
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const raw = await response.text();
-    let message = raw || "The request could not be completed.";
-    try {
-      const parsed = JSON.parse(raw);
-      message = parsed.error || parsed.message || message;
-    } catch {
-      // Preserve the server's plain-text error.
-    }
-    throw new Error(message);
+    // Keep the structured payload available only to the safe mapper. Never
+    // render this diagnostic text directly.
+    throw new Error(`${response.status}: ${raw}`);
   }
   return response.json() as Promise<T>;
 }
@@ -176,9 +172,9 @@ export function CompanyFormApplicabilityEditor({
       setDraft(next);
       setBaseline(JSON.stringify(next));
       setDimensions(Array.isArray(dimensions) ? dimensions : []);
-    } catch {
+    } catch (error) {
       if (requestGeneration.current !== generation) return;
-      setLoadError("We couldn’t load applicability settings. Refresh the editor and try again.");
+      setLoadError(companyFormErrorMessage(error, "editorLoad"));
     } finally {
       if (requestGeneration.current === generation) setLoading(false);
     }
@@ -254,9 +250,9 @@ export function CompanyFormApplicabilityEditor({
       setBaseline(JSON.stringify(normalized));
       await onSavedRef.current?.();
       return true;
-    } catch {
+    } catch (error) {
       if (requestGeneration.current !== generationAtSave) return false;
-      setSaveError("We couldn’t save applicability settings. Check the draft and try again.");
+      setSaveError(companyFormErrorMessage(error, "editorSave"));
       return false;
     } finally {
       if (requestGeneration.current === generationAtSave && versionUuid === versionAtSave) setSaving(false);

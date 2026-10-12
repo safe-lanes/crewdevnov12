@@ -3,6 +3,7 @@ import { Check, CircleHelp, LoaderCircle, Search, Sparkles } from "lucide-react"
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
 import type { RuleAssignmentChoice, RulePreview, RuleOutcome } from "@shared/v2/admin/applicabilityPreview";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage, safeCompanyFormFactReason } from "@/lib/companyFormErrors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,12 @@ function outcomeTone(outcome: RuleOutcome): string {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) throw new Error("Request failed");
+  if (!response.ok) {
+    const raw = await response.text();
+    // Preserve structured codes for the allowlisted mapper; never display the
+    // raw body or status to an operator.
+    throw new Error(`${response.status}: ${raw}`);
+  }
   return response.json() as Promise<T>;
 }
 
@@ -122,10 +128,10 @@ export function CompanyFormRuleTrial({
           || activeContextKey.current !== contextKey
         ) return;
         setAssignments(Array.isArray(matches) ? matches : []);
-      } catch {
+      } catch (error) {
         if (searchGeneration.current !== generation || activeContextKey.current !== contextKey) return;
         setAssignments([]);
-        setSearchError("We couldn’t search crew assignments. Try again.");
+        setSearchError(companyFormErrorMessage(error, "ruleSearch"));
       } finally {
         if (searchGeneration.current === generation && activeContextKey.current === contextKey) {
           setSearching(false);
@@ -166,9 +172,9 @@ export function CompanyFormRuleTrial({
       const result = await parseResponse<RulePreview>(response);
       if (trialGeneration.current !== generation || activeContextKey.current !== keyAtStart) return;
       setPreview(result);
-    } catch {
+    } catch (error) {
       if (trialGeneration.current !== generation || activeContextKey.current !== keyAtStart) return;
-      setPreviewError("We couldn’t check this crew member against the draft policy. Try again.");
+      setPreviewError(companyFormErrorMessage(error, "rulePreview"));
     } finally {
       if (trialGeneration.current === generation && activeContextKey.current === keyAtStart) {
         setPreviewBusy(false);
@@ -288,7 +294,7 @@ export function CompanyFormRuleTrial({
                       <p className="text-sm font-medium text-[#365461]">{condition.label}</p>
                       <span className={`rounded-full border px-2 py-0.5 text-xs ${outcomeTone(condition.outcome)}`}>{outcomeLabel(condition.outcome)}</span>
                     </div>
-                    <p className="mt-1 text-sm leading-5 text-[#637985]">{condition.explanation}</p>
+                    <p className="mt-1 text-sm leading-5 text-[#637985]">{condition.outcome === "unresolved" ? safeCompanyFormFactReason(condition.explanation) : condition.explanation}</p>
                   </li>
                 ))}
               </ul>

@@ -28,6 +28,7 @@ import {
 } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { getSystemFieldsForSubject, isCompanyFormSubjectType } from "@shared/v2/forms-engine/systemFields";
 import { companyFormNumbers } from "./displayNumbering";
 
@@ -362,6 +363,10 @@ function SignatureBlock({
   const [seafarerPresent, setSeafarerPresent] = useState(false);
   const [signatureActionPending, setSignatureActionPending] = useState(false);
   const [signatureActionError, setSignatureActionError] = useState<string | null>(null);
+  const presentSignatureError = (error: unknown, action: "sign" | "removeSignature") =>
+    companyForm
+      ? companyFormErrorMessage(error, action)
+      : error instanceof Error ? error.message : String(error);
   useEffect(() => { setName(defaults?.name || ""); setRank(defaults?.rank || ""); }, [defaults?.name, defaults?.rank]);
   useEffect(() => {
     setSignatureMethod((current) => methodOptions.some((option) => option.method === current)
@@ -385,7 +390,7 @@ function SignatureBlock({
         try {
           await live.onDeleteSignature?.(sectionId, type);
         } catch (error) {
-          setSignatureActionError(error instanceof Error ? error.message : String(error));
+          setSignatureActionError(presentSignatureError(error, "removeSignature"));
         } finally {
           setSignatureActionPending(false);
         }
@@ -429,7 +434,7 @@ function SignatureBlock({
             companyForm && signatureMethod === "witnessed" ? seafarerPresent : undefined,
           );
         } catch (error) {
-          setSignatureActionError(error instanceof Error ? error.message : String(error));
+          setSignatureActionError(presentSignatureError(error, "sign"));
           throw error;
         }
         }}

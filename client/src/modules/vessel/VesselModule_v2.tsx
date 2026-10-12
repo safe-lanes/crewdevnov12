@@ -37,6 +37,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { z } from "zod";
 import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1851,7 +1852,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     const formsCell = (
                                                         <TableCell className="text-xs" data-testid={`cell-forms-${planning.crewAssignUuid || index}`}>
                                                           {!planning.crewAssignUuid ? <span title="No recorded assignment is linked">Not linked</span>
-                                                            : companyFormCounts.error ? <span role="alert" title={companyFormCounts.error.message}>Unavailable</span>
+                                                            : companyFormCounts.error ? <span role="alert" title={companyFormErrorMessage(companyFormCounts.error, "loadHistory")}>Unavailable</span>
                                                             : companyFormCounts.data?.[planning.crewAssignUuid] === undefined ? <span>Loading…</span>
                                                             : <Button variant="link" className="p-0 h-auto text-blue-600" data-testid={`button-crew-forms-${planning.crewAssignUuid}`}
                                                               onClick={() => setCompanyFormsTarget({ assignmentUuid: planning.crewAssignUuid, crewName: planning.crewName || planning.crewMemberName || "Crew member", readOnly: showArchived || !!planning.isArchived })}>

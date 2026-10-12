@@ -15,11 +15,17 @@ export const requirementApi = request("http://127.0.0.1:5000");
 export const formCall = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   requirementApi[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${requirementToken}`).send(body);
 
-export async function createRequirementFixture(stageKey = "before_joining") {
+export async function createRequirementFixture(stageKey = "before_joining", options: { signatures?: boolean } = {}) {
   if (process.env.NODE_ENV === "production") throw new Error("Fixture harness is not permitted in production");
   const crewUuid = randomUUID(), assignUuid = randomUUID(), formUuid = randomUUID(), templatePart = randomUUID();
   retainFixtureReferences("requirement harness roots", [crewUuid, assignUuid, formUuid, templatePart]);
-  const vessel = (await requirementPool.query("SELECT vessel_uuid FROM master_vessels WHERE NOT is_deleted AND is_active LIMIT 1")).rows[0];
+  const vessel = options.signatures ? { vessel_uuid: randomUUID() } :
+    (await requirementPool.query("SELECT vessel_uuid FROM master_vessels WHERE NOT is_deleted AND is_active LIMIT 1")).rows[0];
+  if (options.signatures) {
+    retainFixtureReferences("required signing isolated vessel", [vessel.vessel_uuid]);
+    await requirementPool.query(`INSERT INTO master_vessels(vessel_uuid,vessel,is_active,is_deleted)
+      VALUES($1,'TEST ONLY Required signing',true,false)`, [vessel.vessel_uuid]);
+  }
   const rank = (await requirementPool.query("SELECT ar_uuid,name FROM adm_available_ranks_v2 WHERE NOT is_deleted LIMIT 1")).rows[0];
   await requirementPool.query(`INSERT INTO crew_members_v2(crew_uuid,emp_no,first_name,family_name,present_rank)
     VALUES($1,$2,'TEST ONLY','Requirement ledger',$3)`, [crewUuid, `REQ-${crewUuid.slice(0, 8)}`, rank.name]);
@@ -37,11 +43,16 @@ export async function createRequirementFixture(stageKey = "before_joining") {
   const part = (await requirementPool.query("SELECT form_part_uuid FROM frm_form_parts WHERE form_version_uuid=$1", [v.fvUuid])).rows[0].form_part_uuid;
   const section = randomUUID(), question = randomUUID();
   retainFixtureReferences("requirement harness pinned content", [v.fvUuid, part, section, question]);
-  await requirementPool.query(`INSERT INTO frm_sections(section_uuid,form_version_uuid,form_part_uuid,section_code,section_title,responsible_mode)
-    VALUES($1,$2,$3,'REQ','Form evidence','seafarer')`, [section, v.fvUuid, part]);
+  await requirementPool.query(`INSERT INTO frm_sections(section_uuid,form_version_uuid,form_part_uuid,section_code,section_title,responsible_mode,
+    signature_officer_required,signature_seafarer_required)
+    VALUES($1,$2,$3,'REQ','Form evidence','seafarer',$4,$4)`, [section, v.fvUuid, part, options.signatures ?? false]);
   await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type)
-    VALUES($1,$2,'ANSWER','Retained requirement evidence','free_text')`, [question, section]);
-  const policy = await formCall("put", `/form-versions/${v.id}/applicability`, { mode: "all", obligation: "mandatory" });
+    VALUES($1,$2,'ANSWER','Retained requirement evidence',$3)`, [question, section, options.signatures ? "content" : "free_text"]);
+  const policy = await formCall("put", `/form-versions/${v.id}/applicability`, options.signatures ? {
+    mode: "conditional", obligation: "mandatory", sets: [
+      { conditions: [{ dimensionKey: "vessel", operator: "in", value: [vessel.vessel_uuid] }] },
+    ],
+  } : { mode: "all", obligation: "mandatory" });
   if (policy.status !== 200) throw new Error(JSON.stringify(policy.body));
   const released = await formCall("post", `/form-versions/${v.id}/release`);
   if (released.status !== 200) throw new Error(JSON.stringify(released.body));
@@ -52,6 +63,7 @@ export async function createRequirementFixture(stageKey = "before_joining") {
     source: "retained_test_harness", outcome: "COMPLETED" as const,
     evidence: { fixture: true }, decisions: [] };
   return { crewUuid, assignUuid, formUuid, formId: f.id, version: v, section, question, cycleUuid, base,
+    matchedSetUuids: (policy.body.sets ?? []).map((set: { setUuid: string }) => set.setUuid),
     record: async (eventKey: string, decisions: Parameters<typeof recordResolution>[0]["decisions"] = []) => {
       const result = await recordResolution({ ...base, eventKey, decisions });
       const stage = await requirementPool.query("SELECT 1 FROM frm_stage_cycles WHERE subject_ref=$1 AND stage_key=$2",

@@ -131,7 +131,9 @@ describe("Joining Company Forms use the recorded planning association", () => {
   it("shows a permission error rather than reporting empty eligibility", async () => {
     request.mockRejectedValue(new Error("403: Permission denied"));
     mount();
-    expect(await screen.findByRole("alert")).toHaveTextContent("403");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("You do not have permission to complete this action. Ask an administrator to review your access.");
+    expect(alert.textContent).not.toMatch(/403|Permission denied/);
     expect(screen.queryByText(/No released, lifecycle-valid/)).not.toBeInTheDocument();
   });
   it("does not display a late creation result after switching relievers", async () => {

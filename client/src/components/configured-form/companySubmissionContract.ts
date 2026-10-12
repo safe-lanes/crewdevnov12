@@ -9,6 +9,7 @@ import type {
   CompanyFormSubmissionSectionState,
 } from "@shared/v2/forms-engine/submissionRenderContract";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel,
@@ -434,7 +435,7 @@ export function CompanySubmissionRenderer({
       } catch (error: unknown) {
         return {
           model: undefined,
-          error: error instanceof Error ? error.message : String(error),
+          error: companyFormErrorMessage(error, "load"),
         };
       }
     },
@@ -596,13 +597,13 @@ export function CompanySubmissionRenderer({
     "div",
     { role: "alert", className: "flex items-start gap-2 text-sm text-destructive" },
     React.createElement(AlertCircle, { className: "mt-0.5 h-4 w-4 shrink-0" }),
-    React.createElement("span", null, form.error.message),
+    React.createElement("span", null, companyFormErrorMessage(form.error, "load")),
   );
   if (mappingError) {
     return React.createElement(
       "div",
       { role: "alert", className: "text-sm text-destructive" },
-      `Unable to read persisted Company Form answers: ${mappingError}`,
+      `Unable to read persisted Company Form answers. Refresh the form or contact an administrator for help.`,
     );
   }
   if (!rendererModel || !rendererModel.parts.length) {
@@ -612,9 +613,6 @@ export function CompanySubmissionRenderer({
     ? selectedPartUuid
     : rendererModel.parts[0].formPartUuid;
 
-  const reportSaveFailure = (error: unknown) => {
-    return error instanceof Error ? error.message : String(error);
-  };
   const save = (
     sectionUuid: string,
     draft: CompanySubmissionDraftInput,
@@ -680,7 +678,7 @@ export function CompanySubmissionRenderer({
           || saveSequencesRef.current[key] !== sequence) return;
         setSaveErrors((current) => ({
           ...current,
-          [key]: reportSaveFailure(error),
+          [key]: companyFormErrorMessage(error, "save"),
         }));
         throw error;
       },
@@ -776,7 +774,7 @@ export function CompanySubmissionRenderer({
       );
       await refetchPersistedForm();
     } catch (error) {
-      const message = reportSaveFailure(error);
+      const message = companyFormErrorMessage(error, "submit");
       setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
       throw error;
     } finally {
@@ -814,7 +812,7 @@ export function CompanySubmissionRenderer({
       );
       await refetchPersistedForm();
     } catch (error) {
-      const message = reportSaveFailure(error);
+      const message = companyFormErrorMessage(error, "sign");
       setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
       throw error;
     } finally {
@@ -844,7 +842,7 @@ export function CompanySubmissionRenderer({
       );
       await refetchPersistedForm();
     } catch (error) {
-      const message = reportSaveFailure(error);
+      const message = companyFormErrorMessage(error, "removeSignature");
       setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
       throw error;
     } finally {
@@ -873,7 +871,7 @@ export function CompanySubmissionRenderer({
       setVoidReason("");
       await refetchPersistedForm();
     } catch (error) {
-      setVoidError(reportSaveFailure(error));
+      setVoidError(companyFormErrorMessage(error, "void"));
       await refetchPersistedForm();
     } finally {
       setIsVoiding(false);

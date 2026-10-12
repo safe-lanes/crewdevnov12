@@ -83,7 +83,8 @@ describe("CompanyFormRuleTrial", () => {
     fireEvent.click(screen.getByRole("button", { name: "Check this draft" }));
 
     expect(await screen.findByText("Result: Needs more information")).toBeInTheDocument();
-    expect(screen.getByText("The source fact is not available.")).toBeInTheDocument();
+    expect(screen.getByText("This crew fact could not be verified. Ask an administrator to check the source record or master data.")).toBeInTheDocument();
+    expect(screen.queryByText("The source fact is not available.")).not.toBeInTheDocument();
     expect(screen.getByText(/Stage: Joining · Timing: From release/)).toBeInTheDocument();
     expect(screen.getByText(/does not assess retrospective stage applicability/i)).toBeInTheDocument();
     expect(screen.queryByText("internal-subject-reference")).not.toBeInTheDocument();

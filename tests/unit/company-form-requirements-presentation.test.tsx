@@ -72,7 +72,7 @@ describe("Company Form operational requirements presentation", () => {
     fireEvent.click(startButton);
     expect(state.post).not.toHaveBeenCalled();
   });
-  it("renders a plain Fill in server reason and retries only the recorded stage check", async () => {
+  it("renders an actionable safe explanation for the Fill in reason and retries only the recorded stage check", async () => {
     state.response = {
       runs: [], requirements: [], outstandingEligible: true,
       stageChecks: {
@@ -83,8 +83,11 @@ describe("Company Form operational requirements presentation", () => {
       },
     };
     const view = render(wrap(<AssignmentFormRequirements subjectRef="subject" stageKey="before_joining" />));
-    expect(await screen.findByText("Server reason: Fill in is required before joining")).toBeInTheDocument();
+    expect(await screen.findByText("A required pre-joining response is missing. Complete the requested information, then retry the stage check.")).toBeInTheDocument();
     expect(view.container.textContent).not.toContain("private-form-id");
+    expect(view.container.textContent).not.toContain("Server reason");
+    expect(view.container.textContent).not.toContain("Fill in is required before joining");
+    expect(view.container.textContent).not.toContain("retryable-event");
     fireEvent.click(screen.getByRole("button", { name: "Retry check" }));
     await waitFor(() => expect(state.post).toHaveBeenCalledWith(
       expect.stringContaining("/checks/retryable-event/retry"),

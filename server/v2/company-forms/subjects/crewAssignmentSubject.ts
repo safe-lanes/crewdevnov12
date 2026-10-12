@@ -1,6 +1,6 @@
 import { assertStageReady } from "../stageEventRepository";
-import { and, eq, sql } from "drizzle-orm";
-import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { and, eq, or, sql } from "drizzle-orm";
+import { admAvailableRanksV2, admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
 import {
   masterNationalities,
@@ -13,7 +13,7 @@ import {
 } from "../../../../shared/v2/crew-pool/schema";
 import { frmCompanySubmissionAssignments } from "../../../../shared/v2/forms-engine/submissions";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
-import { CompanyFormPermissionError } from "../errors";
+import { CompanyFormPermissionError, CompanyFormValidationError } from "../errors";
 import { frmSections, frmFormParts } from "../../../../shared/v2/forms-engine/schema";
 import {
   SHARED_SYSTEM_FIELDS,
@@ -223,14 +223,43 @@ async function resolveCrewSystemField(
     }
     if (key === "rank") {
       if (context.raw || !crew.presentRank) return crew.presentRank;
+      // Existing crew records contain rank IDs, UUIDs and imported display
+      // labels. Resolve against eligible masters; never echo an unknown value.
       const ranks = await db.select({ rank: admCompanyRanksV2.rank })
         .from(admCompanyRanksV2).where(and(
-          eq(admCompanyRanksV2.rankId, crew.presentRank),
+          or(
+            eq(admCompanyRanksV2.rankId, crew.presentRank),
+            eq(admCompanyRanksV2.crUuid, crew.presentRank),
+            eq(admCompanyRanksV2.id, crew.presentRank),
+          ),
           eq(admCompanyRanksV2.isDeleted, false),
           eq(admCompanyRanksV2.isRoleRow, false),
         )).limit(2);
-      if (ranks.length !== 1) throw new Error("The readable rank name cannot be resolved uniquely.");
-      return ranks[0].rank;
+      if (ranks.length === 1) return ranks[0].rank;
+      if (!ranks.length) {
+        const available = await db.select({ rank: admAvailableRanksV2.name })
+          .from(admAvailableRanksV2).where(and(
+            or(eq(admAvailableRanksV2.arUuid, crew.presentRank),
+              eq(admAvailableRanksV2.rankId, crew.presentRank),
+              eq(admAvailableRanksV2.name, crew.presentRank)),
+            eq(admAvailableRanksV2.isDeleted, false),
+          )).limit(2);
+        if (available.length === 1) return available[0].rank;
+        // A company-specific rank need not exist in the parent's base list.
+        if (!available.length) {
+          const labels = await db.select({ rank: admCompanyRanksV2.rank })
+            .from(admCompanyRanksV2).where(and(
+              eq(admCompanyRanksV2.rank, crew.presentRank),
+              eq(admCompanyRanksV2.isDeleted, false),
+              eq(admCompanyRanksV2.isRoleRow, false),
+            )).limit(2);
+          if (labels.length === 1) return labels[0].rank;
+        }
+      }
+      throw new CompanyFormValidationError(
+        "The seafarer's rank cannot be matched to the rank list. Ask your administrator to check the crew rank, then try again.",
+        "RANK_NOT_ELIGIBLE",
+      );
     }
     if (!crew.nationalityUuid) return null;
     const nationalityRows = await db.select({ nationality: masterNationalities.nationality })

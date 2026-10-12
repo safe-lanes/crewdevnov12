@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { AssignmentDimensionInspector } from "./AssignmentDimensionInspector";
 import { AssignmentFormRequirements } from "./AssignmentFormRequirements";
@@ -84,8 +85,8 @@ export function crewCompanyFormStatusLabel(status: CompanyFormSubmissionSummary[
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unable to load saved company forms.";
+function errorMessage(error: unknown, action: "load" | "loadHistory" | "loadEligible" | "start" = "load"): string {
+  return companyFormErrorMessage(error, action);
 }
 
 function isPermissionError(error: unknown): boolean {
@@ -166,7 +167,7 @@ export function CrewCompanyFormsHome({
     onError: (error, variables) => {
       setStartError({
         subjectRef: variables.subjectRef,
-        message: errorMessage(error),
+        message: errorMessage(error, "start"),
         permission: isPermissionError(error),
       });
     },
@@ -210,7 +211,7 @@ export function CrewCompanyFormsHome({
           )}
           {assignmentHistoryError && (
             <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
-              Assignment details could not be loaded: {assignmentHistoryError}
+              Assignment details could not be loaded. Refresh the assignment details and try again.
             </p>
           )}
           {home.isLoading && (
@@ -223,7 +224,7 @@ export function CrewCompanyFormsHome({
               <p>
                 {isPermissionError(home.error)
                   ? "You do not have permission to view these company-form records."
-                  : `Saved company forms could not be loaded: ${errorMessage(home.error)}`}
+                  : errorMessage(home.error, "loadHistory")}
               </p>
               <button
                 type="button"
@@ -352,7 +353,7 @@ export function CrewCompanyFormsHome({
                                 <p role="alert" className="text-sm text-rose-800">
                                   {isPermissionError(eligible.error)
                                     ? "You do not have permission to view eligible sign-off forms."
-                                    : `Eligible forms could not be loaded: ${errorMessage(eligible.error)}`}
+                                    : errorMessage(eligible.error, "loadEligible")}
                                   {" "}
                                   <button type="button" className="font-semibold underline" onClick={() => void eligible.refetch()}>Retry</button>
                                 </p>
@@ -392,7 +393,7 @@ export function CrewCompanyFormsHome({
                               )}
                               {startError?.subjectRef === group.subjectRef && (
                                 <p role="alert" className="mt-2 text-sm text-rose-800">
-                                  {startError.permission ? "You do not have permission to start or open this sign-off form." : `Sign-off form could not be opened: ${startError.message}`}
+                                  {startError.permission ? "You do not have permission to start or open this sign-off form." : startError.message}
                                 </p>
                               )}
                               </>}

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage, safeCompanyFormFactReason } from "@/lib/companyFormErrors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import type {
   AssignmentDimensionReport,
@@ -74,7 +75,7 @@ export function AssignmentDimensionInspector({ subjectRef }: AssignmentDimension
 
           {dimensions.error && (
             <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
-              <p>Form rule facts could not be loaded: {dimensions.error instanceof Error ? dimensions.error.message : "Please try again."}</p>
+              <p>{companyFormErrorMessage(dimensions.error, "loadRequirements")}</p>
               <button
                 type="button"
                 onClick={() => void dimensions.refetch()}
@@ -128,7 +129,7 @@ export function AssignmentDimensionInspector({ subjectRef }: AssignmentDimension
                           )}
                           {dimension.status === "unresolved" && (
                             <div className="mt-1">
-                              <p>{dimension.reason || "No resolution reason was provided."}</p>
+                               <p>{dimension.reason ? safeCompanyFormFactReason(dimension.reason) : "This crew fact could not be verified. Ask an administrator to check the source record or master data."}</p>
                               {dimension.labels.length > 0 && (
                                 <p className="mt-1 text-xs text-slate-600">Labels: {dimension.labels.join(", ")}</p>
                               )}
@@ -136,7 +137,7 @@ export function AssignmentDimensionInspector({ subjectRef }: AssignmentDimension
                           )}
                           {dimension.status === "not_yet_available" && (
                             <div className="mt-1">
-                              <p className="text-slate-600">{dimension.reason || "This value is not available yet."}</p>
+                               <p className="text-slate-600">{dimension.reason ? safeCompanyFormFactReason(dimension.reason) : "This crew fact is not available yet. Ask an administrator to check its source record or master data."}</p>
                               {dimension.labels.length > 0 && (
                                 <p className="mt-1 text-xs text-slate-600">Labels: {dimension.labels.join(", ")}</p>
                               )}
@@ -147,7 +148,7 @@ export function AssignmentDimensionInspector({ subjectRef }: AssignmentDimension
                         <td className="px-2 py-3 text-slate-700">
                           <p className="font-medium text-slate-800">Available: {dimension.available ? "Yes" : "No"}</p>
                           {dimension.available === false && dimension.unavailableReason && (
-                            <p className="mt-0.5 text-xs text-slate-600">{dimension.unavailableReason}</p>
+                            <p className="mt-0.5 text-xs text-slate-600">{safeCompanyFormFactReason(dimension.unavailableReason)}</p>
                           )}
                           <p className="mt-1 text-xs text-slate-500">
                             {dimension.available ? "Value supplied by the assignment record." : "Value has not been supplied by the assignment record."}

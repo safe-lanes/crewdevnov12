@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
 import type { RuleDimension, RuleMasterChoice, RuleOperator } from "@shared/v2/forms-engine/ruleDimensions";
 import type { EditableApplicabilityCondition, EditableApplicabilitySet } from "./companyFormApplicabilityTypes";
+import { safeCompanyFormFactReason } from "@/lib/companyFormErrors";
 
 export type ApplicabilityEditorDimension = RuleDimension & { choices: RuleMasterChoice[] };
 
@@ -226,7 +227,7 @@ export function CompanyFormConditionCard({
                             </label>
                           );
                         })}
-                        {visibleChoices.length === 0 && <p className="px-2 py-2 text-xs font-normal text-[#718791]">{dimension?.available ? "No matching choices." : dimension?.unavailableReason ?? "Not yet available."}</p>}
+                          {visibleChoices.length === 0 && <p className="px-2 py-2 text-xs font-normal text-[#718791]">{dimension?.available ? "No matching choices." : dimension?.unavailableReason ? safeCompanyFormFactReason(dimension.unavailableReason) : "Not yet available."}</p>}
                       </div>
                       {!valueIsValid && !unavailableDimension && <p className="mt-2 text-xs font-medium text-[#a34d40]" role="alert">Choose one or more available values to make this condition valid.</p>}
                     </div>

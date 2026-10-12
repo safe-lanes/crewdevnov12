@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
@@ -154,7 +155,7 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
       if (!result.submissionUuid) throw new Error("The form service did not return a submission link.");
       if (mounted.current) setActiveSubmission(result.submissionUuid);
     } catch (error) {
-      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this form.");
+      if (mounted.current) setActionError(companyFormErrorMessage(error, "start"));
     } finally {
       creating.current = false;
       if (mounted.current) setBusy(false);
@@ -184,9 +185,9 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     </div>
     {!hasLink && <p role="alert" className="text-sm text-destructive">No exact onboard assignment is linked. Assignment reconciliation is required; no assignment will be inferred.</p>}
     {verification.isFetching && <p role="status" className="text-sm">Verifying the incumbent planning assignment…</p>}
-    {verification.error && <p role="alert" className="text-sm text-destructive">{verification.error.message}</p>}
-    {eligible.error && <p role="alert" className="text-sm text-destructive">{eligible.error.message}</p>}
-    {history.error && <p role="alert" className="text-sm text-destructive">{history.error.message}</p>}
+    {verification.error && <p role="alert" className="text-sm text-destructive">{companyFormErrorMessage(verification.error, "verifyAssignment")}</p>}
+    {eligible.error && <p role="alert" className="text-sm text-destructive">{companyFormErrorMessage(eligible.error, "loadEligible")}</p>}
+    {history.error && <p role="alert" className="text-sm text-destructive">{companyFormErrorMessage(history.error, "loadHistory")}</p>}
     {formStageBlocked && <p role={assignmentRequirements.isError ? "alert" : "status"} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{formStageMessage}</p>}
     {eligible.isFetching && <p role="status" className="text-sm">Loading released at-sign-off forms…</p>}
     {ready && !formStageBlocked && forms.length === 0 && <p className="text-sm text-muted-foreground">No released, lifecycle-valid at-sign-off forms are eligible for this assignment.</p>}

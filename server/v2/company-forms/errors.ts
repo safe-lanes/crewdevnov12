@@ -50,10 +50,11 @@ export class CompanyFormConflictError extends Error {
 
 export class CompanyFormValidationError extends Error {
   readonly statusCode = 400;
-  readonly code = "invalid_request";
+  readonly code: string;
 
-  constructor(message: string) {
+  constructor(message: string, code = "invalid_request") {
     super(message);
+    this.code = code;
     this.name = "CompanyFormValidationError";
   }
 }

@@ -10,6 +10,7 @@ import {
   saveCompanySubmissionDraft,
   type CompanySubmissionRenderView,
 } from "../../client/src/components/configured-form/companySubmissionContract";
+import { ConfiguredFormAnswerValue } from "../../client/src/components/configured-form/ConfiguredFormRenderer";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -630,9 +631,8 @@ describe("Company Form submission renderer contract", () => {
     await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')).not.toBeNull());
 
     const alert = activeContainer?.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain("403");
-    expect(alert?.textContent).toContain("forbidden");
-    expect(alert?.textContent).toContain("You do not have permission");
+    expect(alert?.textContent).toContain("You do not have permission to complete this action. Ask an administrator to review your access.");
+    expect(alert?.textContent).not.toMatch(/403|forbidden|view this Company Form/);
     expect(alert?.textContent).not.toContain("configuration");
     expect(calls).toEqual([`/api/v2/company-form-submissions/${submissionUuid}/form`]);
   });
@@ -663,8 +663,9 @@ describe("Company Form submission renderer contract", () => {
       { target: { value: "Attempted draft" } },
     );
 
-    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain("403"));
-    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain("You do not have permission to edit");
+    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent)
+      .toContain("You do not have permission to complete this action. Ask an administrator to review your access."));
+    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).not.toMatch(/403|forbidden|edit this Company Form/);
     expect(calls).toEqual([
       { url: `/api/v2/company-form-submissions/${submissionUuid}/form`, method: "GET" },
       { url: `/api/v2/company-form-submissions/${submissionUuid}/sections/section-a/answers`, method: "PUT" },
@@ -747,7 +748,9 @@ describe("Company Form submission renderer contract", () => {
     await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-free-text-question"]')).not.toBeNull());
     const input = activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]');
     fireEvent.change(input!, { target: { value: "initial failure" } });
-    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain("Initial draft refused"));
+    const safeForbidden = "You do not have permission to complete this action. Ask an administrator to review your access.";
+    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain(safeForbidden));
+    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).not.toMatch(/403|forbidden|Initial draft refused/);
 
     fireEvent.change(input!, { target: { value: "older pending value" } });
     await waitFor(() => expect(calls).toHaveLength(3));
@@ -781,16 +784,18 @@ describe("Company Form submission renderer contract", () => {
       }],
       sectionComment: "Section note",
     });
-    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain("Initial draft refused");
+    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain(safeForbidden);
 
     deferredResolvers[2](new Response(JSON.stringify({
-      error: "forbidden",
+      error: "server_error",
       message: "Latest draft refused.",
     }), {
-      status: 403,
+      status: 500,
       headers: { "content-type": "application/json" },
     }));
-    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain("Latest draft refused"));
+    const safeServerError = "Your form changes could not be saved. Check your connection and try again.";
+    await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent).toContain(safeServerError));
+    expect(activeContainer?.querySelector('[role="alert"]')?.textContent).not.toMatch(/500|server_error|Latest draft refused/);
 
     const currentInput = activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')!;
     fireEvent.change(currentInput, { target: { value: "recovered latest value" } });
@@ -949,7 +954,9 @@ describe("Company Form submission renderer contract", () => {
     mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
 
     await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent)
-      .toContain("Corrupt persisted multi_select answer"));
+      .toContain("Unable to read persisted Company Form answers. Refresh the form or contact an administrator for help."));
+    const alert = activeContainer?.querySelector('[role="alert"]');
+    expect(alert?.textContent).not.toMatch(/Corrupt persisted|multi_select|Company Form question|UUID|question-uuid/);
   });
 
   it("waits for queued answer saves before submitting, then refetches persisted completion", async () => {
@@ -1722,7 +1729,9 @@ describe("Company Form submission renderer contract", () => {
     fireEvent.click([...activeContainer!.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Save signature"))!);
 
-    await waitFor(() => expect(activeContainer?.textContent).toContain("Only an authorized officer may sign this section."));
+    await waitFor(() => expect(activeContainer?.textContent)
+      .toContain("You do not have permission to complete this action. Ask an administrator to review your access."));
+    expect(activeContainer?.textContent).not.toMatch(/403|forbidden|Only an authorized officer may sign this section/);
     expect(calls.filter((call) => call.method === "GET" && call.url.endsWith("/form"))).toHaveLength(1);
     expect(activeContainer?.textContent).not.toContain("Server-derived office signer");
     expect(activeContainer?.textContent).not.toContain("record has changed since signing began");
@@ -1957,7 +1966,9 @@ describe("Company Form submission renderer contract", () => {
 
     fireEvent.change(reasonInput, { target: { value: "  Corrected source details  " } });
     fireEvent.click(voidButton);
-    await waitFor(() => expect(activeContainer?.textContent).toContain("Office crewing authorization is required."));
+    await waitFor(() => expect(activeContainer?.textContent)
+      .toContain("You do not have permission to complete this action. Ask an administrator to review your access."));
+    expect(activeContainer?.textContent).not.toMatch(/403|forbidden|Office crewing authorization is required/);
     expect(activeContainer?.querySelector("#company-form-void-reason")).toHaveProperty("value", "  Corrected source details  ");
     fireEvent.click(voidButton);
     await waitFor(() => expect(activeContainer?.textContent).toContain("Reason: Corrected source details"));
