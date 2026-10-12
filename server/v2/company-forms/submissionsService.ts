@@ -1,4 +1,6 @@
 import type { Request } from "express";
+import { resolveStageEvent } from "./stageResolutionService";
+import { stageStatus } from "./stageEventRepository";
 import { eq } from "drizzle-orm";
 import { masterUsers } from "../../../shared/schema";
 import { ownsCompanyFormSignature } from "./signatureOwnership";
@@ -1109,9 +1111,22 @@ export class CompanyFormSubmissionsService {
     await this.authorize(adapter, principal, "list_submissions", subject.context);
     const data = await readRequirements(input.subjectType, input.subjectRef);
     const outstandingEligible = adapter.isOutstanding(subject.context);
-    return { ...data, outstandingEligible,
+    return { ...data, stageChecks: input.subjectType === "crew_assignment" ? await stageStatus(input.subjectRef) : null, outstandingEligible,
       activeRequirements: outstandingEligible
         ? data.requirements.filter((r: any) => ["OUTSTANDING", "STARTED", "UNRESOLVED"].includes(r.status)) : [] };
+  }
+
+  async retryStageCheck(input: { req: Request; subjectType: string; subjectRef: string; eventUuid: string }) {
+    const adapter = this.contextAdapter(input.req, input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    const subject = await adapter.lookup(input.subjectRef);
+    if (!subject) throw new CompanyFormNotFoundError("Company Form assignment not found.");
+    // Same assignment-scoped Fill in authorization as starting. Authoring is not consulted.
+    await this.authorize(adapter, principal, "create_submission", subject.context);
+    const event = (await getDb().execute(sql`SELECT event_uuid FROM frm_stage_events WHERE event_uuid=${input.eventUuid}
+      AND subject_ref=${input.subjectRef}`)).rows[0];
+    if (!event || input.subjectType !== "crew_assignment") throw new CompanyFormNotFoundError("Stage check not found.");
+    return resolveStageEvent(event.event_uuid, String(principal.userId));
   }
 
   async startRequirement(input: { req: Request; subjectType: string; subjectRef: string; requirementUuid: string }) {

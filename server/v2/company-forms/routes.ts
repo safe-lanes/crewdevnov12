@@ -5,6 +5,14 @@ import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 
 const router = Router();
+router.post("/subjects/:subjectType/:subjectRef/checks/:eventUuid/retry", async (req, res) => {
+  const parsed = paramsSchema.extend({ eventUuid: z.string().uuid() }).safeParse(req.params);
+  if (!parsed.success || !z.object({}).strict().safeParse(req.body).success) {
+    res.status(400).json({ error: "invalid_request", message: "Only the stage check identity may be supplied." }); return;
+  }
+  try { res.json(await companyFormSubmissionsService.retryStageCheck({ req, ...parsed.data })); }
+  catch (error) { sendError(res, error); }
+});
 router.get("/subjects/:subjectType/:subjectRef/requirements", async (req, res) => {
   const parsed = paramsSchema.safeParse(req.params);
   if (!parsed.success) { res.status(400).json({ error: "invalid_request" }); return; }
