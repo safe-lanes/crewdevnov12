@@ -40,6 +40,13 @@ describe("Company Form rule editor read-only authoring APIs", () => {
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     version = response.body;
     retainFixtureReferences("rule editor draft", [version.fvUuid]);
+    const part = (await pool.query("SELECT form_part_uuid FROM frm_form_parts WHERE form_version_uuid=$1 LIMIT 1", [version.fvUuid])).rows[0].form_part_uuid;
+    const section = randomUUID(), question = randomUUID();
+    retainFixtureReferences("rule editor releasable content", [part, section, question]);
+    await pool.query(`INSERT INTO frm_sections(section_uuid,form_version_uuid,form_part_uuid,section_code,section_title,responsible_mode)
+      VALUES($1,$2,$3,'RULE','Form statement','seafarer')`, [section, version.fvUuid, part]);
+    await pool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type)
+      VALUES($1,$2,'CONFIRM','Confirm the recorded information','free_text')`, [question, section]);
     choices = (await call("get", `/forms/${formId}/rule-dimensions`)).body;
     const ranks = choices.find(d => d.key === "rank").choices;
     const nationalities = choices.find(d => d.key === "nationality").choices;
@@ -123,5 +130,45 @@ describe("Company Form rule editor read-only authoring APIs", () => {
     })) };
     const again = await call("put", `/form-versions/${version.id}/applicability`, payload);
     expect(again.body.sets).toEqual(saved.body.sets);
+  });
+  it("explains release refusals, freezes release and copies with independent IDs without resolving requirements", async () => {
+    await call("put", `/form-versions/${version.id}/applicability`, { ...policy, effectiveKind: "specific_date", specificDate: "2000-01-01" });
+    const past = await call("post", `/form-versions/${version.id}/release`);
+    expect(past.status).toBe(400);
+    expect(JSON.stringify(past.body)).toContain("earlier than release date");
+    await call("put", `/form-versions/${version.id}/applicability`, {
+      ...policy, sets: [{ conditions: [{ dimensionKey: "owner", operator: "in", value: [randomUUID()] }] }],
+    });
+    const unavailable = await call("post", `/form-versions/${version.id}/release`);
+    expect(unavailable.status).toBe(400);
+    expect(JSON.stringify(unavailable.body)).toContain("not yet available");
+    expect(JSON.stringify(unavailable.body)).not.toMatch(/[0-9a-f]{8}-[0-9a-f-]{27}/i);
+    const source = (await call("put", `/form-versions/${version.id}/applicability`, policy)).body;
+    retainFixtureReferences("rule editor final released policy", source.sets);
+    const before = await snapshot();
+    expect((await call("post", `/form-versions/${version.id}/release`)).status).toBe(200);
+    expect((await call("put", `/form-versions/${version.id}/applicability`, { mode: "manual_only" })).status).toBe(409);
+    expect((await call("post", `/form-versions/${version.id}/applicability/preview`,
+      { subjectRef: subjects[0], policy })).status).toBe(409);
+    const next = (await call("post", `/forms/${formId}/versions`,
+      { versionNo: "02", versionDate: "12-Oct-2026", configuration: "{}" })).body;
+    retainFixtureReferences("rule editor independent copied version", [
+      next.fvUuid,
+      ...(await pool.query("SELECT form_part_uuid FROM frm_form_parts WHERE form_version_uuid=$1", [next.fvUuid])).rows,
+      ...(await pool.query("SELECT section_uuid FROM frm_sections WHERE form_version_uuid=$1", [next.fvUuid])).rows,
+    ]);
+    const copied = (await call("get", `/form-versions/${next.id}/applicability`)).body;
+    retainFixtureReferences("rule editor independent copied policy", copied.sets);
+    expect(copied.mode).toBe("conditional");
+    expect(copied.sets.every((s: any) => !source.sets.some((old: any) => old.setUuid === s.setUuid))).toBe(true);
+    expect(copied.sets.flatMap((s: any) => s.conditions).every((c: any) =>
+      !source.sets.flatMap((s: any) => s.conditions).some((old: any) => old.conditionUuid === c.conditionUuid))).toBe(true);
+    const after = await snapshot();
+    expect(after.runs).toBe(before.runs); expect(after.requirements).toBe(before.requirements);
+    expect(after.transitions).toBe(before.transitions); expect(after.forms).toBe(before.forms);
+    expect((await pool.query("SELECT mode,effective_from FROM frm_version_applicability WHERE version_uuid=$1", [version.fvUuid])).rows[0].mode).toBe("conditional");
+  });
+  it("refuses API authoring reads without an explicit authenticated grant", async () => {
+    expect((await api.get(`/api/v2/admin/form-versions/${version.id}/applicability/assignments`)).status).toBe(403);
   });
 });

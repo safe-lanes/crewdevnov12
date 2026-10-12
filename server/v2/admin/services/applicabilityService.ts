@@ -154,7 +154,15 @@ export async function validateApplicabilityRelease(versionUuid: string, tx: any)
     const evidence = [];
     try {
       for (const set of policy.sets) for (const condition of set.conditions) {
-        const labels = await validateDimensionCondition(adapter, condition, tx);
+        let labels;
+        try {
+          labels = await validateDimensionCondition(adapter, condition, tx);
+        } catch {
+          const dimension = adapter.ruleDimensions?.find(d => d.key === condition.dimensionKey);
+          throw new ApplicabilityError(dimension?.available
+            ? `${dimension.label}: choose a supported comparison and active values before releasing this form.`
+            : `${dimension?.label ?? "Selected condition"} is not yet available. Remove it or wait for the parent master data.`);
+        }
         await tx.execute(sql`UPDATE frm_applicability_conditions SET value_labels=${JSON.stringify(labels)}::jsonb
           WHERE condition_uuid=${condition.conditionUuid}`);
         evidence.push({ conditionUuid: condition.conditionUuid, dimensionKey: condition.dimensionKey, valueLabels: labels });

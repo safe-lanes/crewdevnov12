@@ -612,7 +612,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingStage, setIsSavingStage] = useState(false);
-  const [isApplicabilityBusy, setIsApplicabilityBusy] = useState(false);
+  const [isSavingAndContinuing, setIsSavingAndContinuing] = useState(false);
+  const [isApplicabilityBusy, setIsApplicabilityBusy] = useState(() => form.category === "dynamic");
   const [isApplicabilityDirty, setIsApplicabilityDirty] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
   const [isPartMutating, setIsPartMutating] = useState(false);
@@ -647,6 +648,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
+  const applicabilitySaveHandlerRef = useRef<{
+    versionUuid: string;
+    save: () => Promise<boolean>;
+  } | null>(null);
+  const registerApplicabilitySaveHandler = useCallback((
+    versionUuid: string,
+    saveHandler: () => Promise<boolean>,
+  ) => {
+    const registration = { versionUuid, save: saveHandler };
+    applicabilitySaveHandlerRef.current = registration;
+    return () => {
+      if (applicabilitySaveHandlerRef.current === registration) {
+        applicabilitySaveHandlerRef.current = null;
+      }
+    };
+  }, []);
   const baselineRef = useRef<string | null>(null);
   const treeLoadGenerationRef = useRef(0);
   const saveTransitionRef = useRef(false);
@@ -777,6 +794,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   // this editor. Structure reads and writes must use the selected version's UUIDs.
   const allParts = versionParts ?? EMPTY_FORM_PARTS;
   const isCompanyForm = form.category === "dynamic";
+  useEffect(() => {
+    setIsApplicabilityBusy(isCompanyForm && !!selectedVersion);
+  }, [isCompanyForm, selectedVersion?.fvUuid]);
   const companySubjectType = isCompanyForm
     ? (COMPANY_FORM_SUBJECT_TYPES as readonly string[]).includes(form.subjectType || "")
       ? form.subjectType as (typeof COMPANY_FORM_SUBJECT_TYPES)[number]
@@ -812,9 +832,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const serializedState = JSON.stringify({ trees, optionSets });
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
   const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft");
-  const canModify = canEdit && !isSaving && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
+  const canModify = canEdit && !isSaving && !isSavingAndContinuing && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
   const canManageParts = form.category === "dynamic" && !!selectedVersion &&
-    selectedVersion.status === "draft" && canEdit && !isSaving && !isReleasing &&
+    selectedVersion.status === "draft" && canEdit && !isSaving && !isSavingAndContinuing && !isReleasing &&
     !isPartMutating && !isLoadingParts && !isLoadingTree && !partsError;
   const isPreview = viewMode === "preview";
   const previewFixedParts = getFixedParts(form.category, { readOnly: true });
@@ -1510,9 +1530,18 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const releaseSelectedVersion = async () => {
     const versionToRelease = selectedVersion;
+    if (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage)) {
+      toast({
+        title: "Save changes first",
+        description: "Save any applicability changes first, then wait for policy and subject-stage saves to finish before release.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       isReleasing
       || isSaving
+      || isSavingAndContinuing
       || !versionToRelease?.id
       || versionToRelease.status !== "draft"
     ) {
@@ -1581,6 +1610,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const requestRelease = () => {
+    if (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage)) {
+      toast({
+        title: "Save changes first",
+        description: "Save any applicability changes first, then wait for policy and subject-stage saves to finish before release.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       isReleasing
       || isSaving
@@ -1601,7 +1638,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const handleClose = () => {
-    if (isApplicabilityBusy && isApplicabilityDirty) return;
+    if (isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy) return;
     if (isDirty || isApplicabilityDirty) {
       setPendingVersionUuid(null);
       setShowLeaveDialog(true);
@@ -1624,6 +1661,76 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     setIsEditing(version?.status === "draft");
     setRenamingPartUuid(null);
     setAddPartOpen(false);
+  };
+
+  const saveAndContinue = async () => {
+    if (
+      isSavingAndContinuing
+      || isSaving
+      || isSavingStage
+      || isApplicabilityBusy
+      || isReleasing
+    ) return;
+
+    const targetVersionUuid = pendingVersionUuid;
+    const sourceVersionUuid = selectedVersion?.fvUuid;
+    const policyRegistration = applicabilitySaveHandlerRef.current;
+    if (
+      isApplicabilityDirty
+      && (!sourceVersionUuid || policyRegistration?.versionUuid !== sourceVersionUuid)
+    ) {
+      toast({
+        title: "Applicability changes were not saved",
+        description: "Keep editing and retry once the policy editor is ready.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingAndContinuing(true);
+    try {
+      if (isDirty) {
+        const savedContent = await save();
+        if (!savedContent) {
+          toast({
+            title: "Form changes were not saved",
+            description: "Your changes are still here. Fix any errors, then try Save and continue again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (isApplicabilityDirty) {
+        if (applicabilitySaveHandlerRef.current !== policyRegistration) {
+          toast({
+            title: "Applicability changes were not saved",
+            description: "The selected version changed. Keep editing and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const savedPolicy = await policyRegistration!.save();
+        if (!savedPolicy) {
+          toast({
+            title: "Applicability changes were not saved",
+            description: "Your policy changes are still here. Retry the save or keep editing.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (targetVersionUuid) {
+        applyVersionChange(targetVersionUuid);
+        setPendingVersionUuid(null);
+      } else {
+        onClose();
+      }
+      setShowLeaveDialog(false);
+    } finally {
+      setIsSavingAndContinuing(false);
+    }
   };
 
   const partAction = async (action: () => Promise<string | void>, success: string) => {
@@ -1705,7 +1812,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const requestVersionChange = (versionUuid: string) => {
-    if (isApplicabilityBusy && isApplicabilityDirty) return;
+    if (isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy) return;
     if (shouldConfirmVersionChange(isDirty || isApplicabilityDirty, selectedVersion?.fvUuid || "", versionUuid)) {
       setPendingVersionUuid(versionUuid);
       setShowLeaveDialog(true);
@@ -1861,7 +1968,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, [closePreview, isPreview]);
 
   const editorHeader = (
-    <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
+    <div className="sticky top-0 shrink-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1886,7 +1993,11 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             </Button>
           </div>
           <span className="text-gray-500">Version</span>
-          <Select value={selectedVersion?.fvUuid || ""} onValueChange={requestVersionChange}>
+          <Select
+            value={selectedVersion?.fvUuid || ""}
+            onValueChange={requestVersionChange}
+            disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy}
+          >
             <SelectTrigger className="w-[180px] h-9 bg-white" data-testid="select-form-version">
               <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"} />
             </SelectTrigger>
@@ -1913,11 +2024,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             </SelectContent>
           </Select>
           {selectedVersion && <Badge variant={selectedVersion.status === "draft" ? "secondary" : "outline"}>{selectedVersion.status === "draft" ? "Draft" : "Released"}</Badge>}
-          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
+          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Close" disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
+      <div
+        className="max-h-[min(42vh,26rem)] overflow-y-auto overscroll-contain pr-1"
+        tabIndex={0}
+        aria-label="Company Form stage and applicability settings"
+        data-testid="company-form-header-settings-scroll"
+      >
       {isCompanyForm && (subjectStages.length > 0 || subjectStagesError) && (
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3" data-testid="company-form-stage-editor">
           <label htmlFor="company-form-stage" className="text-sm font-medium text-gray-700">Subject stage</label>
@@ -1928,7 +2045,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               <Select
                 value={currentStageKey || "none"}
                 onValueChange={(value) => void updateVersionStage(value)}
-                disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isLoadingSubjectStages}
+                disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages}
               >
                 <SelectTrigger id="company-form-stage" className="w-[240px] bg-white" data-testid="select-company-form-stage">
                   <SelectValue placeholder={isLoadingSubjectStages ? "Loading stages..." : "No stage selected"} />
@@ -1959,18 +2076,21 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           status={selectedVersion.status}
           stageKey={currentStageKey}
           stageBusy={isSavingStage}
+          navigationBusy={isSavingAndContinuing}
           readOnly={readOnly}
           onBusyChange={setIsApplicabilityBusy}
           onDirtyChange={setIsApplicabilityDirty}
+          onRegisterSaveHandler={registerApplicabilitySaveHandler}
           onSaved={async () => { await refetchVersions(); }}
         />
       )}
+      </div>
     </div>
   );
 
   const editorFooter = (
     <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
-      <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+      <Button variant="ghost" onClick={handleClose} disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
       <div className="text-xs text-gray-500">{isDirty || isApplicabilityDirty ? "Unsaved changes" : "All changes saved"}{isApplicabilityBusy ? " · applicability loading or saving" : ""} · option values stay hidden and stable after creation</div>
     </div>
   );
@@ -2057,11 +2177,16 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                      onClick={requestRelease}
                      className="bg-green-600 hover:bg-green-700 text-white"
                      size="sm"
-                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing || isSavingStage || isLoadingSubjectStages}
+                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages || (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy))}
                      data-testid="button-release-version"
                    >
                      Release Ver
                    </Button>}
+                   {isCompanyForm && !readOnly && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage) && (
+                     <span className="max-w-[15rem] text-xs leading-4 text-[#805b1c]" role="status" data-testid="release-applicability-save-first">
+                       Save any applicability changes first, then wait for policy and stage saves to finish before release.
+                     </span>
+                   )}
                    {viewMode === "configure" && !readOnly && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
@@ -2074,7 +2199,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                     </Button>
                   )}
                    {viewMode === "configure" && canEdit && (
-                     <Button onClick={save} disabled={isSaving || isLoadingTree || isLoadingParts || !!partsError || !configurableParts.length || baselineRef.current === null} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
+                     <Button onClick={save} disabled={isSaving || isSavingAndContinuing || isLoadingTree || isLoadingParts || !!partsError || !configurableParts.length || baselineRef.current === null} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
                       <Save className="h-4 w-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
                     </Button>
                   )}
@@ -2660,6 +2785,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={
+                isSaving
+                || isSavingStage
+                || isSavingAndContinuing
+                || (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy))
+              }
               onClick={() => {
                 setReleaseConfirmOpen(false);
                 void releaseSelectedVersion();
@@ -2674,17 +2805,41 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       </AlertDialog>
 
       <AlertDialog open={showLeaveDialog} onOpenChange={(open) => {
+        if (isSavingAndContinuing && !open) return;
         setShowLeaveDialog(open);
         if (!open) setPendingVersionUuid(null);
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{pendingVersionUuid ? "Switch without saving?" : "Leave without saving?"}</AlertDialogTitle>
-            <AlertDialogDescription>{pendingVersionUuid ? "Your changes will be discarded before loading the selected version." : "Your changes will be discarded if you leave this editor."}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {isCompanyForm
+                ? pendingVersionUuid ? "Switch with unsaved changes?" : "Leave with unsaved changes?"
+                : pendingVersionUuid ? "Switch without saving?" : "Leave without saving?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isCompanyForm
+                ? pendingVersionUuid
+                  ? "Save and continue saves both the form content and applicability policy before switching. Discard changes switches without saving."
+                  : "Save and continue saves both the form content and applicability policy before leaving. Discard changes leaves without saving."
+                : pendingVersionUuid
+                  ? "Your changes will be discarded before loading the selected version."
+                  : "Your changes will be discarded if you leave this editor."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep editing</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
+            <AlertDialogCancel disabled={isSavingAndContinuing}>Keep editing</AlertDialogCancel>
+            {isCompanyForm && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void saveAndContinue()}
+                disabled={isSavingAndContinuing || isSaving || isSavingStage || isApplicabilityBusy || isReleasing}
+                data-testid="button-save-and-continue"
+              >
+                {isSavingAndContinuing ? "Saving…" : "Save and continue"}
+              </Button>
+            )}
+            <AlertDialogAction disabled={isSavingAndContinuing} onClick={() => {
               if (pendingVersionUuid) {
                 applyVersionChange(pendingVersionUuid);
                 setPendingVersionUuid(null);

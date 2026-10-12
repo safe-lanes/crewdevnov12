@@ -25,8 +25,13 @@ export interface CompanyFormApplicabilityEditorProps {
   stageKey: string;
   readOnly?: boolean;
   stageBusy?: boolean;
+  navigationBusy?: boolean;
   onBusyChange?: (busy: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  onRegisterSaveHandler?: (
+    versionUuid: string,
+    handler: () => Promise<boolean>,
+  ) => (() => void) | void;
   onSaved?: () => void | Promise<void>;
 }
 
@@ -114,8 +119,10 @@ export function CompanyFormApplicabilityEditor({
   stageKey,
   readOnly = false,
   stageBusy = false,
+  navigationBusy = false,
   onBusyChange,
   onDirtyChange,
+  onRegisterSaveHandler,
   onSaved,
 }: CompanyFormApplicabilityEditorProps) {
   const { permissions, isLoading: permissionsLoading } = usePermissions();
@@ -123,7 +130,8 @@ export function CompanyFormApplicabilityEditor({
   const permissionToView = formsPermission?.canview === true;
   const permissionToEdit = formsPermission?.canedit === true;
   const isReleased = status !== "draft";
-  const locked = readOnly || isReleased || permissionsLoading || !permissionToEdit || !permissionToView;
+  const policySaveForbidden = readOnly || isReleased || permissionsLoading || !permissionToEdit || !permissionToView;
+  const locked = policySaveForbidden || navigationBusy;
   const [draft, setDraft] = useState<PolicyDraft>(defaultDraft);
   const [baseline, setBaseline] = useState("");
   const [loading, setLoading] = useState(true);
@@ -136,6 +144,7 @@ export function CompanyFormApplicabilityEditor({
   const onBusyRef = useRef(onBusyChange);
   const onDirtyRef = useRef(onDirtyChange);
   const onSavedRef = useRef(onSaved);
+  const saveForNavigationRef = useRef<() => Promise<boolean>>(async () => false);
   const nextUiKey = useCallback(() => `policy-input-${++uiKeySequence.current}`, []);
   onBusyRef.current = onBusyChange;
   onDirtyRef.current = onDirtyChange;
@@ -143,6 +152,10 @@ export function CompanyFormApplicabilityEditor({
 
   const serializedDraft = useMemo(() => JSON.stringify(draft), [draft]);
   const isDirty = !loading && baseline !== "" && serializedDraft !== baseline;
+  const dirtyForNavigationRef = useRef(isDirty);
+  const lockedForNavigationRef = useRef(locked || loading || saving);
+  dirtyForNavigationRef.current = isDirty;
+  lockedForNavigationRef.current = policySaveForbidden || loading || saving;
 
   const load = useCallback(async () => {
     const generation = ++requestGeneration.current;
@@ -163,9 +176,9 @@ export function CompanyFormApplicabilityEditor({
       setDraft(next);
       setBaseline(JSON.stringify(next));
       setDimensions(Array.isArray(dimensions) ? dimensions : []);
-    } catch (error) {
+    } catch {
       if (requestGeneration.current !== generation) return;
-      setLoadError(error instanceof Error ? error.message : "Unable to load applicability settings.");
+      setLoadError("We couldn’t load applicability settings. Refresh the editor and try again.");
     } finally {
       if (requestGeneration.current === generation) setLoading(false);
     }
@@ -214,8 +227,16 @@ export function CompanyFormApplicabilityEditor({
     setSaveError("");
   };
 
-  const save = async () => {
-    if (locked || saving || loading || !isDirty) return;
+  const save = async (): Promise<boolean> => {
+    if (policySaveForbidden || saving || loading) return false;
+    if (!isDirty) return true;
+    if (
+      !conditionSetsValid
+      || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)
+    ) {
+      setSaveError("Complete every condition and choose an effective date before saving.");
+      return false;
+    }
     const versionAtSave = versionUuid;
     const generationAtSave = requestGeneration.current;
     setSaving(true);
@@ -232,13 +253,26 @@ export function CompanyFormApplicabilityEditor({
       setDraft(normalized);
       setBaseline(JSON.stringify(normalized));
       await onSavedRef.current?.();
-    } catch (error) {
-      if (requestGeneration.current !== generationAtSave) return;
-      setSaveError(error instanceof Error ? error.message : "Unable to save applicability.");
+      return true;
+    } catch {
+      if (requestGeneration.current !== generationAtSave) return false;
+      setSaveError("We couldn’t save applicability settings. Check the draft and try again.");
+      return false;
     } finally {
       if (requestGeneration.current === generationAtSave && versionUuid === versionAtSave) setSaving(false);
     }
   };
+  saveForNavigationRef.current = save;
+  const registeredSaveHandler = useCallback(async () => {
+    if (!dirtyForNavigationRef.current) return true;
+    if (lockedForNavigationRef.current) return false;
+    return saveForNavigationRef.current();
+  }, []);
+
+  useEffect(() => {
+    if (status !== "draft") return;
+    return onRegisterSaveHandler?.(versionUuid, registeredSaveHandler);
+  }, [onRegisterSaveHandler, registeredSaveHandler, status, versionUuid]);
 
   const conditionSetsValid = draft.mode !== "conditional"
     || (draft.sets.length > 0 && draft.sets.every((set) => isApplicabilitySetValid(set, dimensions)));
@@ -379,6 +413,11 @@ export function CompanyFormApplicabilityEditor({
                     </label>
                   )}
                 </div>
+                {draft.effectiveKind === "specific_date" && (
+                  <p className="mt-2 text-xs leading-5 text-[#718892]">
+                    This date is checked against the actual release date, not the version date.
+                  </p>
+                )}
               </fieldset>
             </div>
           ) : (
@@ -435,7 +474,7 @@ export function CompanyFormApplicabilityEditor({
               status={status}
               stageKey={stageKey}
               stageBusy={stageBusy}
-              policyBusy={loading || saving}
+              policyBusy={loading || saving || navigationBusy}
               policyDirty={isDirty}
               policy={toPayload(draft)}
             />

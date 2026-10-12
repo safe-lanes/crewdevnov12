@@ -5,6 +5,10 @@ import { GenericFormEditor } from "@/components/GenericFormEditor";
 
 const queryResults = vi.hoisted(() => new Map<string, unknown>());
 const apiRequestMock = vi.hoisted(() => vi.fn());
+const permissionState = vi.hoisted(() => ({
+  permissions: [] as Array<{ menuName: string; canview?: boolean; canedit?: boolean }>,
+}));
+const toastMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (options: { queryKey?: unknown[] }) => ({
@@ -18,8 +22,12 @@ vi.mock("@/lib/queryClient", () => ({
   apiRequest: apiRequestMock,
 }));
 
+vi.mock("@/contexts/PermissionsContext", () => ({
+  usePermissions: () => ({ permissions: permissionState.permissions, isLoading: false }),
+}));
+
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: toastMock }),
 }));
 
 let root: Root | null = null;
@@ -154,7 +162,9 @@ afterEach(() => {
   root = null;
   container = null;
   queryResults.clear();
+  permissionState.permissions = [];
   apiRequestMock.mockReset();
+  toastMock.mockReset();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -191,6 +201,50 @@ describe("GenericFormEditor release workflow", () => {
     click(editor.querySelector<HTMLElement>('[data-testid="button-release-version"]')!);
     expect(editor.textContent).toContain("Select a subject stage before releasing");
     expect(document.body.querySelector('[data-testid="button-confirm-release"]')).toBeNull();
+  });
+
+  it("disables release while applicability is dirty and gives a save-first instruction", async () => {
+    setup();
+    permissionState.permissions = [{ menuName: "Forms", canview: true, canedit: true }];
+    apiRequestMock.mockImplementation(async (method: string, url: string) => {
+      if (method === "GET" && url.endsWith("/applicability")) {
+        return response({
+          versionUuid: "draft-version",
+          mode: "all",
+          obligation: "mandatory",
+          effectiveKind: "on_release",
+          specificDate: null,
+          effectiveFrom: null,
+          copiedFromVersionUuid: null,
+          sets: [],
+        });
+      }
+      if (method === "GET" && url.endsWith("/rule-dimensions")) {
+        return response([{
+          key: "nationality",
+          label: "Nationality",
+          kind: "scalar",
+          operators: ["in"],
+          available: true,
+          choices: [{ id: "in", label: "Indian" }],
+        }]);
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
+
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    click(editor.querySelector<HTMLElement>("#applicability-conditional")!);
+    await flushAsyncWork();
+    const releaseButton = editor.querySelector<HTMLButtonElement>('[data-testid="button-release-version"]');
+    if (!releaseButton) throw new Error("Release button did not render");
+    expect(releaseButton).toBeDisabled();
+    expect(editor.querySelector('[data-testid="release-applicability-save-first"]')?.textContent).toContain("Save any applicability changes");
+    expect(editor.querySelector('[data-testid="company-form-header-settings-scroll"]')?.className).toContain("overflow-y-auto");
+    expect(apiRequestMock).not.toHaveBeenCalledWith("POST", expect.stringContaining("/release"));
   });
 
   it("confirms a draft release and switches the editor to released read-only mode", async () => {

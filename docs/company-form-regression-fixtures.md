@@ -6880,3 +6880,23 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-12T03:12:34.478Z): rule editor saved sets; target registered_fixture_context; references schema/context retained (no UUID parameters).
 
 - Retained test context (2026-10-12T03:21:03.527Z): rule editor complete API fixture inventory including the initial interrupted setup; target registered_fixture_context; references `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `2d3a7626-80da-43d8-919c-3074357f063a`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`, `60f25422-64c8-465c-9f02-3611d820471e`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `9306905d-861d-4c58-a7e4-e683954a6560`, `b8628b0e-2f56-406a-a264-5871887b278d`, `493a9fa8-9dbb-4900-9844-499cef14f652`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `ba5c35af-17b5-4213-9c51-d924639d92c3`.
+
+- Retained test context (2026-10-12T03:22:02.618Z): rule editor definition; target registered_fixture_context; references `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`.
+
+- Retained test context (2026-10-12T03:22:03.046Z): rule editor automatically created versions and parts; target registered_fixture_context; references `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`.
+
+- Retained test context (2026-10-12T03:22:03.047Z): rule editor draft; target registered_fixture_context; references `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`.
+
+- Retained test context (2026-10-12T03:22:03.049Z): rule editor releasable content; target registered_fixture_context; references `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `24c726b8-36be-4634-82c9-591cff96e4be`.
+
+- Retained test context (2026-10-12T03:22:03.666Z): rule trial seafarer 1; target registered_fixture_context; references `422cf464-a248-49ba-9927-017e8b4c8aa0`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`.
+
+- Retained test context (2026-10-12T03:22:03.689Z): rule trial seafarer 2; target registered_fixture_context; references `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`.
+
+- Retained test context (2026-10-12T03:22:04.072Z): rule editor saved sets; target registered_fixture_context; references `19e5ca2f-036e-457f-8377-b82e7bc53090`, `eb6936e0-1d0e-41a6-ba09-c0c1ee4b245f`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `58ad114f-3906-4241-98a7-10434301e656`, `2ff8e7f6-dbe3-43bb-a17e-e04df9f35621`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `a229f3b1-0979-49a7-ad89-b98530b5fc55`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:22:04.364Z): rule editor final released policy; target registered_fixture_context; references `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `2987e402-3951-4918-8a15-50e733b31d69`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:22:04.721Z): rule editor independent copied version; target registered_fixture_context; references `920a07be-819a-455f-bf80-9549d3c2fe53`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`.
+
+- Retained test context (2026-10-12T03:22:04.732Z): rule editor independent copied policy; target registered_fixture_context; references `1d93a49c-4077-45e5-9123-74c6d7647335`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `2987e402-3951-4918-8a15-50e733b31d69`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
