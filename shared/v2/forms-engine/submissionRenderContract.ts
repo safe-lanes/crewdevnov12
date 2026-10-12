@@ -151,7 +151,7 @@ export type CompanyFormSystemFieldValue = {
   label: string;
   source: "submission" | "subject";
   value: string | null;
-  valueOrigin: "submission_date" | "current_subject" | "frozen_snapshot" | "persisted_snapshot_unavailable";
+  valueOrigin: "submission_date" | "current_subject" | "frozen_snapshot" | "frozen_signature" | "persisted_snapshot_unavailable";
 };
 
 export type CompanyFormRenderQuestion = {

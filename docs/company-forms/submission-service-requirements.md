@@ -1,3 +1,16 @@
+# Seafarer signing rank when the contract capture is missing
+
+- A missing Deploy contract-rank capture does not prevent seafarer signing,
+  including witnessed signing. Record and display the literal **Not recorded**.
+  Never substitute the current crew profile rank or match a rank by name.
+- Later capture does not change an already-saved signature. The rank System field
+  on that form uses the same frozen signing fact. Existing historical snapshots
+  are not rewritten; an older profile-derived rank snapshot is not shown in place
+  of the actual **Not recorded** signing fact.
+- Captured contract-rank identifiers continue to resolve through their eligible
+  master record. A captured identifier that cannot be verified is still refused
+  with a plain explanation; missing capture and invalid capture are distinct.
+
 # Access Control management
 
 Access Control administration is now an explicit UUID-keyed management grant,

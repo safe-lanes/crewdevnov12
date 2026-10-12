@@ -581,7 +581,15 @@ export class CompanyFormSubmissionsService {
       .filter((question) => question.responseType === "system_field")
       .map((question) => question.systemFieldKey));
     const systemFields: CompanyFormSystemFieldValue[] = [];
+    const missingSignedRank = adapter.subjectType === "crew_assignment" && (data.signatures as any[]).some(
+      row => row.signature.signatureType === "seafarer" && row.signature.signerRank === "Not recorded");
     for (const field of adapter.systemFields.filter((declared) => usedSystemFieldKeys.has(declared.key))) {
+      // Older forms may contain a profile-derived rank snapshot. Preserve that
+      // historical row, but present the actual frozen seafarer signing fact.
+      if (field.key === "rank" && missingSignedRank) {
+        systemFields.push({ ...field, value: "Not recorded", systemValue: "Not recorded", valueOrigin: "frozen_signature" });
+        continue;
+      }
       if (systemSnapshotExists) {
         const recorded = snapshots.find((snapshot) => snapshot.fieldKey === field.key);
         if (recorded) {
@@ -784,11 +792,11 @@ export class CompanyFormSubmissionsService {
               systemField: isSystemField
                 ? {
                   ...systemField!,
-                  value: snapshotByQuestion.has(question.questionUuid)
+                  value: systemField!.valueOrigin === "frozen_signature" ? systemField!.value : snapshotByQuestion.has(question.questionUuid)
                     ? snapshotByQuestion.get(question.questionUuid).value
                     : systemField!.value,
-                  valueOrigin: snapshotByQuestion.has(question.questionUuid)
-                    ? "frozen_snapshot"
+                  valueOrigin: systemField!.valueOrigin === "frozen_signature" ? "frozen_signature" as const : snapshotByQuestion.has(question.questionUuid)
+                    ? "frozen_snapshot" as const
                     : systemField!.valueOrigin,
                 }
                 : null,
