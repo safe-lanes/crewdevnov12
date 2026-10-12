@@ -106,11 +106,11 @@ export function CompanyFormConditionCard({
   };
 
   return (
-    <section className="rounded-lg border border-[#d4e0e5] bg-white p-4" aria-labelledby={`condition-set-title-${index + 1}`}>
+    <section className="rounded-lg border border-[#d4e0e5] bg-white p-4" aria-labelledby={`condition-set-title-${index + 1}`} data-testid="company-form-condition-card">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h4 id={`condition-set-title-${index + 1}`} className="text-sm font-semibold text-[#284959]">Crew group {index + 1}</h4>
-          <p className="mt-0.5 text-xs text-[#657b86]">All of these must match</p>
+          <h4 id={`condition-set-title-${index + 1}`} className="text-sm font-semibold text-[#284959]">All of these must match</h4>
+          <p className="mt-0.5 text-xs text-[#657b86]">Crew group {index + 1}</p>
         </div>
         <button type="button" disabled={disabled} onClick={onRemove} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-[#8b4e43] hover:bg-[#fbf1ee] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#527b8a] disabled:opacity-50" aria-label={`Remove crew group ${index + 1}`}>
           <Trash2 className="h-4 w-4" aria-hidden="true" /> Remove group

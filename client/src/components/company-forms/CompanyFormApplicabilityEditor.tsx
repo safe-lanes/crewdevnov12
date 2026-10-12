@@ -248,7 +248,7 @@ export function CompanyFormApplicabilityEditor({
         toPayload(draft),
       );
       const savedPolicy = await parseResponse<VersionApplicability>(response);
-      if (requestGeneration.current !== generationAtSave) return;
+      if (requestGeneration.current !== generationAtSave) return false;
       const normalized = policyFromResponse(savedPolicy, nextUiKey);
       setDraft(normalized);
       setBaseline(JSON.stringify(normalized));
@@ -361,16 +361,16 @@ export function CompanyFormApplicabilityEditor({
             aria-label="Applicability mode"
           >
             <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "all" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-all" value="all" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-all" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">All crew</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Every crew member in scope is included.</span></label>
+              <RadioGroupItem id="applicability-all" value="all" aria-label="Applies to all" disabled={locked || saving} className="mt-0.5" />
+              <label htmlFor="applicability-all" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies to all</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Every crew member in scope is included.</span></label>
             </div>
             <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "conditional" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-conditional" value="conditional" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-conditional" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">When conditions match</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Apply only to crew meeting configured conditions.</span></label>
+              <RadioGroupItem id="applicability-conditional" value="conditional" aria-label="Applies when conditions match" disabled={locked || saving} className="mt-0.5" />
+              <label htmlFor="applicability-conditional" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies when conditions match</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Apply only to crew meeting configured conditions.</span></label>
             </div>
             <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "manual_only" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-manual" value="manual_only" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual start only</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Crew start it only by choosing it; this policy does not start it automatically.</span></label>
+              <RadioGroupItem id="applicability-manual" value="manual_only" aria-label="Manual only" disabled={locked || saving} className="mt-0.5" />
+              <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual only</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Crew start it only by choosing it; this policy does not start it automatically.</span></label>
             </div>
           </RadioGroup>
 

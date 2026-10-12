@@ -6900,3 +6900,2017 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-12T03:22:04.721Z): rule editor independent copied version; target registered_fixture_context; references `920a07be-819a-455f-bf80-9549d3c2fe53`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`.
 
 - Retained test context (2026-10-12T03:22:04.732Z): rule editor independent copied policy; target registered_fixture_context; references `1d93a49c-4077-45e5-9123-74c6d7647335`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `2987e402-3951-4918-8a15-50e733b31d69`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:36:20.668Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_dc3a39fe4f944555b74f9937e0c4035c"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:25.103Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:25.104Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:25.105Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.105Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.106Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `fc58346b-d959-4aff-b279-76ba75e18f90`, `050a90b0-5da0-4fdc-99e0-7cd8d657702c`, `978924b2-7dea-4308-931b-689478ad92cd`, `1f48df56-fe20-40de-9a4e-8025bca6c97f`, `1a4ecfdc-c4bf-4c59-9905-9846d6e035e6`, `46db5e4f-6f30-4b13-b773-9d8bc92be397`.
+
+- Retained test context (2026-10-12T03:36:25.106Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.106Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.106Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.107Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.107Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `30f7b77b-0a48-47f7-9411-317b527ac0be`, `584cf4c6-a76a-4c01-adb0-60e073eca59f`, `4528e92c-815e-45fa-9fb4-750d2ea9804f`, `cc403f9a-c404-407f-909a-e74f22f9fa2e`, `32810aa3-b126-4cc0-8ea3-6343b56fa02a`.
+
+- Retained test context (2026-10-12T03:36:25.108Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `124fc2dc-660b-4b88-a452-5797e8ce0481`, `11ea02e8-1181-4002-8d17-e399f758a8ce`, `23adaa76-64e9-490e-b4fd-b4a6fc3ee880`, `29e340d2-d896-427d-aa9a-11bb3e57478f`.
+
+- Retained test context (2026-10-12T03:36:25.108Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `124fc2dc-660b-4b88-a452-5797e8ce0481`, `11ea02e8-1181-4002-8d17-e399f758a8ce`, `23adaa76-64e9-490e-b4fd-b4a6fc3ee880`, `29e340d2-d896-427d-aa9a-11bb3e57478f`.
+
+- Retained test context (2026-10-12T03:36:25.108Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `124fc2dc-660b-4b88-a452-5797e8ce0481`, `11ea02e8-1181-4002-8d17-e399f758a8ce`, `23adaa76-64e9-490e-b4fd-b4a6fc3ee880`, `29e340d2-d896-427d-aa9a-11bb3e57478f`.
+
+- Retained test context (2026-10-12T03:36:25.108Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `124fc2dc-660b-4b88-a452-5797e8ce0481`, `11ea02e8-1181-4002-8d17-e399f758a8ce`, `23adaa76-64e9-490e-b4fd-b4a6fc3ee880`, `29e340d2-d896-427d-aa9a-11bb3e57478f`.
+
+- Retained test context (2026-10-12T03:36:25.109Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `c3b5661d-cc46-4427-8569-0dfaa34f63a8`, `3a5500be-8f59-47ee-b60e-e9390227c0fd`.
+
+- Retained test context (2026-10-12T03:36:25.109Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `75c04c39-05aa-4ea4-970d-92464ebccbb0`, `8d72489a-cf04-4ff8-8b95-e9a65e9dae6f`, `fab9cc79-c08c-4bef-a106-951b49c3a74f`, `3c6c8c89-949c-48fe-a279-e4e6e9c20ae6`.
+
+- Retained test context (2026-10-12T03:36:25.109Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `540dbb04-8c65-4765-a25a-40a7aa0aa2d4`.
+
+- Retained test context (2026-10-12T03:36:25.109Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `27660b10-aa85-46b6-8f78-89fb0773a97f`.
+
+- Retained test context (2026-10-12T03:36:25.109Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `6358e41a-7b06-4c0d-9d91-1c4bca51720a`.
+
+- Retained test context (2026-10-12T03:36:25.110Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:25.111Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `7a113e62-3a9a-49b8-b13c-d1a3fe97f678`, `cf9b5f05-30d8-40e2-976b-5f21c545151a`, `c2454379-ff69-49e0-89ae-727b2b062aca`, `4c475b46-21fe-4a26-850c-c349f532ee9f`.
+
+- Retained test context (2026-10-12T03:36:25.112Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `7a113e62-3a9a-49b8-b13c-d1a3fe97f678`, `cf9b5f05-30d8-40e2-976b-5f21c545151a`, `c2454379-ff69-49e0-89ae-727b2b062aca`, `4c475b46-21fe-4a26-850c-c349f532ee9f`.
+
+- Retained test context (2026-10-12T03:36:25.112Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:25.112Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `7a113e62-3a9a-49b8-b13c-d1a3fe97f678`, `cf9b5f05-30d8-40e2-976b-5f21c545151a`, `c2454379-ff69-49e0-89ae-727b2b062aca`, `4c475b46-21fe-4a26-850c-c349f532ee9f`.
+
+- Retained test context (2026-10-12T03:36:29.261Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `7f2d03ba-33f3-4926-b60d-78aba5e16349`, `f623d70f-6b00-49c1-a93f-c0965e9e3584`.
+
+- Retained test context (2026-10-12T03:36:29.262Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `7f2d03ba-33f3-4926-b60d-78aba5e16349`, `f623d70f-6b00-49c1-a93f-c0965e9e3584`.
+
+- Retained test context (2026-10-12T03:36:29.263Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `fc94a427-12e5-44ab-9f54-14a8e0c62afb`, `069fc0c4-9775-434c-811d-4e57abfc2cfe`, `a54086f9-9b2d-42a0-816f-28a2b5c9159a`, `3df21bf1-7f16-4575-ace6-505125af9b5d`.
+
+- Retained test context (2026-10-12T03:36:29.263Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `fc94a427-12e5-44ab-9f54-14a8e0c62afb`, `069fc0c4-9775-434c-811d-4e57abfc2cfe`, `a54086f9-9b2d-42a0-816f-28a2b5c9159a`, `3df21bf1-7f16-4575-ace6-505125af9b5d`.
+
+- Retained test context (2026-10-12T03:36:29.264Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `56a8c961-f08d-4734-ad19-3d59fd5d7342`.
+
+- Retained test context (2026-10-12T03:36:29.264Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `56a8c961-f08d-4734-ad19-3d59fd5d7342`.
+
+- Retained test context (2026-10-12T03:36:29.265Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `166dbafd-d664-405c-a430-42e406f9e90d`, `b2e9c860-db8c-4e66-b152-060d9ac368d3`, `aa527248-0d56-404b-9019-111d53ea1e50`, `3a34cbc2-560c-40cc-b249-83ddfeb981c7`, `3c7cf4e3-992e-4217-9137-869d0879b588`.
+
+- Retained test context (2026-10-12T03:36:29.265Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `166dbafd-d664-405c-a430-42e406f9e90d`, `b2e9c860-db8c-4e66-b152-060d9ac368d3`, `aa527248-0d56-404b-9019-111d53ea1e50`, `3a34cbc2-560c-40cc-b249-83ddfeb981c7`, `3c7cf4e3-992e-4217-9137-869d0879b588`.
+
+- Retained test context (2026-10-12T03:36:29.266Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `166dbafd-d664-405c-a430-42e406f9e90d`, `b2e9c860-db8c-4e66-b152-060d9ac368d3`, `aa527248-0d56-404b-9019-111d53ea1e50`, `3a34cbc2-560c-40cc-b249-83ddfeb981c7`, `3c7cf4e3-992e-4217-9137-869d0879b588`.
+
+- Retained test context (2026-10-12T03:36:29.266Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `9b5d8b2e-3c18-4ce9-8763-2e6793120120`.
+
+- Retained test context (2026-10-12T03:36:29.267Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `c953a331-395c-467a-8a55-0fcabd1e349a`, `a1cb5c21-e5f8-4ca8-b713-ef6aeca8d765`, `f0cb426b-c222-4361-b694-0172a4ce4da9`, `455b9beb-31e3-4b6a-8aba-959df6fedd77`.
+
+- Retained test context (2026-10-12T03:36:29.267Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `c953a331-395c-467a-8a55-0fcabd1e349a`, `a1cb5c21-e5f8-4ca8-b713-ef6aeca8d765`, `f0cb426b-c222-4361-b694-0172a4ce4da9`, `455b9beb-31e3-4b6a-8aba-959df6fedd77`.
+
+- Retained test context (2026-10-12T03:36:29.267Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `a25558ad-9f0b-4107-8a9b-0341bd7af297`, `89e39b12-f021-42f6-af55-db4df7c9d879`, `a0732b80-4dd9-4510-930b-4a92d88e7b02`, `1915a269-35ca-4655-bfdb-0d1c608f10b6`.
+
+- Retained test context (2026-10-12T03:36:29.268Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `a25558ad-9f0b-4107-8a9b-0341bd7af297`, `89e39b12-f021-42f6-af55-db4df7c9d879`, `a0732b80-4dd9-4510-930b-4a92d88e7b02`, `1915a269-35ca-4655-bfdb-0d1c608f10b6`.
+
+- Retained test context (2026-10-12T03:36:29.268Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `abe0afc6-0f1c-4930-97c7-1f005843eb62`, `8f4d0ca6-5d1e-491f-8c80-5c66f3a9d119`, `23c43343-77d6-40b2-929c-5f2188cd361d`, `84a15ce9-3696-4f0b-b75a-16e97dee4ce8`.
+
+- Retained test context (2026-10-12T03:36:29.269Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `692fdfe7-2451-4624-aa86-0dc9f20c7c7c`.
+
+- Retained test context (2026-10-12T03:36:29.269Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `307352e0-02fb-48c7-9386-76b60a8aefc4`, `1d63a8ed-58e0-459d-8b6e-3a233a4b1de3`, `a4986ac7-5115-43b4-bdc8-771ef184f2df`, `a1a4040d-33db-45aa-9e15-56bb26b0c20c`, `6ffcc34b-f539-4974-98ec-c99ed6253208`.
+
+- Retained test context (2026-10-12T03:36:29.270Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `dced5c96-08fa-49c3-8557-8594cf34f4d5`, `47206a00-e694-4522-99b1-0e41bee1a3c8`, `65184bdc-e0c9-4873-90e3-a84d54da2a7e`.
+
+- Retained test context (2026-10-12T03:36:29.270Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `6dd88fe2-017e-44de-8078-cf8d0b59d5c8`, `e071c235-6037-4041-81f6-cc97458a9b75`, `78f22927-9743-4e2e-beb1-238f7b3fbbaf`, `86b43600-5adf-4251-8fa3-000df969987f`, `1412717f-032a-4873-af30-089383da23b2`.
+
+- Retained test context (2026-10-12T03:36:29.271Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `6dd88fe2-017e-44de-8078-cf8d0b59d5c8`, `e071c235-6037-4041-81f6-cc97458a9b75`, `78f22927-9743-4e2e-beb1-238f7b3fbbaf`, `86b43600-5adf-4251-8fa3-000df969987f`, `1412717f-032a-4873-af30-089383da23b2`.
+
+- Retained test context (2026-10-12T03:36:29.271Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `6dd88fe2-017e-44de-8078-cf8d0b59d5c8`, `e071c235-6037-4041-81f6-cc97458a9b75`, `78f22927-9743-4e2e-beb1-238f7b3fbbaf`, `86b43600-5adf-4251-8fa3-000df969987f`, `1412717f-032a-4873-af30-089383da23b2`.
+
+- Retained test context (2026-10-12T03:36:29.271Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:29.272Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `55661b55-0e48-412f-9741-77596c89bc04`.
+
+- Retained test context (2026-10-12T03:36:29.272Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `7a23e222-5a69-42f7-8bd2-7d932d4c3242`.
+
+- Retained test context (2026-10-12T03:36:29.276Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:34.220Z): rule editor definition; target registered_fixture_context; references `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`.
+
+- Retained test context (2026-10-12T03:36:34.339Z): rule editor automatically created versions and parts; target registered_fixture_context; references `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`.
+
+- Retained test context (2026-10-12T03:36:34.340Z): rule editor draft; target registered_fixture_context; references `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`.
+
+- Retained test context (2026-10-12T03:36:34.341Z): rule editor releasable content; target registered_fixture_context; references `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`.
+
+- Retained test context (2026-10-12T03:36:34.379Z): rule trial seafarer 1; target registered_fixture_context; references `523de874-7c3e-459d-99bb-f3571900a5c6`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`.
+
+- Retained test context (2026-10-12T03:36:34.394Z): rule trial seafarer 2; target registered_fixture_context; references `8c429d91-9790-4260-9042-31521057c441`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`.
+
+- Retained test context (2026-10-12T03:36:34.665Z): rule editor saved sets; target registered_fixture_context; references `0bb15625-4a66-411a-abb0-08bf355ba0b2`, `cebb85d9-2403-4992-b960-c335a9762572`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `df1e7708-f0fb-4347-8246-454a9a420593`, `2987e402-3951-4918-8a15-50e733b31d69`, `ff2475cb-c18b-4cd1-aa2a-81ef70550223`, `c8d17245-7487-4323-948c-4260567e5ff3`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:36:34.792Z): rule editor final released policy; target registered_fixture_context; references `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `2987e402-3951-4918-8a15-50e733b31d69`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:36:34.895Z): rule editor independent copied version; target registered_fixture_context; references `5ada03b1-ad2d-433b-b311-286826f4686e`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`.
+
+- Retained test context (2026-10-12T03:36:34.902Z): rule editor independent copied policy; target registered_fixture_context; references `70f6994d-473b-4b12-a959-561ca896bd00`, `01fc1939-9332-4dd1-9a13-8a4e32ba291e`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `18dde0ef-7c49-482c-846c-5586bf29e200`, `2987e402-3951-4918-8a15-50e733b31d69`, `c0a7983d-0fad-496c-ac17-0d263a0e5570`, `958ed479-d1cd-4cfa-a67f-f8f2c59dea10`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:36:40.854Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `6c914b37-15d0-4968-8d73-3ea3ac5f72d0`.
+
+- Retained test context (2026-10-12T03:36:40.855Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `6c914b37-15d0-4968-8d73-3ea3ac5f72d0`.
+
+- Retained test context (2026-10-12T03:36:40.855Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `6c914b37-15d0-4968-8d73-3ea3ac5f72d0`.
+
+- Retained test context (2026-10-12T03:36:40.856Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `6c914b37-15d0-4968-8d73-3ea3ac5f72d0`.
+
+- Retained test context (2026-10-12T03:36:40.856Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `6c914b37-15d0-4968-8d73-3ea3ac5f72d0`.
+
+- Retained test context (2026-10-12T03:36:40.857Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b2680dd5-6453-4985-8d38-4906920a0abc`.
+
+- Retained test context (2026-10-12T03:36:40.857Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b2680dd5-6453-4985-8d38-4906920a0abc`.
+
+- Retained test context (2026-10-12T03:36:40.857Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b2680dd5-6453-4985-8d38-4906920a0abc`.
+
+- Retained test context (2026-10-12T03:36:40.858Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b2680dd5-6453-4985-8d38-4906920a0abc`.
+
+- Retained test context (2026-10-12T03:36:40.858Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b2680dd5-6453-4985-8d38-4906920a0abc`.
+
+- Retained test context (2026-10-12T03:36:40.859Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `7e76cbe5-6807-43d7-99e4-e95c43c2ba3c`.
+
+- Retained test context (2026-10-12T03:36:40.859Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `7e76cbe5-6807-43d7-99e4-e95c43c2ba3c`.
+
+- Retained test context (2026-10-12T03:36:40.859Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `7e76cbe5-6807-43d7-99e4-e95c43c2ba3c`.
+
+- Retained test context (2026-10-12T03:36:40.860Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `7e76cbe5-6807-43d7-99e4-e95c43c2ba3c`.
+
+- Retained test context (2026-10-12T03:36:40.860Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `7e76cbe5-6807-43d7-99e4-e95c43c2ba3c`.
+
+- Retained test context (2026-10-12T03:36:40.860Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b5e1c7ab-6c3d-45e2-b277-b42d53caea3c`.
+
+- Retained test context (2026-10-12T03:36:40.861Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b5e1c7ab-6c3d-45e2-b277-b42d53caea3c`.
+
+- Retained test context (2026-10-12T03:36:40.861Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b5e1c7ab-6c3d-45e2-b277-b42d53caea3c`.
+
+- Retained test context (2026-10-12T03:36:40.861Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b5e1c7ab-6c3d-45e2-b277-b42d53caea3c`.
+
+- Retained test context (2026-10-12T03:36:40.862Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b5e1c7ab-6c3d-45e2-b277-b42d53caea3c`.
+
+- Retained test context (2026-10-12T03:36:40.862Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `f4972e4e-5c23-4bf5-a965-19cd8d2db400`.
+
+- Retained test context (2026-10-12T03:36:40.862Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `f4972e4e-5c23-4bf5-a965-19cd8d2db400`.
+
+- Retained test context (2026-10-12T03:36:40.863Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `f4972e4e-5c23-4bf5-a965-19cd8d2db400`.
+
+- Retained test context (2026-10-12T03:36:40.863Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `f4972e4e-5c23-4bf5-a965-19cd8d2db400`.
+
+- Retained test context (2026-10-12T03:36:40.863Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `f4972e4e-5c23-4bf5-a965-19cd8d2db400`.
+
+- Retained test context (2026-10-12T03:36:40.864Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `accc9ea4-985f-41eb-b296-b01957659150`.
+
+- Retained test context (2026-10-12T03:36:40.864Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `accc9ea4-985f-41eb-b296-b01957659150`.
+
+- Retained test context (2026-10-12T03:36:40.864Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `accc9ea4-985f-41eb-b296-b01957659150`.
+
+- Retained test context (2026-10-12T03:36:40.865Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `accc9ea4-985f-41eb-b296-b01957659150`.
+
+- Retained test context (2026-10-12T03:36:40.865Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `accc9ea4-985f-41eb-b296-b01957659150`.
+
+- Retained test context (2026-10-12T03:36:40.865Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `47b955ea-fa43-48c7-bd31-1ca6c04a574f`.
+
+- Retained test context (2026-10-12T03:36:40.866Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `47b955ea-fa43-48c7-bd31-1ca6c04a574f`.
+
+- Retained test context (2026-10-12T03:36:40.866Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `47b955ea-fa43-48c7-bd31-1ca6c04a574f`.
+
+- Retained test context (2026-10-12T03:36:40.867Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `47b955ea-fa43-48c7-bd31-1ca6c04a574f`.
+
+- Retained test context (2026-10-12T03:36:40.867Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `47b955ea-fa43-48c7-bd31-1ca6c04a574f`.
+
+- Retained test context (2026-10-12T03:36:40.868Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `a0393967-f662-48d2-8ad3-a78b7a805968`.
+
+- Retained test context (2026-10-12T03:36:40.868Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `a0393967-f662-48d2-8ad3-a78b7a805968`.
+
+- Retained test context (2026-10-12T03:36:40.868Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `a0393967-f662-48d2-8ad3-a78b7a805968`.
+
+- Retained test context (2026-10-12T03:36:40.869Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `a0393967-f662-48d2-8ad3-a78b7a805968`.
+
+- Retained test context (2026-10-12T03:36:40.869Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `a0393967-f662-48d2-8ad3-a78b7a805968`.
+
+- Retained test context (2026-10-12T03:36:40.870Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `f9a05e0b-7aee-41f0-bbf9-bf8639752193`.
+
+- Retained test context (2026-10-12T03:36:40.870Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `f9a05e0b-7aee-41f0-bbf9-bf8639752193`.
+
+- Retained test context (2026-10-12T03:36:40.871Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `f9a05e0b-7aee-41f0-bbf9-bf8639752193`.
+
+- Retained test context (2026-10-12T03:36:40.871Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `f9a05e0b-7aee-41f0-bbf9-bf8639752193`.
+
+- Retained test context (2026-10-12T03:36:40.871Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `f9a05e0b-7aee-41f0-bbf9-bf8639752193`.
+
+- Retained test context (2026-10-12T03:36:43.430Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `d102cfc7-30c1-4082-9fe5-73666f0570d3`, `76b4eff7-78d7-4b5d-82b0-b423f41162ad`.
+
+- Retained test context (2026-10-12T03:36:43.431Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `d102cfc7-30c1-4082-9fe5-73666f0570d3`, `76b4eff7-78d7-4b5d-82b0-b423f41162ad`.
+
+- Retained test context (2026-10-12T03:36:43.432Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `d102cfc7-30c1-4082-9fe5-73666f0570d3`, `76b4eff7-78d7-4b5d-82b0-b423f41162ad`.
+
+- Retained test context (2026-10-12T03:36:43.432Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `d102cfc7-30c1-4082-9fe5-73666f0570d3`, `76b4eff7-78d7-4b5d-82b0-b423f41162ad`.
+
+- Retained test context (2026-10-12T03:36:43.433Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `d102cfc7-30c1-4082-9fe5-73666f0570d3`, `76b4eff7-78d7-4b5d-82b0-b423f41162ad`.
+
+- Retained test context (2026-10-12T03:36:43.433Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `db6a56d3-698f-4f89-a923-4d1c364f24d7`.
+
+- Retained test context (2026-10-12T03:36:43.433Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `c5c4258f-1424-47cf-af74-ce0726d2c638`, `ba1557e5-14b5-4ee6-bf9d-1ffa26bb6639`.
+
+- Retained test context (2026-10-12T03:36:43.434Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `10483001-3d7e-4fea-b323-a3a99e370725`.
+
+- Retained test context (2026-10-12T03:36:43.434Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `8b687e92-591c-4bbb-abef-1e6169bbb7a2`.
+
+- Retained test context (2026-10-12T03:36:43.434Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `a4afce6f-f806-425a-8e72-296d635e3125`.
+
+- Retained test context (2026-10-12T03:36:43.435Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `b892fb4f-5916-478a-a47b-c933ada9e285`.
+
+- Retained test context (2026-10-12T03:36:43.435Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `2fc6d7e6-1c24-40a7-acf3-76efcc16bd22`.
+
+- Retained test context (2026-10-12T03:36:43.435Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `2fc6d7e6-1c24-40a7-acf3-76efcc16bd22`.
+
+- Retained test context (2026-10-12T03:36:43.436Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `9e256b4d-ecc0-4463-9d10-8868dedb0c4f`.
+
+- Retained test context (2026-10-12T03:36:43.436Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `2a81cb0a-444b-4d25-8f33-15ac1a7adb27`.
+
+- Retained test context (2026-10-12T03:36:43.436Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `a72cc4d0-f313-4050-9708-4b82898890f5`, `f7722e55-e84b-48be-83d5-5174bef293e0`, `61af7c3e-4e2c-4289-a431-fac2adfc48fb`, `51793839-8ad3-4829-ac06-c343b473157f`, `2f3c91d0-ecc5-4ad1-b660-776a0d7cacdc`, `8b8cae6b-eeb9-45c3-b7bb-77e40ef9cb7c`, `b63ecc07-62ce-44cf-b504-1e8bfede37e1`.
+
+- Retained test context (2026-10-12T03:36:43.437Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `a72cc4d0-f313-4050-9708-4b82898890f5`, `f7722e55-e84b-48be-83d5-5174bef293e0`, `61af7c3e-4e2c-4289-a431-fac2adfc48fb`, `51793839-8ad3-4829-ac06-c343b473157f`, `2f3c91d0-ecc5-4ad1-b660-776a0d7cacdc`, `8b8cae6b-eeb9-45c3-b7bb-77e40ef9cb7c`, `b63ecc07-62ce-44cf-b504-1e8bfede37e1`.
+
+- Retained test context (2026-10-12T03:36:43.437Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `a72cc4d0-f313-4050-9708-4b82898890f5`, `f7722e55-e84b-48be-83d5-5174bef293e0`, `61af7c3e-4e2c-4289-a431-fac2adfc48fb`, `51793839-8ad3-4829-ac06-c343b473157f`, `2f3c91d0-ecc5-4ad1-b660-776a0d7cacdc`, `8b8cae6b-eeb9-45c3-b7bb-77e40ef9cb7c`, `b63ecc07-62ce-44cf-b504-1e8bfede37e1`.
+
+- Retained test context (2026-10-12T03:36:43.437Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:43.438Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `cfd602d5-4043-4125-99fc-94950097e784`.
+
+- Retained test context (2026-10-12T03:36:43.439Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `6e28014a-5ed6-436d-8174-77c200c3232f`.
+
+- Retained test context (2026-10-12T03:36:43.440Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `6741c679-95d2-4f45-9078-3b774d0059d0`.
+
+- Retained test context (2026-10-12T03:36:43.448Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:46.108Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:46.205Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:46.206Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `bfb13465-9a08-449c-9cb6-04544a285709`, `e1565b44-7b11-43ab-a5fe-91c6b64a6f1f`, `4c0782bd-ee32-463e-992a-5476a72709a2`, `c42fb480-fcb1-4244-9095-d7138c7b8352`, `9d8a95fa-0983-4861-83f6-59921c00a616`.
+
+- Retained test context (2026-10-12T03:36:46.207Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `bfb13465-9a08-449c-9cb6-04544a285709`, `e1565b44-7b11-43ab-a5fe-91c6b64a6f1f`, `4c0782bd-ee32-463e-992a-5476a72709a2`, `c42fb480-fcb1-4244-9095-d7138c7b8352`, `9d8a95fa-0983-4861-83f6-59921c00a616`.
+
+- Retained test context (2026-10-12T03:36:46.209Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `bfb13465-9a08-449c-9cb6-04544a285709`, `e1565b44-7b11-43ab-a5fe-91c6b64a6f1f`, `4c0782bd-ee32-463e-992a-5476a72709a2`, `c42fb480-fcb1-4244-9095-d7138c7b8352`, `9d8a95fa-0983-4861-83f6-59921c00a616`.
+
+- Retained test context (2026-10-12T03:36:46.209Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `bfb13465-9a08-449c-9cb6-04544a285709`, `e1565b44-7b11-43ab-a5fe-91c6b64a6f1f`, `4c0782bd-ee32-463e-992a-5476a72709a2`, `c42fb480-fcb1-4244-9095-d7138c7b8352`, `9d8a95fa-0983-4861-83f6-59921c00a616`.
+
+- Retained test context (2026-10-12T03:36:46.209Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `bfb13465-9a08-449c-9cb6-04544a285709`, `e1565b44-7b11-43ab-a5fe-91c6b64a6f1f`, `4c0782bd-ee32-463e-992a-5476a72709a2`, `c42fb480-fcb1-4244-9095-d7138c7b8352`, `9d8a95fa-0983-4861-83f6-59921c00a616`.
+
+- Retained test context (2026-10-12T03:36:46.210Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `5b5b606f-6266-4da5-aa6b-8b2ef61d2780`, `bfbb28d4-71ec-4290-9167-c8d483217100`, `cae15cd1-17c3-41a0-8717-6b69e6d00adb`, `0f326dba-3642-47ec-9b7c-8374f1c4af92`, `b96ede71-3480-415d-a867-9fb376558ed5`, `ad188463-ef56-4b42-b416-4db93c4502c7`.
+
+- Retained test context (2026-10-12T03:36:46.210Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `3b5078b4-143f-4a7a-9f29-4a80345db384`, `a95d5d57-a5f2-4b82-b11b-b647337798b9`, `f1518e79-5b4b-4007-86ba-d25fc7b5aff8`, `ffa7f72c-b8c3-474a-b5a1-267b676edde3`, `6e82ae7b-2ded-47b9-86b2-1b773d9bd96d`, `c20695e8-5c86-4ada-b32a-bcb81730d760`, `5381fc18-045c-4fa7-a9ce-ab98391c5742`.
+
+- Retained test context (2026-10-12T03:36:46.211Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `a0280de4-5145-4827-a6a6-123fbaff89be`, `f73596c0-a3b5-4b94-9c13-0d404def6eef`, `b77b3bb0-1e65-404a-8b8d-525007d2ddbc`, `f90d694d-a290-49a6-a5bf-377c4f6b6c27`, `796d0e32-29d1-4340-9b89-eb53adf4b13d`.
+
+- Retained test context (2026-10-12T03:36:46.211Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `3c9c3af7-a2f2-421a-912c-58b8d0510032`.
+
+- Retained test context (2026-10-12T03:36:46.211Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `9ccc32a0-cddf-4cf5-ab60-f87bbbc049cb`.
+
+- Retained test context (2026-10-12T03:36:46.212Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `691ded4c-adc1-448b-b65b-3ff1c1bb3b02`.
+
+- Retained test context (2026-10-12T03:36:46.212Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:46.212Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `867091a1-94b5-4ccb-a8bd-df716fc66ca9`.
+
+- Retained test context (2026-10-12T03:36:46.213Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `867091a1-94b5-4ccb-a8bd-df716fc66ca9`.
+
+- Retained test context (2026-10-12T03:36:46.213Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:48.882Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `1400b284-6587-4078-8a02-c2c0c64e6dbb`.
+
+- Retained test context (2026-10-12T03:36:48.883Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `1400b284-6587-4078-8a02-c2c0c64e6dbb`.
+
+- Retained test context (2026-10-12T03:36:48.883Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `1400b284-6587-4078-8a02-c2c0c64e6dbb`.
+
+- Retained test context (2026-10-12T03:36:48.884Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `1400b284-6587-4078-8a02-c2c0c64e6dbb`.
+
+- Retained test context (2026-10-12T03:36:48.884Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `db204ec3-2f94-40b5-a96a-e19227f5d8ed`, `3ae90613-1723-407f-848f-eb1d1955524b`, `f7aa089c-fcc5-4e11-a1cd-78f25de98953`, `ce6596f1-8cb2-44f5-a69d-d1a3b5b56595`, `2ae5fca0-3f5c-4c1a-8859-87c64c864b08`, `21ac7ec0-2fa8-4c04-9ea0-5f9e5b3b7563`, `125a7e52-aff3-4678-a7a3-47fdfe8e034c`, `005fdc9c-611a-4946-9785-068371d66c5d`, `a7cdf5bf-57a7-4974-a5d5-c50ed4aaeace`, `a05f0fdb-f01a-44ce-b5a2-da77e4cca87b`, `a44146af-8fab-4dae-a04a-db2541956293`, `6a278d15-9a35-4aef-bc68-13f11865adc5`, `95a33bf1-9121-4889-84d9-2b8b40936fe4`.
+
+- Retained test context (2026-10-12T03:36:48.884Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `b2b6ad10-99dd-4cf7-add8-258dbcc2d9a7`.
+
+- Retained test context (2026-10-12T03:36:48.885Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `02dccc5b-95c1-4638-aa5b-82e3480a3f7c`.
+
+- Retained test context (2026-10-12T03:36:48.885Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `919b87cb-db64-4356-a7ea-a1ce50c72c86`.
+
+- Retained test context (2026-10-12T03:36:48.885Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `919b87cb-db64-4356-a7ea-a1ce50c72c86`.
+
+- Retained test context (2026-10-12T03:36:48.886Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `7ecd507b-0e43-4019-8ccc-54432c55573d`.
+
+- Retained test context (2026-10-12T03:36:48.886Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `323c6211-1c22-4ad2-9163-b83270e517d8`.
+
+- Retained test context (2026-10-12T03:36:48.887Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `858c73e5-8a6c-4941-b16c-0d9c68021198`.
+
+- Retained test context (2026-10-12T03:36:48.887Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `05df4cd4-6cc3-4408-8c08-95c3ba356710`.
+
+- Retained test context (2026-10-12T03:36:48.887Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:48.888Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `b2cc3c6c-f4b3-4136-8056-ec82f3b74c4d`.
+
+- Retained test context (2026-10-12T03:36:48.888Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `b2cc3c6c-f4b3-4136-8056-ec82f3b74c4d`.
+
+- Retained test context (2026-10-12T03:36:48.888Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `b2cc3c6c-f4b3-4136-8056-ec82f3b74c4d`.
+
+- Retained test context (2026-10-12T03:36:50.120Z): requirement harness roots; target registered_fixture_context; references `a215bc53-7c15-4be1-951b-28f2ca1c583c`, `0c8d0c1e-2078-464d-847e-cf015c99374c`, `784927e4-e049-41d7-85a5-47d4f6cd22a2`, `0976d684-587e-4101-be66-3806bfc623b4`.
+
+- Retained test context (2026-10-12T03:36:50.223Z): requirement harness pinned content; target registered_fixture_context; references `bc52e51a-4ed2-488e-9b91-526ad9aa280b`, `3d6a3a5a-8bd6-4e9f-a050-0cb1c91e50d8`, `3db66af3-3713-47f5-b573-117db6272a20`, `f92c013e-494f-497c-acc5-f4d1e74e0fc2`.
+
+- Retained test context (2026-10-12T03:36:50.396Z): requirement harness complete ledger graph; target registered_fixture_context; references `f7ca047c-803e-4d03-a0ff-b4f920d1f6de`, `0c8d0c1e-2078-464d-847e-cf015c99374c`, `7a69f8b1-8f1f-4e1f-8750-32343a54502a`, `bc52e51a-4ed2-488e-9b91-526ad9aa280b`, `cbb1587e-75d1-4283-8eaa-8c813d139a9f`, `784927e4-e049-41d7-85a5-47d4f6cd22a2`, `8700b176-ee1f-4e4d-97a5-1ab168e6124e`.
+
+- Retained test context (2026-10-12T03:36:50.399Z): required lifecycle obligation; target registered_fixture_context; references `cbb1587e-75d1-4283-8eaa-8c813d139a9f`.
+
+- Retained test context (2026-10-12T03:36:50.464Z): lifecycle initial form; target registered_fixture_context; references `205cd1b0-1572-4672-922d-d51a3d625b35`.
+
+- Retained test context (2026-10-12T03:36:50.493Z): requirement harness complete ledger graph; target registered_fixture_context; references `f7ca047c-803e-4d03-a0ff-b4f920d1f6de`, `0c8d0c1e-2078-464d-847e-cf015c99374c`, `7a69f8b1-8f1f-4e1f-8750-32343a54502a`, `bc52e51a-4ed2-488e-9b91-526ad9aa280b`, `f9625b7e-85fc-4388-bb01-f3695ffcff04`, `cbb1587e-75d1-4283-8eaa-8c813d139a9f`, `784927e4-e049-41d7-85a5-47d4f6cd22a2`, `205cd1b0-1572-4672-922d-d51a3d625b35`, `8700b176-ee1f-4e4d-97a5-1ab168e6124e`, `4e495f5f-70e3-451a-9671-42613597e981`.
+
+- Retained test context (2026-10-12T03:36:50.636Z): required replacement form; target registered_fixture_context; references `ff7e6fcb-277d-450e-a542-dd7057147bed`.
+
+- Retained test context (2026-10-12T03:36:50.669Z): requirement harness roots; target registered_fixture_context; references `467a3c83-8463-48ec-9a42-54ee094f2e5d`, `f238f616-3fb5-4df1-9d79-6ef969807e83`, `21cb549e-34bd-4ed1-9d34-5aa3184d98e5`, `190e932d-f95c-408e-a6ba-e3d62ae03b92`.
+
+- Retained test context (2026-10-12T03:36:50.726Z): requirement harness pinned content; target registered_fixture_context; references `2736e541-7667-4fb0-89ed-f7a917f6304f`, `3dcf4acf-0265-4295-9ac9-9e11f9e6252c`, `9f7d2943-0403-437b-8ecc-3603c89b0124`, `eaa332c1-9bb0-4c1c-8d44-37b7baac309f`.
+
+- Retained test context (2026-10-12T03:36:50.833Z): requirement harness complete ledger graph; target registered_fixture_context; references `32fb64fb-112d-4afe-84c7-3ea6cf68fd53`, `f238f616-3fb5-4df1-9d79-6ef969807e83`, `b24f7d44-7f75-49fa-8e95-81d5abd88322`, `2736e541-7667-4fb0-89ed-f7a917f6304f`, `4fcf6e07-67da-46ea-813f-251093abd3bf`, `21cb549e-34bd-4ed1-9d34-5aa3184d98e5`, `527c5f4d-fe53-45a1-bd6d-7904321b083d`, `192c4571-b7c4-44a0-9b95-26af24f0e85f`.
+
+- Retained test context (2026-10-12T03:36:50.863Z): earlier manual collision; target registered_fixture_context; references `192c4571-b7c4-44a0-9b95-26af24f0e85f`, `32fb64fb-112d-4afe-84c7-3ea6cf68fd53`, `4fcf6e07-67da-46ea-813f-251093abd3bf`.
+
+- Retained test context (2026-10-12T03:36:50.932Z): manual conflict required replacement; target registered_fixture_context; references `0d451f40-f5d2-467a-8f68-551f20e7f587`.
+
+- Retained test context (2026-10-12T03:36:50.933Z): requirement harness roots; target registered_fixture_context; references `7920edbf-bad6-417a-b72d-48e896bf4c4b`, `025054d9-6519-43a7-91e0-51e28b9021b6`, `6b8ee670-1c21-49c8-8a28-b7e139d0cfe5`, `b1052535-6c1c-4cc9-bdbb-f807042a793c`.
+
+- Retained test context (2026-10-12T03:36:50.970Z): requirement harness pinned content; target registered_fixture_context; references `02177e55-e803-4737-aebb-58aa2f4a0a27`, `fa3dc694-844a-4091-878b-dea47bbb7d54`, `53387a13-8573-453f-960e-08cd20e407ea`, `45813ecd-5a0b-49e7-a443-694fe7c5841d`.
+
+- Retained test context (2026-10-12T03:36:51.035Z): requirement harness complete ledger graph; target registered_fixture_context; references `7989e98f-8a8f-4095-81b3-a91e3bb11eed`, `025054d9-6519-43a7-91e0-51e28b9021b6`, `3653b9be-aa2f-4078-b795-3415cd25b5e4`, `02177e55-e803-4737-aebb-58aa2f4a0a27`, `8e90d2fa-90cf-47fc-ae22-6299e023ae99`, `6b8ee670-1c21-49c8-8a28-b7e139d0cfe5`, `4a574aeb-ccd2-4eb3-9ed3-7e80780d75e1`.
+
+- Retained test context (2026-10-12T03:36:51.038Z): unresolved obligation; target registered_fixture_context; references `8e90d2fa-90cf-47fc-ae22-6299e023ae99`.
+
+- Retained test context (2026-10-12T03:36:51.063Z): requirement harness complete ledger graph; target registered_fixture_context; references `7989e98f-8a8f-4095-81b3-a91e3bb11eed`, `025054d9-6519-43a7-91e0-51e28b9021b6`, `3653b9be-aa2f-4078-b795-3415cd25b5e4`, `02177e55-e803-4737-aebb-58aa2f4a0a27`, `7bac485a-d44c-4a9e-9b5a-e4753718894a`, `8e90d2fa-90cf-47fc-ae22-6299e023ae99`, `6b8ee670-1c21-49c8-8a28-b7e139d0cfe5`, `4a574aeb-ccd2-4eb3-9ed3-7e80780d75e1`, `73eabae2-ce70-49db-81da-9c8114e71a24`.
+
+- Retained test context (2026-10-12T03:36:51.074Z): failed run; target registered_fixture_context; references `2f6c87a0-966d-4cef-ae95-944954639661`.
+
+- Retained test context (2026-10-12T03:36:55.241Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `20d40ffd-0035-4f4a-ad1f-e62e3f4f77e0`.
+
+- Retained test context (2026-10-12T03:36:55.331Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.332Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.332Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.332Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.333Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.333Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `55618fbd-8137-4871-aee0-4e41c66b4dff`, `cea27d9b-95bb-4b14-90fc-966b9c419597`, `452488d6-6b64-4c78-b60c-ae73ade3c4b6`, `607d1e17-8000-44e6-8475-89f32c2ca5f4`.
+
+- Retained test context (2026-10-12T03:36:55.333Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:55.334Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `34c66b2e-99cd-49a6-8cf1-26e02a3f9b00`.
+
+- Retained test context (2026-10-12T03:36:55.334Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `969f1623-5a11-48e9-8b09-91bd9a6237ac`.
+
+- Retained test context (2026-10-12T03:36:55.334Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `dab84601-aa01-4aac-9595-18569acc6566`.
+
+- Retained test context (2026-10-12T03:36:55.334Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `1133f98f-71d1-40d4-9d23-cce07b4a8abb`.
+
+- Retained test context (2026-10-12T03:36:55.335Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `f76f2e55-ae4e-4ff8-a694-95cdb35b1926`.
+
+- Retained test context (2026-10-12T03:36:55.335Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `26814c39-f9ae-4375-a14a-f1e62f70efa6`, `aed46f96-1278-4971-b181-1af41b3d8f47`, `8d6ddf73-4d92-45d3-8a1b-00718a5a304b`, `987957ce-f465-423c-b2e9-824ec0e8722c`.
+
+- Retained test context (2026-10-12T03:36:55.335Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `a494b8ea-62c6-467e-8de7-42ec1561f435`.
+
+- Retained test context (2026-10-12T03:36:55.335Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `20d40ffd-0035-4f4a-ad1f-e62e3f4f77e0`, `615b7a9d-090b-4a38-ab3a-fdbef5e92695`.
+
+- Retained test context (2026-10-12T03:36:55.336Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `20d40ffd-0035-4f4a-ad1f-e62e3f4f77e0`.
+
+- Retained test context (2026-10-12T03:36:55.336Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:36:55.336Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `20d40ffd-0035-4f4a-ad1f-e62e3f4f77e0`, `615b7a9d-090b-4a38-ab3a-fdbef5e92695`.
+
+- Retained test context (2026-10-12T03:36:55.336Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `5613e61f-f7d9-4b1e-b13e-1f46950cb348`.
+
+- Retained test context (2026-10-12T03:36:55.340Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:00.609Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `262b7b30-8322-41f7-9177-15b95de63853`, `63cc7193-365f-4ff4-8c2c-2c164c5ba421`, `52060df9-bf77-4981-9694-a00606f1760a`.
+
+- Retained test context (2026-10-12T03:37:00.610Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `262b7b30-8322-41f7-9177-15b95de63853`, `63cc7193-365f-4ff4-8c2c-2c164c5ba421`, `52060df9-bf77-4981-9694-a00606f1760a`.
+
+- Retained test context (2026-10-12T03:37:00.610Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `262b7b30-8322-41f7-9177-15b95de63853`, `63cc7193-365f-4ff4-8c2c-2c164c5ba421`, `52060df9-bf77-4981-9694-a00606f1760a`.
+
+- Retained test context (2026-10-12T03:37:00.611Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `262b7b30-8322-41f7-9177-15b95de63853`, `63cc7193-365f-4ff4-8c2c-2c164c5ba421`, `52060df9-bf77-4981-9694-a00606f1760a`.
+
+- Retained test context (2026-10-12T03:37:00.611Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `2d57c500-fc8b-4889-9576-298770fc1528`, `5e3a32d6-e232-49a3-aeec-f8459a387ee4`, `218c584d-c050-4725-80bc-e9270004a6a3`, `ff9485da-f182-4742-a548-ff9310af509f`, `cc0c1d76-7e1c-4dd9-8fc4-e635a9dc329d`.
+
+- Retained test context (2026-10-12T03:37:00.612Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `d593549e-8144-4363-9887-2a378aee41ea`.
+
+- Retained test context (2026-10-12T03:37:00.612Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `8b0a53bd-ab70-4df9-9cd8-0cbb75363ec3`.
+
+- Retained test context (2026-10-12T03:37:00.612Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `700c01be-7fad-46c2-a159-09bdbcc08728`.
+
+- Retained test context (2026-10-12T03:37:00.613Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `62632e07-8dff-4075-aafa-8412d01b3483`.
+
+- Retained test context (2026-10-12T03:37:00.613Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `008e7044-a9dd-4f8c-99ee-26cd5fe872a1`.
+
+- Retained test context (2026-10-12T03:37:00.614Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:00.614Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `3ea193ef-a40d-4e42-9fba-d4755e08f281`.
+
+- Retained test context (2026-10-12T03:37:00.615Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `3ea193ef-a40d-4e42-9fba-d4755e08f281`.
+
+- Retained test context (2026-10-12T03:37:00.615Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `3ea193ef-a40d-4e42-9fba-d4755e08f281`.
+
+- Retained test context (2026-10-12T03:37:01.774Z): requirement harness roots; target registered_fixture_context; references `f785c5e3-d222-4248-977d-48167ec99af9`, `ac757563-80e9-433c-a82d-027bc761eb2a`, `551722dc-8768-48ca-b719-adf023d2fa23`, `8d330b93-a0c1-4106-8efe-b75185166e0f`.
+
+- Retained test context (2026-10-12T03:37:01.882Z): requirement harness pinned content; target registered_fixture_context; references `e152c40a-24cb-4c4d-9d9d-52f9ede69d53`, `f4a8a4c9-5317-4806-bda2-5460ed92b144`, `13e134b3-5aff-4d7d-b73e-c721005d7b27`, `4277e7ec-57d9-431c-af60-700dc0056c20`.
+
+- Retained test context (2026-10-12T03:37:01.932Z): requirement harness roots; target registered_fixture_context; references `6166d1a4-d7a9-4b80-bb24-e63ac050f450`, `894dd838-9361-48fb-866f-dc2f4d595fc6`, `9b3b0423-8e5e-471b-99b3-aed5271ee4bd`, `a2d591f2-5e6b-403b-9b7e-caefc6dc0f3e`.
+
+- Retained test context (2026-10-12T03:37:01.967Z): requirement harness pinned content; target registered_fixture_context; references `62a39aff-57a2-4f62-89a7-f2b6e4c75f24`, `3abf38b4-2528-4d89-a7a0-0a8dffac264e`, `abdf4174-6723-4863-8513-38814229639c`, `e9a98b89-80bf-4ab0-a0b1-15b2f3754322`.
+
+- Retained test context (2026-10-12T03:37:02.060Z): requirement harness complete ledger graph; target registered_fixture_context; references `46885ca6-fdf7-4f09-8251-33b71788784c`, `ac757563-80e9-433c-a82d-027bc761eb2a`, `067a771a-0885-45d1-a77b-593d0f9d2453`, `e152c40a-24cb-4c4d-9d9d-52f9ede69d53`, `3b91f377-85b2-40a1-b165-14a7bbef1d51`, `551722dc-8768-48ca-b719-adf023d2fa23`, `c424dd98-873f-4470-b841-ff08c6d4343f`.
+
+- Retained test context (2026-10-12T03:37:02.063Z): required start obligation; target registered_fixture_context; references `3b91f377-85b2-40a1-b165-14a7bbef1d51`.
+
+- Retained test context (2026-10-12T03:37:02.090Z): newer release for old-pin start; target registered_fixture_context; references `2d7d6820-6cb0-4db1-a045-223e6b001c17`.
+
+- Retained test context (2026-10-12T03:37:02.177Z): manual without stage check; target registered_fixture_context; references `64a12f80-52ca-42ee-8568-75d48c831519`.
+
+- Retained test context (2026-10-12T03:37:02.264Z): required old-pin form; target registered_fixture_context; references `8950681b-3292-424b-8c51-218be1d84ae9`.
+
+- Retained test context (2026-10-12T03:37:03.347Z): dimension context cf_dimensions_50863fd9; target registered_fixture_context; references `9eff15a3-1267-4b0d-b12f-22acbb4ffd73`, `c28982f6-1933-4582-8529-6216b845d561`, `a43df951-370a-4ccf-a4de-885e9d641013`, `c5478e6a-14cc-491c-b6e2-15a16f00bb8b`.
+
+- Retained test context (2026-10-12T03:37:03.590Z): cf_dimensions_50863fd9.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references `2987e402-3951-4918-8a15-50e733b31d69`, `e8e15362-7500-4ffd-9bfd-b71f4adfb1a0`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `bf7efd7a-1d61-4405-aebb-370c4605228f`, `59ff20af-fe68-47c2-a2ce-4cd5c8a60bd1`, `055fb041-b8d7-42b3-8b94-fd30b1190d56`, `fdb47ab7-3d31-4a04-8924-71fbb5a0e374`, `a94e7164-2594-4fc3-9309-9e416ee7c7b6`, `e4a6ba2f-e136-497c-ab12-7636ae9b5756`, `16a4eb8e-80ab-43f2-823d-d2f0b1b8b304`, `1d1ae537-016a-42d4-97b7-82a9f8220a25`, `5a874392-74b3-4617-ac8c-c6a4277883e7`, `ac97a62c-a2f2-4839-ab46-9fd6a6082f18`, `31a79f68-b075-4252-b8c0-cd96293c88f5`, `38418de7-c45e-4a6f-aca9-d1af767da538`, `c9550889-6207-459e-98d9-8e636223a064`, `8ccae40c-92f2-432d-9710-aab0586b8b66`, `eae6cbf7-340b-4570-bedf-9e3420e4a3fa`, `4239dd5e-a968-4dae-b43a-b1acb1ce5286`, `541d5c68-f454-40b8-a6ba-6b6d97b47fdb`, `8fca3cf8-10df-4620-9c43-140ff0b9eef4`, `0c919b85-6819-42af-aedc-85be2e8edbab`.
+
+- Retained test context (2026-10-12T03:37:03.610Z): cf_dimensions_50863fd9.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references `50cbdac5-32ca-44eb-ab9a-25627f2be33d`, `414d0943-53d8-4d17-a086-8031ac1a4517`, `b232b785-f604-4a4b-b4b7-1f8947d74a84`, `1a397f4a-4f64-4fb0-b69b-c9ff00a0573b`, `e28d9559-8e9f-4a9f-9a53-55677cf973ff`, `173d8a50-654b-4a49-a730-7de96f612f1c`, `fa2f1428-3103-49b7-a302-0ef5fb86ada1`, `2bbdd736-8468-4760-b34b-afb91cf42b75`, `200d73e8-8d8d-4087-91f9-b18576af1382`, `6d09470e-f43e-4a56-82ee-1ca3e6a5857a`, `2e3cc990-ea3f-4ed5-bf47-67c3b5e8929c`, `3d41c844-df9e-4565-ba82-796a0bd7eac7`, `af829569-f382-4fe6-a25d-eebbe009ebf7`, `82e3eae2-f09b-48f6-84b4-4f6131b502a5`, `ad00c123-0485-48c0-a2fd-2f7f9a141c37`, `9d32d7a8-a438-4d86-be58-84a5c1b9da6f`, `8e650dcc-741b-45a5-8f42-34cf87ecf58d`, `59b736f2-1985-46ff-a895-3e2c9c4509f3`, `9c9ca9b3-d089-4a47-a555-eef2251318fc`, `be081b19-aa9b-47bc-a1df-b136580f0d1b`, `8a133dad-cca1-4616-8fc5-60ec28a7096b`, `09687c5f-bcc6-43b1-9676-db0532564c52`, `b047b472-da24-4f00-b719-42cd0cbfea87`, `2801f769-9121-4768-8f75-60bf54ef812b`, `bf916f23-34d9-4050-8349-caf2cdac3a97`, `eaca1b43-ffc8-4a33-952c-b2dfb9b13ac6`, `692a5c35-fbae-41c4-9c7d-04271a121eca`, `7f8b4eb2-e0ea-4618-9c26-2145b92a0531`, `c52421d8-1c35-491f-86cd-8366a4366cf1`, `941bf7f8-67cb-485f-855c-cc6cac270d8c`, `2ca38074-adf7-4d91-a910-142501dbda97`, `a2ae4adf-2648-44d1-a5a2-135ce2a6e3b7`, `f8e8bc0b-c299-4aab-8e14-5841e53b9772`, `21d339b4-68e9-4590-bbf6-4da1e56b3642`, `d543696f-10e9-49fe-b75f-a36b06a2b00f`, `3625665f-435c-4b8d-a28a-f8afabdec1a5`, `a4d66962-ecc7-418d-878f-a834d9bfbe0e`, `0599fa59-0d3b-4919-9a27-8339eac90607`, `df045d8e-55a4-4151-94a5-e6fd4d2bc718`, `a5a01b28-fd78-434a-81fb-c9abed8f86b5`, `e30618f2-47a4-4aa3-9f35-c87e85761345`, `d14b7692-887c-4e72-877f-419d51856534`, `60f13cda-1234-480c-a228-08837799a7e9`, `b9e2576e-bd97-465c-9d0c-2652c1e5af4e`, `169a75db-39b8-46f2-a021-d5bafc5278be`, `f2ccc0ba-7b24-4945-a899-5ec186300b35`.
+
+- Retained test context (2026-10-12T03:37:03.631Z): cf_dimensions_50863fd9.master_vessels canonical master copies; target registered_fixture_context; references `743feb08-841a-11ed-aa7c-7003bca91a86`, `7440571a-841a-11ed-aa7c-7003bca91a86`, `744535d0-841a-11ed-aa7c-7003bca91a86`, `7446783c-841a-11ed-aa7c-7003bca91a86`, `74481b72-841a-11ed-aa7c-7003bca91a86`, `744bafc7-841a-11ed-aa7c-7003bca91a86`, `744c8b44-841a-11ed-aa7c-7003bca91a86`, `0f5fed6a-573c-11ed-8778-ec53d845cd37`, `0f601d62-573c-11ed-8778-ec53d845cd37`, `c4ec0000-0000-4000-8000-000000000001`, `f90095c9-4fb6-492d-bd95-b479fd4f5ae7`, `6fb584ae-9883-43a8-8595-3d5f1aa98a3a`, `59b97073-6d5b-47e0-96f4-4edbda264359`, `2bf0feb4-24ec-4951-a7b4-f0b4fdddaf07`, `f0765b78-dc45-4c42-b92b-191bd8c67a4f`, `fa413a46-255c-4ff5-bd40-eb93319ca922`, `ad1af0ab-7096-4b5f-a73f-8b265327a817`, `583c7075-1dfb-4b57-bc0c-53cf3dae45df`, `7c7341d3-4434-4420-b1be-2a0433f8811e`, `c9dee626-66a9-4f61-bec9-2f5512c98f27`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `069d1924-ef38-4717-a691-ad949560b5c1`, `016465f9-92ee-4824-a5b5-36e6ffdcf9db`, `1e5d9339-37f1-4bab-a523-5f8a6d94473d`, `64c13df5-f487-45a1-97c8-f75afecf634b`, `1358bf6f-fa7a-45fd-8665-35408cfb8225`, `765bf814-f869-413a-a59c-9d436b7aceb3`, `3137c681-f7ee-4efa-8e6a-7c87b7bdad75`, `5c940532-d915-4ade-b9b4-22e6d5fbfef0`, `cb72b462-159c-4ffc-8ae2-2c24a4390078`, `3685bbaa-e51e-4bae-b728-4268e3967f7f`, `34d67378-ae6f-48cf-8544-286230e2edb0`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `9ee74443-05de-4f7f-9606-183016ab7912`, `931fb67c-c1d7-4f32-9139-4c84423dbcfc`, `43089a39-6729-400d-b3c9-4046c85ba4aa`, `b54ce872-c75d-4acf-8aba-b4a1ecb75221`, `17535fe2-25a1-498c-854e-bdec7742063d`, `84443c82-61b6-4670-bd74-6eae29fb0245`, `837ac867-5772-4bd8-9342-1889afd1c798`, `f67fe4c5-0a40-4301-8330-37ba5b81da42`, `ea5040a6-de86-4a34-9453-14b9774b15f6`, `32ebdd9e-3b38-42f0-aa6f-08b09d437fa7`, `9b997fc2-da5d-4561-a2b5-d7420f1d8d64`, `4a8e0993-0b0e-49e9-b191-eac96f1d7092`, `11aaf179-9282-49b3-9470-77cddad7da58`, `47ce8029-b076-476e-8542-af68e5ca4ed6`, `0e0f52ed-759d-4b1f-b6d4-f0e1eb9ad4f7`, `99838ad1-478a-47e6-b455-d827d5eb6ba6`, `07409429-dd27-42f6-97f0-c771eb4244e5`, `36a5e527-9d49-477b-a332-8533cdb013e4`, `86aec264-3e41-47e8-bc9b-5b0daafc02ee`, `42d0b94c-4fbf-4d59-a6dd-1b88de95deee`, `374e6540-abf1-4e02-b2ca-8d9f4a3fb41c`, `d477ad39-0810-4bea-804d-d475908d694c`, `7ff9e4ee-8d3f-4013-b10e-e606365492b9`, `cc12ea46-7f93-485e-a9a7-8c4a348cb0d7`, `e9bd40b3-94b9-4837-85a0-212bf0bf30a5`, `f13644d7-24fa-424f-b93e-8b3069d5d770`, `60f96cce-db34-4441-b3ac-a2a72b0099f3`, `5e2dbb27-2516-46e8-91d4-9c6d82bd1ed1`, `7c930e09-ba93-4fa9-b745-6f32920eefe8`, `7badffb6-0682-4977-a719-e181feb6ab0a`, `392097a2-8880-41e8-ad0e-8982f2d2a424`, `e8d12c15-ed88-46fc-b6f5-20f23d310d17`, `37542301-6a9d-4182-a4de-91795396296d`, `35123a42-77e1-4d7c-b3ce-c91f449e18cd`, `eed30f61-a397-4ed1-8c3b-33088178c671`, `5cc8b7bf-0b74-43ad-8570-9a7b64ba372c`, `89eacfab-8dec-402c-80a4-5c65089f0494`, `344b3ece-700b-439b-a4f3-d4e2ccbca886`, `a80e8035-691c-4c61-aa60-50588ad8872a`, `6aff8aa8-1ee1-49d4-b616-e04f6ff54671`, `24c5269d-53fb-4ae7-b6e8-82284b98549a`, `e7f6150f-43d0-488c-b83c-171a5fc47962`, `d0e10147-9d0f-416d-b65f-59213a40ab24`, `f354e737-b36e-45cb-9af5-af6ae97cfa37`, `8f572270-0f98-4db1-b857-dc0e7ffc3499`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `402bccd7-b9f2-4e8f-89c9-c2a9d137c3fa`, `a49a6359-ec18-454c-94eb-f46389dc7859`, `ed89e50f-37dd-4f17-9628-64e232a4b7eb`, `8a6f8462-3b80-46df-9548-6ff50f572b69`, `eef3a8f9-d7ac-40b2-9b78-acccdf6f2a0e`, `0233a862-79ce-44a8-9ea0-12dbbe43479f`, `7397b1ea-8544-42c2-b96d-27a59f782ff6`, `8377447b-b970-4f9a-8396-8d5d0aa23445`, `8c8390e1-4f3e-4833-bc2f-d18cec4f5131`, `e3b45477-c5d3-4481-9437-270ad45a22f5`, `c212da4b-f995-46a7-9264-6bb726431e55`, `bf4f7163-bd74-48e6-ab6f-df23d79797bf`, `e744fffb-8306-4295-bdba-c779cb6f15d8`, `4d1905be-43e1-4cf2-b5ee-eedb4d5e00a9`, `353981af-2886-42ca-b18d-1e36ba2af71b`, `e15881c7-adc2-41ad-ad04-ee01db4586ad`, `51113480-4d1b-4ea6-9ba2-2e732f43c11d`, `507f9414-1ff1-4d9c-84b3-755357f6fd8a`, `c4e4f07b-5080-4da3-a327-ef5529109a2b`, `7aac1ea2-addd-45f8-b959-c3090342eb9d`, `c0f5e234-800a-4046-85bb-c25fe89f8a5e`, `f99cc69d-09f7-4f16-aee5-11afa9d2fa92`, `fe6e6d5d-aa27-4c0c-ba5f-44c2e4970b20`, `90b1dc48-16b6-4db0-9ad5-cfa4d2ff37b2`, `b91e7d3e-4681-4ca8-9fa8-6c4ca1f36dfe`, `0faef79b-31c8-41d2-bb27-bd79d12e5b3f`, `d32685f8-a738-4f2a-a92d-68721cea24b5`, `a25dd5ae-b97d-4e00-8c41-bda4b7fe4535`, `d01e5423-a5c0-4429-a3e3-0a926010d707`, `0f1aa8c9-d910-4ffc-92c3-97f4dc9b7e23`, `9c5ac983-4acd-451f-a2fb-456bdc8cf19b`, `23a72d0f-d898-42f7-8782-3e86e9404602`, `87dee103-4bed-4249-beb8-f9be4c2421b3`, `b23ec750-3f0f-49f5-8e94-ba73ea0d0a74`, `93b17075-f973-4f68-a5e7-c84e8c266e73`, `bc1c80e6-be2d-4ac1-a0b2-f4f2a8c95723`, `247ce6dc-a65b-4f0c-900b-4d607022649f`, `d478b1a3-4a94-457c-8bfa-87ae29060d69`, `d79fc879-70ff-43bc-bd1d-93a92ee377c6`, `562ad535-35c0-4e84-ba03-36ee6b2fcf55`, `dbb96024-10f6-4591-bcf7-2cc9a014a8fc`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `94b39442-6bb8-48d1-93f8-ddee7448f149`, `c9c3b64d-430c-445b-9ee0-a632da967822`, `5ed94e11-fa1d-46d4-8e51-df83fc185de8`, `171fa93d-734c-421b-acdb-3068077ecfb3`, `ab82c7de-04c6-4278-9907-f5bf0ca5dadc`, `5b7641e9-a573-4779-9fed-3c9a7b7e6f0d`, `09c61d2e-029a-4b82-8307-5da96f77f4d0`, `b77be955-5c35-41eb-80aa-fcf2b035c976`, `196e7d80-69c9-4b3b-9c3e-33bac02afbff`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `5828b543-2f65-49a5-9018-e3ee551311d5`, `1f720bc3-6383-4d5c-8da2-0bda33264e28`, `ac782961-5ef9-44eb-b53e-02d88d36685f`, `93550251-c63d-4d18-9387-1b84fb06fc88`, `82f9cbe3-23b5-4bae-9be7-3f2118ebde17`, `a68063fb-e8e5-44dc-bb25-3c77080561fa`, `88941048-f99d-461a-961b-08a603a73903`, `a806e6a8-8665-45e3-a2db-1cdcf7b66aac`, `d51d56da-88ae-4131-8784-70cbda34eb13`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `321244d3-1a91-4c0e-8b70-fa7bc515cbb6`, `53f7acc1-0875-4e60-a5a0-463c89b5b43c`, `e9e90415-657c-4b0f-9720-fab1ce544fb0`, `6583c272-424a-4270-9022-6b59155f9e68`, `6fa0ea31-3db8-437a-b09d-1299b4ab83de`, `7ec2011f-7876-4747-b559-c49314b0c0bf`, `18a8e967-6b78-4a7e-8738-f58ad3ca0425`, `36354b4b-e9e2-4375-867a-323192596063`, `1b005ad1-7158-4de9-94cf-c89937b0d96a`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`, `4d935459-8e4e-4767-ac0c-91d40fffbbcc`, `4ebff656-8d80-4a9c-8e5c-131bdb773181`, `6a52b31b-9254-4778-abca-a415201ffc99`, `3770c75c-76f3-4e83-84f9-7c213792b9a7`, `30b6d691-45eb-4f40-8b8c-142d33a268ff`, `f6ae2e51-9bcd-40e2-b3c1-ee8562de1670`, `bcef71b2-6c6d-452c-ae5c-ef861bffdbee`, `3b180eaa-a18f-489c-8e78-42258920733a`, `2a2718c0-439b-4baf-835d-0e67655f513e`, `5f58b8bb-9243-491f-b93b-49df7220567c`, `3f85a6b3-3d39-4eb3-9257-286046744692`, `f7aca8b4-08e3-4d44-aab9-55de0a8ebc0f`, `5edddc88-b653-414a-a5f1-bba71ffb39e2`, `72679f65-278b-4b04-9485-55d0ddbab03a`, `a7fde877-08d4-4a8b-a66b-cd0ff0a4bc2f`, `3658d18c-a741-4583-9ba9-8fe2944110d6`, `e4870d13-b9be-45db-a1bb-6e40c8a8ae76`, `cf5c39af-5371-46c9-95eb-31cc6d12d906`, `abf5cb39-dc17-4869-81b2-d16a6b04be79`, `27be5b39-4f6d-4484-a5ea-685f8f2284ac`, `88f2ebde-8d16-4276-9ac0-dfa062019459`, `585bfe61-cb3e-4b1a-900d-28596032d41a`, `489547d5-009a-48a1-994b-ee98d900b9b3`, `4eb6ddf8-035f-4daa-9005-716a9572a689`, `f76f19c1-7f76-4585-ba8d-30a9707dc1b8`, `797f1bf3-d58f-4030-8f7f-8e7a292286e6`, `0e776726-2868-47be-b570-0857e54c911f`, `890900bc-ad04-42e0-a0d1-e910691028a9`, `04ae4b2f-8b87-4600-914d-999057644d5d`, `c6b4e4c7-de89-4ba2-b58f-8fffbbce938d`, `9cd3817a-0c40-4f08-85f2-209a23f0dd94`, `f193e5c4-d6fa-4339-bef9-f9030fa61905`, `65f6a259-73fc-42b9-a723-ff52a415093a`, `de2064e9-d7a1-4257-8e25-72f53610fedd`, `44cf7e73-1d4d-453a-a5b9-72ee68e50361`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `839afebb-4530-471b-8d5c-b0667777d78c`, `8c1d37b4-e0a6-47cf-9a83-92a1c72ba66a`, `ce50a6b2-b202-48da-a378-8e994749dd4c`, `7abebc05-dcc3-4825-9683-98575755f607`, `fa17ff9c-bece-4617-88f5-d153b2db7e3e`, `27660b10-aa85-46b6-8f78-89fb0773a97f`, `6358e41a-7b06-4c0d-9d91-1c4bca51720a`, `55661b55-0e48-412f-9741-77596c89bc04`, `7a23e222-5a69-42f7-8bd2-7d932d4c3242`, `cfd602d5-4043-4125-99fc-94950097e784`, `6e28014a-5ed6-436d-8174-77c200c3232f`, `5613e61f-f7d9-4b1e-b13e-1f46950cb348`, `d2b9d1dd-a956-44df-b404-3f21addc2a8a`.
+
+- Retained test context (2026-10-12T03:37:03.649Z): cf_dimensions_50863fd9.master_vessel_types canonical master copies; target registered_fixture_context; references `0F441986-EB77-45BB-B5DB-57BCA670D5AD`, `4C3A087F-EC80-4418-99A1-A797483C8441`, `5E1BE183-4A26-4CE5-BB13-8020F5E1D166`, `5924D7A9-7EAC-490C-9023-460560B93B11`, `A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3`, `20583B5E-EEFE-492B-8B03-E134CE89A53C`, `1CA31CEB-CE3E-408A-A346-32BBAB71C040`, `5913A5C3-83A5-4A7E-8305-63A55D8A8F44`, `4C73FF84-FBAC-4261-92F2-2AA9C80EC050`, `31F110C7-FD27-4CF4-80EE-3ECB2F5E07AD`, `925370AF-D31B-4E4B-A3CD-B3AB26C2B6F0`, `52851612-A5A4-4454-AAD1-E9DF26C7C04D`, `BC553604-B1A8-476A-A0F2-6591CE6F1320`, `8f5cf00c-0ec9-46bb-bc11-bcd7af934ab3`, `209eb205-e53d-11f0-b9c6-06f16491c73e`, `20a14fb9-e53d-11f0-b9c6-06f16491c73e`, `20a260a5-e53d-11f0-b9c6-06f16491c73e`, `20a357b0-e53d-11f0-b9c6-06f16491c73e`, `20a770bc-e53d-11f0-b9c6-06f16491c73e`, `ef5283a2-7c19-46f0-ad50-efc4c6eb17ff`, `5ad759bc-fb6a-4651-aba7-9e075e5b6971`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `abf5e999-0c20-4cf4-8fea-b6b8e47d4369`, `001533c1-faf8-493a-9d82-e729d1a2609a`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `c68b931e-9f88-4767-ad94-536b43d7ca39`, `16877b4d-248b-4524-bdd3-68d61628dba3`, `2825d496-6a13-486f-a396-4cbb0a9b286d`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `3b3dc5ea-b636-4c12-9247-9a75ebf27012`, `67e93015-36c0-41e2-b5f4-d7cfdb49bf30`, `a748b860-6c65-401c-938c-71d1aa7f778a`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `71d4a357-8cc1-42cc-988d-65fb1933e5d7`, `b3a5ed6b-bf83-4cd8-828b-47255e5bba24`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `a4f6cf98-8106-4510-b1f5-b3caee83c0c2`, `bb2a6534-c50a-4f54-a90e-88446c584d7b`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `603bfbd1-59a6-4189-a523-72c76c46e609`, `649260fe-93ce-4310-82f5-007d604b32f9`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `237bbf84-a3ce-4566-a7ab-25154bc80ba4`, `fb4caa09-f138-41b3-ba3a-72a76e367f9a`, `862943bb-dde1-42b7-9e35-7072d83d9347`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `692fdfe7-2451-4624-aa86-0dc9f20c7c7c`, `6741c679-95d2-4f45-9078-3b774d0059d0`, `07f22f7e-2bcd-4aca-9686-be146d9cadc6`.
+
+- Retained test context (2026-10-12T03:37:03.673Z): cf_dimensions_50863fd9.master_nationalities canonical master copies; target registered_fixture_context; references `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `b9ce5555-60b0-11ec-a42e-507b9da1cbd6`, `b9cff77c-60b0-11ec-a42e-507b9da1cbd6`, `b9d181d7-60b0-11ec-a42e-507b9da1cbd6`, `b9d34694-60b0-11ec-a42e-507b9da1cbd6`, `b9d53159-60b0-11ec-a42e-507b9da1cbd6`, `b9d7240f-60b0-11ec-a42e-507b9da1cbd6`, `b9d8ac37-60b0-11ec-a42e-507b9da1cbd6`, `b9da270a-60b0-11ec-a42e-507b9da1cbd6`, `b9dbafa2-60b0-11ec-a42e-507b9da1cbd6`, `b9dd63e9-60b0-11ec-a42e-507b9da1cbd6`, `b9df5040-60b0-11ec-a42e-507b9da1cbd6`, `b9e0c088-60b0-11ec-a42e-507b9da1cbd6`, `b9e22c63-60b0-11ec-a42e-507b9da1cbd6`, `b9e3a60f-60b0-11ec-a42e-507b9da1cbd6`, `b9e534db-60b0-11ec-a42e-507b9da1cbd6`, `b9e6fb72-60b0-11ec-a42e-507b9da1cbd6`, `b9e8a0eb-60b0-11ec-a42e-507b9da1cbd6`, `b9ea10e2-60b0-11ec-a42e-507b9da1cbd6`, `b9ebb2ec-60b0-11ec-a42e-507b9da1cbd6`, `b9ed1b93-60b0-11ec-a42e-507b9da1cbd6`, `b9ee65c6-60b0-11ec-a42e-507b9da1cbd6`, `b9efad95-60b0-11ec-a42e-507b9da1cbd6`, `b9f0fa40-60b0-11ec-a42e-507b9da1cbd6`, `b9f298ba-60b0-11ec-a42e-507b9da1cbd6`, `b9f416cd-60b0-11ec-a42e-507b9da1cbd6`, `b9f57b04-60b0-11ec-a42e-507b9da1cbd6`, `b9f70758-60b0-11ec-a42e-507b9da1cbd6`, `b9f85d35-60b0-11ec-a42e-507b9da1cbd6`, `b9f9c06a-60b0-11ec-a42e-507b9da1cbd6`, `b9fb1b7b-60b0-11ec-a42e-507b9da1cbd6`, `b9fc7dc1-60b0-11ec-a42e-507b9da1cbd6`, `b9fddd25-60b0-11ec-a42e-507b9da1cbd6`, `b9ff4253-60b0-11ec-a42e-507b9da1cbd6`, `ba00d79f-60b0-11ec-a42e-507b9da1cbd6`, `ba033808-60b0-11ec-a42e-507b9da1cbd6`, `ba04c41d-60b0-11ec-a42e-507b9da1cbd6`, `ba064562-60b0-11ec-a42e-507b9da1cbd6`, `ba0827d1-60b0-11ec-a42e-507b9da1cbd6`, `ba09f145-60b0-11ec-a42e-507b9da1cbd6`, `ba0b5a9f-60b0-11ec-a42e-507b9da1cbd6`, `ba0ce953-60b0-11ec-a42e-507b9da1cbd6`, `ba0e5367-60b0-11ec-a42e-507b9da1cbd6`, `ba0fcc45-60b0-11ec-a42e-507b9da1cbd6`, `ba119014-60b0-11ec-a42e-507b9da1cbd6`, `ba12f05f-60b0-11ec-a42e-507b9da1cbd6`, `ba14510c-60b0-11ec-a42e-507b9da1cbd6`, `ba15b76a-60b0-11ec-a42e-507b9da1cbd6`, `ba173569-60b0-11ec-a42e-507b9da1cbd6`, `ba18a3f9-60b0-11ec-a42e-507b9da1cbd6`, `ba1a2ba0-60b0-11ec-a42e-507b9da1cbd6`, `ba1bc198-60b0-11ec-a42e-507b9da1cbd6`, `ba1e3a6c-60b0-11ec-a42e-507b9da1cbd6`, `ba1faecf-60b0-11ec-a42e-507b9da1cbd6`, `ba21e441-60b0-11ec-a42e-507b9da1cbd6`, `ba23e744-60b0-11ec-a42e-507b9da1cbd6`, `ba2615aa-60b0-11ec-a42e-507b9da1cbd6`, `ba27d855-60b0-11ec-a42e-507b9da1cbd6`, `ba29caed-60b0-11ec-a42e-507b9da1cbd6`, `ba2c2a5a-60b0-11ec-a42e-507b9da1cbd6`, `ba320c6f-60b0-11ec-a42e-507b9da1cbd6`, `ba394c50-60b0-11ec-a42e-507b9da1cbd6`, `ba3d066d-60b0-11ec-a42e-507b9da1cbd6`, `ba41b255-60b0-11ec-a42e-507b9da1cbd6`, `ba48163a-60b0-11ec-a42e-507b9da1cbd6`, `ba4e0c03-60b0-11ec-a42e-507b9da1cbd6`, `ba53687b-60b0-11ec-a42e-507b9da1cbd6`, `ba56f032-60b0-11ec-a42e-507b9da1cbd6`, `ba5e2c52-60b0-11ec-a42e-507b9da1cbd6`, `ba5ffc7f-60b0-11ec-a42e-507b9da1cbd6`, `ba61aabb-60b0-11ec-a42e-507b9da1cbd6`, `ba6371c6-60b0-11ec-a42e-507b9da1cbd6`, `ba659d69-60b0-11ec-a42e-507b9da1cbd6`, `ba68798b-60b0-11ec-a42e-507b9da1cbd6`, `ba6a7066-60b0-11ec-a42e-507b9da1cbd6`, `ba6c8446-60b0-11ec-a42e-507b9da1cbd6`, `ba6dfd7b-60b0-11ec-a42e-507b9da1cbd6`, `ba6fcd65-60b0-11ec-a42e-507b9da1cbd6`, `ba71ba63-60b0-11ec-a42e-507b9da1cbd6`, `ba73c922-60b0-11ec-a42e-507b9da1cbd6`, `ba75adff-60b0-11ec-a42e-507b9da1cbd6`, `ba7722ae-60b0-11ec-a42e-507b9da1cbd6`, `ba7a38a7-60b0-11ec-a42e-507b9da1cbd6`, `ba7c2dd9-60b0-11ec-a42e-507b9da1cbd6`, `ba7f41bd-60b0-11ec-a42e-507b9da1cbd6`, `ba80a616-60b0-11ec-a42e-507b9da1cbd6`, `ba82b8b7-60b0-11ec-a42e-507b9da1cbd6`, `ba84707c-60b0-11ec-a42e-507b9da1cbd6`, `ba86223f-60b0-11ec-a42e-507b9da1cbd6`, `ba879118-60b0-11ec-a42e-507b9da1cbd6`, `ba8a5df0-60b0-11ec-a42e-507b9da1cbd6`, `ba8c74e4-60b0-11ec-a42e-507b9da1cbd6`, `ba8e9a38-60b0-11ec-a42e-507b9da1cbd6`, `ba9063eb-60b0-11ec-a42e-507b9da1cbd6`, `ba92090f-60b0-11ec-a42e-507b9da1cbd6`, `ba9427a0-60b0-11ec-a42e-507b9da1cbd6`, `ba95a08f-60b0-11ec-a42e-507b9da1cbd6`, `ba971218-60b0-11ec-a42e-507b9da1cbd6`, `ba9932b0-60b0-11ec-a42e-507b9da1cbd6`, `ba9b5287-60b0-11ec-a42e-507b9da1cbd6`, `ba9cddf2-60b0-11ec-a42e-507b9da1cbd6`, `ba9e817d-60b0-11ec-a42e-507b9da1cbd6`, `baa0079d-60b0-11ec-a42e-507b9da1cbd6`, `baa18491-60b0-11ec-a42e-507b9da1cbd6`, `baa35517-60b0-11ec-a42e-507b9da1cbd6`, `baa4edd1-60b0-11ec-a42e-507b9da1cbd6`, `baa6b2f4-60b0-11ec-a42e-507b9da1cbd6`, `baa839fd-60b0-11ec-a42e-507b9da1cbd6`, `baa9fe0c-60b0-11ec-a42e-507b9da1cbd6`, `baab9a9a-60b0-11ec-a42e-507b9da1cbd6`, `baad0909-60b0-11ec-a42e-507b9da1cbd6`, `baaeada3-60b0-11ec-a42e-507b9da1cbd6`, `bab01a1a-60b0-11ec-a42e-507b9da1cbd6`, `bab17be2-60b0-11ec-a42e-507b9da1cbd6`, `bab46b19-60b0-11ec-a42e-507b9da1cbd6`, `bab5bf19-60b0-11ec-a42e-507b9da1cbd6`, `bab713c2-60b0-11ec-a42e-507b9da1cbd6`, `bab8fc19-60b0-11ec-a42e-507b9da1cbd6`, `baba5868-60b0-11ec-a42e-507b9da1cbd6`, `babbf402-60b0-11ec-a42e-507b9da1cbd6`, `babd81f5-60b0-11ec-a42e-507b9da1cbd6`, `babf7ab7-60b0-11ec-a42e-507b9da1cbd6`, `bac16ef8-60b0-11ec-a42e-507b9da1cbd6`, `bac2d60f-60b0-11ec-a42e-507b9da1cbd6`, `bac43e80-60b0-11ec-a42e-507b9da1cbd6`, `bac59f03-60b0-11ec-a42e-507b9da1cbd6`, `bac99617-60b0-11ec-a42e-507b9da1cbd6`, `bad3f660-60b0-11ec-a42e-507b9da1cbd6`, `bad563c8-60b0-11ec-a42e-507b9da1cbd6`, `bad70983-60b0-11ec-a42e-507b9da1cbd6`, `bad8e875-60b0-11ec-a42e-507b9da1cbd6`, `bada71c0-60b0-11ec-a42e-507b9da1cbd6`, `badbd33e-60b0-11ec-a42e-507b9da1cbd6`, `badd8fd2-60b0-11ec-a42e-507b9da1cbd6`, `badf106e-60b0-11ec-a42e-507b9da1cbd6`, `bae08d44-60b0-11ec-a42e-507b9da1cbd6`, `bae209d5-60b0-11ec-a42e-507b9da1cbd6`, `bae373fa-60b0-11ec-a42e-507b9da1cbd6`, `bae6c7fe-60b0-11ec-a42e-507b9da1cbd6`, `bae82e91-60b0-11ec-a42e-507b9da1cbd6`, `baeaafc8-60b0-11ec-a42e-507b9da1cbd6`, `baec24ce-60b0-11ec-a42e-507b9da1cbd6`, `baedab75-60b0-11ec-a42e-507b9da1cbd6`, `baef4a12-60b0-11ec-a42e-507b9da1cbd6`, `baf1173b-60b0-11ec-a42e-507b9da1cbd6`, `baf291a1-60b0-11ec-a42e-507b9da1cbd6`, `baf44eb8-60b0-11ec-a42e-507b9da1cbd6`, `baf5cc3b-60b0-11ec-a42e-507b9da1cbd6`, `baf79fb0-60b0-11ec-a42e-507b9da1cbd6`, `baf90a78-60b0-11ec-a42e-507b9da1cbd6`, `bafaedc6-60b0-11ec-a42e-507b9da1cbd6`, `bafc4b2e-60b0-11ec-a42e-507b9da1cbd6`, `bafdc75c-60b0-11ec-a42e-507b9da1cbd6`, `baff648d-60b0-11ec-a42e-507b9da1cbd6`, `bb017dce-60b0-11ec-a42e-507b9da1cbd6`, `bb02f659-60b0-11ec-a42e-507b9da1cbd6`, `bb044685-60b0-11ec-a42e-507b9da1cbd6`, `bb059cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb074393-60b0-11ec-a42e-507b9da1cbd6`, `bb08cad0-60b0-11ec-a42e-507b9da1cbd6`, `bb0a4263-60b0-11ec-a42e-507b9da1cbd6`, `bb0ba33d-60b0-11ec-a42e-507b9da1cbd6`, `bb0cf9a7-60b0-11ec-a42e-507b9da1cbd6`, `bb0eabd4-60b0-11ec-a42e-507b9da1cbd6`, `bb10413e-60b0-11ec-a42e-507b9da1cbd6`, `bb1277e9-60b0-11ec-a42e-507b9da1cbd6`, `bb13d80b-60b0-11ec-a42e-507b9da1cbd6`, `bb152d05-60b0-11ec-a42e-507b9da1cbd6`, `bb16ed88-60b0-11ec-a42e-507b9da1cbd6`, `bb185d74-60b0-11ec-a42e-507b9da1cbd6`, `bb19c801-60b0-11ec-a42e-507b9da1cbd6`, `bb1b521a-60b0-11ec-a42e-507b9da1cbd6`, `bb1cba75-60b0-11ec-a42e-507b9da1cbd6`, `bb1f5e51-60b0-11ec-a42e-507b9da1cbd6`, `bb20f2dc-60b0-11ec-a42e-507b9da1cbd6`, `bb230520-60b0-11ec-a42e-507b9da1cbd6`, `bb248d3a-60b0-11ec-a42e-507b9da1cbd6`, `bb2613ab-60b0-11ec-a42e-507b9da1cbd6`, `bb279d6a-60b0-11ec-a42e-507b9da1cbd6`, `bb291c46-60b0-11ec-a42e-507b9da1cbd6`, `bb2a7446-60b0-11ec-a42e-507b9da1cbd6`, `bb2bccfb-60b0-11ec-a42e-507b9da1cbd6`, `bb2d1f36-60b0-11ec-a42e-507b9da1cbd6`, `bb2ec1df-60b0-11ec-a42e-507b9da1cbd6`, `bb30220b-60b0-11ec-a42e-507b9da1cbd6`, `bb31a100-60b0-11ec-a42e-507b9da1cbd6`, `bb356479-60b0-11ec-a42e-507b9da1cbd6`, `bb373e8f-60b0-11ec-a42e-507b9da1cbd6`, `bb388935-60b0-11ec-a42e-507b9da1cbd6`, `bb39fdd0-60b0-11ec-a42e-507b9da1cbd6`, `bb3b5886-60b0-11ec-a42e-507b9da1cbd6`, `bb3d3ad0-60b0-11ec-a42e-507b9da1cbd6`, `bb3e9ce6-60b0-11ec-a42e-507b9da1cbd6`, `bb405087-60b0-11ec-a42e-507b9da1cbd6`, `bb425702-60b0-11ec-a42e-507b9da1cbd6`, `bb44916a-60b0-11ec-a42e-507b9da1cbd6`, `bb466a38-60b0-11ec-a42e-507b9da1cbd6`, `bb47c221-60b0-11ec-a42e-507b9da1cbd6`, `bb492dab-60b0-11ec-a42e-507b9da1cbd6`, `bb4a7a42-60b0-11ec-a42e-507b9da1cbd6`, `bb4c17a0-60b0-11ec-a42e-507b9da1cbd6`, `bb4d7fd5-60b0-11ec-a42e-507b9da1cbd6`, `bb4f103c-60b0-11ec-a42e-507b9da1cbd6`, `bb50c9b7-60b0-11ec-a42e-507b9da1cbd6`, `bb52dcc7-60b0-11ec-a42e-507b9da1cbd6`, `bb54a221-60b0-11ec-a42e-507b9da1cbd6`, `bb563c7c-60b0-11ec-a42e-507b9da1cbd6`, `bb58a079-60b0-11ec-a42e-507b9da1cbd6`, `bb5a20f5-60b0-11ec-a42e-507b9da1cbd6`, `bb5bf870-60b0-11ec-a42e-507b9da1cbd6`, `bb5d6cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb5f5485-60b0-11ec-a42e-507b9da1cbd6`, `bb62884e-60b0-11ec-a42e-507b9da1cbd6`, `bb6720e1-60b0-11ec-a42e-507b9da1cbd6`, `bb6ae150-60b0-11ec-a42e-507b9da1cbd6`, `bb6ded72-60b0-11ec-a42e-507b9da1cbd6`, `bb6f4eb8-60b0-11ec-a42e-507b9da1cbd6`, `bb710078-60b0-11ec-a42e-507b9da1cbd6`, `bb72935c-60b0-11ec-a42e-507b9da1cbd6`, `bb74562b-60b0-11ec-a42e-507b9da1cbd6`, `bb763740-60b0-11ec-a42e-507b9da1cbd6`, `bb77ba3f-60b0-11ec-a42e-507b9da1cbd6`, `bb792548-60b0-11ec-a42e-507b9da1cbd6`, `bb7a9daf-60b0-11ec-a42e-507b9da1cbd6`, `bb7c001f-60b0-11ec-a42e-507b9da1cbd6`, `bb7d55bb-60b0-11ec-a42e-507b9da1cbd6`, `bb7ea95c-60b0-11ec-a42e-507b9da1cbd6`, `bb80e0e5-60b0-11ec-a42e-507b9da1cbd6`, `bb823672-60b0-11ec-a42e-507b9da1cbd6`, `bb8387a6-60b0-11ec-a42e-507b9da1cbd6`, `bb852d1f-60b0-11ec-a42e-507b9da1cbd6`, `bb86aa3d-60b0-11ec-a42e-507b9da1cbd6`, `bb8833b6-60b0-11ec-a42e-507b9da1cbd6`, `bb89cb35-60b0-11ec-a42e-507b9da1cbd6`, `bb8c25b2-60b0-11ec-a42e-507b9da1cbd6`, `bb8e0fa0-60b0-11ec-a42e-507b9da1cbd6`, `bb903e7b-60b0-11ec-a42e-507b9da1cbd6`, `bb91bd05-60b0-11ec-a42e-507b9da1cbd6`, `bb9345a5-60b0-11ec-a42e-507b9da1cbd6`, `bb94b38d-60b0-11ec-a42e-507b9da1cbd6`, `bb962045-60b0-11ec-a42e-507b9da1cbd6`, `bb9892c0-60b0-11ec-a42e-507b9da1cbd6`, `bb9a103d-60b0-11ec-a42e-507b9da1cbd6`.
+
+- Retained test context (2026-10-12T03:37:03.688Z): cf_dimensions_50863fd9.master_manning_agents canonical master copies; target registered_fixture_context; references `58210d45-1369-4884-b99c-68f13b0bcc96`, `60e19003-0327-4106-9a6f-8ef7101e6806`, `e7c088d0-617c-4fee-8f65-1d7e65f13de3`.
+
+- Retained test context (2026-10-12T03:37:03.704Z): cf_dimensions_50863fd9.master_crew_pools canonical master copies; target registered_fixture_context; references `c14e9567-c3cb-4a8b-aeaf-a5122c4dd462`, `7ac5ad96-b686-4f54-836a-e3a3210b8814`, `29753593-5bbe-46da-a27d-c7bb1e586d9f`.
+
+- Retained test context (2026-10-12T03:37:03.717Z): cf_dimensions_50863fd9.master_fleet_groups canonical master copies; target registered_fixture_context; references `8f303a7c-96de-490b-bea9-e3de5a58e354`, `d971d113-dc53-4756-81a4-e47b816f743c`, `ef419235-5061-4b39-ab30-cffee5112fd2`.
+
+- Retained test context (2026-10-12T03:37:03.731Z): cf_dimensions_50863fd9.master_additional_groups canonical master copies; target registered_fixture_context; references `0015f133-5282-4652-8f2e-c5bd80c30926`, `15de419c-a1ed-4e8a-9ad5-82f8c45a178f`, `18212fb3-6f8a-48d2-b03a-62a388719895`.
+
+- Retained test context (2026-10-12T03:37:03.802Z): canonical master copies cf_dimensions_50863fd9; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-12T03:37:05.798Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `3c35b860-67a6-45bd-9901-46a00cc1cbae`.
+
+- Retained test context (2026-10-12T03:37:05.799Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `9b110d86-d4d7-4cf2-9706-3131aff5a35a`, `95e7ba18-2e6a-45cf-bff6-3fc583f387c7`.
+
+- Retained test context (2026-10-12T03:37:05.800Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:05.801Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `3c35b860-67a6-45bd-9901-46a00cc1cbae`.
+
+- Retained test context (2026-10-12T03:37:05.801Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `3c35b860-67a6-45bd-9901-46a00cc1cbae`.
+
+- Retained test context (2026-10-12T03:37:05.802Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `3c35b860-67a6-45bd-9901-46a00cc1cbae`.
+
+- Retained test context (2026-10-12T03:37:05.802Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `99417ee4-3141-4256-9346-07fc5210568a`.
+
+- Retained test context (2026-10-12T03:37:05.802Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `7c5c8d39-05da-4961-baa8-c21b98ae5748`, `8472f797-6b08-487f-8455-935b22b26f49`, `a6762bd4-bb72-47a4-a616-f49dbd1807f8`.
+
+- Retained test context (2026-10-12T03:37:05.803Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `4adfa9f6-9957-4412-ab59-4c4db1840cda`.
+
+- Retained test context (2026-10-12T03:37:05.803Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `941f4522-ef95-4589-b03d-ec34ca22db90`, `c5d64290-c4e3-43b0-9472-b646a0a0b205`.
+
+- Retained test context (2026-10-12T03:37:05.804Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:05.804Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:05.804Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `6a395c98-b37a-4e21-b9aa-283bfb72e190`, `95f15f49-c609-42a4-81ce-c1473efaed9a`, `06d38135-ca01-40e4-be7c-b9ae03457371`.
+
+- Retained test context (2026-10-12T03:37:05.805Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `fd5bce94-5e3e-4ec1-88b3-884260242b4e`.
+
+- Retained test context (2026-10-12T03:37:05.805Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `378ab46b-6fd8-4bc5-b363-4311c198ec4e`.
+
+- Retained test context (2026-10-12T03:37:05.805Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `6d4e2e75-e269-4a3a-b3d2-09f868e81a65`.
+
+- Retained test context (2026-10-12T03:37:05.805Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:37:12.583Z): requirement harness roots; target registered_fixture_context; references `9cfd9b05-aca1-4422-861d-ee33d1f23b32`, `494169b8-6c43-4739-8f90-62b4f3cf9f92`, `8823ef4a-222a-4e01-b82a-e7d4da321a92`, `59cc9f94-939a-4079-ad95-b57e74f8a872`.
+
+- Retained test context (2026-10-12T03:37:12.693Z): requirement harness pinned content; target registered_fixture_context; references `2dc89958-5427-41af-a3f6-a41c460e7bab`, `d7cfaca3-7ed5-4967-a2d0-ef53d50c63bf`, `eccfa355-1d88-40d3-a9c1-ad6316c2f59a`, `655f9b13-a0fe-4a82-b4fd-fd7cfc0c0e9b`.
+
+- Retained test context (2026-10-12T03:37:12.798Z): requirement harness complete ledger graph; target registered_fixture_context; references `04c153c2-0d7b-4448-bc1a-97f89877c242`, `494169b8-6c43-4739-8f90-62b4f3cf9f92`, `4842566c-c04e-48dd-b67e-87f17ca114e3`.
+
+- Retained test context (2026-10-12T03:37:12.799Z): empty requirement run; target registered_fixture_context; references `04c153c2-0d7b-4448-bc1a-97f89877c242`.
+
+- Retained test context (2026-10-12T03:37:12.834Z): requirement harness complete ledger graph; target registered_fixture_context; references `04c153c2-0d7b-4448-bc1a-97f89877c242`, `494169b8-6c43-4739-8f90-62b4f3cf9f92`, `4842566c-c04e-48dd-b67e-87f17ca114e3`, `1f2f72da-311d-4240-9edc-81e33bbbbe56`, `2dc89958-5427-41af-a3f6-a41c460e7bab`, `0c2795e1-077b-4b85-8947-bed087d3d42a`, `8823ef4a-222a-4e01-b82a-e7d4da321a92`, `06527be4-1f03-4d3a-b04f-8440fa570025`.
+
+- Retained test context (2026-10-12T03:37:12.837Z): pinned requirement and resolution; target registered_fixture_context; references `1f2f72da-311d-4240-9edc-81e33bbbbe56`, `0c2795e1-077b-4b85-8947-bed087d3d42a`.
+
+- Retained test context (2026-10-12T03:37:12.854Z): requirement harness complete ledger graph; target registered_fixture_context; references `04c153c2-0d7b-4448-bc1a-97f89877c242`, `494169b8-6c43-4739-8f90-62b4f3cf9f92`, `4842566c-c04e-48dd-b67e-87f17ca114e3`, `1f2f72da-311d-4240-9edc-81e33bbbbe56`, `2dc89958-5427-41af-a3f6-a41c460e7bab`, `1919b1aa-5674-4314-a3b2-7ee801010e5b`, `0c2795e1-077b-4b85-8947-bed087d3d42a`, `8823ef4a-222a-4e01-b82a-e7d4da321a92`, `06527be4-1f03-4d3a-b04f-8440fa570025`.
+
+- Retained test context (2026-10-12T03:37:14.128Z): dimension release definition; target registered_fixture_context; references `9b41e104-d7ac-4ecb-a3cc-b5fc838affb4`, `04b456bd-bc11-486b-aa01-da1890a09798`.
+
+- Retained test context (2026-10-12T03:37:14.239Z): dimension release draft content; target registered_fixture_context; references `bed0aba4-b140-43bf-9ce9-e753ca64dc0c`, `6c8d8e2b-2424-4dd6-a200-50b669a111c5`, `85475c2e-1202-4b97-bf1f-4485041c5096`, `478c01fe-004f-4e9d-a93c-181c292cede2`.
+
+- Retained test context (2026-10-12T03:37:14.302Z): dimension release condition data; target registered_fixture_context; references `cd5f45f0-bd87-4bcc-b771-897309d4053a`, `0569e1be-90e3-4101-93ed-d153cfc41e06`, `f8183eb9-fbc4-4d72-8d65-8960f7ba04fc`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:37:14.480Z): dimension release copied draft; target registered_fixture_context; references `0e83a030-e4f3-4868-8f48-62be5f84cd2b`, `d7ab1ebd-0155-401b-a463-098596b8c13e`, `9296702f-3072-443e-ba58-d672fe4848cc`, `2987e402-3951-4918-8a15-50e733b31d69`, `d48c8e17-9c07-4059-a332-157b4e6b05cc`.
+
+- Retained test context (2026-10-12T03:37:20.526Z): verified-history/cf_verified_history_0c3b9289; target registered_fixture_context; references `714e7ccc-ab1b-4099-935b-50de856e285c`, `dc1116a2-7446-4c05-83b7-c8b08bbb29cf`, `cba7e2aa-a0d3-4792-9444-270065fc3f94`, `5d810ce2-eb54-4ca1-bcea-ef865588f68f`, `d538eaa5-d9ca-49ad-ad9f-295648529c84`, `bfae21d8-ba03-4650-9974-25d811d307fb`, `00bf2db3-7f95-448a-95ef-c3560190cd45`, `f9e2727b-4691-46a2-be4d-4b7ca6e7ac50`, `5f7ef265-bd65-4d99-ae17-e87efd6fc1c2`, `5f56817f-3b15-4d12-b831-fd7ba5f3e5bf`.
+
+- Retained test context (2026-10-12T03:41:13.052Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `75378cb4-c638-4ee1-93db-b0d5c489a98a`.
+
+- Retained test context (2026-10-12T03:41:13.106Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `75378cb4-c638-4ee1-93db-b0d5c489a98a`.
+
+- Retained test context (2026-10-12T03:41:13.107Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `75378cb4-c638-4ee1-93db-b0d5c489a98a`.
+
+- Retained test context (2026-10-12T03:41:13.108Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `75378cb4-c638-4ee1-93db-b0d5c489a98a`.
+
+- Retained test context (2026-10-12T03:41:13.109Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `75378cb4-c638-4ee1-93db-b0d5c489a98a`.
+
+- Retained test context (2026-10-12T03:41:13.109Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `ecabe183-bd99-4354-b814-0ea080d51202`.
+
+- Retained test context (2026-10-12T03:41:13.110Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `ecabe183-bd99-4354-b814-0ea080d51202`.
+
+- Retained test context (2026-10-12T03:41:13.111Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `ecabe183-bd99-4354-b814-0ea080d51202`.
+
+- Retained test context (2026-10-12T03:41:13.111Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `ecabe183-bd99-4354-b814-0ea080d51202`.
+
+- Retained test context (2026-10-12T03:41:13.112Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `ecabe183-bd99-4354-b814-0ea080d51202`.
+
+- Retained test context (2026-10-12T03:41:13.113Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `4b27b4db-7dfb-4431-bbd7-c7456bb73696`.
+
+- Retained test context (2026-10-12T03:41:13.113Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `4b27b4db-7dfb-4431-bbd7-c7456bb73696`.
+
+- Retained test context (2026-10-12T03:41:13.114Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `4b27b4db-7dfb-4431-bbd7-c7456bb73696`.
+
+- Retained test context (2026-10-12T03:41:13.114Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `4b27b4db-7dfb-4431-bbd7-c7456bb73696`.
+
+- Retained test context (2026-10-12T03:41:13.115Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `4b27b4db-7dfb-4431-bbd7-c7456bb73696`.
+
+- Retained test context (2026-10-12T03:41:13.115Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9704d0f6-dbe9-4cab-8989-9cd5a6da9216`.
+
+- Retained test context (2026-10-12T03:41:13.116Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9704d0f6-dbe9-4cab-8989-9cd5a6da9216`.
+
+- Retained test context (2026-10-12T03:41:13.116Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9704d0f6-dbe9-4cab-8989-9cd5a6da9216`.
+
+- Retained test context (2026-10-12T03:41:13.117Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9704d0f6-dbe9-4cab-8989-9cd5a6da9216`.
+
+- Retained test context (2026-10-12T03:41:13.117Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9704d0f6-dbe9-4cab-8989-9cd5a6da9216`.
+
+- Retained test context (2026-10-12T03:41:13.118Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `408ff983-2127-46a0-be4a-2076451a1229`.
+
+- Retained test context (2026-10-12T03:41:13.118Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `408ff983-2127-46a0-be4a-2076451a1229`.
+
+- Retained test context (2026-10-12T03:41:13.119Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `408ff983-2127-46a0-be4a-2076451a1229`.
+
+- Retained test context (2026-10-12T03:41:13.119Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `408ff983-2127-46a0-be4a-2076451a1229`.
+
+- Retained test context (2026-10-12T03:41:13.120Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `408ff983-2127-46a0-be4a-2076451a1229`.
+
+- Retained test context (2026-10-12T03:41:13.121Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b4ab25e1-4c9d-47ea-9eaf-23623fee761a`.
+
+- Retained test context (2026-10-12T03:41:13.121Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b4ab25e1-4c9d-47ea-9eaf-23623fee761a`.
+
+- Retained test context (2026-10-12T03:41:13.122Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b4ab25e1-4c9d-47ea-9eaf-23623fee761a`.
+
+- Retained test context (2026-10-12T03:41:13.122Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b4ab25e1-4c9d-47ea-9eaf-23623fee761a`.
+
+- Retained test context (2026-10-12T03:41:13.123Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b4ab25e1-4c9d-47ea-9eaf-23623fee761a`.
+
+- Retained test context (2026-10-12T03:41:13.123Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `49cde8be-613b-4a97-bb7d-0352f3aef7ef`.
+
+- Retained test context (2026-10-12T03:41:13.124Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `49cde8be-613b-4a97-bb7d-0352f3aef7ef`.
+
+- Retained test context (2026-10-12T03:41:13.124Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `49cde8be-613b-4a97-bb7d-0352f3aef7ef`.
+
+- Retained test context (2026-10-12T03:41:13.125Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `49cde8be-613b-4a97-bb7d-0352f3aef7ef`.
+
+- Retained test context (2026-10-12T03:41:13.125Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `49cde8be-613b-4a97-bb7d-0352f3aef7ef`.
+
+- Retained test context (2026-10-12T03:41:13.126Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `529c71e7-170f-45d4-adaa-116f04c37aeb`.
+
+- Retained test context (2026-10-12T03:41:13.126Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `529c71e7-170f-45d4-adaa-116f04c37aeb`.
+
+- Retained test context (2026-10-12T03:41:13.127Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `529c71e7-170f-45d4-adaa-116f04c37aeb`.
+
+- Retained test context (2026-10-12T03:41:13.127Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `529c71e7-170f-45d4-adaa-116f04c37aeb`.
+
+- Retained test context (2026-10-12T03:41:13.128Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `529c71e7-170f-45d4-adaa-116f04c37aeb`.
+
+- Retained test context (2026-10-12T03:41:13.128Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `fc80fb6c-0039-403a-8fe3-2af9a435e778`.
+
+- Retained test context (2026-10-12T03:41:13.129Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `fc80fb6c-0039-403a-8fe3-2af9a435e778`.
+
+- Retained test context (2026-10-12T03:41:13.129Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `fc80fb6c-0039-403a-8fe3-2af9a435e778`.
+
+- Retained test context (2026-10-12T03:41:13.130Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `fc80fb6c-0039-403a-8fe3-2af9a435e778`.
+
+- Retained test context (2026-10-12T03:41:13.130Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `fc80fb6c-0039-403a-8fe3-2af9a435e778`.
+
+- Retained test context (2026-10-12T03:41:13.131Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `7fd3611f-8338-49fe-bb2b-cbb780a3e60d`.
+
+- Retained test context (2026-10-12T03:41:13.131Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `7fd3611f-8338-49fe-bb2b-cbb780a3e60d`.
+
+- Retained test context (2026-10-12T03:41:13.132Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `7fd3611f-8338-49fe-bb2b-cbb780a3e60d`.
+
+- Retained test context (2026-10-12T03:41:13.132Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `7fd3611f-8338-49fe-bb2b-cbb780a3e60d`.
+
+- Retained test context (2026-10-12T03:41:13.133Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `7fd3611f-8338-49fe-bb2b-cbb780a3e60d`.
+
+### Rule editor retained inventory — 2026-10-12T03:41:57.429Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:42:47.806Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:43:31.519Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:43:40.166Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `5f8a0d21-660b-443a-a608-eed357b87c8e`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `1958cac3-7225-4fce-907e-9786ac68fdf8`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `b12b8ea1-83f1-423b-850a-139a50628ef2`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `c0f751e2-febf-4ca4-95af-4ff31ecea7b8`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `251cb047-0ac9-41a9-8e54-e361872591f4`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:44:31.798Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:44:41.733Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `a05f3797-dd64-42c6-9559-01fde69a9742`, `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `36b0bea7-c41b-4e92-b650-fb0d4faa6170`, `40bb0e21-a3c4-42fc-9737-e419149d8552`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `f989a4ba-6865-49fe-a6c0-a2dba6c58a95`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`, `787801d9-61cd-4803-93e6-4dc33db586cf`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+### Rule editor retained inventory — 2026-10-12T03:44:41.872Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `787801d9-61cd-4803-93e6-4dc33db586cf`, `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`, `a05f3797-dd64-42c6-9559-01fde69a9742`, `493a9fa8-9dbb-4900-9844-499cef14f652`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `fd308b4a-7d0f-4d9c-bb3e-4648770400cf`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `36b0bea7-c41b-4e92-b650-fb0d4faa6170`, `40bb0e21-a3c4-42fc-9737-e419149d8552`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `3717cfe3-9623-489b-b95d-929eaae2b186`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `ef479d01-6562-4fdd-83fd-5bf7aa147a9c`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `ed212f70-a6e5-445d-b604-79f848a66330`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `9306905d-861d-4c58-a7e4-e683954a6560`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `24c726b8-36be-4634-82c9-591cff96e4be`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `9ed7f0dd-a8d9-4432-9920-77377e20c02a`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `6ba388a8-10dd-4851-bda9-5366435362ad`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `d0814b0f-fe8d-4571-b650-eaf0d6a7071f`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `d8fef11e-6f95-41d2-b8fb-e9156f23a452`, `c87561ad-3d2e-4478-8c93-64ed615d0832`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `f989a4ba-6865-49fe-a6c0-a2dba6c58a95`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `920a07be-819a-455f-bf80-9549d3c2fe53`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.
+
+- Retained test context (2026-10-12T03:46:25.565Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_4f31e56043e1495dbffba98e1d34da4a"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:29.908Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `474f5ced-6b53-4d9a-92b1-eea33547dc9b`, `aefae318-014a-4f45-91aa-c95fac1aa641`.
+
+- Retained test context (2026-10-12T03:46:29.909Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `474f5ced-6b53-4d9a-92b1-eea33547dc9b`, `aefae318-014a-4f45-91aa-c95fac1aa641`.
+
+- Retained test context (2026-10-12T03:46:29.910Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `7a64e74d-3fc4-4606-a655-fcbd31dec2ea`, `45890423-3bcc-4f18-bc47-4840c44bc4b0`, `e905887e-d0c7-4828-aae8-f068859cea01`, `0c64efca-7a77-4c43-9fc0-baecf4cf8216`.
+
+- Retained test context (2026-10-12T03:46:29.911Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `7a64e74d-3fc4-4606-a655-fcbd31dec2ea`, `45890423-3bcc-4f18-bc47-4840c44bc4b0`, `e905887e-d0c7-4828-aae8-f068859cea01`, `0c64efca-7a77-4c43-9fc0-baecf4cf8216`.
+
+- Retained test context (2026-10-12T03:46:29.911Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `5bc34495-bd57-4e5b-9957-8ad790106d86`.
+
+- Retained test context (2026-10-12T03:46:29.911Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `5bc34495-bd57-4e5b-9957-8ad790106d86`.
+
+- Retained test context (2026-10-12T03:46:29.912Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `c49f2670-8c63-4b0a-90d8-776cd0eff7e2`, `7b10b945-d4e8-4608-a074-877c6b4a1aef`, `31f86b9b-e9ea-47cd-b34e-1a8063f405a2`, `5adc20be-a953-48ad-9b70-c4c766d201be`, `59645297-e489-4692-b777-3654613102c0`.
+
+- Retained test context (2026-10-12T03:46:29.913Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `c49f2670-8c63-4b0a-90d8-776cd0eff7e2`, `7b10b945-d4e8-4608-a074-877c6b4a1aef`, `31f86b9b-e9ea-47cd-b34e-1a8063f405a2`, `5adc20be-a953-48ad-9b70-c4c766d201be`, `59645297-e489-4692-b777-3654613102c0`.
+
+- Retained test context (2026-10-12T03:46:29.913Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `c49f2670-8c63-4b0a-90d8-776cd0eff7e2`, `7b10b945-d4e8-4608-a074-877c6b4a1aef`, `31f86b9b-e9ea-47cd-b34e-1a8063f405a2`, `5adc20be-a953-48ad-9b70-c4c766d201be`, `59645297-e489-4692-b777-3654613102c0`.
+
+- Retained test context (2026-10-12T03:46:29.914Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `b3ca5608-fb51-44f2-a9ac-d757336f2a2f`.
+
+- Retained test context (2026-10-12T03:46:29.914Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `be56a7df-8e34-43ca-8805-f9d986d2d5ee`, `a983e4d4-503f-4b1d-93d8-9498455c3397`, `31f90e23-5501-4668-9699-658df175cf8e`, `faca8435-04b1-4699-b8ea-26929892b836`.
+
+- Retained test context (2026-10-12T03:46:29.915Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `be56a7df-8e34-43ca-8805-f9d986d2d5ee`, `a983e4d4-503f-4b1d-93d8-9498455c3397`, `31f90e23-5501-4668-9699-658df175cf8e`, `faca8435-04b1-4699-b8ea-26929892b836`.
+
+- Retained test context (2026-10-12T03:46:29.915Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `2c8ba333-2cff-4852-b9cd-d81d1249e5a7`, `6e22ece6-466c-4f00-8597-39f28c812445`, `99e671d6-3c62-4180-b280-dc47ec197dca`, `f212877a-ec56-4b49-a7bc-8a042d9c6a50`.
+
+- Retained test context (2026-10-12T03:46:29.915Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `2c8ba333-2cff-4852-b9cd-d81d1249e5a7`, `6e22ece6-466c-4f00-8597-39f28c812445`, `99e671d6-3c62-4180-b280-dc47ec197dca`, `f212877a-ec56-4b49-a7bc-8a042d9c6a50`.
+
+- Retained test context (2026-10-12T03:46:29.916Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `27b48c52-6aba-4a0d-8e1f-b4e78ccc0171`, `f54017d7-8d7a-473c-b8c6-a06e369c0eea`, `54535e23-a4a4-4bd4-a465-de88c450ab05`, `879c2241-9d20-4464-ab82-3a6d7ad06a29`.
+
+- Retained test context (2026-10-12T03:46:29.917Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `03e2f8fa-dd38-4bec-83da-30f7e900efe8`.
+
+- Retained test context (2026-10-12T03:46:29.917Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `d3df4a7b-fb62-4591-be48-c3fd117e5252`, `17275764-3d84-467e-b4dd-d3cac31bdfd1`, `a2822af5-0dcd-42f1-af55-4e98f820d48c`, `e44ac53c-7433-40a0-aad7-f3fc5bbc24b6`, `69dc0058-12cc-4282-9c7e-431ff1357c44`.
+
+- Retained test context (2026-10-12T03:46:29.917Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `f9f68735-dea8-46a4-b078-47c081a14af5`, `56ca3717-dd79-43db-8341-da5deb92ae3a`, `3f5c2ce0-9974-4123-a903-cb35e1565255`.
+
+- Retained test context (2026-10-12T03:46:29.918Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `a3ced613-c47a-4793-a256-5e55566bd6bb`, `5bcf328d-10ad-4d4e-bac2-7881f2fe5fce`, `c2504898-b737-4a35-8478-45ddff74bc0e`, `dc7a8fe1-266c-46ad-87ef-06816a277b1e`, `ac2fbce4-7681-4b7a-b0b4-235f0b6d4cc7`.
+
+- Retained test context (2026-10-12T03:46:29.918Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `a3ced613-c47a-4793-a256-5e55566bd6bb`, `5bcf328d-10ad-4d4e-bac2-7881f2fe5fce`, `c2504898-b737-4a35-8478-45ddff74bc0e`, `dc7a8fe1-266c-46ad-87ef-06816a277b1e`, `ac2fbce4-7681-4b7a-b0b4-235f0b6d4cc7`.
+
+- Retained test context (2026-10-12T03:46:29.919Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `a3ced613-c47a-4793-a256-5e55566bd6bb`, `5bcf328d-10ad-4d4e-bac2-7881f2fe5fce`, `c2504898-b737-4a35-8478-45ddff74bc0e`, `dc7a8fe1-266c-46ad-87ef-06816a277b1e`, `ac2fbce4-7681-4b7a-b0b4-235f0b6d4cc7`.
+
+- Retained test context (2026-10-12T03:46:29.919Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:29.920Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `f6a1c67e-33ce-4a61-be4b-0db93580562f`.
+
+- Retained test context (2026-10-12T03:46:29.920Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `46ecbf46-01c0-472b-baa4-e5d94d813697`.
+
+- Retained test context (2026-10-12T03:46:29.924Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:33.590Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:33.591Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:33.592Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.592Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.593Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `f93aebb5-807e-42b5-97d4-7a03f218c4c9`, `1413ac32-7584-4479-868a-719933f70625`, `a54b42da-145c-45df-9b31-6b0b2e41a8f4`, `9a89ee05-3400-48da-87c8-75f58d93727d`, `d68baf0a-1f72-41d4-ab6b-e68e1f91f7ed`, `3c1b698b-a533-494c-86ea-34a339f4dd44`.
+
+- Retained test context (2026-10-12T03:46:33.593Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.593Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.593Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.594Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.594Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `b34f9323-7725-42d0-95ed-ae15bb8332db`, `f406372b-4a96-4479-a89d-d34bdfdabd41`, `65ed49f9-0272-4a7d-8e54-f67bda059d57`, `8168e562-de09-4e3b-b046-d269d9ff5f48`, `e73a4427-1e49-4efc-831a-18bc68437b35`.
+
+- Retained test context (2026-10-12T03:46:33.595Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `0d79afe7-ea50-4a56-b386-83f36194f4a6`, `05131c45-f05d-418b-b9f2-9a5348bf7d10`, `3c9bbff6-7f56-4dd0-bb56-ffd30cd8e347`, `7f4a6a1b-c0f0-49eb-8a13-139bf6a195c4`.
+
+- Retained test context (2026-10-12T03:46:33.595Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `0d79afe7-ea50-4a56-b386-83f36194f4a6`, `05131c45-f05d-418b-b9f2-9a5348bf7d10`, `3c9bbff6-7f56-4dd0-bb56-ffd30cd8e347`, `7f4a6a1b-c0f0-49eb-8a13-139bf6a195c4`.
+
+- Retained test context (2026-10-12T03:46:33.595Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `0d79afe7-ea50-4a56-b386-83f36194f4a6`, `05131c45-f05d-418b-b9f2-9a5348bf7d10`, `3c9bbff6-7f56-4dd0-bb56-ffd30cd8e347`, `7f4a6a1b-c0f0-49eb-8a13-139bf6a195c4`.
+
+- Retained test context (2026-10-12T03:46:33.595Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `0d79afe7-ea50-4a56-b386-83f36194f4a6`, `05131c45-f05d-418b-b9f2-9a5348bf7d10`, `3c9bbff6-7f56-4dd0-bb56-ffd30cd8e347`, `7f4a6a1b-c0f0-49eb-8a13-139bf6a195c4`.
+
+- Retained test context (2026-10-12T03:46:33.596Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `9656bc2c-1faf-4b41-b486-572ac474d62d`, `e03a3564-45f7-491b-a5ce-54b3cb1cdd12`.
+
+- Retained test context (2026-10-12T03:46:33.596Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `aac1d458-ebf5-44e5-a2fc-28ca6c459047`, `b7996c87-868c-4902-bb68-73bb8f16ea81`, `64f2a506-40f5-4274-8626-550d7c5628cc`, `c88f80fe-fe87-40ef-9da1-5cd00bef0d4e`.
+
+- Retained test context (2026-10-12T03:46:33.596Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `24b30110-f53a-4deb-ad3c-3103a28d38ad`.
+
+- Retained test context (2026-10-12T03:46:33.596Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `6a059981-bf75-4b9b-95e3-3c09048514b0`.
+
+- Retained test context (2026-10-12T03:46:33.597Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `9b9872ee-7488-4566-9c98-e2d99466cfe9`.
+
+- Retained test context (2026-10-12T03:46:33.598Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:33.599Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `16503415-d202-4c20-916b-66568f858234`, `f1565c08-b3d8-4a2e-a3aa-b3a57ad7e0cf`, `7c1db730-8562-4aa4-b591-ac3d9ea8613e`, `0316bff2-6d9a-4dd2-ba0a-4fcce7652675`.
+
+- Retained test context (2026-10-12T03:46:33.599Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `16503415-d202-4c20-916b-66568f858234`, `f1565c08-b3d8-4a2e-a3aa-b3a57ad7e0cf`, `7c1db730-8562-4aa4-b591-ac3d9ea8613e`, `0316bff2-6d9a-4dd2-ba0a-4fcce7652675`.
+
+- Retained test context (2026-10-12T03:46:33.600Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:33.600Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `16503415-d202-4c20-916b-66568f858234`, `f1565c08-b3d8-4a2e-a3aa-b3a57ad7e0cf`, `7c1db730-8562-4aa4-b591-ac3d9ea8613e`, `0316bff2-6d9a-4dd2-ba0a-4fcce7652675`.
+
+- Retained test context (2026-10-12T03:46:36.945Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `80855b79-8c5d-4966-85db-295934d71acf`.
+
+- Retained test context (2026-10-12T03:46:36.946Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `80855b79-8c5d-4966-85db-295934d71acf`.
+
+- Retained test context (2026-10-12T03:46:36.947Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `80855b79-8c5d-4966-85db-295934d71acf`.
+
+- Retained test context (2026-10-12T03:46:36.947Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `80855b79-8c5d-4966-85db-295934d71acf`.
+
+- Retained test context (2026-10-12T03:46:36.947Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `80855b79-8c5d-4966-85db-295934d71acf`.
+
+- Retained test context (2026-10-12T03:46:36.948Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `f9c38c40-2fe8-4301-aec5-e4a623e87191`.
+
+- Retained test context (2026-10-12T03:46:36.948Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `f9c38c40-2fe8-4301-aec5-e4a623e87191`.
+
+- Retained test context (2026-10-12T03:46:36.948Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `f9c38c40-2fe8-4301-aec5-e4a623e87191`.
+
+- Retained test context (2026-10-12T03:46:36.949Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `f9c38c40-2fe8-4301-aec5-e4a623e87191`.
+
+- Retained test context (2026-10-12T03:46:36.949Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `f9c38c40-2fe8-4301-aec5-e4a623e87191`.
+
+- Retained test context (2026-10-12T03:46:36.950Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `8fc3907e-6a05-434d-b661-590ef965cffc`.
+
+- Retained test context (2026-10-12T03:46:36.950Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `8fc3907e-6a05-434d-b661-590ef965cffc`.
+
+- Retained test context (2026-10-12T03:46:36.950Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `8fc3907e-6a05-434d-b661-590ef965cffc`.
+
+- Retained test context (2026-10-12T03:46:36.950Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `8fc3907e-6a05-434d-b661-590ef965cffc`.
+
+- Retained test context (2026-10-12T03:46:36.951Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `8fc3907e-6a05-434d-b661-590ef965cffc`.
+
+- Retained test context (2026-10-12T03:46:36.951Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `d4e2b0d7-5517-4a83-acdb-d8fb70b5c5d1`.
+
+- Retained test context (2026-10-12T03:46:36.951Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `d4e2b0d7-5517-4a83-acdb-d8fb70b5c5d1`.
+
+- Retained test context (2026-10-12T03:46:36.952Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `d4e2b0d7-5517-4a83-acdb-d8fb70b5c5d1`.
+
+- Retained test context (2026-10-12T03:46:36.952Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `d4e2b0d7-5517-4a83-acdb-d8fb70b5c5d1`.
+
+- Retained test context (2026-10-12T03:46:36.952Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `d4e2b0d7-5517-4a83-acdb-d8fb70b5c5d1`.
+
+- Retained test context (2026-10-12T03:46:36.952Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `8ea212ea-0010-4ee8-af5c-ac903b5256cc`.
+
+- Retained test context (2026-10-12T03:46:36.953Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `8ea212ea-0010-4ee8-af5c-ac903b5256cc`.
+
+- Retained test context (2026-10-12T03:46:36.953Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `8ea212ea-0010-4ee8-af5c-ac903b5256cc`.
+
+- Retained test context (2026-10-12T03:46:36.953Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `8ea212ea-0010-4ee8-af5c-ac903b5256cc`.
+
+- Retained test context (2026-10-12T03:46:36.954Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `8ea212ea-0010-4ee8-af5c-ac903b5256cc`.
+
+- Retained test context (2026-10-12T03:46:36.954Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `6e36a542-72b4-49c9-a37d-e8758b8bd77e`.
+
+- Retained test context (2026-10-12T03:46:36.954Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `6e36a542-72b4-49c9-a37d-e8758b8bd77e`.
+
+- Retained test context (2026-10-12T03:46:36.954Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `6e36a542-72b4-49c9-a37d-e8758b8bd77e`.
+
+- Retained test context (2026-10-12T03:46:36.955Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `6e36a542-72b4-49c9-a37d-e8758b8bd77e`.
+
+- Retained test context (2026-10-12T03:46:36.955Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `6e36a542-72b4-49c9-a37d-e8758b8bd77e`.
+
+- Retained test context (2026-10-12T03:46:36.955Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `357dec2e-1515-4783-a1ce-fd706fde94ba`.
+
+- Retained test context (2026-10-12T03:46:36.955Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `357dec2e-1515-4783-a1ce-fd706fde94ba`.
+
+- Retained test context (2026-10-12T03:46:36.956Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `357dec2e-1515-4783-a1ce-fd706fde94ba`.
+
+- Retained test context (2026-10-12T03:46:36.956Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `357dec2e-1515-4783-a1ce-fd706fde94ba`.
+
+- Retained test context (2026-10-12T03:46:36.956Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `357dec2e-1515-4783-a1ce-fd706fde94ba`.
+
+- Retained test context (2026-10-12T03:46:36.956Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9c39d446-6d0c-4e3f-9682-beeb44ee12e4`.
+
+- Retained test context (2026-10-12T03:46:36.957Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9c39d446-6d0c-4e3f-9682-beeb44ee12e4`.
+
+- Retained test context (2026-10-12T03:46:36.957Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9c39d446-6d0c-4e3f-9682-beeb44ee12e4`.
+
+- Retained test context (2026-10-12T03:46:36.957Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9c39d446-6d0c-4e3f-9682-beeb44ee12e4`.
+
+- Retained test context (2026-10-12T03:46:36.957Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9c39d446-6d0c-4e3f-9682-beeb44ee12e4`.
+
+- Retained test context (2026-10-12T03:46:36.958Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `52e2121a-9094-447a-85f0-fba8aa738aca`.
+
+- Retained test context (2026-10-12T03:46:36.958Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `52e2121a-9094-447a-85f0-fba8aa738aca`.
+
+- Retained test context (2026-10-12T03:46:36.959Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `52e2121a-9094-447a-85f0-fba8aa738aca`.
+
+- Retained test context (2026-10-12T03:46:36.959Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `52e2121a-9094-447a-85f0-fba8aa738aca`.
+
+- Retained test context (2026-10-12T03:46:36.959Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `52e2121a-9094-447a-85f0-fba8aa738aca`.
+
+- Retained test context (2026-10-12T03:46:36.959Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `a3d35bb7-104d-45e2-b6e8-89b63200823f`.
+
+- Retained test context (2026-10-12T03:46:36.960Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `a3d35bb7-104d-45e2-b6e8-89b63200823f`.
+
+- Retained test context (2026-10-12T03:46:36.960Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `a3d35bb7-104d-45e2-b6e8-89b63200823f`.
+
+- Retained test context (2026-10-12T03:46:36.960Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `a3d35bb7-104d-45e2-b6e8-89b63200823f`.
+
+- Retained test context (2026-10-12T03:46:36.961Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `a3d35bb7-104d-45e2-b6e8-89b63200823f`.
+
+- Retained test context (2026-10-12T03:46:46.810Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:46.915Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:46.915Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `f0634782-d002-492a-93b9-8afb2df55205`, `ca9d3e4e-ef35-42b9-b51b-ee88a9315fc8`, `39076860-eba9-455a-9df0-a5ba9c51bfdd`, `bc7b166e-e8e8-4dfa-ad0e-683ea740d8a3`, `f93613fd-26f6-4af6-8f1a-d79ae946ddc2`.
+
+- Retained test context (2026-10-12T03:46:46.916Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `f0634782-d002-492a-93b9-8afb2df55205`, `ca9d3e4e-ef35-42b9-b51b-ee88a9315fc8`, `39076860-eba9-455a-9df0-a5ba9c51bfdd`, `bc7b166e-e8e8-4dfa-ad0e-683ea740d8a3`, `f93613fd-26f6-4af6-8f1a-d79ae946ddc2`.
+
+- Retained test context (2026-10-12T03:46:46.918Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `f0634782-d002-492a-93b9-8afb2df55205`, `ca9d3e4e-ef35-42b9-b51b-ee88a9315fc8`, `39076860-eba9-455a-9df0-a5ba9c51bfdd`, `bc7b166e-e8e8-4dfa-ad0e-683ea740d8a3`, `f93613fd-26f6-4af6-8f1a-d79ae946ddc2`.
+
+- Retained test context (2026-10-12T03:46:46.918Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `f0634782-d002-492a-93b9-8afb2df55205`, `ca9d3e4e-ef35-42b9-b51b-ee88a9315fc8`, `39076860-eba9-455a-9df0-a5ba9c51bfdd`, `bc7b166e-e8e8-4dfa-ad0e-683ea740d8a3`, `f93613fd-26f6-4af6-8f1a-d79ae946ddc2`.
+
+- Retained test context (2026-10-12T03:46:46.919Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `f0634782-d002-492a-93b9-8afb2df55205`, `ca9d3e4e-ef35-42b9-b51b-ee88a9315fc8`, `39076860-eba9-455a-9df0-a5ba9c51bfdd`, `bc7b166e-e8e8-4dfa-ad0e-683ea740d8a3`, `f93613fd-26f6-4af6-8f1a-d79ae946ddc2`.
+
+- Retained test context (2026-10-12T03:46:46.919Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `497171f2-d19e-4aa8-8097-44eac39de6e5`, `b95413f3-e78b-4d38-a96a-2e58ac6bc6e2`, `f5ce7bf6-ed1e-4f61-8cde-27726a7867d1`, `48d5b55b-55d6-465e-8a58-00f4a583ba0c`, `93d7e8bf-8a44-47dd-a7be-381fe49f1e3a`, `cffa4a07-a4bb-425d-9316-0711df42802f`.
+
+- Retained test context (2026-10-12T03:46:46.920Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `f35983cb-ad56-4126-844e-fa1e6d31545c`, `013d71e8-d05d-4259-97f5-60ccaa43607a`, `3450549a-f4b8-4382-b9dd-a22cd7765add`, `cb144f79-c688-4fc5-ab4f-c12017bc14ab`, `13c30fd5-96cd-459a-a55d-622f5927cc6d`, `51865475-9fc7-4c93-a7c7-e90e79f82af8`, `cd7d0899-45c2-4dbf-a668-ac793150b16f`.
+
+- Retained test context (2026-10-12T03:46:46.920Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `ac946d2d-83fc-4ccf-a737-8f55b7c1787a`, `4543138e-ef95-4831-8758-ec62f3c42a2d`, `fa8b163d-701c-450d-be87-7bd48e7bd863`, `6f5e59b3-8649-42c2-9daa-c7101d07c410`, `f40f6138-9686-41f6-a9b5-ef4dd0b698a4`.
+
+- Retained test context (2026-10-12T03:46:46.921Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `99a1c6ca-1726-44a8-84a0-5e1fcec7bfe0`.
+
+- Retained test context (2026-10-12T03:46:46.921Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `a5a5d8e1-e375-47e9-8454-904524eefd32`.
+
+- Retained test context (2026-10-12T03:46:46.921Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `c94a092e-1080-4817-b2ac-217d163e92db`.
+
+- Retained test context (2026-10-12T03:46:46.922Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:46.922Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `77a4df2f-c6aa-4425-93b7-dfb829e788dc`.
+
+- Retained test context (2026-10-12T03:46:46.926Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `77a4df2f-c6aa-4425-93b7-dfb829e788dc`.
+
+- Retained test context (2026-10-12T03:46:46.926Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:49.488Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `ece4de59-bebe-4281-9025-fad16c252179`, `13aa21b5-8eb2-472d-b9de-271ce13f9002`.
+
+- Retained test context (2026-10-12T03:46:49.489Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `ece4de59-bebe-4281-9025-fad16c252179`, `13aa21b5-8eb2-472d-b9de-271ce13f9002`.
+
+- Retained test context (2026-10-12T03:46:49.490Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `ece4de59-bebe-4281-9025-fad16c252179`, `13aa21b5-8eb2-472d-b9de-271ce13f9002`.
+
+- Retained test context (2026-10-12T03:46:49.490Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `ece4de59-bebe-4281-9025-fad16c252179`, `13aa21b5-8eb2-472d-b9de-271ce13f9002`.
+
+- Retained test context (2026-10-12T03:46:49.491Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `ece4de59-bebe-4281-9025-fad16c252179`, `13aa21b5-8eb2-472d-b9de-271ce13f9002`.
+
+- Retained test context (2026-10-12T03:46:49.492Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `9590d28d-fe2e-4300-9098-8a66a07ce6eb`.
+
+- Retained test context (2026-10-12T03:46:49.492Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `99aa2d5e-f913-40b0-904e-4cb63e3ba1ec`, `8ac04ccb-3c6d-4712-8efe-50aa99c6b02b`.
+
+- Retained test context (2026-10-12T03:46:49.493Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `c2705cee-d909-4bb8-89c6-2132b1cff3ab`.
+
+- Retained test context (2026-10-12T03:46:49.493Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `866b135c-4e25-4bb1-894b-794f49b1490a`.
+
+- Retained test context (2026-10-12T03:46:49.494Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `b4bf1254-afb0-474f-8a00-0d9dd54c9bd9`.
+
+- Retained test context (2026-10-12T03:46:49.494Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `92bde1d0-0e86-452e-9c0a-5450906c1ee0`.
+
+- Retained test context (2026-10-12T03:46:49.495Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `087cba19-907d-43fe-bcb1-5d69f0dfebdf`.
+
+- Retained test context (2026-10-12T03:46:49.495Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `087cba19-907d-43fe-bcb1-5d69f0dfebdf`.
+
+- Retained test context (2026-10-12T03:46:49.495Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `27636c39-2eb2-4cfa-a18b-c35a70d5a5d3`.
+
+- Retained test context (2026-10-12T03:46:49.496Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `4d86099f-5159-406d-832d-2ce4487e0db4`.
+
+- Retained test context (2026-10-12T03:46:49.496Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `7a83293f-b957-401a-9d9b-9495ca421b49`, `c0628c74-74a6-4897-8f72-3b2345d350a7`, `72d5ffcf-918a-4fe1-acb2-0278d7c73024`, `83dd8b58-fd56-4cd8-a7fc-6895dca59cbf`, `1edfda37-676b-42b0-84ca-429d3dab2123`, `84947243-7dad-4b18-b58c-16eea1dea9a8`, `e278aba5-358e-45b7-b726-f137db6ce82d`.
+
+- Retained test context (2026-10-12T03:46:49.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `7a83293f-b957-401a-9d9b-9495ca421b49`, `c0628c74-74a6-4897-8f72-3b2345d350a7`, `72d5ffcf-918a-4fe1-acb2-0278d7c73024`, `83dd8b58-fd56-4cd8-a7fc-6895dca59cbf`, `1edfda37-676b-42b0-84ca-429d3dab2123`, `84947243-7dad-4b18-b58c-16eea1dea9a8`, `e278aba5-358e-45b7-b726-f137db6ce82d`.
+
+- Retained test context (2026-10-12T03:46:49.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `7a83293f-b957-401a-9d9b-9495ca421b49`, `c0628c74-74a6-4897-8f72-3b2345d350a7`, `72d5ffcf-918a-4fe1-acb2-0278d7c73024`, `83dd8b58-fd56-4cd8-a7fc-6895dca59cbf`, `1edfda37-676b-42b0-84ca-429d3dab2123`, `84947243-7dad-4b18-b58c-16eea1dea9a8`, `e278aba5-358e-45b7-b726-f137db6ce82d`.
+
+- Retained test context (2026-10-12T03:46:49.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:49.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `ed33189a-2104-46ee-9efd-932d513b838b`.
+
+- Retained test context (2026-10-12T03:46:49.498Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `09de64d0-a385-4996-ae7b-c743a8105352`.
+
+- Retained test context (2026-10-12T03:46:49.498Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `3d68e244-15be-4258-a9cb-a2347a29885f`.
+
+- Retained test context (2026-10-12T03:46:49.501Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:52.206Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `3becdbb9-0ae3-4313-9118-7bbd288eb7b2`.
+
+- Retained test context (2026-10-12T03:46:52.209Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `3becdbb9-0ae3-4313-9118-7bbd288eb7b2`.
+
+- Retained test context (2026-10-12T03:46:52.209Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `3becdbb9-0ae3-4313-9118-7bbd288eb7b2`.
+
+- Retained test context (2026-10-12T03:46:52.210Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `3becdbb9-0ae3-4313-9118-7bbd288eb7b2`.
+
+- Retained test context (2026-10-12T03:46:52.210Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `dbb1100d-9d8d-49fb-b11f-65ecbf791017`, `19ae937f-73e2-4c00-9985-1d62bb7b35be`, `805960ef-0840-4d6f-a303-6bcf7604a01e`, `c3e8530c-8bfd-4ca5-8b1c-401b364b0364`, `2c3c681e-3d66-468d-ab3c-d7523b624a8f`, `3ee62eca-5029-4657-ad78-276855386b35`, `cf7f412f-accc-4473-a7d6-e869502e3dad`, `28884935-3169-4742-98e5-73ed8d41eb33`, `0cea54a8-0207-4ec9-b78d-4570b986bae8`, `0eecc430-47f7-4076-b0f3-fe59ab5a5198`, `9b023649-6761-4f60-ac21-f8e64eca1f5e`, `9609add4-7d00-4cb6-ad4d-a3af226652a3`, `6aa6d0a8-47c2-48d6-8148-c2f0f53bf835`.
+
+- Retained test context (2026-10-12T03:46:52.210Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `93dc83ed-1bbb-4e9f-95e1-d5c76c934fa1`.
+
+- Retained test context (2026-10-12T03:46:52.211Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `0894fc5b-e7f7-46dc-9225-a24a551f693a`.
+
+- Retained test context (2026-10-12T03:46:52.211Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `193a9e41-0bb7-4865-8429-89bc02db63f5`.
+
+- Retained test context (2026-10-12T03:46:52.211Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `193a9e41-0bb7-4865-8429-89bc02db63f5`.
+
+- Retained test context (2026-10-12T03:46:52.212Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `522d31b5-2197-472b-ab02-b24f84df9f0c`.
+
+- Retained test context (2026-10-12T03:46:52.212Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `f3617328-e5f4-47a0-92c5-b028e1b68b48`.
+
+- Retained test context (2026-10-12T03:46:52.213Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `8c8c8242-e8be-4fe3-943e-0681059d7311`.
+
+- Retained test context (2026-10-12T03:46:52.213Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `7a4a6bd6-8d6d-4909-bd0e-eb99b9c0c6e0`.
+
+- Retained test context (2026-10-12T03:46:52.213Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:52.214Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `0b34825b-625e-4577-b40e-7b4e169ab0b2`.
+
+- Retained test context (2026-10-12T03:46:52.214Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `0b34825b-625e-4577-b40e-7b4e169ab0b2`.
+
+- Retained test context (2026-10-12T03:46:52.215Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `0b34825b-625e-4577-b40e-7b4e169ab0b2`.
+
+- Retained test context (2026-10-12T03:46:53.396Z): requirement harness roots; target registered_fixture_context; references `1b3ecb42-ab99-408a-9984-60b05e3dff9f`, `30594945-db4a-4faf-81fc-a07e643557fc`, `f198233d-6ad1-450f-8f85-52a7be843a96`, `7e8e9010-8b74-4646-a7f7-a8e0afe38fc6`.
+
+- Retained test context (2026-10-12T03:46:53.496Z): requirement harness pinned content; target registered_fixture_context; references `620ee31f-6917-4a4f-83bf-d99867785059`, `d5a1e391-45fc-4121-9d83-2d8763c49db1`, `ac329453-ccca-4b9c-aa3e-566f20d26280`, `0b4e6213-9986-4bb3-9c19-d60c984732b5`.
+
+- Retained test context (2026-10-12T03:46:53.595Z): requirement harness complete ledger graph; target registered_fixture_context; references `d3d00bdb-b8e0-4760-be78-32e101e92b60`, `30594945-db4a-4faf-81fc-a07e643557fc`, `e5dac059-aed4-4bee-9f7a-11baccb7b228`, `620ee31f-6917-4a4f-83bf-d99867785059`, `4cbbf494-ea72-4ef3-9841-f5fdfbd3a97c`, `f198233d-6ad1-450f-8f85-52a7be843a96`, `67eeadc6-9356-4218-ba2f-dd7461d53bf7`.
+
+- Retained test context (2026-10-12T03:46:53.598Z): required lifecycle obligation; target registered_fixture_context; references `4cbbf494-ea72-4ef3-9841-f5fdfbd3a97c`.
+
+- Retained test context (2026-10-12T03:46:53.661Z): lifecycle initial form; target registered_fixture_context; references `f8bc396d-f1d6-4603-9be7-80bc4e16e05b`.
+
+- Retained test context (2026-10-12T03:46:53.691Z): requirement harness complete ledger graph; target registered_fixture_context; references `d3d00bdb-b8e0-4760-be78-32e101e92b60`, `30594945-db4a-4faf-81fc-a07e643557fc`, `e5dac059-aed4-4bee-9f7a-11baccb7b228`, `620ee31f-6917-4a4f-83bf-d99867785059`, `117be684-6691-4f11-b0da-99840b3b96b5`, `4cbbf494-ea72-4ef3-9841-f5fdfbd3a97c`, `f198233d-6ad1-450f-8f85-52a7be843a96`, `f8bc396d-f1d6-4603-9be7-80bc4e16e05b`, `67eeadc6-9356-4218-ba2f-dd7461d53bf7`, `ace4f6bf-793f-47c7-bd10-d134cc12cf67`.
+
+- Retained test context (2026-10-12T03:46:53.820Z): required replacement form; target registered_fixture_context; references `1d723193-e9e4-4f33-adb6-f4a57db872e4`.
+
+- Retained test context (2026-10-12T03:46:53.851Z): requirement harness roots; target registered_fixture_context; references `b65754aa-4edc-4cc5-b137-de6852550c4b`, `be62acbc-d537-43f4-8429-6b96dce8adca`, `a41aa790-ab1a-4785-93aa-636155ee05dd`, `893822e7-f06e-4a02-bfcb-c6af53dddaf7`.
+
+- Retained test context (2026-10-12T03:46:53.885Z): requirement harness pinned content; target registered_fixture_context; references `fca9e1f9-e325-498e-8ba4-e66e69512a38`, `026c33a4-30db-4c44-b386-7b5af35fd40a`, `25829ebf-23c7-4a41-b98d-4da04be285be`, `78b0a495-b3e6-4515-a868-99142fe499f4`.
+
+- Retained test context (2026-10-12T03:46:53.989Z): requirement harness complete ledger graph; target registered_fixture_context; references `03f203e9-3ccc-4baf-ab0b-ab93ba41682d`, `be62acbc-d537-43f4-8429-6b96dce8adca`, `b41823df-6188-4b8c-a4c0-ad6a41e3a196`, `fca9e1f9-e325-498e-8ba4-e66e69512a38`, `fd1005b0-097f-4cdf-a5fe-b3391be34cf7`, `a41aa790-ab1a-4785-93aa-636155ee05dd`, `adb8639d-bcd1-423d-add9-d29ed275a263`, `8714682a-3266-41e6-b278-0abb30b143af`.
+
+- Retained test context (2026-10-12T03:46:54.026Z): earlier manual collision; target registered_fixture_context; references `8714682a-3266-41e6-b278-0abb30b143af`, `03f203e9-3ccc-4baf-ab0b-ab93ba41682d`, `fd1005b0-097f-4cdf-a5fe-b3391be34cf7`.
+
+- Retained test context (2026-10-12T03:46:54.123Z): manual conflict required replacement; target registered_fixture_context; references `c962d139-9884-4337-b195-c84aa1042161`.
+
+- Retained test context (2026-10-12T03:46:54.123Z): requirement harness roots; target registered_fixture_context; references `619a8815-07f0-458a-b902-80d2d87dc1d6`, `88ec2221-5ca8-4eaa-99f5-9c3f208a1540`, `17d3b2a1-12db-4ac9-bce9-8d31581c71fa`, `23a61b2d-1fe4-4e06-aa3f-ee8212e51001`.
+
+- Retained test context (2026-10-12T03:46:54.245Z): requirement harness pinned content; target registered_fixture_context; references `0d50ddb2-9bec-44af-97ab-66f3bbe8da5a`, `f895479a-c742-4b02-9dc4-ea1387eb0cb9`, `029bd86d-ec08-4ae9-94e0-a5d6ef208642`, `78653336-cef1-46ab-867f-2437428020c3`.
+
+- Retained test context (2026-10-12T03:46:54.309Z): requirement harness complete ledger graph; target registered_fixture_context; references `481d139f-8327-4dc7-be30-cbf978631fd9`, `88ec2221-5ca8-4eaa-99f5-9c3f208a1540`, `9015b66c-fb37-4f48-8490-152a48d516d2`, `0d50ddb2-9bec-44af-97ab-66f3bbe8da5a`, `0ad3bb62-f084-4a46-8674-2f6d5da48496`, `17d3b2a1-12db-4ac9-bce9-8d31581c71fa`, `915bf600-d96c-4e42-a6b4-b8236d08a9be`.
+
+- Retained test context (2026-10-12T03:46:54.311Z): unresolved obligation; target registered_fixture_context; references `0ad3bb62-f084-4a46-8674-2f6d5da48496`.
+
+- Retained test context (2026-10-12T03:46:54.334Z): requirement harness complete ledger graph; target registered_fixture_context; references `481d139f-8327-4dc7-be30-cbf978631fd9`, `88ec2221-5ca8-4eaa-99f5-9c3f208a1540`, `9015b66c-fb37-4f48-8490-152a48d516d2`, `0d50ddb2-9bec-44af-97ab-66f3bbe8da5a`, `5dc83c79-a655-4b38-9da4-aced5ba85509`, `0ad3bb62-f084-4a46-8674-2f6d5da48496`, `17d3b2a1-12db-4ac9-bce9-8d31581c71fa`, `915bf600-d96c-4e42-a6b4-b8236d08a9be`, `3a94da8e-eff7-4a9c-b298-a66384a09f10`.
+
+- Retained test context (2026-10-12T03:46:54.346Z): failed run; target registered_fixture_context; references `4e5a117f-696d-4c61-b28d-1b968d8116f6`.
+
+- Retained test context (2026-10-12T03:46:58.455Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `a0a1c1f6-71f1-4a6d-86c6-8b972c48a7a7`.
+
+- Retained test context (2026-10-12T03:46:58.568Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.569Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.569Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.570Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.570Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.570Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `39121eb2-160d-4046-829a-07b62c5ddceb`, `84c84713-cce9-4bd2-8ac7-3b4c5b877bde`, `02a4599e-3178-4d23-9a90-ebd304b3e221`, `cc97e304-a574-4e48-8d3e-bcac403f0399`.
+
+- Retained test context (2026-10-12T03:46:58.571Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:58.571Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `44e4d2c9-5e35-4bfd-8974-b7838ccc2db5`.
+
+- Retained test context (2026-10-12T03:46:58.571Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `87953c2d-fe7b-41c4-933c-458b6d850fd6`.
+
+- Retained test context (2026-10-12T03:46:58.572Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `940faa53-01ac-43a7-834f-07cd511fafd7`.
+
+- Retained test context (2026-10-12T03:46:58.572Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `57807d88-a909-4a62-abac-ff20da838ea7`.
+
+- Retained test context (2026-10-12T03:46:58.572Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `012b65fb-ae80-46f7-b699-469b2047d0ac`.
+
+- Retained test context (2026-10-12T03:46:58.572Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `4e7af2c2-0a2a-4c65-87ca-2f4082c94f8d`, `6e0cb25d-ac86-4a15-b894-5acf58ca71b5`, `87d6d11c-b388-4a27-93a7-a637deb5b873`, `76ecfacc-f492-416a-81e4-4b6af741e273`.
+
+- Retained test context (2026-10-12T03:46:58.573Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `d5e01623-63ef-4091-afa6-5b99b9438880`.
+
+- Retained test context (2026-10-12T03:46:58.573Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `a0a1c1f6-71f1-4a6d-86c6-8b972c48a7a7`, `4b89c000-b79d-4212-a6fa-f263cee56395`.
+
+- Retained test context (2026-10-12T03:46:58.574Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `a0a1c1f6-71f1-4a6d-86c6-8b972c48a7a7`.
+
+- Retained test context (2026-10-12T03:46:58.574Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:58.574Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `a0a1c1f6-71f1-4a6d-86c6-8b972c48a7a7`, `4b89c000-b79d-4212-a6fa-f263cee56395`.
+
+- Retained test context (2026-10-12T03:46:58.575Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `5f6e3876-717b-45e3-899c-48e5d5b4ef4d`.
+
+- Retained test context (2026-10-12T03:46:58.578Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:46:59.607Z): rule editor definition; target registered_fixture_context; references `4dcc9e00-c804-4a5d-bb10-233bc75ba17d`, `6fa7fac9-aece-4a08-8ae6-97c401991ef4`.
+
+- Retained test context (2026-10-12T03:46:59.718Z): rule editor automatically created versions and parts; target registered_fixture_context; references `0bab760b-8bfa-441e-831d-00d439320761`, `6fa7fac9-aece-4a08-8ae6-97c401991ef4`, `94a622ab-d88c-45c2-a79c-03e32e989a9f`.
+
+- Retained test context (2026-10-12T03:46:59.719Z): rule editor draft; target registered_fixture_context; references `0bab760b-8bfa-441e-831d-00d439320761`.
+
+- Retained test context (2026-10-12T03:46:59.720Z): rule editor releasable content; target registered_fixture_context; references `94a622ab-d88c-45c2-a79c-03e32e989a9f`, `1481e32b-655c-47a4-bd15-bc38ad4d18ec`, `2c7621d6-e4f7-4ab0-9596-ba8596b3a148`.
+
+- Retained test context (2026-10-12T03:46:59.761Z): rule trial seafarer 1; target registered_fixture_context; references `969c86f0-1b6d-432b-bb9a-d12be2e9c451`, `bd8d82ca-f4d2-4e67-aaf9-8918d99d1195`.
+
+- Retained test context (2026-10-12T03:46:59.778Z): rule trial seafarer 2; target registered_fixture_context; references `28eacbed-779a-4675-bc13-1007c514b969`, `8c0e2881-9bc4-4ea4-b9cf-6a99af5c1da0`.
+
+- Retained test context (2026-10-12T03:46:59.961Z): rule editor saved sets; target registered_fixture_context; references `ab93276a-a02b-4b4d-9782-edff4a877c72`, `8a44efdc-19d9-4df9-8c98-21bd6d64123b`, `2987e402-3951-4918-8a15-50e733b31d69`, `f86ba751-a678-47ee-8b3d-e0f863ebd872`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `fe53a8b5-d8c5-448d-810f-92cf3aebec7f`, `883bb32b-5a19-4f3b-92f0-b08d28811153`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:47:00.075Z): rule editor final released policy; target registered_fixture_context; references `40dba08c-30ca-4da9-997d-813728f0c23a`, `75c1a5e9-d2ad-409e-895a-b535c1a800de`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `536c98ef-a75f-4aa6-beae-df888065227c`, `18b417c6-3753-4b8a-9fd7-d4c8454611e7`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `8b5f59c0-d032-4805-8680-18964e74d0b1`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:47:00.147Z): rule editor independent copied version; target registered_fixture_context; references `57c8e967-dc01-4a81-813e-1cb14e8f81e5`, `393cbcc5-9a37-4993-b60c-d1570b7b7de3`, `0f913b46-7dcb-4330-b6b1-06eedbcaf244`.
+
+- Retained test context (2026-10-12T03:47:00.154Z): rule editor independent copied policy; target registered_fixture_context; references `30283425-a23b-4e61-814b-cf1471e56b37`, `67eb1348-dd7a-4dd3-9686-9d17f7564856`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `8f4fb975-d899-44a9-ad78-e1d28c07fe19`, `2987e402-3951-4918-8a15-50e733b31d69`, `7c713e0a-2749-4f6d-805a-fa49a12fdbea`, `3a6b66f0-c352-4a22-a382-45933a93c4ac`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:47:02.197Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `16deafaf-739b-49a6-98f0-eb26f80c8463`, `c981195c-360b-4fed-ba35-63f0ca5a3342`, `9820a6db-89b4-4b3f-a166-aff6e8754e5a`.
+
+- Retained test context (2026-10-12T03:47:02.198Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `16deafaf-739b-49a6-98f0-eb26f80c8463`, `c981195c-360b-4fed-ba35-63f0ca5a3342`, `9820a6db-89b4-4b3f-a166-aff6e8754e5a`.
+
+- Retained test context (2026-10-12T03:47:02.199Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `16deafaf-739b-49a6-98f0-eb26f80c8463`, `c981195c-360b-4fed-ba35-63f0ca5a3342`, `9820a6db-89b4-4b3f-a166-aff6e8754e5a`.
+
+- Retained test context (2026-10-12T03:47:02.199Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `16deafaf-739b-49a6-98f0-eb26f80c8463`, `c981195c-360b-4fed-ba35-63f0ca5a3342`, `9820a6db-89b4-4b3f-a166-aff6e8754e5a`.
+
+- Retained test context (2026-10-12T03:47:02.200Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `0abe349f-6256-45ef-994d-305d9fd59fb9`, `a06542a6-7ad1-43e4-ad20-cdc9f4c240ca`, `5f92c213-3449-416b-9bb3-4191e908916a`, `c0300520-e63c-468e-87e7-fd52f9f4d2f8`, `3fe1ead7-cd16-4091-b845-a3c62e1312cb`.
+
+- Retained test context (2026-10-12T03:47:02.200Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `7c0ca854-7b33-4264-824b-4e03b92b2a09`.
+
+- Retained test context (2026-10-12T03:47:02.200Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `48ddb880-aaa9-48bb-85e3-5fed6fcf3bcd`.
+
+- Retained test context (2026-10-12T03:47:02.201Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `af7913a3-c938-4567-bffc-8d1671688b34`.
+
+- Retained test context (2026-10-12T03:47:02.201Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `825cc955-a84e-4129-ae42-eec0c12fc06f`.
+
+- Retained test context (2026-10-12T03:47:02.201Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `6b2a7f05-1e02-4a7e-8d6f-4c9ecabb3888`.
+
+- Retained test context (2026-10-12T03:47:02.202Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:47:02.202Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `1271685b-3be5-4158-95b8-9e208b4e8001`.
+
+- Retained test context (2026-10-12T03:47:02.202Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `1271685b-3be5-4158-95b8-9e208b4e8001`.
+
+- Retained test context (2026-10-12T03:47:02.203Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `1271685b-3be5-4158-95b8-9e208b4e8001`.
+
+- Retained test context (2026-10-12T03:47:03.891Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `9c775d26-b9af-44b2-9e70-ae7baf2ba6aa`.
+
+- Retained test context (2026-10-12T03:47:03.892Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `6d014ed7-5119-4d31-9154-ce77f4eb7246`, `022b4e19-316a-4a37-8540-b1cbb8e059ca`.
+
+- Retained test context (2026-10-12T03:47:03.893Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:47:03.894Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `9c775d26-b9af-44b2-9e70-ae7baf2ba6aa`.
+
+- Retained test context (2026-10-12T03:47:03.895Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `9c775d26-b9af-44b2-9e70-ae7baf2ba6aa`.
+
+- Retained test context (2026-10-12T03:47:03.895Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `9c775d26-b9af-44b2-9e70-ae7baf2ba6aa`.
+
+- Retained test context (2026-10-12T03:47:03.896Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `cf5b7eee-1942-4dc0-8283-3766cd70edb3`.
+
+- Retained test context (2026-10-12T03:47:03.896Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `826a87b2-8d41-45af-8de9-9635a5850410`, `4f48918c-5df7-4dd5-8ec6-6c033e3c4877`, `bd4b3c66-065d-4f25-ace4-345f17678e51`.
+
+- Retained test context (2026-10-12T03:47:03.896Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `46fdbb15-f6d8-44d3-bd7c-266f0750acc0`.
+
+- Retained test context (2026-10-12T03:47:03.898Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `e3248295-5e66-44c8-8199-b52a5aecd701`, `8445ed6e-512b-4c76-8a8c-c331a9f3c14b`.
+
+- Retained test context (2026-10-12T03:47:03.898Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:47:03.898Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:47:03.899Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `02bdae4c-8e13-4721-a590-d7356d33e0e6`, `f33bfe78-0b32-4ba0-8c65-5c4145556740`, `b5a8970c-1b44-4a47-bceb-6b53f0df7716`.
+
+- Retained test context (2026-10-12T03:47:03.899Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `74b95038-5d9b-4609-a781-02a2824d5cdb`.
+
+- Retained test context (2026-10-12T03:47:03.899Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `69465d38-e1d1-408b-b1f9-0548c749b03e`.
+
+- Retained test context (2026-10-12T03:47:03.900Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `4ad87e02-0545-4148-8bc5-dfb452a62476`.
+
+- Retained test context (2026-10-12T03:47:03.900Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:47:07.032Z): dimension context cf_dimensions_7753addc; target registered_fixture_context; references `77b3220e-61cc-4984-b4d0-38d0ce4a9886`, `993a885d-38ab-430f-9f1d-979e63fc21ce`, `5d468017-ddc1-46c8-98f9-3a50a9988f2d`, `f987e216-e9ca-48ce-ad52-1ad9ab4682f0`.
+
+- Retained test context (2026-10-12T03:47:07.353Z): cf_dimensions_7753addc.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references `2987e402-3951-4918-8a15-50e733b31d69`, `e8e15362-7500-4ffd-9bfd-b71f4adfb1a0`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `bf7efd7a-1d61-4405-aebb-370c4605228f`, `59ff20af-fe68-47c2-a2ce-4cd5c8a60bd1`, `055fb041-b8d7-42b3-8b94-fd30b1190d56`, `fdb47ab7-3d31-4a04-8924-71fbb5a0e374`, `a94e7164-2594-4fc3-9309-9e416ee7c7b6`, `e4a6ba2f-e136-497c-ab12-7636ae9b5756`, `16a4eb8e-80ab-43f2-823d-d2f0b1b8b304`, `1d1ae537-016a-42d4-97b7-82a9f8220a25`, `5a874392-74b3-4617-ac8c-c6a4277883e7`, `ac97a62c-a2f2-4839-ab46-9fd6a6082f18`, `31a79f68-b075-4252-b8c0-cd96293c88f5`, `38418de7-c45e-4a6f-aca9-d1af767da538`, `c9550889-6207-459e-98d9-8e636223a064`, `8ccae40c-92f2-432d-9710-aab0586b8b66`, `eae6cbf7-340b-4570-bedf-9e3420e4a3fa`, `4239dd5e-a968-4dae-b43a-b1acb1ce5286`, `541d5c68-f454-40b8-a6ba-6b6d97b47fdb`, `8fca3cf8-10df-4620-9c43-140ff0b9eef4`, `0c919b85-6819-42af-aedc-85be2e8edbab`.
+
+- Retained test context (2026-10-12T03:47:07.384Z): cf_dimensions_7753addc.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references `50cbdac5-32ca-44eb-ab9a-25627f2be33d`, `414d0943-53d8-4d17-a086-8031ac1a4517`, `b232b785-f604-4a4b-b4b7-1f8947d74a84`, `1a397f4a-4f64-4fb0-b69b-c9ff00a0573b`, `e28d9559-8e9f-4a9f-9a53-55677cf973ff`, `173d8a50-654b-4a49-a730-7de96f612f1c`, `fa2f1428-3103-49b7-a302-0ef5fb86ada1`, `2bbdd736-8468-4760-b34b-afb91cf42b75`, `200d73e8-8d8d-4087-91f9-b18576af1382`, `6d09470e-f43e-4a56-82ee-1ca3e6a5857a`, `2e3cc990-ea3f-4ed5-bf47-67c3b5e8929c`, `3d41c844-df9e-4565-ba82-796a0bd7eac7`, `af829569-f382-4fe6-a25d-eebbe009ebf7`, `82e3eae2-f09b-48f6-84b4-4f6131b502a5`, `ad00c123-0485-48c0-a2fd-2f7f9a141c37`, `9d32d7a8-a438-4d86-be58-84a5c1b9da6f`, `8e650dcc-741b-45a5-8f42-34cf87ecf58d`, `59b736f2-1985-46ff-a895-3e2c9c4509f3`, `9c9ca9b3-d089-4a47-a555-eef2251318fc`, `be081b19-aa9b-47bc-a1df-b136580f0d1b`, `8a133dad-cca1-4616-8fc5-60ec28a7096b`, `09687c5f-bcc6-43b1-9676-db0532564c52`, `b047b472-da24-4f00-b719-42cd0cbfea87`, `2801f769-9121-4768-8f75-60bf54ef812b`, `bf916f23-34d9-4050-8349-caf2cdac3a97`, `eaca1b43-ffc8-4a33-952c-b2dfb9b13ac6`, `692a5c35-fbae-41c4-9c7d-04271a121eca`, `7f8b4eb2-e0ea-4618-9c26-2145b92a0531`, `c52421d8-1c35-491f-86cd-8366a4366cf1`, `941bf7f8-67cb-485f-855c-cc6cac270d8c`, `2ca38074-adf7-4d91-a910-142501dbda97`, `a2ae4adf-2648-44d1-a5a2-135ce2a6e3b7`, `f8e8bc0b-c299-4aab-8e14-5841e53b9772`, `21d339b4-68e9-4590-bbf6-4da1e56b3642`, `d543696f-10e9-49fe-b75f-a36b06a2b00f`, `3625665f-435c-4b8d-a28a-f8afabdec1a5`, `a4d66962-ecc7-418d-878f-a834d9bfbe0e`, `0599fa59-0d3b-4919-9a27-8339eac90607`, `df045d8e-55a4-4151-94a5-e6fd4d2bc718`, `a5a01b28-fd78-434a-81fb-c9abed8f86b5`, `e30618f2-47a4-4aa3-9f35-c87e85761345`, `d14b7692-887c-4e72-877f-419d51856534`, `60f13cda-1234-480c-a228-08837799a7e9`, `b9e2576e-bd97-465c-9d0c-2652c1e5af4e`, `169a75db-39b8-46f2-a021-d5bafc5278be`, `f2ccc0ba-7b24-4945-a899-5ec186300b35`.
+
+- Retained test context (2026-10-12T03:47:07.407Z): cf_dimensions_7753addc.master_vessels canonical master copies; target registered_fixture_context; references `743feb08-841a-11ed-aa7c-7003bca91a86`, `7440571a-841a-11ed-aa7c-7003bca91a86`, `744535d0-841a-11ed-aa7c-7003bca91a86`, `7446783c-841a-11ed-aa7c-7003bca91a86`, `74481b72-841a-11ed-aa7c-7003bca91a86`, `744bafc7-841a-11ed-aa7c-7003bca91a86`, `744c8b44-841a-11ed-aa7c-7003bca91a86`, `0f5fed6a-573c-11ed-8778-ec53d845cd37`, `0f601d62-573c-11ed-8778-ec53d845cd37`, `c4ec0000-0000-4000-8000-000000000001`, `f90095c9-4fb6-492d-bd95-b479fd4f5ae7`, `6fb584ae-9883-43a8-8595-3d5f1aa98a3a`, `59b97073-6d5b-47e0-96f4-4edbda264359`, `2bf0feb4-24ec-4951-a7b4-f0b4fdddaf07`, `f0765b78-dc45-4c42-b92b-191bd8c67a4f`, `fa413a46-255c-4ff5-bd40-eb93319ca922`, `ad1af0ab-7096-4b5f-a73f-8b265327a817`, `583c7075-1dfb-4b57-bc0c-53cf3dae45df`, `7c7341d3-4434-4420-b1be-2a0433f8811e`, `c9dee626-66a9-4f61-bec9-2f5512c98f27`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `069d1924-ef38-4717-a691-ad949560b5c1`, `016465f9-92ee-4824-a5b5-36e6ffdcf9db`, `1e5d9339-37f1-4bab-a523-5f8a6d94473d`, `64c13df5-f487-45a1-97c8-f75afecf634b`, `1358bf6f-fa7a-45fd-8665-35408cfb8225`, `765bf814-f869-413a-a59c-9d436b7aceb3`, `3137c681-f7ee-4efa-8e6a-7c87b7bdad75`, `5c940532-d915-4ade-b9b4-22e6d5fbfef0`, `cb72b462-159c-4ffc-8ae2-2c24a4390078`, `3685bbaa-e51e-4bae-b728-4268e3967f7f`, `34d67378-ae6f-48cf-8544-286230e2edb0`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `9ee74443-05de-4f7f-9606-183016ab7912`, `931fb67c-c1d7-4f32-9139-4c84423dbcfc`, `43089a39-6729-400d-b3c9-4046c85ba4aa`, `b54ce872-c75d-4acf-8aba-b4a1ecb75221`, `17535fe2-25a1-498c-854e-bdec7742063d`, `84443c82-61b6-4670-bd74-6eae29fb0245`, `837ac867-5772-4bd8-9342-1889afd1c798`, `f67fe4c5-0a40-4301-8330-37ba5b81da42`, `ea5040a6-de86-4a34-9453-14b9774b15f6`, `32ebdd9e-3b38-42f0-aa6f-08b09d437fa7`, `9b997fc2-da5d-4561-a2b5-d7420f1d8d64`, `4a8e0993-0b0e-49e9-b191-eac96f1d7092`, `11aaf179-9282-49b3-9470-77cddad7da58`, `47ce8029-b076-476e-8542-af68e5ca4ed6`, `0e0f52ed-759d-4b1f-b6d4-f0e1eb9ad4f7`, `99838ad1-478a-47e6-b455-d827d5eb6ba6`, `07409429-dd27-42f6-97f0-c771eb4244e5`, `36a5e527-9d49-477b-a332-8533cdb013e4`, `86aec264-3e41-47e8-bc9b-5b0daafc02ee`, `42d0b94c-4fbf-4d59-a6dd-1b88de95deee`, `374e6540-abf1-4e02-b2ca-8d9f4a3fb41c`, `d477ad39-0810-4bea-804d-d475908d694c`, `7ff9e4ee-8d3f-4013-b10e-e606365492b9`, `cc12ea46-7f93-485e-a9a7-8c4a348cb0d7`, `e9bd40b3-94b9-4837-85a0-212bf0bf30a5`, `f13644d7-24fa-424f-b93e-8b3069d5d770`, `60f96cce-db34-4441-b3ac-a2a72b0099f3`, `5e2dbb27-2516-46e8-91d4-9c6d82bd1ed1`, `7c930e09-ba93-4fa9-b745-6f32920eefe8`, `7badffb6-0682-4977-a719-e181feb6ab0a`, `392097a2-8880-41e8-ad0e-8982f2d2a424`, `e8d12c15-ed88-46fc-b6f5-20f23d310d17`, `37542301-6a9d-4182-a4de-91795396296d`, `35123a42-77e1-4d7c-b3ce-c91f449e18cd`, `eed30f61-a397-4ed1-8c3b-33088178c671`, `5cc8b7bf-0b74-43ad-8570-9a7b64ba372c`, `89eacfab-8dec-402c-80a4-5c65089f0494`, `344b3ece-700b-439b-a4f3-d4e2ccbca886`, `a80e8035-691c-4c61-aa60-50588ad8872a`, `6aff8aa8-1ee1-49d4-b616-e04f6ff54671`, `24c5269d-53fb-4ae7-b6e8-82284b98549a`, `e7f6150f-43d0-488c-b83c-171a5fc47962`, `d0e10147-9d0f-416d-b65f-59213a40ab24`, `f354e737-b36e-45cb-9af5-af6ae97cfa37`, `8f572270-0f98-4db1-b857-dc0e7ffc3499`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `402bccd7-b9f2-4e8f-89c9-c2a9d137c3fa`, `a49a6359-ec18-454c-94eb-f46389dc7859`, `ed89e50f-37dd-4f17-9628-64e232a4b7eb`, `8a6f8462-3b80-46df-9548-6ff50f572b69`, `eef3a8f9-d7ac-40b2-9b78-acccdf6f2a0e`, `0233a862-79ce-44a8-9ea0-12dbbe43479f`, `7397b1ea-8544-42c2-b96d-27a59f782ff6`, `8377447b-b970-4f9a-8396-8d5d0aa23445`, `8c8390e1-4f3e-4833-bc2f-d18cec4f5131`, `e3b45477-c5d3-4481-9437-270ad45a22f5`, `c212da4b-f995-46a7-9264-6bb726431e55`, `bf4f7163-bd74-48e6-ab6f-df23d79797bf`, `e744fffb-8306-4295-bdba-c779cb6f15d8`, `4d1905be-43e1-4cf2-b5ee-eedb4d5e00a9`, `353981af-2886-42ca-b18d-1e36ba2af71b`, `e15881c7-adc2-41ad-ad04-ee01db4586ad`, `51113480-4d1b-4ea6-9ba2-2e732f43c11d`, `507f9414-1ff1-4d9c-84b3-755357f6fd8a`, `c4e4f07b-5080-4da3-a327-ef5529109a2b`, `7aac1ea2-addd-45f8-b959-c3090342eb9d`, `c0f5e234-800a-4046-85bb-c25fe89f8a5e`, `f99cc69d-09f7-4f16-aee5-11afa9d2fa92`, `fe6e6d5d-aa27-4c0c-ba5f-44c2e4970b20`, `90b1dc48-16b6-4db0-9ad5-cfa4d2ff37b2`, `b91e7d3e-4681-4ca8-9fa8-6c4ca1f36dfe`, `0faef79b-31c8-41d2-bb27-bd79d12e5b3f`, `d32685f8-a738-4f2a-a92d-68721cea24b5`, `a25dd5ae-b97d-4e00-8c41-bda4b7fe4535`, `d01e5423-a5c0-4429-a3e3-0a926010d707`, `0f1aa8c9-d910-4ffc-92c3-97f4dc9b7e23`, `9c5ac983-4acd-451f-a2fb-456bdc8cf19b`, `23a72d0f-d898-42f7-8782-3e86e9404602`, `87dee103-4bed-4249-beb8-f9be4c2421b3`, `b23ec750-3f0f-49f5-8e94-ba73ea0d0a74`, `93b17075-f973-4f68-a5e7-c84e8c266e73`, `bc1c80e6-be2d-4ac1-a0b2-f4f2a8c95723`, `247ce6dc-a65b-4f0c-900b-4d607022649f`, `d478b1a3-4a94-457c-8bfa-87ae29060d69`, `d79fc879-70ff-43bc-bd1d-93a92ee377c6`, `562ad535-35c0-4e84-ba03-36ee6b2fcf55`, `dbb96024-10f6-4591-bcf7-2cc9a014a8fc`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `94b39442-6bb8-48d1-93f8-ddee7448f149`, `c9c3b64d-430c-445b-9ee0-a632da967822`, `5ed94e11-fa1d-46d4-8e51-df83fc185de8`, `171fa93d-734c-421b-acdb-3068077ecfb3`, `ab82c7de-04c6-4278-9907-f5bf0ca5dadc`, `5b7641e9-a573-4779-9fed-3c9a7b7e6f0d`, `09c61d2e-029a-4b82-8307-5da96f77f4d0`, `b77be955-5c35-41eb-80aa-fcf2b035c976`, `196e7d80-69c9-4b3b-9c3e-33bac02afbff`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `5828b543-2f65-49a5-9018-e3ee551311d5`, `1f720bc3-6383-4d5c-8da2-0bda33264e28`, `ac782961-5ef9-44eb-b53e-02d88d36685f`, `93550251-c63d-4d18-9387-1b84fb06fc88`, `82f9cbe3-23b5-4bae-9be7-3f2118ebde17`, `a68063fb-e8e5-44dc-bb25-3c77080561fa`, `88941048-f99d-461a-961b-08a603a73903`, `a806e6a8-8665-45e3-a2db-1cdcf7b66aac`, `d51d56da-88ae-4131-8784-70cbda34eb13`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `321244d3-1a91-4c0e-8b70-fa7bc515cbb6`, `53f7acc1-0875-4e60-a5a0-463c89b5b43c`, `e9e90415-657c-4b0f-9720-fab1ce544fb0`, `6583c272-424a-4270-9022-6b59155f9e68`, `6fa0ea31-3db8-437a-b09d-1299b4ab83de`, `7ec2011f-7876-4747-b559-c49314b0c0bf`, `18a8e967-6b78-4a7e-8738-f58ad3ca0425`, `36354b4b-e9e2-4375-867a-323192596063`, `1b005ad1-7158-4de9-94cf-c89937b0d96a`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`, `4d935459-8e4e-4767-ac0c-91d40fffbbcc`, `4ebff656-8d80-4a9c-8e5c-131bdb773181`, `6a52b31b-9254-4778-abca-a415201ffc99`, `3770c75c-76f3-4e83-84f9-7c213792b9a7`, `30b6d691-45eb-4f40-8b8c-142d33a268ff`, `f6ae2e51-9bcd-40e2-b3c1-ee8562de1670`, `bcef71b2-6c6d-452c-ae5c-ef861bffdbee`, `3b180eaa-a18f-489c-8e78-42258920733a`, `2a2718c0-439b-4baf-835d-0e67655f513e`, `5f58b8bb-9243-491f-b93b-49df7220567c`, `3f85a6b3-3d39-4eb3-9257-286046744692`, `f7aca8b4-08e3-4d44-aab9-55de0a8ebc0f`, `5edddc88-b653-414a-a5f1-bba71ffb39e2`, `72679f65-278b-4b04-9485-55d0ddbab03a`, `a7fde877-08d4-4a8b-a66b-cd0ff0a4bc2f`, `3658d18c-a741-4583-9ba9-8fe2944110d6`, `e4870d13-b9be-45db-a1bb-6e40c8a8ae76`, `cf5c39af-5371-46c9-95eb-31cc6d12d906`, `abf5cb39-dc17-4869-81b2-d16a6b04be79`, `27be5b39-4f6d-4484-a5ea-685f8f2284ac`, `88f2ebde-8d16-4276-9ac0-dfa062019459`, `585bfe61-cb3e-4b1a-900d-28596032d41a`, `489547d5-009a-48a1-994b-ee98d900b9b3`, `4eb6ddf8-035f-4daa-9005-716a9572a689`, `f76f19c1-7f76-4585-ba8d-30a9707dc1b8`, `797f1bf3-d58f-4030-8f7f-8e7a292286e6`, `0e776726-2868-47be-b570-0857e54c911f`, `890900bc-ad04-42e0-a0d1-e910691028a9`, `04ae4b2f-8b87-4600-914d-999057644d5d`, `c6b4e4c7-de89-4ba2-b58f-8fffbbce938d`, `9cd3817a-0c40-4f08-85f2-209a23f0dd94`, `f193e5c4-d6fa-4339-bef9-f9030fa61905`, `65f6a259-73fc-42b9-a723-ff52a415093a`, `de2064e9-d7a1-4257-8e25-72f53610fedd`, `44cf7e73-1d4d-453a-a5b9-72ee68e50361`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `839afebb-4530-471b-8d5c-b0667777d78c`, `8c1d37b4-e0a6-47cf-9a83-92a1c72ba66a`, `ce50a6b2-b202-48da-a378-8e994749dd4c`, `7abebc05-dcc3-4825-9683-98575755f607`, `fa17ff9c-bece-4617-88f5-d153b2db7e3e`, `27660b10-aa85-46b6-8f78-89fb0773a97f`, `6358e41a-7b06-4c0d-9d91-1c4bca51720a`, `55661b55-0e48-412f-9741-77596c89bc04`, `7a23e222-5a69-42f7-8bd2-7d932d4c3242`, `cfd602d5-4043-4125-99fc-94950097e784`, `6e28014a-5ed6-436d-8174-77c200c3232f`, `5613e61f-f7d9-4b1e-b13e-1f46950cb348`, `d2b9d1dd-a956-44df-b404-3f21addc2a8a`, `378ab46b-6fd8-4bc5-b363-4311c198ec4e`, `6d4e2e75-e269-4a3a-b3d2-09f868e81a65`, `f6a1c67e-33ce-4a61-be4b-0db93580562f`, `46ecbf46-01c0-472b-baa4-e5d94d813697`, `6a059981-bf75-4b9b-95e3-3c09048514b0`, `9b9872ee-7488-4566-9c98-e2d99466cfe9`, `ed33189a-2104-46ee-9efd-932d513b838b`, `09de64d0-a385-4996-ae7b-c743a8105352`, `5f6e3876-717b-45e3-899c-48e5d5b4ef4d`, `c0343a0c-aa2a-4ab2-957c-e726a3085ba3`, `69465d38-e1d1-408b-b1f9-0548c749b03e`, `4ad87e02-0545-4148-8bc5-dfb452a62476`.
+
+- Retained test context (2026-10-12T03:47:07.427Z): cf_dimensions_7753addc.master_vessel_types canonical master copies; target registered_fixture_context; references `0F441986-EB77-45BB-B5DB-57BCA670D5AD`, `4C3A087F-EC80-4418-99A1-A797483C8441`, `5E1BE183-4A26-4CE5-BB13-8020F5E1D166`, `5924D7A9-7EAC-490C-9023-460560B93B11`, `A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3`, `20583B5E-EEFE-492B-8B03-E134CE89A53C`, `1CA31CEB-CE3E-408A-A346-32BBAB71C040`, `5913A5C3-83A5-4A7E-8305-63A55D8A8F44`, `4C73FF84-FBAC-4261-92F2-2AA9C80EC050`, `31F110C7-FD27-4CF4-80EE-3ECB2F5E07AD`, `925370AF-D31B-4E4B-A3CD-B3AB26C2B6F0`, `52851612-A5A4-4454-AAD1-E9DF26C7C04D`, `BC553604-B1A8-476A-A0F2-6591CE6F1320`, `8f5cf00c-0ec9-46bb-bc11-bcd7af934ab3`, `209eb205-e53d-11f0-b9c6-06f16491c73e`, `20a14fb9-e53d-11f0-b9c6-06f16491c73e`, `20a260a5-e53d-11f0-b9c6-06f16491c73e`, `20a357b0-e53d-11f0-b9c6-06f16491c73e`, `20a770bc-e53d-11f0-b9c6-06f16491c73e`, `ef5283a2-7c19-46f0-ad50-efc4c6eb17ff`, `5ad759bc-fb6a-4651-aba7-9e075e5b6971`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `abf5e999-0c20-4cf4-8fea-b6b8e47d4369`, `001533c1-faf8-493a-9d82-e729d1a2609a`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `c68b931e-9f88-4767-ad94-536b43d7ca39`, `16877b4d-248b-4524-bdd3-68d61628dba3`, `2825d496-6a13-486f-a396-4cbb0a9b286d`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `3b3dc5ea-b636-4c12-9247-9a75ebf27012`, `67e93015-36c0-41e2-b5f4-d7cfdb49bf30`, `a748b860-6c65-401c-938c-71d1aa7f778a`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `71d4a357-8cc1-42cc-988d-65fb1933e5d7`, `b3a5ed6b-bf83-4cd8-828b-47255e5bba24`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `a4f6cf98-8106-4510-b1f5-b3caee83c0c2`, `bb2a6534-c50a-4f54-a90e-88446c584d7b`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `603bfbd1-59a6-4189-a523-72c76c46e609`, `649260fe-93ce-4310-82f5-007d604b32f9`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `237bbf84-a3ce-4566-a7ab-25154bc80ba4`, `fb4caa09-f138-41b3-ba3a-72a76e367f9a`, `862943bb-dde1-42b7-9e35-7072d83d9347`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `692fdfe7-2451-4624-aa86-0dc9f20c7c7c`, `6741c679-95d2-4f45-9078-3b774d0059d0`, `6d4e2e75-e269-4a3a-b3d2-09f868e81a65`, `03e2f8fa-dd38-4bec-83da-30f7e900efe8`, `3d68e244-15be-4258-a9cb-a2347a29885f`, `4ad87e02-0545-4148-8bc5-dfb452a62476`, `07f22f7e-2bcd-4aca-9686-be146d9cadc6`.
+
+- Retained test context (2026-10-12T03:47:07.450Z): cf_dimensions_7753addc.master_nationalities canonical master copies; target registered_fixture_context; references `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `b9ce5555-60b0-11ec-a42e-507b9da1cbd6`, `b9cff77c-60b0-11ec-a42e-507b9da1cbd6`, `b9d181d7-60b0-11ec-a42e-507b9da1cbd6`, `b9d34694-60b0-11ec-a42e-507b9da1cbd6`, `b9d53159-60b0-11ec-a42e-507b9da1cbd6`, `b9d7240f-60b0-11ec-a42e-507b9da1cbd6`, `b9d8ac37-60b0-11ec-a42e-507b9da1cbd6`, `b9da270a-60b0-11ec-a42e-507b9da1cbd6`, `b9dbafa2-60b0-11ec-a42e-507b9da1cbd6`, `b9dd63e9-60b0-11ec-a42e-507b9da1cbd6`, `b9df5040-60b0-11ec-a42e-507b9da1cbd6`, `b9e0c088-60b0-11ec-a42e-507b9da1cbd6`, `b9e22c63-60b0-11ec-a42e-507b9da1cbd6`, `b9e3a60f-60b0-11ec-a42e-507b9da1cbd6`, `b9e534db-60b0-11ec-a42e-507b9da1cbd6`, `b9e6fb72-60b0-11ec-a42e-507b9da1cbd6`, `b9e8a0eb-60b0-11ec-a42e-507b9da1cbd6`, `b9ea10e2-60b0-11ec-a42e-507b9da1cbd6`, `b9ebb2ec-60b0-11ec-a42e-507b9da1cbd6`, `b9ed1b93-60b0-11ec-a42e-507b9da1cbd6`, `b9ee65c6-60b0-11ec-a42e-507b9da1cbd6`, `b9efad95-60b0-11ec-a42e-507b9da1cbd6`, `b9f0fa40-60b0-11ec-a42e-507b9da1cbd6`, `b9f298ba-60b0-11ec-a42e-507b9da1cbd6`, `b9f416cd-60b0-11ec-a42e-507b9da1cbd6`, `b9f57b04-60b0-11ec-a42e-507b9da1cbd6`, `b9f70758-60b0-11ec-a42e-507b9da1cbd6`, `b9f85d35-60b0-11ec-a42e-507b9da1cbd6`, `b9f9c06a-60b0-11ec-a42e-507b9da1cbd6`, `b9fb1b7b-60b0-11ec-a42e-507b9da1cbd6`, `b9fc7dc1-60b0-11ec-a42e-507b9da1cbd6`, `b9fddd25-60b0-11ec-a42e-507b9da1cbd6`, `b9ff4253-60b0-11ec-a42e-507b9da1cbd6`, `ba00d79f-60b0-11ec-a42e-507b9da1cbd6`, `ba033808-60b0-11ec-a42e-507b9da1cbd6`, `ba04c41d-60b0-11ec-a42e-507b9da1cbd6`, `ba064562-60b0-11ec-a42e-507b9da1cbd6`, `ba0827d1-60b0-11ec-a42e-507b9da1cbd6`, `ba09f145-60b0-11ec-a42e-507b9da1cbd6`, `ba0b5a9f-60b0-11ec-a42e-507b9da1cbd6`, `ba0ce953-60b0-11ec-a42e-507b9da1cbd6`, `ba0e5367-60b0-11ec-a42e-507b9da1cbd6`, `ba0fcc45-60b0-11ec-a42e-507b9da1cbd6`, `ba119014-60b0-11ec-a42e-507b9da1cbd6`, `ba12f05f-60b0-11ec-a42e-507b9da1cbd6`, `ba14510c-60b0-11ec-a42e-507b9da1cbd6`, `ba15b76a-60b0-11ec-a42e-507b9da1cbd6`, `ba173569-60b0-11ec-a42e-507b9da1cbd6`, `ba18a3f9-60b0-11ec-a42e-507b9da1cbd6`, `ba1a2ba0-60b0-11ec-a42e-507b9da1cbd6`, `ba1bc198-60b0-11ec-a42e-507b9da1cbd6`, `ba1e3a6c-60b0-11ec-a42e-507b9da1cbd6`, `ba1faecf-60b0-11ec-a42e-507b9da1cbd6`, `ba21e441-60b0-11ec-a42e-507b9da1cbd6`, `ba23e744-60b0-11ec-a42e-507b9da1cbd6`, `ba2615aa-60b0-11ec-a42e-507b9da1cbd6`, `ba27d855-60b0-11ec-a42e-507b9da1cbd6`, `ba29caed-60b0-11ec-a42e-507b9da1cbd6`, `ba2c2a5a-60b0-11ec-a42e-507b9da1cbd6`, `ba320c6f-60b0-11ec-a42e-507b9da1cbd6`, `ba394c50-60b0-11ec-a42e-507b9da1cbd6`, `ba3d066d-60b0-11ec-a42e-507b9da1cbd6`, `ba41b255-60b0-11ec-a42e-507b9da1cbd6`, `ba48163a-60b0-11ec-a42e-507b9da1cbd6`, `ba4e0c03-60b0-11ec-a42e-507b9da1cbd6`, `ba53687b-60b0-11ec-a42e-507b9da1cbd6`, `ba56f032-60b0-11ec-a42e-507b9da1cbd6`, `ba5e2c52-60b0-11ec-a42e-507b9da1cbd6`, `ba5ffc7f-60b0-11ec-a42e-507b9da1cbd6`, `ba61aabb-60b0-11ec-a42e-507b9da1cbd6`, `ba6371c6-60b0-11ec-a42e-507b9da1cbd6`, `ba659d69-60b0-11ec-a42e-507b9da1cbd6`, `ba68798b-60b0-11ec-a42e-507b9da1cbd6`, `ba6a7066-60b0-11ec-a42e-507b9da1cbd6`, `ba6c8446-60b0-11ec-a42e-507b9da1cbd6`, `ba6dfd7b-60b0-11ec-a42e-507b9da1cbd6`, `ba6fcd65-60b0-11ec-a42e-507b9da1cbd6`, `ba71ba63-60b0-11ec-a42e-507b9da1cbd6`, `ba73c922-60b0-11ec-a42e-507b9da1cbd6`, `ba75adff-60b0-11ec-a42e-507b9da1cbd6`, `ba7722ae-60b0-11ec-a42e-507b9da1cbd6`, `ba7a38a7-60b0-11ec-a42e-507b9da1cbd6`, `ba7c2dd9-60b0-11ec-a42e-507b9da1cbd6`, `ba7f41bd-60b0-11ec-a42e-507b9da1cbd6`, `ba80a616-60b0-11ec-a42e-507b9da1cbd6`, `ba82b8b7-60b0-11ec-a42e-507b9da1cbd6`, `ba84707c-60b0-11ec-a42e-507b9da1cbd6`, `ba86223f-60b0-11ec-a42e-507b9da1cbd6`, `ba879118-60b0-11ec-a42e-507b9da1cbd6`, `ba8a5df0-60b0-11ec-a42e-507b9da1cbd6`, `ba8c74e4-60b0-11ec-a42e-507b9da1cbd6`, `ba8e9a38-60b0-11ec-a42e-507b9da1cbd6`, `ba9063eb-60b0-11ec-a42e-507b9da1cbd6`, `ba92090f-60b0-11ec-a42e-507b9da1cbd6`, `ba9427a0-60b0-11ec-a42e-507b9da1cbd6`, `ba95a08f-60b0-11ec-a42e-507b9da1cbd6`, `ba971218-60b0-11ec-a42e-507b9da1cbd6`, `ba9932b0-60b0-11ec-a42e-507b9da1cbd6`, `ba9b5287-60b0-11ec-a42e-507b9da1cbd6`, `ba9cddf2-60b0-11ec-a42e-507b9da1cbd6`, `ba9e817d-60b0-11ec-a42e-507b9da1cbd6`, `baa0079d-60b0-11ec-a42e-507b9da1cbd6`, `baa18491-60b0-11ec-a42e-507b9da1cbd6`, `baa35517-60b0-11ec-a42e-507b9da1cbd6`, `baa4edd1-60b0-11ec-a42e-507b9da1cbd6`, `baa6b2f4-60b0-11ec-a42e-507b9da1cbd6`, `baa839fd-60b0-11ec-a42e-507b9da1cbd6`, `baa9fe0c-60b0-11ec-a42e-507b9da1cbd6`, `baab9a9a-60b0-11ec-a42e-507b9da1cbd6`, `baad0909-60b0-11ec-a42e-507b9da1cbd6`, `baaeada3-60b0-11ec-a42e-507b9da1cbd6`, `bab01a1a-60b0-11ec-a42e-507b9da1cbd6`, `bab17be2-60b0-11ec-a42e-507b9da1cbd6`, `bab46b19-60b0-11ec-a42e-507b9da1cbd6`, `bab5bf19-60b0-11ec-a42e-507b9da1cbd6`, `bab713c2-60b0-11ec-a42e-507b9da1cbd6`, `bab8fc19-60b0-11ec-a42e-507b9da1cbd6`, `baba5868-60b0-11ec-a42e-507b9da1cbd6`, `babbf402-60b0-11ec-a42e-507b9da1cbd6`, `babd81f5-60b0-11ec-a42e-507b9da1cbd6`, `babf7ab7-60b0-11ec-a42e-507b9da1cbd6`, `bac16ef8-60b0-11ec-a42e-507b9da1cbd6`, `bac2d60f-60b0-11ec-a42e-507b9da1cbd6`, `bac43e80-60b0-11ec-a42e-507b9da1cbd6`, `bac59f03-60b0-11ec-a42e-507b9da1cbd6`, `bac99617-60b0-11ec-a42e-507b9da1cbd6`, `bad3f660-60b0-11ec-a42e-507b9da1cbd6`, `bad563c8-60b0-11ec-a42e-507b9da1cbd6`, `bad70983-60b0-11ec-a42e-507b9da1cbd6`, `bad8e875-60b0-11ec-a42e-507b9da1cbd6`, `bada71c0-60b0-11ec-a42e-507b9da1cbd6`, `badbd33e-60b0-11ec-a42e-507b9da1cbd6`, `badd8fd2-60b0-11ec-a42e-507b9da1cbd6`, `badf106e-60b0-11ec-a42e-507b9da1cbd6`, `bae08d44-60b0-11ec-a42e-507b9da1cbd6`, `bae209d5-60b0-11ec-a42e-507b9da1cbd6`, `bae373fa-60b0-11ec-a42e-507b9da1cbd6`, `bae6c7fe-60b0-11ec-a42e-507b9da1cbd6`, `bae82e91-60b0-11ec-a42e-507b9da1cbd6`, `baeaafc8-60b0-11ec-a42e-507b9da1cbd6`, `baec24ce-60b0-11ec-a42e-507b9da1cbd6`, `baedab75-60b0-11ec-a42e-507b9da1cbd6`, `baef4a12-60b0-11ec-a42e-507b9da1cbd6`, `baf1173b-60b0-11ec-a42e-507b9da1cbd6`, `baf291a1-60b0-11ec-a42e-507b9da1cbd6`, `baf44eb8-60b0-11ec-a42e-507b9da1cbd6`, `baf5cc3b-60b0-11ec-a42e-507b9da1cbd6`, `baf79fb0-60b0-11ec-a42e-507b9da1cbd6`, `baf90a78-60b0-11ec-a42e-507b9da1cbd6`, `bafaedc6-60b0-11ec-a42e-507b9da1cbd6`, `bafc4b2e-60b0-11ec-a42e-507b9da1cbd6`, `bafdc75c-60b0-11ec-a42e-507b9da1cbd6`, `baff648d-60b0-11ec-a42e-507b9da1cbd6`, `bb017dce-60b0-11ec-a42e-507b9da1cbd6`, `bb02f659-60b0-11ec-a42e-507b9da1cbd6`, `bb044685-60b0-11ec-a42e-507b9da1cbd6`, `bb059cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb074393-60b0-11ec-a42e-507b9da1cbd6`, `bb08cad0-60b0-11ec-a42e-507b9da1cbd6`, `bb0a4263-60b0-11ec-a42e-507b9da1cbd6`, `bb0ba33d-60b0-11ec-a42e-507b9da1cbd6`, `bb0cf9a7-60b0-11ec-a42e-507b9da1cbd6`, `bb0eabd4-60b0-11ec-a42e-507b9da1cbd6`, `bb10413e-60b0-11ec-a42e-507b9da1cbd6`, `bb1277e9-60b0-11ec-a42e-507b9da1cbd6`, `bb13d80b-60b0-11ec-a42e-507b9da1cbd6`, `bb152d05-60b0-11ec-a42e-507b9da1cbd6`, `bb16ed88-60b0-11ec-a42e-507b9da1cbd6`, `bb185d74-60b0-11ec-a42e-507b9da1cbd6`, `bb19c801-60b0-11ec-a42e-507b9da1cbd6`, `bb1b521a-60b0-11ec-a42e-507b9da1cbd6`, `bb1cba75-60b0-11ec-a42e-507b9da1cbd6`, `bb1f5e51-60b0-11ec-a42e-507b9da1cbd6`, `bb20f2dc-60b0-11ec-a42e-507b9da1cbd6`, `bb230520-60b0-11ec-a42e-507b9da1cbd6`, `bb248d3a-60b0-11ec-a42e-507b9da1cbd6`, `bb2613ab-60b0-11ec-a42e-507b9da1cbd6`, `bb279d6a-60b0-11ec-a42e-507b9da1cbd6`, `bb291c46-60b0-11ec-a42e-507b9da1cbd6`, `bb2a7446-60b0-11ec-a42e-507b9da1cbd6`, `bb2bccfb-60b0-11ec-a42e-507b9da1cbd6`, `bb2d1f36-60b0-11ec-a42e-507b9da1cbd6`, `bb2ec1df-60b0-11ec-a42e-507b9da1cbd6`, `bb30220b-60b0-11ec-a42e-507b9da1cbd6`, `bb31a100-60b0-11ec-a42e-507b9da1cbd6`, `bb356479-60b0-11ec-a42e-507b9da1cbd6`, `bb373e8f-60b0-11ec-a42e-507b9da1cbd6`, `bb388935-60b0-11ec-a42e-507b9da1cbd6`, `bb39fdd0-60b0-11ec-a42e-507b9da1cbd6`, `bb3b5886-60b0-11ec-a42e-507b9da1cbd6`, `bb3d3ad0-60b0-11ec-a42e-507b9da1cbd6`, `bb3e9ce6-60b0-11ec-a42e-507b9da1cbd6`, `bb405087-60b0-11ec-a42e-507b9da1cbd6`, `bb425702-60b0-11ec-a42e-507b9da1cbd6`, `bb44916a-60b0-11ec-a42e-507b9da1cbd6`, `bb466a38-60b0-11ec-a42e-507b9da1cbd6`, `bb47c221-60b0-11ec-a42e-507b9da1cbd6`, `bb492dab-60b0-11ec-a42e-507b9da1cbd6`, `bb4a7a42-60b0-11ec-a42e-507b9da1cbd6`, `bb4c17a0-60b0-11ec-a42e-507b9da1cbd6`, `bb4d7fd5-60b0-11ec-a42e-507b9da1cbd6`, `bb4f103c-60b0-11ec-a42e-507b9da1cbd6`, `bb50c9b7-60b0-11ec-a42e-507b9da1cbd6`, `bb52dcc7-60b0-11ec-a42e-507b9da1cbd6`, `bb54a221-60b0-11ec-a42e-507b9da1cbd6`, `bb563c7c-60b0-11ec-a42e-507b9da1cbd6`, `bb58a079-60b0-11ec-a42e-507b9da1cbd6`, `bb5a20f5-60b0-11ec-a42e-507b9da1cbd6`, `bb5bf870-60b0-11ec-a42e-507b9da1cbd6`, `bb5d6cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb5f5485-60b0-11ec-a42e-507b9da1cbd6`, `bb62884e-60b0-11ec-a42e-507b9da1cbd6`, `bb6720e1-60b0-11ec-a42e-507b9da1cbd6`, `bb6ae150-60b0-11ec-a42e-507b9da1cbd6`, `bb6ded72-60b0-11ec-a42e-507b9da1cbd6`, `bb6f4eb8-60b0-11ec-a42e-507b9da1cbd6`, `bb710078-60b0-11ec-a42e-507b9da1cbd6`, `bb72935c-60b0-11ec-a42e-507b9da1cbd6`, `bb74562b-60b0-11ec-a42e-507b9da1cbd6`, `bb763740-60b0-11ec-a42e-507b9da1cbd6`, `bb77ba3f-60b0-11ec-a42e-507b9da1cbd6`, `bb792548-60b0-11ec-a42e-507b9da1cbd6`, `bb7a9daf-60b0-11ec-a42e-507b9da1cbd6`, `bb7c001f-60b0-11ec-a42e-507b9da1cbd6`, `bb7d55bb-60b0-11ec-a42e-507b9da1cbd6`, `bb7ea95c-60b0-11ec-a42e-507b9da1cbd6`, `bb80e0e5-60b0-11ec-a42e-507b9da1cbd6`, `bb823672-60b0-11ec-a42e-507b9da1cbd6`, `bb8387a6-60b0-11ec-a42e-507b9da1cbd6`, `bb852d1f-60b0-11ec-a42e-507b9da1cbd6`, `bb86aa3d-60b0-11ec-a42e-507b9da1cbd6`, `bb8833b6-60b0-11ec-a42e-507b9da1cbd6`, `bb89cb35-60b0-11ec-a42e-507b9da1cbd6`, `bb8c25b2-60b0-11ec-a42e-507b9da1cbd6`, `bb8e0fa0-60b0-11ec-a42e-507b9da1cbd6`, `bb903e7b-60b0-11ec-a42e-507b9da1cbd6`, `bb91bd05-60b0-11ec-a42e-507b9da1cbd6`, `bb9345a5-60b0-11ec-a42e-507b9da1cbd6`, `bb94b38d-60b0-11ec-a42e-507b9da1cbd6`, `bb962045-60b0-11ec-a42e-507b9da1cbd6`, `bb9892c0-60b0-11ec-a42e-507b9da1cbd6`, `bb9a103d-60b0-11ec-a42e-507b9da1cbd6`.
+
+- Retained test context (2026-10-12T03:47:07.467Z): cf_dimensions_7753addc.master_manning_agents canonical master copies; target registered_fixture_context; references `58210d45-1369-4884-b99c-68f13b0bcc96`, `60e19003-0327-4106-9a6f-8ef7101e6806`, `e7c088d0-617c-4fee-8f65-1d7e65f13de3`.
+
+- Retained test context (2026-10-12T03:47:07.486Z): cf_dimensions_7753addc.master_crew_pools canonical master copies; target registered_fixture_context; references `c14e9567-c3cb-4a8b-aeaf-a5122c4dd462`, `7ac5ad96-b686-4f54-836a-e3a3210b8814`, `29753593-5bbe-46da-a27d-c7bb1e586d9f`.
+
+- Retained test context (2026-10-12T03:47:07.507Z): cf_dimensions_7753addc.master_fleet_groups canonical master copies; target registered_fixture_context; references `8f303a7c-96de-490b-bea9-e3de5a58e354`, `d971d113-dc53-4756-81a4-e47b816f743c`, `ef419235-5061-4b39-ab30-cffee5112fd2`.
+
+- Retained test context (2026-10-12T03:47:07.527Z): cf_dimensions_7753addc.master_additional_groups canonical master copies; target registered_fixture_context; references `0015f133-5282-4652-8f2e-c5bd80c30926`, `15de419c-a1ed-4e8a-9ad5-82f8c45a178f`, `18212fb3-6f8a-48d2-b03a-62a388719895`.
+
+- Retained test context (2026-10-12T03:47:07.549Z): canonical master copies cf_dimensions_7753addc; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-12T03:47:08.859Z): requirement harness roots; target registered_fixture_context; references `bf61f761-9640-45d8-98d0-35a16a734cc1`, `e1111edb-288a-40f0-bf9c-2f8447da1b10`, `d2dacb15-8c99-42ba-8a9f-76f6d56099e3`, `317412da-6076-49a5-9184-41a3dc4b44e5`.
+
+- Retained test context (2026-10-12T03:47:08.981Z): requirement harness pinned content; target registered_fixture_context; references `9496e8a9-b60f-4044-871e-dda2953fd9af`, `ba5dc11c-3891-4ad7-aac5-24bb01d046d1`, `05cacbdb-68c2-493a-a231-7a91baf8a24d`, `b74e236f-25eb-459a-a6e3-9cec6f8a04ca`.
+
+- Retained test context (2026-10-12T03:47:09.049Z): requirement harness roots; target registered_fixture_context; references `e0ad6b7e-1296-4a9e-8e63-a1a7ac504885`, `3d8b226e-3b94-4e6c-9c01-008447683dea`, `3e95c4f1-2134-491d-919f-a1f9b4fc559d`, `71925f3d-9988-4682-ad5c-727c764a64a2`.
+
+- Retained test context (2026-10-12T03:47:09.097Z): requirement harness pinned content; target registered_fixture_context; references `658ee811-dd80-4e93-a639-65b312a0400b`, `3805ffad-1396-490a-9f0a-c2863eb5fb32`, `033da3c9-f024-452e-b5ad-d8798df994d2`, `9ed10861-0635-4d4a-a345-b78dd5f45f64`.
+
+- Retained test context (2026-10-12T03:47:09.199Z): requirement harness complete ledger graph; target registered_fixture_context; references `f4eb769d-abf4-4d55-817a-4172b3377cb5`, `e1111edb-288a-40f0-bf9c-2f8447da1b10`, `80658c4e-0531-43bc-b3ac-b310cd931ddc`, `9496e8a9-b60f-4044-871e-dda2953fd9af`, `641e2089-bfa1-4634-b49d-13788dbaf918`, `d2dacb15-8c99-42ba-8a9f-76f6d56099e3`, `ebd3e301-6265-4922-9eea-683107aad9f8`.
+
+- Retained test context (2026-10-12T03:47:09.202Z): required start obligation; target registered_fixture_context; references `641e2089-bfa1-4634-b49d-13788dbaf918`.
+
+- Retained test context (2026-10-12T03:47:09.233Z): newer release for old-pin start; target registered_fixture_context; references `4609863b-8a1e-4b14-b3f0-9b56a8974667`.
+
+- Retained test context (2026-10-12T03:47:09.307Z): manual without stage check; target registered_fixture_context; references `3add6288-76f8-4641-bbe3-8905ce9ae962`.
+
+- Retained test context (2026-10-12T03:47:09.399Z): required old-pin form; target registered_fixture_context; references `d0dc03d4-ab41-46b4-8f56-d39c1f95b5e6`.
+
+- Retained test context (2026-10-12T03:47:13.949Z): dimension release definition; target registered_fixture_context; references `2d23e58c-697f-41c4-87fe-57c2bff8740f`, `c84ad317-d991-42d5-ae24-710a86186396`.
+
+- Retained test context (2026-10-12T03:47:14.036Z): dimension release draft content; target registered_fixture_context; references `6cc72161-4b61-4a83-b2c1-ce6f60c41c16`, `4dcc6817-46de-4502-b8a6-550b80e4460f`, `f7a27635-d43a-4e22-8881-3a86a679574c`, `33272826-af4e-4808-a49b-bfc4732e7b5c`.
+
+- Retained test context (2026-10-12T03:47:14.074Z): dimension release condition data; target registered_fixture_context; references `0c7db85a-62ef-4398-86e3-45632739d238`, `ee8ce980-11d2-4a5f-9975-854f65686d19`, `2987e402-3951-4918-8a15-50e733b31d69`, `f81a2198-8cc4-4322-a010-7184a6d750fe`.
+
+- Retained test context (2026-10-12T03:47:14.230Z): dimension release copied draft; target registered_fixture_context; references `bb8f2428-42b2-409b-b6e8-fff5f2c0237e`, `69bded40-eaab-434b-b148-344b574c573a`, `15d7b2cd-19ac-4a04-a8d7-59d2d541fc4c`, `773c836c-698d-4b39-8e82-4d8ba5f01f40`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:47:19.665Z): requirement harness roots; target registered_fixture_context; references `508068a9-6896-4875-aa60-f5d679e64eb5`, `bddcdde1-d85e-4404-a1e3-75fdddbc77fc`, `47deba9c-aabe-483f-a629-26f0c2b06add`, `0e5b30ef-1bb1-424d-a1e7-d9b83d8b87f6`.
+
+- Retained test context (2026-10-12T03:47:19.778Z): requirement harness pinned content; target registered_fixture_context; references `4cc81be8-5b70-4899-9459-a00149f27ca2`, `b31077b1-5b14-4693-b737-8d271c4785aa`, `3b860432-d669-42df-be3c-dba34a5c4810`, `d94fae6b-0482-4014-abaf-882264d6cb4c`.
+
+- Retained test context (2026-10-12T03:47:19.873Z): requirement harness complete ledger graph; target registered_fixture_context; references `a7ef3bc7-c477-45ae-81c3-0b8e7c17928f`, `bddcdde1-d85e-4404-a1e3-75fdddbc77fc`, `8f496ae9-a0e2-4cfa-9d02-a942935a4b11`.
+
+- Retained test context (2026-10-12T03:47:19.874Z): empty requirement run; target registered_fixture_context; references `a7ef3bc7-c477-45ae-81c3-0b8e7c17928f`.
+
+- Retained test context (2026-10-12T03:47:19.911Z): requirement harness complete ledger graph; target registered_fixture_context; references `a7ef3bc7-c477-45ae-81c3-0b8e7c17928f`, `bddcdde1-d85e-4404-a1e3-75fdddbc77fc`, `8f496ae9-a0e2-4cfa-9d02-a942935a4b11`, `33f2d595-5c15-4d65-be39-e77d2683c0a1`, `4cc81be8-5b70-4899-9459-a00149f27ca2`, `bacc9b9f-dc3f-40b2-9cc3-05b7dbc8e208`, `47deba9c-aabe-483f-a629-26f0c2b06add`, `74918082-8922-42d9-9ddb-857a432b867a`.
+
+- Retained test context (2026-10-12T03:47:19.914Z): pinned requirement and resolution; target registered_fixture_context; references `33f2d595-5c15-4d65-be39-e77d2683c0a1`, `bacc9b9f-dc3f-40b2-9cc3-05b7dbc8e208`.
+
+- Retained test context (2026-10-12T03:47:19.928Z): requirement harness complete ledger graph; target registered_fixture_context; references `a7ef3bc7-c477-45ae-81c3-0b8e7c17928f`, `bddcdde1-d85e-4404-a1e3-75fdddbc77fc`, `8f496ae9-a0e2-4cfa-9d02-a942935a4b11`, `33f2d595-5c15-4d65-be39-e77d2683c0a1`, `4cc81be8-5b70-4899-9459-a00149f27ca2`, `76eceb03-f22d-4d52-af87-c16c449decaa`, `bacc9b9f-dc3f-40b2-9cc3-05b7dbc8e208`, `47deba9c-aabe-483f-a629-26f0c2b06add`, `74918082-8922-42d9-9ddb-857a432b867a`.
+
+- Retained test context (2026-10-12T03:47:20.864Z): verified-history/cf_verified_history_e2ec63e4; target registered_fixture_context; references `d543c362-6bd6-447e-91a1-593315b83b8f`, `37414631-ac35-44f7-bfdc-b5ca9294e2ef`, `c0e74837-5614-41c3-aaea-0a2f86a77d14`, `c6ed5099-bd33-4b4f-92d9-75fecf29428a`, `1f047942-3964-4487-bf11-e3cdfadeebac`, `0b7a5990-6b2c-4590-bbd9-df05d9f46637`, `a582fc87-6bb6-4363-8725-b6cc83e15eab`, `be2fcead-b13f-4633-bdea-1eb1191cd98e`, `aa4be0f3-e669-4abb-8794-8303260be761`, `9c0185d8-9f17-4c67-8460-6f9ca1b434d4`.
+
+- Retained test context (2026-10-12T03:49:46.686Z): tests/integration/api/obsolete-crew-assignment-paths.test.ts; target vessel_planning_v2; references `4647fc20-f982-46e9-9aa6-d6c62f5929be`.
+
+- Retained test context (2026-10-12T03:49:46.688Z): tests/integration/api/obsolete-crew-assignment-paths.test.ts; target crew_members_v2; references `95152c13-14ea-4a4c-ba13-bf7780b40dc4`.
+
+- Retained test context (2026-10-12T03:49:49.554Z): tests/integration/api/ship-reference-reads.test.ts; target acc_allotments_v2; references `06d5f299-9364-4509-b6c6-2e420acbd54f`, `0d42d7f0-a0f6-4b32-9ff4-2d690a8b966d`, `ea468029-9e56-435c-bce2-acbb68fe7a8b`.
+
+- Retained test context (2026-10-12T03:49:49.555Z): tests/integration/api/ship-reference-reads.test.ts; target acc_engagements_v2; references `6e95b941-8e52-4fe2-8249-9093ddd86624`, `b399dfea-c3ad-4d13-b1c3-7b0d1c7d35a1`.
+
+- Retained test context (2026-10-12T03:49:49.555Z): tests/integration/api/ship-reference-reads.test.ts; target acc_wage_scale_lines_v2; references `ea245bfc-c447-4d14-ab40-6590972881d3`, `c3636f64-8527-493c-b693-23c2fb1f7dad`.
+
+- Retained test context (2026-10-12T03:49:49.556Z): tests/integration/api/ship-reference-reads.test.ts; target acc_wage_scales_v2; references `ea245bfc-c447-4d14-ab40-6590972881d3`, `c3636f64-8527-493c-b693-23c2fb1f7dad`.
+
+- Retained test context (2026-10-12T03:49:49.556Z): tests/integration/api/ship-reference-reads.test.ts; target acc_pay_elements_v2; references `ce89be2a-4044-400b-8eb0-5fd3147030e5`, `5cacada0-6e40-464f-b22b-7ced29a27d09`, `831140c7-4901-441f-8e78-9ac97f19f9c5`, `1129deed-46d9-4ef1-992a-4e8c6bd26d13`, `feeca6ae-9969-4c80-9603-a914a16e3741`, `ba5d570c-44e6-4fc5-84cb-6fb0c1fe3b63`.
+
+- Retained test context (2026-10-12T03:49:53.953Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_ledger_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.954Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_calculation_runs_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.955Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_monthly_transactions_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.955Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_ctm_lines_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.956Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_ctm_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.956Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_portage_bills_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.957Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_settlements_v2; references `4c9c8090-db02-4710-950f-d3c133345020`.
+
+- Retained test context (2026-10-12T03:49:53.957Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_allotments_v2; references `4e8edff3-58cc-439d-afb7-34f52f0782d6`, `e44ab9a8-ee90-4e37-9c9d-0115450b2305`, `e973442f-26b8-4bb1-ad03-2cf35e57775a`, `b7dbdae0-8d24-4ff3-98dd-6fb789b8f34a`.
+
+- Retained test context (2026-10-12T03:49:53.958Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_engagements_v2; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.958Z): tests/integration/api/vessel-initiated-workflow.test.ts; target crew_assignments; references `86d089f1-dab6-4c5c-80d7-b59645755261`, `7ca16e86-4fdf-49b4-8379-d4bc201b7518`.
+
+- Retained test context (2026-10-12T03:49:53.959Z): tests/integration/api/vessel-initiated-workflow.test.ts; target crew_members_v2; references `4e8edff3-58cc-439d-afb7-34f52f0782d6`, `e44ab9a8-ee90-4e37-9c9d-0115450b2305`, `e973442f-26b8-4bb1-ad03-2cf35e57775a`, `b7dbdae0-8d24-4ff3-98dd-6fb789b8f34a`.
+
+- Retained test context (2026-10-12T03:49:53.959Z): tests/integration/api/vessel-initiated-workflow.test.ts; target adm_company_ranks_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:53.960Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_scale_lines_v2; references `543b00d4-f233-4ed5-8f55-270eacde4088`.
+
+- Retained test context (2026-10-12T03:49:53.960Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_scales_v2; references `543b00d4-f233-4ed5-8f55-270eacde4088`.
+
+- Retained test context (2026-10-12T03:49:53.961Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:53.961Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_vessels; references `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`.
+
+- Retained test context (2026-10-12T03:49:53.961Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_vessel_types; references `9d67e5f4-244e-488f-a2b9-4d2fe6f580d9`.
+
+- Retained test context (2026-10-12T03:49:53.962Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_pay_elements_v2; references `98d54679-049b-4243-984e-8bc205e862fc`, `d57357a9-0fd9-4c8a-ae96-c14b4084a43c`.
+
+- Retained test context (2026-10-12T03:49:53.962Z): tests/integration/api/vessel-initiated-workflow.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:55.538Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:55.539Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:55.540Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:55.540Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_ledger_v2; references `d8d2358d-ee8e-45f1-9fff-f9e26511bd0c`.
+
+- Retained test context (2026-10-12T03:49:55.541Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_calculation_runs_v2; references `02720de6-4e78-4c73-8e9e-51b7e6742e20`, `29a38d0b-fb8e-4bea-afd6-83a035e7179d`, `1aeeac0f-c17a-4d53-9d85-ad95b8d9b1cd`, `35503f8a-20be-4e53-91d9-767041ce16a5`.
+
+- Retained test context (2026-10-12T03:49:55.541Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:55.541Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_allotments_v2; references `fbf49544-2006-4d5a-a91b-1558231c2936`.
+
+- Retained test context (2026-10-12T03:49:55.542Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_engagements_v2; references `d8d2358d-ee8e-45f1-9fff-f9e26511bd0c`.
+
+- Retained test context (2026-10-12T03:49:55.542Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_scale_lines_v2; references `a0bc1088-9843-4294-96e4-5fd0d0b1e6d2`.
+
+- Retained test context (2026-10-12T03:49:55.542Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_scales_v2; references `a0bc1088-9843-4294-96e4-5fd0d0b1e6d2`.
+
+- Retained test context (2026-10-12T03:49:55.543Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_pay_elements_v2; references `f2b80c32-3880-4f83-a2b9-528184eedf32`, `119154df-dda0-462f-98cc-6b2720e9f174`, `743d433b-2106-486b-8775-42326d61e556`, `8ec0dc13-e8d9-40fa-ba71-7b276b5d28a9`, `ba5666d3-2b3d-4eb7-b612-e13ad1d55b2c`.
+
+- Retained test context (2026-10-12T03:49:57.369Z): tests/integration/api/wage-engine.test.ts; target acc_settlement_approvals_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.371Z): tests/integration/api/wage-engine.test.ts; target acc_settlement_adjustments_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.371Z): tests/integration/api/wage-engine.test.ts; target acc_settlements_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.372Z): tests/integration/api/wage-engine.test.ts; target crew_assignments; references `04354231-f212-4c20-b426-d4391edce637`.
+
+- Retained test context (2026-10-12T03:49:57.372Z): tests/integration/api/wage-engine.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:57.373Z): tests/integration/api/wage-engine.test.ts; target acc_wage_ledger_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.374Z): tests/integration/api/wage-engine.test.ts; target acc_calculation_runs_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.375Z): tests/integration/api/wage-engine.test.ts; target acc_portage_bills_v2; references `5e068b5e-acaf-4e3d-aae3-94f358484b11`.
+
+- Retained test context (2026-10-12T03:49:57.376Z): tests/integration/api/wage-engine.test.ts; target acc_engagement_pay_elements_v2; references `24b31786-c7b2-4027-a877-8ff10836c112`, `95a0e3b4-3ac6-4b2a-9ce3-e7fe54026406`, `6ede1972-16bc-465e-b6ea-893ebe4e9a39`, `674b5be8-1d7f-4fac-b5b9-50f9bae3da1a`, `90357466-68e8-4d83-a0c4-2641c1018a24`.
+
+- Retained test context (2026-10-12T03:49:57.377Z): tests/integration/api/wage-engine.test.ts; target acc_monthly_transactions_v2; references `1cc642af-f021-4b6b-98db-9dafe2306120`, `dcc14195-e533-4b7d-8113-b22212063a3f`, `f6bec181-904c-4763-8b00-859319e19989`, `858a0dc2-57b2-419d-a2af-7bbce01891e7`.
+
+- Retained test context (2026-10-12T03:49:57.377Z): tests/integration/api/wage-engine.test.ts; target acc_allotments_v2; references `1128bcfb-c8b3-4a61-acb7-1dd025ed2f65`.
+
+- Retained test context (2026-10-12T03:49:57.378Z): tests/integration/api/wage-engine.test.ts; target acc_advances_v2; references `cedd565e-b8e5-4bcc-a7fd-a88c9ece2ff2`.
+
+- Retained test context (2026-10-12T03:49:57.378Z): tests/integration/api/wage-engine.test.ts; target acc_bond_items_v2; references `5ffa6ea1-e712-4fbc-938b-c3ef02f15c16`.
+
+- Retained test context (2026-10-12T03:49:57.379Z): tests/integration/api/wage-engine.test.ts; target promo_execution_ledger_v2; references `e6f39c74-a332-4cee-b390-add67cc6b331`.
+
+- Retained test context (2026-10-12T03:49:57.380Z): tests/integration/api/wage-engine.test.ts; target acc_engagements_v2; references `5ba12471-dd9f-4637-b8f6-a06988bfdc50`, `d4305a37-e1a5-4555-9cee-bd7356797e3f`, `e59d7f3f-fdbf-401e-9d9e-0c01ed78a4b2`, `1d0ca65b-db4e-47d1-901e-c35772ab85af`, `07c911fc-e94a-4466-b21d-a7a6cf9be1ff`, `e51a4586-ad88-4fb1-88b8-8fa366cd4021`, `85c1cdc3-b79a-4361-b941-a92b3952dd77`, `683fa8ef-9445-4061-95e1-023a9e347445`, `d5ea70dd-1094-4d9a-81e4-dd7b8551ed7b`, `733872c5-149e-4eee-aabb-19f73690acb8`, `778a65ca-4e4b-4d02-83f5-d16bcb522bac`, `b378feb0-ab43-4490-8eca-a30c87891ed6`, `8baad0b1-5493-473e-a08f-8662152facc9`, `6db60c4d-79a1-485c-9e80-79232540389d`, `abd5d338-91f3-4e45-84f6-56248d19658b`, `aac3840a-eb23-4a45-bfc1-2cc0bbcb0536`, `89a314f6-822c-4807-93b0-9aa350445d3c`, `ba1ac922-f1c1-4614-84bb-f395d332ec24`, `7afed123-d688-4efe-9183-58cfae3ae655`, `add41436-ab2d-44cd-856d-e0602473423f`, `d5851838-f757-477b-b341-045e363ac4e1`.
+
+- Retained test context (2026-10-12T03:49:57.380Z): tests/integration/api/wage-engine.test.ts; target crew_members_v2; references `dca8a2a6-fbfc-44f6-add4-bed6ff6c9885`.
+
+- Retained test context (2026-10-12T03:49:57.381Z): tests/integration/api/wage-engine.test.ts; target acc_wage_scale_lines_v2; references `0a009dbd-ea51-41db-abc3-41971c9d48c4`, `76ee2af1-3dae-47be-8b62-1c12af14dfd9`, `a8362292-a4cb-4971-b816-af5429ad012c`, `f4e3db8a-b805-4121-9882-eb1fb1a0b2e0`.
+
+- Retained test context (2026-10-12T03:49:57.382Z): tests/integration/api/wage-engine.test.ts; target acc_wage_scales_v2; references `0a009dbd-ea51-41db-abc3-41971c9d48c4`, `76ee2af1-3dae-47be-8b62-1c12af14dfd9`, `a8362292-a4cb-4971-b816-af5429ad012c`, `f4e3db8a-b805-4121-9882-eb1fb1a0b2e0`.
+
+- Retained test context (2026-10-12T03:49:57.382Z): tests/integration/api/wage-engine.test.ts; target acc_pay_elements_v2; references `7183cc69-d6b9-4c77-b61a-d29ba43233b7`, `68d2aef3-2884-4cdc-970c-ec1cc6b2206c`, `0ffeb058-9ad2-4e51-accd-1c9aead72933`, `826e9575-9234-445d-bad8-cf7649b9e479`, `c21265ac-5383-4f98-9486-5d9f9fdbe19e`, `b70efce8-4b60-4a8a-9081-1a54cb338077`, `1607e7ca-0c09-4a34-8608-b989cf644f31`, `d7bf47e7-9829-49bc-b5e6-324695206a06`, `7e97bad6-cac9-4704-8cd6-8791eaa9c6ce`, `5f40d9b4-f78e-4192-8831-f228a74b147d`, `e687bf58-2867-462c-91f7-9a92967163b0`, `7ff1a19e-54f7-404d-9195-738919929ae5`, `06f8b2f4-6192-4d86-9e41-a83942b9bab7`, `8d2b5f36-c0bb-4e4e-8143-170600ad3deb`.
+
+- Retained test context (2026-10-12T03:49:57.382Z): tests/integration/api/wage-engine.test.ts; target cleanup context; references `64fe0f62-d6c1-4ae1-96f3-06836b2f4ed9`.
+
+- Retained test context (2026-10-12T03:49:58.615Z): tests/integration/api/vessel-portage.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:58.616Z): tests/integration/api/vessel-portage.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:58.617Z): tests/integration/api/vessel-portage.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:58.620Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_ledger_v2; references `6bac748b-374e-4628-9574-e6154e993a14`.
+
+- Retained test context (2026-10-12T03:49:58.620Z): tests/integration/api/vessel-portage.test.ts; target acc_calculation_runs_v2; references `707432df-7697-4e8d-af9d-9930ba88f012`.
+
+- Retained test context (2026-10-12T03:49:58.621Z): tests/integration/api/vessel-portage.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:58.621Z): tests/integration/api/vessel-portage.test.ts; target acc_engagements_v2; references `6bac748b-374e-4628-9574-e6154e993a14`.
+
+- Retained test context (2026-10-12T03:49:58.621Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_scale_lines_v2; references `bfd82657-48d3-47a3-87c8-20a0ec6cc382`.
+
+- Retained test context (2026-10-12T03:49:58.622Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_scales_v2; references `bfd82657-48d3-47a3-87c8-20a0ec6cc382`.
+
+- Retained test context (2026-10-12T03:49:58.622Z): tests/integration/api/vessel-portage.test.ts; target acc_pay_elements_v2; references `9cdf8e3a-80e6-4a5e-85bb-1b240a5df354`, `3ba277e7-857b-4860-8835-51febcf2f8a1`, `fb05ef66-5496-4a81-81f9-32634999e0aa`, `7b984f5d-5239-447c-b845-0183bb24a689`, `193b63dd-1bf8-459d-aa34-4086981bece8`.
+
+- Retained test context (2026-10-12T03:49:59.742Z): tests/integration/api/portage-auto-lock.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.793Z): tests/integration/api/portage-auto-lock.test.ts; target acc_wage_ledger_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.793Z): tests/integration/api/portage-auto-lock.test.ts; target acc_portage_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.794Z): tests/integration/api/portage-auto-lock.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.794Z): tests/integration/api/portage-auto-lock.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.795Z): tests/integration/api/portage-auto-lock.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.795Z): tests/integration/api/portage-auto-lock.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:49:59.795Z): tests/integration/api/portage-auto-lock.test.ts; target acc_pay_elements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:00.778Z): tests/integration/api/contract-detail.test.ts; target acc_wage_ledger_v2; references `e5762af3-8e30-4af1-9e22-6ae3b1b198c8`, `35b97041-a10b-4eec-a866-6eb2b22c90d3`, `e0f260ba-a43d-4615-aaf6-b21ad9a09d22`, `581f8120-28a9-4d28-ad99-459832651797`.
+
+- Retained test context (2026-10-12T03:50:00.779Z): tests/integration/api/contract-detail.test.ts; target acc_engagement_pay_elements_v2; references `e5762af3-8e30-4af1-9e22-6ae3b1b198c8`, `35b97041-a10b-4eec-a866-6eb2b22c90d3`, `e0f260ba-a43d-4615-aaf6-b21ad9a09d22`, `581f8120-28a9-4d28-ad99-459832651797`.
+
+- Retained test context (2026-10-12T03:50:00.780Z): tests/integration/api/contract-detail.test.ts; target acc_portage_bills_v2; references `f51be076-cbd6-44bf-90f5-f0f6586daa32`.
+
+- Retained test context (2026-10-12T03:50:00.780Z): tests/integration/api/contract-detail.test.ts; target acc_engagements_v2; references `e5762af3-8e30-4af1-9e22-6ae3b1b198c8`, `35b97041-a10b-4eec-a866-6eb2b22c90d3`, `e0f260ba-a43d-4615-aaf6-b21ad9a09d22`, `581f8120-28a9-4d28-ad99-459832651797`.
+
+- Retained test context (2026-10-12T03:50:00.780Z): tests/integration/api/contract-detail.test.ts; target crew_assignments; references `48f8f383-c239-4eaa-8760-f968d5df7404`.
+
+- Retained test context (2026-10-12T03:50:00.781Z): tests/integration/api/contract-detail.test.ts; target acc_wage_scale_lines_v2; references `98b9462d-807d-4f1e-8a2b-dc81ab3f51a5`.
+
+- Retained test context (2026-10-12T03:50:00.781Z): tests/integration/api/contract-detail.test.ts; target acc_wage_scales_v2; references `98b9462d-807d-4f1e-8a2b-dc81ab3f51a5`.
+
+- Retained test context (2026-10-12T03:50:00.781Z): tests/integration/api/contract-detail.test.ts; target acc_pay_elements_v2; references `9641918e-73da-478c-ae58-9789bdc989b9`, `17e8cf35-52af-48b5-9800-6e2de0e8352d`, `20393dd0-a09c-4bbf-88ca-969b51a04cf5`, `e4ee5bfd-d08a-4b4d-aac4-6b9afeefc7ec`, `9e804f82-5822-4298-848d-2593bafbc547`.
+
+- Retained test context (2026-10-12T03:50:00.782Z): tests/integration/api/contract-detail.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:02.847Z): tests/integration/api/ctm-carry-forward.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:02.849Z): tests/integration/api/ctm-carry-forward.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:38.712Z): tests/integration/access-control-management.test.ts; target test_ac_26b8125ba5ba4affbc1fbdb13eced4d8; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:43.455Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_09c7ff3b2e854b9ca7b4b88ddf98ad30"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:52.381Z): tests/integration/api/reliever-unassign-assignment.test.ts; target rotation_archive_v2; references `f66ca16c-ce3e-46b7-b308-277dc927e510`, `a9a71579-e538-4393-846c-f849fa8a6952`, `64cc3fb3-7e0b-4bef-8de0-63448ef26d1e`, `42d14fdb-fd0d-4e28-9440-f3a6bce68de5`, `7b8e8a4a-d442-4ae6-8077-a4aea90b108b`, `35403ee7-823b-49cd-8514-4a22a82b6f7f`, `de191eb4-07ea-4801-992e-f01170cd4818`, `b1dbd657-d2c7-49cb-a6a7-519b3830a69e`, `3ade4143-d422-423b-ad70-d7bf59169fa1`.
+
+- Retained test context (2026-10-12T03:50:52.382Z): tests/integration/api/reliever-unassign-assignment.test.ts; target rotation_entries_v2; references `f66ca16c-ce3e-46b7-b308-277dc927e510`, `a9a71579-e538-4393-846c-f849fa8a6952`, `64cc3fb3-7e0b-4bef-8de0-63448ef26d1e`, `42d14fdb-fd0d-4e28-9440-f3a6bce68de5`, `7b8e8a4a-d442-4ae6-8077-a4aea90b108b`, `35403ee7-823b-49cd-8514-4a22a82b6f7f`, `de191eb4-07ea-4801-992e-f01170cd4818`, `b1dbd657-d2c7-49cb-a6a7-519b3830a69e`, `3ade4143-d422-423b-ad70-d7bf59169fa1`.
+
+- Retained test context (2026-10-12T03:50:52.382Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_reliever_clear_audit; references `f3f17758-116a-40ad-84ca-d72f85190559`, `525d2ac4-213a-4eed-af98-c867cf035a02`, `2b7f3105-6286-42b2-bd38-b79005aa520c`, `71e4464d-f4e6-4a7f-b71b-fe523de04f31`, `6e45e187-ab50-487b-a4dc-0430ec5f4520`, `62e62c92-6d4d-474a-ab17-ebb832f3da83`, `bb90d44f-c0a8-454b-a145-6170da97ecdc`, `143a73bb-265d-40a0-b2ca-36194281aac0`, `fd2efbb5-f2d0-450a-ab83-440ff438d4bf`, `13e16813-b2ef-4e7d-8e82-5366decc4dd7`, `fefcde2c-bba1-477b-aa68-532d8302ea3b`, `eec9ce66-94e3-4ec1-9a2b-ae0f180622f7`, `49b78e38-81cd-4e0d-9636-3ea90f8b6efe`, `c6df8843-2a2b-42e0-b456-16bd04d77e1d`, `a962bf57-32be-4bc8-992a-0457cdb776af`, `83a0d405-5a90-42d7-91a9-d26f226c977d`, `452edecc-9a3d-4528-bff0-c8359e4d6a80`, `366f5d2f-2c9c-40dc-87ad-95ffde6afcf7`, `a23ff506-32c6-46ab-bbc0-bda471597f17`, `42893235-e074-451d-a443-a410de54875f`, `b181eac0-b496-4b00-8983-a89023fff0c6`, `5d90e4ed-9f37-41c2-b4db-edf5887cdc8e`, `57480219-9f10-4d79-9b2e-add712e060ca`, `e7a7802f-380b-46f9-be70-f4df18a48547`, `df3117f0-c293-44d9-b19f-a97fe40a361a`, `eab60869-0666-4379-8787-e7d871a9f6a9`, `a1add5e4-c0ed-45e2-b171-f45172aadc44`, `3e47cb43-5550-4b14-bcb9-cfb02e14f0b9`, `d45126c9-a45b-4fea-8c37-d2a6a47bccef`, `c50c59f1-1c27-4f3d-9100-a99224016273`, `43f907b3-753c-4ed9-99aa-51f54b4e8e7a`, `bf053718-2a67-44b3-a1b8-72e55ddfa07f`, `17501bb9-3b52-4721-aa32-4453bfe6c17c`, `33d990f1-27fa-4300-aa55-103714ebd6a1`, `573752ee-42a9-449f-8518-d9639acc0a5b`, `92d36649-f40f-48e4-aab9-0085a3f967ac`, `39b4b9d1-27dc-429b-b829-2f18250cc98c`, `523e373e-6f3b-44ba-b5c6-7eb248485cb2`, `085ae752-a504-44d8-b1ab-2eadd0e5f959`, `e1a9a93e-1bea-4f07-bb5d-1d241ad8e030`, `b4bfee86-5097-4e2c-a354-bcbe08283075`, `928e141f-b6a0-40e0-8eac-fbe99a7c8938`.
+
+- Retained test context (2026-10-12T03:50:52.382Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_assignment_reconciliations; references `f3f17758-116a-40ad-84ca-d72f85190559`, `525d2ac4-213a-4eed-af98-c867cf035a02`, `2b7f3105-6286-42b2-bd38-b79005aa520c`, `71e4464d-f4e6-4a7f-b71b-fe523de04f31`, `6e45e187-ab50-487b-a4dc-0430ec5f4520`, `62e62c92-6d4d-474a-ab17-ebb832f3da83`, `bb90d44f-c0a8-454b-a145-6170da97ecdc`, `143a73bb-265d-40a0-b2ca-36194281aac0`, `fd2efbb5-f2d0-450a-ab83-440ff438d4bf`, `13e16813-b2ef-4e7d-8e82-5366decc4dd7`, `fefcde2c-bba1-477b-aa68-532d8302ea3b`, `eec9ce66-94e3-4ec1-9a2b-ae0f180622f7`, `49b78e38-81cd-4e0d-9636-3ea90f8b6efe`, `c6df8843-2a2b-42e0-b456-16bd04d77e1d`, `a962bf57-32be-4bc8-992a-0457cdb776af`, `83a0d405-5a90-42d7-91a9-d26f226c977d`, `452edecc-9a3d-4528-bff0-c8359e4d6a80`, `366f5d2f-2c9c-40dc-87ad-95ffde6afcf7`, `a23ff506-32c6-46ab-bbc0-bda471597f17`, `42893235-e074-451d-a443-a410de54875f`, `b181eac0-b496-4b00-8983-a89023fff0c6`, `5d90e4ed-9f37-41c2-b4db-edf5887cdc8e`, `57480219-9f10-4d79-9b2e-add712e060ca`, `e7a7802f-380b-46f9-be70-f4df18a48547`, `df3117f0-c293-44d9-b19f-a97fe40a361a`, `eab60869-0666-4379-8787-e7d871a9f6a9`, `a1add5e4-c0ed-45e2-b171-f45172aadc44`, `3e47cb43-5550-4b14-bcb9-cfb02e14f0b9`, `d45126c9-a45b-4fea-8c37-d2a6a47bccef`, `c50c59f1-1c27-4f3d-9100-a99224016273`, `43f907b3-753c-4ed9-99aa-51f54b4e8e7a`, `bf053718-2a67-44b3-a1b8-72e55ddfa07f`, `17501bb9-3b52-4721-aa32-4453bfe6c17c`, `33d990f1-27fa-4300-aa55-103714ebd6a1`, `573752ee-42a9-449f-8518-d9639acc0a5b`, `92d36649-f40f-48e4-aab9-0085a3f967ac`, `39b4b9d1-27dc-429b-b829-2f18250cc98c`, `523e373e-6f3b-44ba-b5c6-7eb248485cb2`, `085ae752-a504-44d8-b1ab-2eadd0e5f959`, `e1a9a93e-1bea-4f07-bb5d-1d241ad8e030`, `b4bfee86-5097-4e2c-a354-bcbe08283075`, `928e141f-b6a0-40e0-8eac-fbe99a7c8938`.
+
+- Retained test context (2026-10-12T03:50:52.383Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_v2; references `f3f17758-116a-40ad-84ca-d72f85190559`, `525d2ac4-213a-4eed-af98-c867cf035a02`, `2b7f3105-6286-42b2-bd38-b79005aa520c`, `71e4464d-f4e6-4a7f-b71b-fe523de04f31`, `6e45e187-ab50-487b-a4dc-0430ec5f4520`, `62e62c92-6d4d-474a-ab17-ebb832f3da83`, `bb90d44f-c0a8-454b-a145-6170da97ecdc`, `143a73bb-265d-40a0-b2ca-36194281aac0`, `fd2efbb5-f2d0-450a-ab83-440ff438d4bf`, `13e16813-b2ef-4e7d-8e82-5366decc4dd7`, `fefcde2c-bba1-477b-aa68-532d8302ea3b`, `eec9ce66-94e3-4ec1-9a2b-ae0f180622f7`, `49b78e38-81cd-4e0d-9636-3ea90f8b6efe`, `c6df8843-2a2b-42e0-b456-16bd04d77e1d`, `a962bf57-32be-4bc8-992a-0457cdb776af`, `83a0d405-5a90-42d7-91a9-d26f226c977d`, `452edecc-9a3d-4528-bff0-c8359e4d6a80`, `366f5d2f-2c9c-40dc-87ad-95ffde6afcf7`, `a23ff506-32c6-46ab-bbc0-bda471597f17`, `42893235-e074-451d-a443-a410de54875f`, `b181eac0-b496-4b00-8983-a89023fff0c6`, `5d90e4ed-9f37-41c2-b4db-edf5887cdc8e`, `57480219-9f10-4d79-9b2e-add712e060ca`, `e7a7802f-380b-46f9-be70-f4df18a48547`, `df3117f0-c293-44d9-b19f-a97fe40a361a`, `eab60869-0666-4379-8787-e7d871a9f6a9`, `a1add5e4-c0ed-45e2-b171-f45172aadc44`, `3e47cb43-5550-4b14-bcb9-cfb02e14f0b9`, `d45126c9-a45b-4fea-8c37-d2a6a47bccef`, `c50c59f1-1c27-4f3d-9100-a99224016273`, `43f907b3-753c-4ed9-99aa-51f54b4e8e7a`, `bf053718-2a67-44b3-a1b8-72e55ddfa07f`, `17501bb9-3b52-4721-aa32-4453bfe6c17c`, `33d990f1-27fa-4300-aa55-103714ebd6a1`, `573752ee-42a9-449f-8518-d9639acc0a5b`, `92d36649-f40f-48e4-aab9-0085a3f967ac`, `39b4b9d1-27dc-429b-b829-2f18250cc98c`, `523e373e-6f3b-44ba-b5c6-7eb248485cb2`, `085ae752-a504-44d8-b1ab-2eadd0e5f959`, `e1a9a93e-1bea-4f07-bb5d-1d241ad8e030`, `b4bfee86-5097-4e2c-a354-bcbe08283075`, `928e141f-b6a0-40e0-8eac-fbe99a7c8938`.
+
+- Retained test context (2026-10-12T03:50:52.383Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_assignments; references `cdcd12d5-c625-428c-a8b2-7131786aaa38`, `81433f47-3828-4c84-ad36-761e03d52e7a`, `cd4ba03c-95d3-4261-b837-df803d242a2a`, `f248ce60-a54b-41bd-8dd0-6356c60c67c4`, `e9078b39-f0fe-4060-a75c-a405a7f7cec0`, `6aa647b2-80f2-4adb-a2db-b956837e2dfe`, `9a4fb4d1-0cba-4015-bb1f-5658e2468c8c`, `595d1ceb-0277-4a3a-b6d5-d87f855d750a`, `c6ace536-f238-4a96-b66e-756efa9ad7e0`, `8b9b8afa-e9af-4d25-8c4b-405eee7914e4`, `06fe8896-8296-42ca-ae7a-ef0033174252`, `c9759e87-6c47-4a13-8bc0-091de43436a8`, `59507223-d7d8-4676-86b8-65d4420a3ad6`, `f224f39d-7d2b-445b-abb0-1105058ffc83`, `e53e9369-f204-4c72-af40-f146f2fb4a82`, `2ebfbe00-7bb1-45c9-87f7-82abce1ec063`, `9ddd5bde-bdf7-433b-91de-6ad5bd82220a`, `e190ef31-93a5-47c4-a947-5e13ab560008`, `511ba149-03f2-4682-b2a1-7970126cc07b`, `798d30fd-7e3f-4bef-b83e-c766d9273a3c`, `34e3cdd1-d7ad-4603-9ef0-0509729cac3e`, `f23d73b4-3152-4a4e-a06d-5b4cdc0651a7`, `e965dc19-47c3-4aed-a6e5-8f4e23ba6906`, `b5d39b68-dc60-475c-be6d-977c9ab110ad`, `bbcdbba8-059e-4578-b2e0-3d30003d9be6`, `9ad1ed73-d1e6-406a-9377-15132bc02b28`, `c03c9d68-62b2-4af8-9833-a789b2ee0729`, `2f0910fc-4e4b-4515-8674-b59676ca088e`, `eab51ac2-3797-44a9-b860-97ee06801caa`, `db439af1-928a-4318-b1fd-937495657e13`, `6bd5b836-84d6-4852-8dfc-68391010c4ab`, `f53f134b-ed2a-404b-bab1-4e88bac7ed7e`, `735fd95f-71d8-4df1-bb68-8dc6d02653f1`, `95b522c3-d22c-4a55-8917-fcbff1038308`, `8bd2faad-e6fe-4f21-b4cf-09b5cc32b345`, `19c6604f-b192-41d9-bbc9-ec8883ee6780`, `b967934e-d0a5-4b75-b86c-8f4cb57c6647`, `9e268d53-df25-4d3d-ac2d-903178657d36`, `3b7a8e8d-e93b-47c4-b3f4-7d50cdde73b6`, `2b061a89-d893-4a0c-8bc2-6fe8b8431a9a`, `b657a142-1e8b-41ce-8de5-021d28fedda8`, `06e75cfa-6ad1-4128-b752-059e4ed2128f`, `f9bd1376-cdf6-4ee9-a2ac-7b539386641b`, `b7fdfb32-364b-4d03-aaad-ccff650af791`, `07160005-cca9-4ddd-bc3d-2782d754f056`.
+
+- Retained test context (2026-10-12T03:50:52.383Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_sea_service; references `e80ae8e8-3c2f-467a-bbf3-86445b12cea9`, `b50cb0f8-feaf-4c1f-8eaa-7cd3aa51b5f6`, `bfcffb10-66df-4344-8818-372637016672`, `52775986-2160-4ef9-a6e7-b0d93c216155`, `76670fe8-e03b-4a37-bd74-167f8b721632`, `73fb09f6-2614-4265-8360-2ad877039594`, `bff677a5-8375-4c31-bcf4-6c1683697d4e`, `edc77eff-46ec-47c9-a197-57cc23f46d2e`, `3f6a22f4-6686-44ff-a10b-6aabcde59733`, `48c64f7e-c153-47cb-840b-57db1875e42b`, `2396dd50-8758-48c3-bffa-cb9abc514d05`, `c2a1dae3-f618-4fd3-82e0-ca76942f1723`, `44be2fa0-2c27-4d69-958b-3bb85537fbb3`, `a889f1fb-c174-40ca-a3a9-081a1ffc7882`, `c91b5786-9011-462b-b7ed-26709f6e8eb6`, `6ee5ff28-6b17-4baf-b0bc-8defc26d20a1`, `6f3c12e0-9673-4682-aec0-0ea3157d1041`, `82d966b3-5c4d-4a85-b938-17826b0c2781`, `e5a759d0-77b4-42b4-8e77-55b0df0ba5e5`, `fbda2e9d-6193-4d34-8858-807650474713`, `9eaa3ced-c12d-4588-8e44-59d6689f158e`, `57199b1d-6e26-41cf-b308-8807e06ecda6`, `83fc07cf-b0cd-47d3-8cd2-a52b4b3f722e`, `952d5b5d-1091-4bbb-821e-79b76ebd40f0`, `4180387b-e0ac-4e6f-a887-9f2dcc591ac2`, `ef5535e1-21d4-436f-a0d5-b8dfb2e7fab1`, `e088057c-6a85-45d2-bd62-58521c7e429a`.
+
+- Retained test context (2026-10-12T03:50:52.384Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_members_v2; references `e80ae8e8-3c2f-467a-bbf3-86445b12cea9`, `b50cb0f8-feaf-4c1f-8eaa-7cd3aa51b5f6`, `bfcffb10-66df-4344-8818-372637016672`, `52775986-2160-4ef9-a6e7-b0d93c216155`, `76670fe8-e03b-4a37-bd74-167f8b721632`, `73fb09f6-2614-4265-8360-2ad877039594`, `bff677a5-8375-4c31-bcf4-6c1683697d4e`, `edc77eff-46ec-47c9-a197-57cc23f46d2e`, `3f6a22f4-6686-44ff-a10b-6aabcde59733`, `48c64f7e-c153-47cb-840b-57db1875e42b`, `2396dd50-8758-48c3-bffa-cb9abc514d05`, `c2a1dae3-f618-4fd3-82e0-ca76942f1723`, `44be2fa0-2c27-4d69-958b-3bb85537fbb3`, `a889f1fb-c174-40ca-a3a9-081a1ffc7882`, `c91b5786-9011-462b-b7ed-26709f6e8eb6`, `6ee5ff28-6b17-4baf-b0bc-8defc26d20a1`, `6f3c12e0-9673-4682-aec0-0ea3157d1041`, `82d966b3-5c4d-4a85-b938-17826b0c2781`, `e5a759d0-77b4-42b4-8e77-55b0df0ba5e5`, `fbda2e9d-6193-4d34-8858-807650474713`, `9eaa3ced-c12d-4588-8e44-59d6689f158e`, `57199b1d-6e26-41cf-b308-8807e06ecda6`, `83fc07cf-b0cd-47d3-8cd2-a52b4b3f722e`, `952d5b5d-1091-4bbb-821e-79b76ebd40f0`, `4180387b-e0ac-4e6f-a887-9f2dcc591ac2`, `ef5535e1-21d4-436f-a0d5-b8dfb2e7fab1`, `e088057c-6a85-45d2-bd62-58521c7e429a`.
+
+- Retained test context (2026-10-12T03:50:52.384Z): tests/integration/api/reliever-unassign-assignment.test.ts; target master_vessels; references `8f7de350-8550-41dc-9990-41853c0054e3`, `593d820e-2f41-4755-8885-e219c953c44c`, `e87473d0-f33b-4ce7-88bc-c4ab9bc151be`, `d71bd68a-5fcf-48a2-806c-3c348ec64b53`, `7e806963-b7ed-4210-8121-34c9bda1ad3e`, `25256f04-1049-40e2-97c0-aaac162cb19d`, `16b17868-3d25-4116-af32-172402bcbcef`, `407f200b-200d-494e-937c-f93ad92a4861`, `d2e68b6c-0eaa-4463-868b-d4733226b641`, `aedc4948-62c0-4d47-97a4-1564ee6f655a`, `955ee0f2-d4e3-459e-9b96-09d1b7e65b0d`, `5354ef2c-f5ed-4484-adae-978736e299c3`, `dd6f2d1e-2165-413f-91b3-5ae00833871e`, `0d217fcc-b183-44b1-af40-b415afdb599f`, `9cb40da1-b910-4038-88fc-0e33e87fb52c`, `b1709014-d6bf-4806-a494-7f6698599e29`, `8704843d-9649-4ce1-9126-77b20255f7fa`, `fc71d790-583e-4131-b7b8-57cc0c3bce00`, `c2599aaa-a73f-4e0a-a034-15931be02a4e`, `8407fd18-44e8-4358-9d36-62fe16345fb0`, `557eb038-059b-4926-8fda-7c92ae3d1f96`, `824ed426-ce12-4332-988a-61faa3e39194`, `c4fc36ac-37d5-4cc1-a2f6-9fcaf2f3b789`, `86d092fa-4976-4c7d-ada4-3b255cc02f8e`, `7e7c921b-6396-4ef6-9077-f765cfb081c8`, `71e39edb-b5c4-4ac5-bc43-687c5f6cd593`, `294a33df-f0dc-4956-8c66-1975ffe32e59`, `c49523e3-0c62-44ad-aa79-0e991e94f522`, `d19cfed4-a8ec-4ca3-91ea-12ad0d14786b`, `305374f7-1cf7-4821-8a23-682e9b77d575`, `ab7e8cf8-90a6-4b05-9173-f137a5eefb25`, `2bd1fd6d-3007-41e0-9a03-03c361b884ec`, `f63c30e3-779e-42d3-9451-4938e9a4bb98`, `4a07168f-84a3-4796-8a71-f812dcba3937`, `c293b5a1-df29-4e6f-bffe-9c319a8e17e8`.
+
+- Retained test context (2026-10-12T03:50:52.384Z): tests/integration/api/reliever-unassign-assignment.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:55.836Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `800eb447-ebe5-4db2-ab43-2ac8cd1a4b90`, `2bff69a5-fbef-43a3-8840-7d65f27c03ce`.
+
+- Retained test context (2026-10-12T03:50:55.837Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `800eb447-ebe5-4db2-ab43-2ac8cd1a4b90`, `2bff69a5-fbef-43a3-8840-7d65f27c03ce`.
+
+- Retained test context (2026-10-12T03:50:55.837Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `a7af4c0f-144a-47fd-9add-3c56eaa26a29`, `eccbe809-fa7f-4d83-aea5-0b5cd2386a6f`, `045e361b-4a7a-489b-a548-82897f6b10fa`, `a95f9d47-bd35-4387-bf93-d25ccfa9a3c2`.
+
+- Retained test context (2026-10-12T03:50:55.838Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `a7af4c0f-144a-47fd-9add-3c56eaa26a29`, `eccbe809-fa7f-4d83-aea5-0b5cd2386a6f`, `045e361b-4a7a-489b-a548-82897f6b10fa`, `a95f9d47-bd35-4387-bf93-d25ccfa9a3c2`.
+
+- Retained test context (2026-10-12T03:50:55.838Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `b913136f-d0f4-45d4-80b6-a705d49699f1`.
+
+- Retained test context (2026-10-12T03:50:55.838Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `b913136f-d0f4-45d4-80b6-a705d49699f1`.
+
+- Retained test context (2026-10-12T03:50:55.839Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `9f2b88eb-7fe1-4496-8eaa-37c673316736`, `572cfc0d-242b-446c-910b-f00044038ddc`, `f9f5bd08-0176-46fc-b704-ee0888380672`, `c13c539b-0b69-47e9-b38d-c4c85f22e133`, `ff8a3d39-90f5-4aa3-bab6-b9713f6b1e10`.
+
+- Retained test context (2026-10-12T03:50:55.839Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `9f2b88eb-7fe1-4496-8eaa-37c673316736`, `572cfc0d-242b-446c-910b-f00044038ddc`, `f9f5bd08-0176-46fc-b704-ee0888380672`, `c13c539b-0b69-47e9-b38d-c4c85f22e133`, `ff8a3d39-90f5-4aa3-bab6-b9713f6b1e10`.
+
+- Retained test context (2026-10-12T03:50:55.839Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `9f2b88eb-7fe1-4496-8eaa-37c673316736`, `572cfc0d-242b-446c-910b-f00044038ddc`, `f9f5bd08-0176-46fc-b704-ee0888380672`, `c13c539b-0b69-47e9-b38d-c4c85f22e133`, `ff8a3d39-90f5-4aa3-bab6-b9713f6b1e10`.
+
+- Retained test context (2026-10-12T03:50:55.840Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `0f98b659-5a5d-468a-841e-cc79ae22f859`.
+
+- Retained test context (2026-10-12T03:50:55.840Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `9dba3b4c-d255-4d1d-9543-9950311e15a5`, `948ffcf8-facf-4f53-b2c4-cb03c137a299`, `13db578c-f073-4194-9a36-7bf9bf51ab95`, `13bf4d64-6712-4050-887c-f8b24e51f269`.
+
+- Retained test context (2026-10-12T03:50:55.840Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `9dba3b4c-d255-4d1d-9543-9950311e15a5`, `948ffcf8-facf-4f53-b2c4-cb03c137a299`, `13db578c-f073-4194-9a36-7bf9bf51ab95`, `13bf4d64-6712-4050-887c-f8b24e51f269`.
+
+- Retained test context (2026-10-12T03:50:55.841Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `cb7babb8-3be2-4e6e-8662-a38854e2a93e`, `3594d04e-4989-4d69-9bd0-98030c1b71c6`, `26e30da8-be87-4eee-85aa-ecfc5ba3d273`, `e8020c3c-e66a-473f-9b8b-57968b30b6dc`.
+
+- Retained test context (2026-10-12T03:50:55.841Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `cb7babb8-3be2-4e6e-8662-a38854e2a93e`, `3594d04e-4989-4d69-9bd0-98030c1b71c6`, `26e30da8-be87-4eee-85aa-ecfc5ba3d273`, `e8020c3c-e66a-473f-9b8b-57968b30b6dc`.
+
+- Retained test context (2026-10-12T03:50:55.841Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `7702e81d-cc59-41c1-be41-4c3b7dfaeaba`, `c35bc629-019a-4470-bd08-3f0c9e365de9`, `83a29245-3c76-41f5-9d17-b77008b9a83f`, `93ef74ec-2ab2-4e9f-b693-992e492b3515`.
+
+- Retained test context (2026-10-12T03:50:55.842Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `40544c38-57af-43f0-9d54-59390f6e6ebf`.
+
+- Retained test context (2026-10-12T03:50:55.842Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `e33810f2-4e5f-4cfd-abf1-1135fcca1523`, `caa84e2b-f680-40c8-860f-b063376e6754`, `edd34e26-1477-47ad-a640-15fdcf5d15ef`, `ba8f61c9-9737-40d1-a25b-eb72624bfcf9`, `3e315e2d-e605-4ea2-9ab1-21c47830c765`.
+
+- Retained test context (2026-10-12T03:50:55.842Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `06230fa3-c9bb-4416-8e98-63f92c404286`, `399619c3-5ed0-4405-9d36-490deb125076`, `4135c143-07b8-48ad-9782-bedd73eddb59`.
+
+- Retained test context (2026-10-12T03:50:55.843Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `8f2db058-9cf8-4697-a38a-28edafa6cd3a`, `1249e4ca-65d7-4fdc-be51-47e1864c55a8`, `83cb3867-f129-448d-a5d1-05041333f9a0`, `bb54e407-900e-4cbb-a005-9f831e0d4f0a`, `2077af46-6881-42a2-9490-7eb838dfaf4e`.
+
+- Retained test context (2026-10-12T03:50:55.843Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `8f2db058-9cf8-4697-a38a-28edafa6cd3a`, `1249e4ca-65d7-4fdc-be51-47e1864c55a8`, `83cb3867-f129-448d-a5d1-05041333f9a0`, `bb54e407-900e-4cbb-a005-9f831e0d4f0a`, `2077af46-6881-42a2-9490-7eb838dfaf4e`.
+
+- Retained test context (2026-10-12T03:50:55.843Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `8f2db058-9cf8-4697-a38a-28edafa6cd3a`, `1249e4ca-65d7-4fdc-be51-47e1864c55a8`, `83cb3867-f129-448d-a5d1-05041333f9a0`, `bb54e407-900e-4cbb-a005-9f831e0d4f0a`, `2077af46-6881-42a2-9490-7eb838dfaf4e`.
+
+- Retained test context (2026-10-12T03:50:55.844Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:50:55.844Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `ffd7b94a-32e0-4b9e-85cf-6c451f8ee73f`.
+
+- Retained test context (2026-10-12T03:50:55.845Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `2be6a033-dac4-43ef-8495-a1b39039c80e`.
+
+- Retained test context (2026-10-12T03:50:55.849Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:02.485Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:02.486Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:02.487Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.487Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.487Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `2e542f2d-9a1f-48e3-85e9-ceafa7ddbb54`, `1bceb58b-2c22-4b98-bb37-e13ea09ff0a1`, `fe836e29-cedf-4174-8025-3f9a4554384a`, `8a067318-1865-499c-bf27-82d9472e341c`, `8fbe0e43-629f-4e13-b4f3-96338901b274`, `1dfadf54-830c-4973-9fc8-1bf3da720580`.
+
+- Retained test context (2026-10-12T03:51:02.488Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.488Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.489Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.489Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.489Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `3682ca18-9007-400e-90db-06d7cf8ad779`, `9b8f3059-e01c-47bc-9f2c-9c46e040d6f7`, `e9221a55-0cfa-4e39-9011-a4e7d097de9a`, `44f3565e-ff5b-4aa0-9db4-3ba1e64e3c0b`, `95eb363e-fd02-41a6-9062-3ddb2cb94bab`.
+
+- Retained test context (2026-10-12T03:51:02.490Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `051333de-e131-43a6-a7d7-0a2a992db894`, `0b67509b-78a9-4eef-bc18-e43861132621`, `2825ab55-50dd-4297-b1e0-f12322d640fb`, `01c76ce0-f47c-4be8-b7c5-0ad33e13dfa3`.
+
+- Retained test context (2026-10-12T03:51:02.490Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `051333de-e131-43a6-a7d7-0a2a992db894`, `0b67509b-78a9-4eef-bc18-e43861132621`, `2825ab55-50dd-4297-b1e0-f12322d640fb`, `01c76ce0-f47c-4be8-b7c5-0ad33e13dfa3`.
+
+- Retained test context (2026-10-12T03:51:02.491Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `051333de-e131-43a6-a7d7-0a2a992db894`, `0b67509b-78a9-4eef-bc18-e43861132621`, `2825ab55-50dd-4297-b1e0-f12322d640fb`, `01c76ce0-f47c-4be8-b7c5-0ad33e13dfa3`.
+
+- Retained test context (2026-10-12T03:51:02.491Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `051333de-e131-43a6-a7d7-0a2a992db894`, `0b67509b-78a9-4eef-bc18-e43861132621`, `2825ab55-50dd-4297-b1e0-f12322d640fb`, `01c76ce0-f47c-4be8-b7c5-0ad33e13dfa3`.
+
+- Retained test context (2026-10-12T03:51:02.491Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `3096e869-a2a4-4e90-a35a-fcbdff37a605`, `2b7ed3ac-957f-4f8a-9955-d7a29ca1993a`.
+
+- Retained test context (2026-10-12T03:51:02.492Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `72e17ec5-d9e6-4aed-94ce-0bb6392b116c`, `aaa315b1-a3e1-4753-b876-a707fa703faa`, `47748cc8-dccf-471d-a386-3fc0d07ca2da`, `636be0ac-b91c-41a3-93c6-841ee5f8bc77`.
+
+- Retained test context (2026-10-12T03:51:02.492Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `bed0301c-69a5-4377-9716-d717b96605fe`.
+
+- Retained test context (2026-10-12T03:51:02.493Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `a1596259-b4dd-41b8-a686-845803faf343`.
+
+- Retained test context (2026-10-12T03:51:02.493Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `2fe2fb14-d421-4bcb-ae55-3384810c5034`.
+
+- Retained test context (2026-10-12T03:51:02.494Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:02.495Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `c6df8838-4a4f-4f27-be6b-3f3e41d70561`, `da555cfa-b5f3-4263-b7fc-00db644957f4`, `075f50fe-209d-4f31-a4a3-5349d751bc6c`, `490d92e4-eb93-4013-a17d-2ba524efb2ed`.
+
+- Retained test context (2026-10-12T03:51:02.495Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `c6df8838-4a4f-4f27-be6b-3f3e41d70561`, `da555cfa-b5f3-4263-b7fc-00db644957f4`, `075f50fe-209d-4f31-a4a3-5349d751bc6c`, `490d92e4-eb93-4013-a17d-2ba524efb2ed`.
+
+- Retained test context (2026-10-12T03:51:02.496Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:02.496Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `c6df8838-4a4f-4f27-be6b-3f3e41d70561`, `da555cfa-b5f3-4263-b7fc-00db644957f4`, `075f50fe-209d-4f31-a4a3-5349d751bc6c`, `490d92e4-eb93-4013-a17d-2ba524efb2ed`.
+
+- Retained test context (2026-10-12T03:51:05.318Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `957df8bb-012f-4f34-a470-a1528c19fa2e`.
+
+- Retained test context (2026-10-12T03:51:05.319Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `957df8bb-012f-4f34-a470-a1528c19fa2e`.
+
+- Retained test context (2026-10-12T03:51:05.319Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `957df8bb-012f-4f34-a470-a1528c19fa2e`.
+
+- Retained test context (2026-10-12T03:51:05.320Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `957df8bb-012f-4f34-a470-a1528c19fa2e`.
+
+- Retained test context (2026-10-12T03:51:05.320Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `957df8bb-012f-4f34-a470-a1528c19fa2e`.
+
+- Retained test context (2026-10-12T03:51:05.320Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b873eaf3-c2fd-4ec6-85dd-24c622ac93b5`.
+
+- Retained test context (2026-10-12T03:51:05.321Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b873eaf3-c2fd-4ec6-85dd-24c622ac93b5`.
+
+- Retained test context (2026-10-12T03:51:05.321Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b873eaf3-c2fd-4ec6-85dd-24c622ac93b5`.
+
+- Retained test context (2026-10-12T03:51:05.321Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b873eaf3-c2fd-4ec6-85dd-24c622ac93b5`.
+
+- Retained test context (2026-10-12T03:51:05.322Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b873eaf3-c2fd-4ec6-85dd-24c622ac93b5`.
+
+- Retained test context (2026-10-12T03:51:05.322Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `5c1a0388-f31f-4440-994a-5958b1aac80d`.
+
+- Retained test context (2026-10-12T03:51:05.322Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `5c1a0388-f31f-4440-994a-5958b1aac80d`.
+
+- Retained test context (2026-10-12T03:51:05.322Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `5c1a0388-f31f-4440-994a-5958b1aac80d`.
+
+- Retained test context (2026-10-12T03:51:05.322Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `5c1a0388-f31f-4440-994a-5958b1aac80d`.
+
+- Retained test context (2026-10-12T03:51:05.323Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `5c1a0388-f31f-4440-994a-5958b1aac80d`.
+
+- Retained test context (2026-10-12T03:51:05.323Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `434c8c9e-a9d3-4254-a219-ceea74e7b653`.
+
+- Retained test context (2026-10-12T03:51:05.323Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `434c8c9e-a9d3-4254-a219-ceea74e7b653`.
+
+- Retained test context (2026-10-12T03:51:05.323Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `434c8c9e-a9d3-4254-a219-ceea74e7b653`.
+
+- Retained test context (2026-10-12T03:51:05.324Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `434c8c9e-a9d3-4254-a219-ceea74e7b653`.
+
+- Retained test context (2026-10-12T03:51:05.324Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `434c8c9e-a9d3-4254-a219-ceea74e7b653`.
+
+- Retained test context (2026-10-12T03:51:05.324Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9c29c3e5-4f07-4f7c-bafd-da920e031a06`.
+
+- Retained test context (2026-10-12T03:51:05.325Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9c29c3e5-4f07-4f7c-bafd-da920e031a06`.
+
+- Retained test context (2026-10-12T03:51:05.325Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9c29c3e5-4f07-4f7c-bafd-da920e031a06`.
+
+- Retained test context (2026-10-12T03:51:05.325Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9c29c3e5-4f07-4f7c-bafd-da920e031a06`.
+
+- Retained test context (2026-10-12T03:51:05.325Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9c29c3e5-4f07-4f7c-bafd-da920e031a06`.
+
+- Retained test context (2026-10-12T03:51:05.326Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b4d566c1-e664-4d0d-b08f-d623dbab48a1`.
+
+- Retained test context (2026-10-12T03:51:05.326Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b4d566c1-e664-4d0d-b08f-d623dbab48a1`.
+
+- Retained test context (2026-10-12T03:51:05.326Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b4d566c1-e664-4d0d-b08f-d623dbab48a1`.
+
+- Retained test context (2026-10-12T03:51:05.326Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b4d566c1-e664-4d0d-b08f-d623dbab48a1`.
+
+- Retained test context (2026-10-12T03:51:05.326Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b4d566c1-e664-4d0d-b08f-d623dbab48a1`.
+
+- Retained test context (2026-10-12T03:51:05.327Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `63bc82c1-5043-4ee5-abbd-157ca02996e6`.
+
+- Retained test context (2026-10-12T03:51:05.327Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `63bc82c1-5043-4ee5-abbd-157ca02996e6`.
+
+- Retained test context (2026-10-12T03:51:05.327Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `63bc82c1-5043-4ee5-abbd-157ca02996e6`.
+
+- Retained test context (2026-10-12T03:51:05.327Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `63bc82c1-5043-4ee5-abbd-157ca02996e6`.
+
+- Retained test context (2026-10-12T03:51:05.328Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `63bc82c1-5043-4ee5-abbd-157ca02996e6`.
+
+- Retained test context (2026-10-12T03:51:05.328Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `56880e51-32a6-4992-b771-c18726ac1a42`.
+
+- Retained test context (2026-10-12T03:51:05.328Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `56880e51-32a6-4992-b771-c18726ac1a42`.
+
+- Retained test context (2026-10-12T03:51:05.328Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `56880e51-32a6-4992-b771-c18726ac1a42`.
+
+- Retained test context (2026-10-12T03:51:05.328Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `56880e51-32a6-4992-b771-c18726ac1a42`.
+
+- Retained test context (2026-10-12T03:51:05.329Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `56880e51-32a6-4992-b771-c18726ac1a42`.
+
+- Retained test context (2026-10-12T03:51:05.329Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9c63d7c7-9167-4fab-9e6b-0148140ad20b`.
+
+- Retained test context (2026-10-12T03:51:05.329Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9c63d7c7-9167-4fab-9e6b-0148140ad20b`.
+
+- Retained test context (2026-10-12T03:51:05.329Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9c63d7c7-9167-4fab-9e6b-0148140ad20b`.
+
+- Retained test context (2026-10-12T03:51:05.329Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9c63d7c7-9167-4fab-9e6b-0148140ad20b`.
+
+- Retained test context (2026-10-12T03:51:05.330Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9c63d7c7-9167-4fab-9e6b-0148140ad20b`.
+
+- Retained test context (2026-10-12T03:51:05.330Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `d9a17761-cff8-4e45-9a8c-27c26d92248c`.
+
+- Retained test context (2026-10-12T03:51:05.330Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `d9a17761-cff8-4e45-9a8c-27c26d92248c`.
+
+- Retained test context (2026-10-12T03:51:05.330Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `d9a17761-cff8-4e45-9a8c-27c26d92248c`.
+
+- Retained test context (2026-10-12T03:51:05.330Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `d9a17761-cff8-4e45-9a8c-27c26d92248c`.
+
+- Retained test context (2026-10-12T03:51:05.331Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `d9a17761-cff8-4e45-9a8c-27c26d92248c`.
+
+- Retained test context (2026-10-12T03:51:10.808Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:10.892Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:10.893Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `bcaf6642-8743-4c0f-bd90-fdf7b17d9100`, `f7d787c8-1f9e-4731-9d9b-5ca8f9b0bf2b`, `e38f6074-3a54-458c-a673-a34880bd9210`, `aac8d3ab-f86b-4fef-b81a-635aefe72486`, `30a1c881-b8b8-4629-9260-a7f0cc7a08f1`.
+
+- Retained test context (2026-10-12T03:51:10.894Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `bcaf6642-8743-4c0f-bd90-fdf7b17d9100`, `f7d787c8-1f9e-4731-9d9b-5ca8f9b0bf2b`, `e38f6074-3a54-458c-a673-a34880bd9210`, `aac8d3ab-f86b-4fef-b81a-635aefe72486`, `30a1c881-b8b8-4629-9260-a7f0cc7a08f1`.
+
+- Retained test context (2026-10-12T03:51:10.895Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `bcaf6642-8743-4c0f-bd90-fdf7b17d9100`, `f7d787c8-1f9e-4731-9d9b-5ca8f9b0bf2b`, `e38f6074-3a54-458c-a673-a34880bd9210`, `aac8d3ab-f86b-4fef-b81a-635aefe72486`, `30a1c881-b8b8-4629-9260-a7f0cc7a08f1`.
+
+- Retained test context (2026-10-12T03:51:10.896Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `bcaf6642-8743-4c0f-bd90-fdf7b17d9100`, `f7d787c8-1f9e-4731-9d9b-5ca8f9b0bf2b`, `e38f6074-3a54-458c-a673-a34880bd9210`, `aac8d3ab-f86b-4fef-b81a-635aefe72486`, `30a1c881-b8b8-4629-9260-a7f0cc7a08f1`.
+
+- Retained test context (2026-10-12T03:51:10.896Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `bcaf6642-8743-4c0f-bd90-fdf7b17d9100`, `f7d787c8-1f9e-4731-9d9b-5ca8f9b0bf2b`, `e38f6074-3a54-458c-a673-a34880bd9210`, `aac8d3ab-f86b-4fef-b81a-635aefe72486`, `30a1c881-b8b8-4629-9260-a7f0cc7a08f1`.
+
+- Retained test context (2026-10-12T03:51:10.896Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `117e9de9-e626-43c9-87c1-fadad96da1fb`, `1f2b19c7-e785-4577-9f5b-a6b7388a1397`, `43d2f0bf-b16f-47ef-a200-25864cf073de`, `27bf9213-fba1-4e69-9072-37878596beec`, `a9241a33-e0f3-448a-b1b1-074e62edeaa7`, `dcf94138-344c-4d80-a2dd-b1646b6ea265`.
+
+- Retained test context (2026-10-12T03:51:10.897Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `b2226a33-ed51-4d98-bced-3300f441a8ca`, `1ab66d52-5a35-4a17-8920-262514e287d4`, `77e290aa-4851-42a0-8b80-f88d99df7911`, `256576c9-5f30-42ca-ac79-bfb048519116`, `87065952-7810-42f8-8f6b-d3396bb4999a`, `d46a6141-379a-4c4e-bc1d-357552b06fb4`, `99cce236-3514-4587-83fe-140e9d48b98e`.
+
+- Retained test context (2026-10-12T03:51:10.897Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `ddc46aa0-1de4-4a10-bb05-0583166f67c9`, `f8124f51-2ea7-4305-bc47-1ff330770958`, `125db088-9655-4377-aed0-79c41ac17d8a`, `8641bdc9-9a34-41b6-bee6-8e00508bfd26`, `3c452c28-a70e-405f-9650-778485c80bc3`.
+
+- Retained test context (2026-10-12T03:51:10.897Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `f54943a7-d37d-424b-a8a9-7168f4f9b076`.
+
+- Retained test context (2026-10-12T03:51:10.897Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `f12e7275-cbc1-46fe-8644-399127bd5e49`.
+
+- Retained test context (2026-10-12T03:51:10.898Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `b6f3ef2c-ea1d-4c61-9258-e055c3c0c51e`.
+
+- Retained test context (2026-10-12T03:51:10.898Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:10.898Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `912e39e3-61f5-4c51-82b2-b9fd8bc982cf`.
+
+- Retained test context (2026-10-12T03:51:10.898Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `912e39e3-61f5-4c51-82b2-b9fd8bc982cf`.
+
+- Retained test context (2026-10-12T03:51:10.898Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:13.477Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `56145729-14ad-4783-815a-a288fedec07d`, `c27381fd-1fdf-49d2-82be-8562d31e7752`.
+
+- Retained test context (2026-10-12T03:51:13.478Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `56145729-14ad-4783-815a-a288fedec07d`, `c27381fd-1fdf-49d2-82be-8562d31e7752`.
+
+- Retained test context (2026-10-12T03:51:13.478Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `56145729-14ad-4783-815a-a288fedec07d`, `c27381fd-1fdf-49d2-82be-8562d31e7752`.
+
+- Retained test context (2026-10-12T03:51:13.479Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `56145729-14ad-4783-815a-a288fedec07d`, `c27381fd-1fdf-49d2-82be-8562d31e7752`.
+
+- Retained test context (2026-10-12T03:51:13.479Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `56145729-14ad-4783-815a-a288fedec07d`, `c27381fd-1fdf-49d2-82be-8562d31e7752`.
+
+- Retained test context (2026-10-12T03:51:13.479Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `7d73f984-8f39-442f-8975-4925b33df97a`.
+
+- Retained test context (2026-10-12T03:51:13.480Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `01491fc6-687c-4f79-9c36-b95903438c35`, `4a28b21f-1e38-4456-9baf-1f4f037330e5`.
+
+- Retained test context (2026-10-12T03:51:13.480Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `bc69e30a-f37c-4da5-84ba-94ed4b9a5f40`.
+
+- Retained test context (2026-10-12T03:51:13.480Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `5ce47c48-4cfd-400e-8307-0606cbe2409b`.
+
+- Retained test context (2026-10-12T03:51:13.480Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `4d06e929-97da-48b7-8600-4f3f2fa3c92d`.
+
+- Retained test context (2026-10-12T03:51:13.481Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `9be22ec3-0e2b-4301-9cbf-ac3ec45580e5`.
+
+- Retained test context (2026-10-12T03:51:13.481Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `cb3b79bc-9f2b-48d1-8ea1-8a2bc43aed8f`.
+
+- Retained test context (2026-10-12T03:51:13.482Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `cb3b79bc-9f2b-48d1-8ea1-8a2bc43aed8f`.
+
+- Retained test context (2026-10-12T03:51:13.482Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `cbc1c0fe-439d-4833-99d7-9400339d082f`.
+
+- Retained test context (2026-10-12T03:51:13.482Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `41eba553-6914-4b88-a17d-8827df4ba80b`.
+
+- Retained test context (2026-10-12T03:51:13.483Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `715d0dee-f82e-4fb1-83cd-793908f2ca46`, `749625c0-3f95-4457-bc3b-fcca67005e6c`, `d3323fef-246b-4f30-9eba-83c60d6f4a73`, `9fe4d076-1e94-4647-8cc6-c192f53a837b`, `7ec8b2c1-5fb3-4c29-8ccb-beec85fcaaec`, `f2902c72-2409-4fd5-b87e-8524d6b418cc`, `4d69266e-514e-4683-8e3a-d36c4b5f43cc`.
+
+- Retained test context (2026-10-12T03:51:13.483Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `715d0dee-f82e-4fb1-83cd-793908f2ca46`, `749625c0-3f95-4457-bc3b-fcca67005e6c`, `d3323fef-246b-4f30-9eba-83c60d6f4a73`, `9fe4d076-1e94-4647-8cc6-c192f53a837b`, `7ec8b2c1-5fb3-4c29-8ccb-beec85fcaaec`, `f2902c72-2409-4fd5-b87e-8524d6b418cc`, `4d69266e-514e-4683-8e3a-d36c4b5f43cc`.
+
+- Retained test context (2026-10-12T03:51:13.483Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `715d0dee-f82e-4fb1-83cd-793908f2ca46`, `749625c0-3f95-4457-bc3b-fcca67005e6c`, `d3323fef-246b-4f30-9eba-83c60d6f4a73`, `9fe4d076-1e94-4647-8cc6-c192f53a837b`, `7ec8b2c1-5fb3-4c29-8ccb-beec85fcaaec`, `f2902c72-2409-4fd5-b87e-8524d6b418cc`, `4d69266e-514e-4683-8e3a-d36c4b5f43cc`.
+
+- Retained test context (2026-10-12T03:51:13.484Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:13.484Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `f2ab0104-1f02-47c3-9987-00e8c61c5e11`.
+
+- Retained test context (2026-10-12T03:51:13.485Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `e3947200-c8be-44a0-9c50-63d2bfa2c1b1`.
+
+- Retained test context (2026-10-12T03:51:13.485Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `053fddc2-ee50-41a9-a009-7cc7a1124994`.
+
+- Retained test context (2026-10-12T03:51:13.490Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:15.482Z): tests/integration/api/crew-finance.test.ts; target acc_settlement_adjustments_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.483Z): tests/integration/api/crew-finance.test.ts; target acc_settlement_approvals_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.484Z): tests/integration/api/crew-finance.test.ts; target acc_settlements_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.484Z): tests/integration/api/crew-finance.test.ts; target acc_wage_ledger_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.485Z): tests/integration/api/crew-finance.test.ts; target acc_calculation_runs_v2; references `2e991579-3320-4dee-8bc4-8b23adf072fa`, `a0d3d15d-f630-4eb8-a7a9-88a53764a820`, `af21e1e8-66a4-4236-a2fc-27f15d0fee74`, `76ae176a-28c5-48b8-a0d0-dad5c23b7450`, `2e4f0c83-063d-4f2d-942a-87d85dc98632`, `c7cb367f-850a-415e-a98f-49c323ffc707`, `471a7d02-2cd2-48c9-beff-535851890334`, `add60c73-5dd5-4cc2-b3cc-60a9e15ac810`, `d80a1522-e075-4df0-98b0-29475a922135`, `e912f9fa-df9d-449b-8775-50c81019ffb8`, `198aea8c-ffbb-454a-9c8d-e9990866c8eb`, `73a0ce49-ee28-4416-b09e-ef4e7a8a12b4`, `022c4b53-7aeb-464d-bcdc-b2013d522d51`, `aac71c02-d9f4-4300-ae99-f16ef8385b2d`.
+
+- Retained test context (2026-10-12T03:51:15.485Z): tests/integration/api/crew-finance.test.ts; target acc_calculation_runs_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.486Z): tests/integration/api/crew-finance.test.ts; target acc_monthly_transactions_v2; references `23c5c3ec-cfdd-406f-9c11-f0c08e514dc0`, `533f97e1-44b6-4803-be0e-22d2003c1812`, `90399c17-a741-45f0-9b54-e3d41659560d`, `f5000bbf-7ff9-4edb-a8c4-7a51abdf546b`.
+
+- Retained test context (2026-10-12T03:51:15.486Z): tests/integration/api/crew-finance.test.ts; target acc_bond_items_v2; references `23c5c3ec-cfdd-406f-9c11-f0c08e514dc0`, `f5000bbf-7ff9-4edb-a8c4-7a51abdf546b`.
+
+- Retained test context (2026-10-12T03:51:15.486Z): tests/integration/api/crew-finance.test.ts; target acc_advances_v2; references `533f97e1-44b6-4803-be0e-22d2003c1812`, `f5000bbf-7ff9-4edb-a8c4-7a51abdf546b`.
+
+- Retained test context (2026-10-12T03:51:15.487Z): tests/integration/api/crew-finance.test.ts; target acc_allotments_v2; references `90399c17-a741-45f0-9b54-e3d41659560d`, `f5000bbf-7ff9-4edb-a8c4-7a51abdf546b`.
+
+- Retained test context (2026-10-12T03:51:15.487Z): tests/integration/api/crew-finance.test.ts; target acc_engagements_v2; references `11e72cc5-1031-42aa-93d5-f699bf6a038e`, `7ecc4d9c-e684-482a-8348-63661d5a4002`, `270d72a4-3f8d-4181-8255-feb51901bbfa`, `a5e217d8-183d-4883-b85d-123a898fa227`.
+
+- Retained test context (2026-10-12T03:51:15.488Z): tests/integration/api/crew-finance.test.ts; target crew_members_v2; references `23c5c3ec-cfdd-406f-9c11-f0c08e514dc0`, `533f97e1-44b6-4803-be0e-22d2003c1812`, `90399c17-a741-45f0-9b54-e3d41659560d`, `f5000bbf-7ff9-4edb-a8c4-7a51abdf546b`.
+
+- Retained test context (2026-10-12T03:51:15.488Z): tests/integration/api/crew-finance.test.ts; target acc_wage_scale_lines_v2; references `bff727d5-030d-4088-b886-e6e76b5bf75d`.
+
+- Retained test context (2026-10-12T03:51:15.489Z): tests/integration/api/crew-finance.test.ts; target acc_wage_scales_v2; references `bff727d5-030d-4088-b886-e6e76b5bf75d`.
+
+- Retained test context (2026-10-12T03:51:15.489Z): tests/integration/api/crew-finance.test.ts; target acc_pay_elements_v2; references `76971db4-95b9-488a-bf35-3c49a4e4a293`, `2c71e136-b037-4d3c-8bd3-aac31dc1e9c9`, `6276a731-e570-4620-a539-05e56db7baf3`, `6c587428-b480-40a6-98dc-01e195559b70`.
+
+- Retained test context (2026-10-12T03:51:18.036Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `4a19490e-e3d6-42d5-b900-2b84db391648`.
+
+- Retained test context (2026-10-12T03:51:18.037Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `4a19490e-e3d6-42d5-b900-2b84db391648`.
+
+- Retained test context (2026-10-12T03:51:18.038Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `4a19490e-e3d6-42d5-b900-2b84db391648`.
+
+- Retained test context (2026-10-12T03:51:18.038Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `4a19490e-e3d6-42d5-b900-2b84db391648`.
+
+- Retained test context (2026-10-12T03:51:18.038Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `2b10658a-7e6e-4650-bb88-35a0b18845d7`, `92198f0e-2ecf-40ae-893e-6aff78fe0c8d`, `74a9b5c6-d4ea-4b5d-8da7-51194b8e672e`, `f75208b5-f988-4b16-927c-b16c4a9f607a`, `5a7f1006-d86a-4e1f-a4ed-2808c87dd236`, `c90cd4ed-b9d1-42a1-98af-30d4d6b5b62b`, `690fb651-c3c0-4423-bc32-c57251fe32eb`, `207ca983-3315-4860-a0dd-7570eb832289`, `7cde352b-a687-4ea6-b666-89a175459d9d`, `8303bfaa-478a-49db-ae16-4b16038d4b0c`, `48bbf296-dfca-429b-92f1-84bc17f706ea`, `fd91fdb1-7393-4428-9a77-f466f029ded2`, `3b1dc6fa-07cd-411c-9957-56e3afa75409`.
+
+- Retained test context (2026-10-12T03:51:18.038Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `6e9b9c4e-612e-4740-b16d-9cf6b7d1b8f5`.
+
+- Retained test context (2026-10-12T03:51:18.039Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `0abd917f-23db-495d-964e-df6e5c6a2dde`.
+
+- Retained test context (2026-10-12T03:51:18.039Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `e1f44e9d-2fde-4d07-ab27-731f068b9e42`.
+
+- Retained test context (2026-10-12T03:51:18.039Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `e1f44e9d-2fde-4d07-ab27-731f068b9e42`.
+
+- Retained test context (2026-10-12T03:51:18.040Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `81692e2b-ecd1-44bb-80d1-c9c86bdbd77b`.
+
+- Retained test context (2026-10-12T03:51:18.041Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `9103cf82-3af6-4cde-a0e2-edcaa9d2ff30`.
+
+- Retained test context (2026-10-12T03:51:18.041Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `af32fe2a-02dd-4542-a05a-b72f9ebfbf41`.
+
+- Retained test context (2026-10-12T03:51:18.041Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `0192b860-ec9c-43b0-8a75-8a6b9858712c`.
+
+- Retained test context (2026-10-12T03:51:18.041Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:18.042Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `4e347136-d7c0-48d8-872d-b3cbe336e45c`.
+
+- Retained test context (2026-10-12T03:51:18.042Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `4e347136-d7c0-48d8-872d-b3cbe336e45c`.
+
+- Retained test context (2026-10-12T03:51:18.042Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `4e347136-d7c0-48d8-872d-b3cbe336e45c`.
+
+- Retained test context (2026-10-12T03:51:19.388Z): requirement harness roots; target registered_fixture_context; references `f2fc22a8-6b1e-417d-aa86-95e5fc9796ff`, `1f737bd3-1dd4-4b50-8011-96c7ea6f83fd`, `aedde5dd-261a-417f-8140-4bce1aa7ebf2`, `8e76da78-311b-4e5e-a213-b94c70989afa`.
+
+- Retained test context (2026-10-12T03:51:19.486Z): requirement harness pinned content; target registered_fixture_context; references `e201db3d-2a2d-45a2-b619-7b0997a6419f`, `e9c03927-2502-4fda-8283-d22b83acd6c6`, `b3a969ef-d078-4209-b4d2-11ee23b1415a`, `a72453ba-fc8d-4a8a-a848-264112a62e2d`.
+
+- Retained test context (2026-10-12T03:51:19.601Z): requirement harness complete ledger graph; target registered_fixture_context; references `e410f713-de16-4c46-92d7-e0768118f979`, `1f737bd3-1dd4-4b50-8011-96c7ea6f83fd`, `878c92ad-4c2f-4af8-9442-139c97c6fda0`, `e201db3d-2a2d-45a2-b619-7b0997a6419f`, `77ede5de-c1ba-47ab-86f9-a0ab5833e526`, `aedde5dd-261a-417f-8140-4bce1aa7ebf2`, `82985c42-4701-4d02-ad30-45095122a751`.
+
+- Retained test context (2026-10-12T03:51:19.604Z): required lifecycle obligation; target registered_fixture_context; references `77ede5de-c1ba-47ab-86f9-a0ab5833e526`.
+
+- Retained test context (2026-10-12T03:51:19.655Z): lifecycle initial form; target registered_fixture_context; references `d699343b-5b15-4d35-a212-9c2f1c52534f`.
+
+- Retained test context (2026-10-12T03:51:19.687Z): requirement harness complete ledger graph; target registered_fixture_context; references `e410f713-de16-4c46-92d7-e0768118f979`, `1f737bd3-1dd4-4b50-8011-96c7ea6f83fd`, `878c92ad-4c2f-4af8-9442-139c97c6fda0`, `e201db3d-2a2d-45a2-b619-7b0997a6419f`, `dde2a653-b330-4ce1-8ecf-1e075d080e37`, `77ede5de-c1ba-47ab-86f9-a0ab5833e526`, `aedde5dd-261a-417f-8140-4bce1aa7ebf2`, `d699343b-5b15-4d35-a212-9c2f1c52534f`, `82985c42-4701-4d02-ad30-45095122a751`, `bc8167ef-2c35-40e8-9c1d-50bb34285d26`.
+
+- Retained test context (2026-10-12T03:51:19.822Z): required replacement form; target registered_fixture_context; references `0b6355f7-d33a-4260-accf-0143755dc065`.
+
+- Retained test context (2026-10-12T03:51:19.851Z): requirement harness roots; target registered_fixture_context; references `27bc7358-8f0e-47c6-8df7-9b352d03b249`, `8fc930b0-98d1-4c57-9840-e42c2d70f026`, `e41bc159-3498-40b5-b13b-c8b48d8a1e7b`, `1ba448ce-63e0-4cc8-b130-48d11fb84aad`.
+
+- Retained test context (2026-10-12T03:51:19.890Z): requirement harness pinned content; target registered_fixture_context; references `192fd3c4-b5ec-4ad0-a32c-a5b08f5c988d`, `5876a3e9-b738-4c5d-b1b0-5cc4b2e4a2cb`, `8ee14e54-109b-4e92-b45a-75520e786be8`, `f24d8830-75b0-4794-ad2a-b508c8ab888f`.
+
+- Retained test context (2026-10-12T03:51:19.987Z): requirement harness complete ledger graph; target registered_fixture_context; references `feb38b8e-b07b-4ecd-8106-68dce8994d4f`, `8fc930b0-98d1-4c57-9840-e42c2d70f026`, `db48f233-3df6-4c21-b1d3-82ba3a98d806`, `192fd3c4-b5ec-4ad0-a32c-a5b08f5c988d`, `ad2dda05-676f-41e5-8bb1-0950b8ac8ff4`, `e41bc159-3498-40b5-b13b-c8b48d8a1e7b`, `87bc25d4-3ff4-405c-9a67-207f5c6e54f3`, `02c07bad-4e53-4eae-b5a7-5c648c77881e`.
+
+- Retained test context (2026-10-12T03:51:20.021Z): earlier manual collision; target registered_fixture_context; references `02c07bad-4e53-4eae-b5a7-5c648c77881e`, `feb38b8e-b07b-4ecd-8106-68dce8994d4f`, `ad2dda05-676f-41e5-8bb1-0950b8ac8ff4`.
+
+- Retained test context (2026-10-12T03:51:20.074Z): manual conflict required replacement; target registered_fixture_context; references `55e116d5-ea37-47b4-bb08-bd8626ed4e3a`.
+
+- Retained test context (2026-10-12T03:51:20.074Z): requirement harness roots; target registered_fixture_context; references `f3ad66d9-ca23-40e6-9cad-c5200d6fec56`, `4c0048af-c92d-4b8f-b81f-43970350a1a1`, `56c4f9b4-cd8d-428e-86d2-aefa19448b63`, `63941d59-8b31-444f-a01f-727f9fadbacb`.
+
+- Retained test context (2026-10-12T03:51:20.111Z): requirement harness pinned content; target registered_fixture_context; references `2ab9e3ac-4d66-482e-a7ec-2d0476fafabf`, `2191b84c-c316-4fa6-8740-2912227f282f`, `0e722e79-bd02-41c4-81af-76d93b64e8e6`, `a0e3a4b8-4719-409b-a39d-762999e4ad3e`.
+
+- Retained test context (2026-10-12T03:51:20.166Z): requirement harness complete ledger graph; target registered_fixture_context; references `0a31fa09-fdc2-4e9b-aa36-3952e6db7ce1`, `4c0048af-c92d-4b8f-b81f-43970350a1a1`, `1ca16441-f791-44d2-b127-38574254f16a`, `2ab9e3ac-4d66-482e-a7ec-2d0476fafabf`, `5c3199ed-958e-486d-bb22-285de9c4c058`, `56c4f9b4-cd8d-428e-86d2-aefa19448b63`, `b42e873f-2796-44b9-8183-8067b02c1565`.
+
+- Retained test context (2026-10-12T03:51:20.169Z): unresolved obligation; target registered_fixture_context; references `5c3199ed-958e-486d-bb22-285de9c4c058`.
+
+- Retained test context (2026-10-12T03:51:20.194Z): requirement harness complete ledger graph; target registered_fixture_context; references `0a31fa09-fdc2-4e9b-aa36-3952e6db7ce1`, `4c0048af-c92d-4b8f-b81f-43970350a1a1`, `1ca16441-f791-44d2-b127-38574254f16a`, `2ab9e3ac-4d66-482e-a7ec-2d0476fafabf`, `12580267-dc4c-4f0d-93e0-9c3ec456b8b9`, `5c3199ed-958e-486d-bb22-285de9c4c058`, `56c4f9b4-cd8d-428e-86d2-aefa19448b63`, `b42e873f-2796-44b9-8183-8067b02c1565`, `534dbaa7-9d7b-43af-b63a-9fb6d6cc0a5f`.
+
+- Retained test context (2026-10-12T03:51:20.207Z): failed run; target registered_fixture_context; references `57837ced-768b-4908-8482-868d0ce89ec6`.
+
+- Retained test context (2026-10-12T03:51:22.143Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `98885086-23d7-4ddd-a7a4-d7f8e3b8ab46`.
+
+- Retained test context (2026-10-12T03:51:22.245Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.246Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.246Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.247Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.247Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.247Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `565d1dce-2b85-4f9a-a363-1493d5088528`, `841fc337-56f2-4178-9647-5e50e4527813`, `3162168a-9c7e-422b-a872-9c2d567a4f30`, `8e370b8d-a87f-47a5-961d-f48ba0e8b30e`.
+
+- Retained test context (2026-10-12T03:51:22.247Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:22.248Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `44e41ff9-2faa-44a9-bfec-05ffdcee4529`.
+
+- Retained test context (2026-10-12T03:51:22.248Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `3a0d2b0a-c2f9-48ef-a6b8-600c0eeab8ae`.
+
+- Retained test context (2026-10-12T03:51:22.248Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `3ab9c8cf-dcad-46d5-8196-abe67ae5db88`.
+
+- Retained test context (2026-10-12T03:51:22.248Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `b1e337c7-bb99-49cb-9878-6a3619f25648`.
+
+- Retained test context (2026-10-12T03:51:22.248Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `6eab0bf6-6fb8-4a45-a04d-bb5cc65efc04`.
+
+- Retained test context (2026-10-12T03:51:22.249Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `a88d9c03-14a0-483d-8f91-a9eeecd2db4c`, `8d8c1129-ccbd-4b51-91cd-0296fab65390`, `7be5a80a-8240-49b1-96e9-75417367c251`, `2ef40407-a039-4fd1-8112-8d0e8386c92a`.
+
+- Retained test context (2026-10-12T03:51:22.249Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `8299ada4-57be-4188-b30f-585181d6faa0`.
+
+- Retained test context (2026-10-12T03:51:22.249Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `98885086-23d7-4ddd-a7a4-d7f8e3b8ab46`, `c69e78c9-0238-420d-a32e-023ff5be6fbb`.
+
+- Retained test context (2026-10-12T03:51:22.250Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `98885086-23d7-4ddd-a7a4-d7f8e3b8ab46`.
+
+- Retained test context (2026-10-12T03:51:22.250Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:22.250Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `98885086-23d7-4ddd-a7a4-d7f8e3b8ab46`, `c69e78c9-0238-420d-a32e-023ff5be6fbb`.
+
+- Retained test context (2026-10-12T03:51:22.250Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `e90eb6fb-711a-429a-97fc-18baeb2916b0`.
+
+- Retained test context (2026-10-12T03:51:22.254Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:27.862Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `cfe0167b-8ced-466f-aa0c-419e1c49c197`, `ae1fa7da-ae07-4d19-80da-90fccbde7531`, `c979b869-7cc6-41b3-bc60-2eea1e910fb3`.
+
+- Retained test context (2026-10-12T03:51:27.863Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `cfe0167b-8ced-466f-aa0c-419e1c49c197`, `ae1fa7da-ae07-4d19-80da-90fccbde7531`, `c979b869-7cc6-41b3-bc60-2eea1e910fb3`.
+
+- Retained test context (2026-10-12T03:51:27.863Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `cfe0167b-8ced-466f-aa0c-419e1c49c197`, `ae1fa7da-ae07-4d19-80da-90fccbde7531`, `c979b869-7cc6-41b3-bc60-2eea1e910fb3`.
+
+- Retained test context (2026-10-12T03:51:27.864Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `cfe0167b-8ced-466f-aa0c-419e1c49c197`, `ae1fa7da-ae07-4d19-80da-90fccbde7531`, `c979b869-7cc6-41b3-bc60-2eea1e910fb3`.
+
+- Retained test context (2026-10-12T03:51:27.864Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `9eed3f58-0816-47c9-b74a-1ff6728b5570`, `94cfcfd6-1d89-4b57-9d4b-46ecb1dd667a`, `17f3e9db-e9de-46fa-a57c-ce15925cb9fd`, `d977e716-1c00-49ca-87c6-c087d929b56f`, `d41a4d7d-2978-45fb-8aa2-c1187d647044`.
+
+- Retained test context (2026-10-12T03:51:27.864Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `ae98b990-0c21-4aa7-9bb1-cbe86f2ba12b`.
+
+- Retained test context (2026-10-12T03:51:27.865Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `ac78437a-dcc8-45c5-b323-efe8183dd57d`.
+
+- Retained test context (2026-10-12T03:51:27.865Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `079f24df-3b71-4399-93ec-fed4c7b75026`.
+
+- Retained test context (2026-10-12T03:51:27.865Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `9c6f22ad-82de-44fc-8fc8-a8172a19a343`.
+
+- Retained test context (2026-10-12T03:51:27.866Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `ba67589f-0195-4456-bfc3-90be979f5b72`.
+
+- Retained test context (2026-10-12T03:51:27.866Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:27.866Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `b11c3ce4-dd5c-44e5-bbc4-44242e2f42dc`.
+
+- Retained test context (2026-10-12T03:51:27.867Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `b11c3ce4-dd5c-44e5-bbc4-44242e2f42dc`.
+
+- Retained test context (2026-10-12T03:51:27.867Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `b11c3ce4-dd5c-44e5-bbc4-44242e2f42dc`.
+
+- Retained test context (2026-10-12T03:51:28.827Z): dimension context cf_dimensions_0377d704; target registered_fixture_context; references `da1acd7f-cd0d-47d5-920f-57dee880f2ce`, `8fd5ea9b-2f31-4581-aea1-f7ab547f10bf`, `da953741-adfa-408e-9a07-4bf8a70abe41`, `e264c77f-6c0e-44be-9802-8302fbeb71b8`.
+
+- Retained test context (2026-10-12T03:51:29.021Z): cf_dimensions_0377d704.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references `2987e402-3951-4918-8a15-50e733b31d69`, `e8e15362-7500-4ffd-9bfd-b71f4adfb1a0`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `bf7efd7a-1d61-4405-aebb-370c4605228f`, `59ff20af-fe68-47c2-a2ce-4cd5c8a60bd1`, `055fb041-b8d7-42b3-8b94-fd30b1190d56`, `fdb47ab7-3d31-4a04-8924-71fbb5a0e374`, `a94e7164-2594-4fc3-9309-9e416ee7c7b6`, `e4a6ba2f-e136-497c-ab12-7636ae9b5756`, `16a4eb8e-80ab-43f2-823d-d2f0b1b8b304`, `1d1ae537-016a-42d4-97b7-82a9f8220a25`, `5a874392-74b3-4617-ac8c-c6a4277883e7`, `ac97a62c-a2f2-4839-ab46-9fd6a6082f18`, `31a79f68-b075-4252-b8c0-cd96293c88f5`, `38418de7-c45e-4a6f-aca9-d1af767da538`, `c9550889-6207-459e-98d9-8e636223a064`, `8ccae40c-92f2-432d-9710-aab0586b8b66`, `eae6cbf7-340b-4570-bedf-9e3420e4a3fa`, `4239dd5e-a968-4dae-b43a-b1acb1ce5286`, `541d5c68-f454-40b8-a6ba-6b6d97b47fdb`, `8fca3cf8-10df-4620-9c43-140ff0b9eef4`, `0c919b85-6819-42af-aedc-85be2e8edbab`.
+
+- Retained test context (2026-10-12T03:51:29.044Z): cf_dimensions_0377d704.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references `50cbdac5-32ca-44eb-ab9a-25627f2be33d`, `414d0943-53d8-4d17-a086-8031ac1a4517`, `b232b785-f604-4a4b-b4b7-1f8947d74a84`, `1a397f4a-4f64-4fb0-b69b-c9ff00a0573b`, `e28d9559-8e9f-4a9f-9a53-55677cf973ff`, `173d8a50-654b-4a49-a730-7de96f612f1c`, `fa2f1428-3103-49b7-a302-0ef5fb86ada1`, `2bbdd736-8468-4760-b34b-afb91cf42b75`, `200d73e8-8d8d-4087-91f9-b18576af1382`, `6d09470e-f43e-4a56-82ee-1ca3e6a5857a`, `2e3cc990-ea3f-4ed5-bf47-67c3b5e8929c`, `3d41c844-df9e-4565-ba82-796a0bd7eac7`, `af829569-f382-4fe6-a25d-eebbe009ebf7`, `82e3eae2-f09b-48f6-84b4-4f6131b502a5`, `ad00c123-0485-48c0-a2fd-2f7f9a141c37`, `9d32d7a8-a438-4d86-be58-84a5c1b9da6f`, `8e650dcc-741b-45a5-8f42-34cf87ecf58d`, `59b736f2-1985-46ff-a895-3e2c9c4509f3`, `9c9ca9b3-d089-4a47-a555-eef2251318fc`, `be081b19-aa9b-47bc-a1df-b136580f0d1b`, `8a133dad-cca1-4616-8fc5-60ec28a7096b`, `09687c5f-bcc6-43b1-9676-db0532564c52`, `b047b472-da24-4f00-b719-42cd0cbfea87`, `2801f769-9121-4768-8f75-60bf54ef812b`, `bf916f23-34d9-4050-8349-caf2cdac3a97`, `eaca1b43-ffc8-4a33-952c-b2dfb9b13ac6`, `692a5c35-fbae-41c4-9c7d-04271a121eca`, `7f8b4eb2-e0ea-4618-9c26-2145b92a0531`, `c52421d8-1c35-491f-86cd-8366a4366cf1`, `941bf7f8-67cb-485f-855c-cc6cac270d8c`, `2ca38074-adf7-4d91-a910-142501dbda97`, `a2ae4adf-2648-44d1-a5a2-135ce2a6e3b7`, `f8e8bc0b-c299-4aab-8e14-5841e53b9772`, `21d339b4-68e9-4590-bbf6-4da1e56b3642`, `d543696f-10e9-49fe-b75f-a36b06a2b00f`, `3625665f-435c-4b8d-a28a-f8afabdec1a5`, `a4d66962-ecc7-418d-878f-a834d9bfbe0e`, `0599fa59-0d3b-4919-9a27-8339eac90607`, `df045d8e-55a4-4151-94a5-e6fd4d2bc718`, `a5a01b28-fd78-434a-81fb-c9abed8f86b5`, `e30618f2-47a4-4aa3-9f35-c87e85761345`, `d14b7692-887c-4e72-877f-419d51856534`, `60f13cda-1234-480c-a228-08837799a7e9`, `b9e2576e-bd97-465c-9d0c-2652c1e5af4e`, `169a75db-39b8-46f2-a021-d5bafc5278be`, `f2ccc0ba-7b24-4945-a899-5ec186300b35`, `1176d718-2db8-4f34-b634-a0b329c7aeb8`, `0e58c92b-fc2e-46de-b03e-573246e4977f`.
+
+- Retained test context (2026-10-12T03:51:29.065Z): cf_dimensions_0377d704.master_vessels canonical master copies; target registered_fixture_context; references `743feb08-841a-11ed-aa7c-7003bca91a86`, `7440571a-841a-11ed-aa7c-7003bca91a86`, `744535d0-841a-11ed-aa7c-7003bca91a86`, `7446783c-841a-11ed-aa7c-7003bca91a86`, `74481b72-841a-11ed-aa7c-7003bca91a86`, `744bafc7-841a-11ed-aa7c-7003bca91a86`, `744c8b44-841a-11ed-aa7c-7003bca91a86`, `0f5fed6a-573c-11ed-8778-ec53d845cd37`, `0f601d62-573c-11ed-8778-ec53d845cd37`, `c4ec0000-0000-4000-8000-000000000001`, `f90095c9-4fb6-492d-bd95-b479fd4f5ae7`, `6fb584ae-9883-43a8-8595-3d5f1aa98a3a`, `59b97073-6d5b-47e0-96f4-4edbda264359`, `2bf0feb4-24ec-4951-a7b4-f0b4fdddaf07`, `f0765b78-dc45-4c42-b92b-191bd8c67a4f`, `fa413a46-255c-4ff5-bd40-eb93319ca922`, `ad1af0ab-7096-4b5f-a73f-8b265327a817`, `583c7075-1dfb-4b57-bc0c-53cf3dae45df`, `7c7341d3-4434-4420-b1be-2a0433f8811e`, `c9dee626-66a9-4f61-bec9-2f5512c98f27`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `069d1924-ef38-4717-a691-ad949560b5c1`, `016465f9-92ee-4824-a5b5-36e6ffdcf9db`, `1e5d9339-37f1-4bab-a523-5f8a6d94473d`, `64c13df5-f487-45a1-97c8-f75afecf634b`, `1358bf6f-fa7a-45fd-8665-35408cfb8225`, `765bf814-f869-413a-a59c-9d436b7aceb3`, `3137c681-f7ee-4efa-8e6a-7c87b7bdad75`, `5c940532-d915-4ade-b9b4-22e6d5fbfef0`, `cb72b462-159c-4ffc-8ae2-2c24a4390078`, `3685bbaa-e51e-4bae-b728-4268e3967f7f`, `34d67378-ae6f-48cf-8544-286230e2edb0`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `9ee74443-05de-4f7f-9606-183016ab7912`, `931fb67c-c1d7-4f32-9139-4c84423dbcfc`, `43089a39-6729-400d-b3c9-4046c85ba4aa`, `b54ce872-c75d-4acf-8aba-b4a1ecb75221`, `17535fe2-25a1-498c-854e-bdec7742063d`, `84443c82-61b6-4670-bd74-6eae29fb0245`, `837ac867-5772-4bd8-9342-1889afd1c798`, `f67fe4c5-0a40-4301-8330-37ba5b81da42`, `ea5040a6-de86-4a34-9453-14b9774b15f6`, `32ebdd9e-3b38-42f0-aa6f-08b09d437fa7`, `9b997fc2-da5d-4561-a2b5-d7420f1d8d64`, `4a8e0993-0b0e-49e9-b191-eac96f1d7092`, `11aaf179-9282-49b3-9470-77cddad7da58`, `47ce8029-b076-476e-8542-af68e5ca4ed6`, `0e0f52ed-759d-4b1f-b6d4-f0e1eb9ad4f7`, `99838ad1-478a-47e6-b455-d827d5eb6ba6`, `07409429-dd27-42f6-97f0-c771eb4244e5`, `36a5e527-9d49-477b-a332-8533cdb013e4`, `86aec264-3e41-47e8-bc9b-5b0daafc02ee`, `42d0b94c-4fbf-4d59-a6dd-1b88de95deee`, `374e6540-abf1-4e02-b2ca-8d9f4a3fb41c`, `d477ad39-0810-4bea-804d-d475908d694c`, `7ff9e4ee-8d3f-4013-b10e-e606365492b9`, `cc12ea46-7f93-485e-a9a7-8c4a348cb0d7`, `e9bd40b3-94b9-4837-85a0-212bf0bf30a5`, `f13644d7-24fa-424f-b93e-8b3069d5d770`, `60f96cce-db34-4441-b3ac-a2a72b0099f3`, `5e2dbb27-2516-46e8-91d4-9c6d82bd1ed1`, `7c930e09-ba93-4fa9-b745-6f32920eefe8`, `7badffb6-0682-4977-a719-e181feb6ab0a`, `392097a2-8880-41e8-ad0e-8982f2d2a424`, `e8d12c15-ed88-46fc-b6f5-20f23d310d17`, `37542301-6a9d-4182-a4de-91795396296d`, `35123a42-77e1-4d7c-b3ce-c91f449e18cd`, `eed30f61-a397-4ed1-8c3b-33088178c671`, `5cc8b7bf-0b74-43ad-8570-9a7b64ba372c`, `89eacfab-8dec-402c-80a4-5c65089f0494`, `344b3ece-700b-439b-a4f3-d4e2ccbca886`, `a80e8035-691c-4c61-aa60-50588ad8872a`, `6aff8aa8-1ee1-49d4-b616-e04f6ff54671`, `24c5269d-53fb-4ae7-b6e8-82284b98549a`, `e7f6150f-43d0-488c-b83c-171a5fc47962`, `d0e10147-9d0f-416d-b65f-59213a40ab24`, `f354e737-b36e-45cb-9af5-af6ae97cfa37`, `8f572270-0f98-4db1-b857-dc0e7ffc3499`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `402bccd7-b9f2-4e8f-89c9-c2a9d137c3fa`, `a49a6359-ec18-454c-94eb-f46389dc7859`, `ed89e50f-37dd-4f17-9628-64e232a4b7eb`, `8a6f8462-3b80-46df-9548-6ff50f572b69`, `eef3a8f9-d7ac-40b2-9b78-acccdf6f2a0e`, `0233a862-79ce-44a8-9ea0-12dbbe43479f`, `7397b1ea-8544-42c2-b96d-27a59f782ff6`, `8377447b-b970-4f9a-8396-8d5d0aa23445`, `8c8390e1-4f3e-4833-bc2f-d18cec4f5131`, `e3b45477-c5d3-4481-9437-270ad45a22f5`, `c212da4b-f995-46a7-9264-6bb726431e55`, `bf4f7163-bd74-48e6-ab6f-df23d79797bf`, `e744fffb-8306-4295-bdba-c779cb6f15d8`, `4d1905be-43e1-4cf2-b5ee-eedb4d5e00a9`, `353981af-2886-42ca-b18d-1e36ba2af71b`, `e15881c7-adc2-41ad-ad04-ee01db4586ad`, `51113480-4d1b-4ea6-9ba2-2e732f43c11d`, `507f9414-1ff1-4d9c-84b3-755357f6fd8a`, `c4e4f07b-5080-4da3-a327-ef5529109a2b`, `7aac1ea2-addd-45f8-b959-c3090342eb9d`, `c0f5e234-800a-4046-85bb-c25fe89f8a5e`, `f99cc69d-09f7-4f16-aee5-11afa9d2fa92`, `fe6e6d5d-aa27-4c0c-ba5f-44c2e4970b20`, `90b1dc48-16b6-4db0-9ad5-cfa4d2ff37b2`, `b91e7d3e-4681-4ca8-9fa8-6c4ca1f36dfe`, `0faef79b-31c8-41d2-bb27-bd79d12e5b3f`, `d32685f8-a738-4f2a-a92d-68721cea24b5`, `a25dd5ae-b97d-4e00-8c41-bda4b7fe4535`, `d01e5423-a5c0-4429-a3e3-0a926010d707`, `0f1aa8c9-d910-4ffc-92c3-97f4dc9b7e23`, `9c5ac983-4acd-451f-a2fb-456bdc8cf19b`, `23a72d0f-d898-42f7-8782-3e86e9404602`, `87dee103-4bed-4249-beb8-f9be4c2421b3`, `b23ec750-3f0f-49f5-8e94-ba73ea0d0a74`, `93b17075-f973-4f68-a5e7-c84e8c266e73`, `bc1c80e6-be2d-4ac1-a0b2-f4f2a8c95723`, `247ce6dc-a65b-4f0c-900b-4d607022649f`, `d478b1a3-4a94-457c-8bfa-87ae29060d69`, `d79fc879-70ff-43bc-bd1d-93a92ee377c6`, `562ad535-35c0-4e84-ba03-36ee6b2fcf55`, `dbb96024-10f6-4591-bcf7-2cc9a014a8fc`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `94b39442-6bb8-48d1-93f8-ddee7448f149`, `c9c3b64d-430c-445b-9ee0-a632da967822`, `5ed94e11-fa1d-46d4-8e51-df83fc185de8`, `171fa93d-734c-421b-acdb-3068077ecfb3`, `ab82c7de-04c6-4278-9907-f5bf0ca5dadc`, `5b7641e9-a573-4779-9fed-3c9a7b7e6f0d`, `09c61d2e-029a-4b82-8307-5da96f77f4d0`, `b77be955-5c35-41eb-80aa-fcf2b035c976`, `196e7d80-69c9-4b3b-9c3e-33bac02afbff`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `5828b543-2f65-49a5-9018-e3ee551311d5`, `1f720bc3-6383-4d5c-8da2-0bda33264e28`, `ac782961-5ef9-44eb-b53e-02d88d36685f`, `93550251-c63d-4d18-9387-1b84fb06fc88`, `82f9cbe3-23b5-4bae-9be7-3f2118ebde17`, `a68063fb-e8e5-44dc-bb25-3c77080561fa`, `88941048-f99d-461a-961b-08a603a73903`, `a806e6a8-8665-45e3-a2db-1cdcf7b66aac`, `d51d56da-88ae-4131-8784-70cbda34eb13`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `321244d3-1a91-4c0e-8b70-fa7bc515cbb6`, `53f7acc1-0875-4e60-a5a0-463c89b5b43c`, `e9e90415-657c-4b0f-9720-fab1ce544fb0`, `6583c272-424a-4270-9022-6b59155f9e68`, `6fa0ea31-3db8-437a-b09d-1299b4ab83de`, `7ec2011f-7876-4747-b559-c49314b0c0bf`, `18a8e967-6b78-4a7e-8738-f58ad3ca0425`, `36354b4b-e9e2-4375-867a-323192596063`, `1b005ad1-7158-4de9-94cf-c89937b0d96a`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`, `4d935459-8e4e-4767-ac0c-91d40fffbbcc`, `4ebff656-8d80-4a9c-8e5c-131bdb773181`, `6a52b31b-9254-4778-abca-a415201ffc99`, `3770c75c-76f3-4e83-84f9-7c213792b9a7`, `30b6d691-45eb-4f40-8b8c-142d33a268ff`, `f6ae2e51-9bcd-40e2-b3c1-ee8562de1670`, `bcef71b2-6c6d-452c-ae5c-ef861bffdbee`, `3b180eaa-a18f-489c-8e78-42258920733a`, `2a2718c0-439b-4baf-835d-0e67655f513e`, `5f58b8bb-9243-491f-b93b-49df7220567c`, `3f85a6b3-3d39-4eb3-9257-286046744692`, `f7aca8b4-08e3-4d44-aab9-55de0a8ebc0f`, `5edddc88-b653-414a-a5f1-bba71ffb39e2`, `72679f65-278b-4b04-9485-55d0ddbab03a`, `a7fde877-08d4-4a8b-a66b-cd0ff0a4bc2f`, `3658d18c-a741-4583-9ba9-8fe2944110d6`, `e4870d13-b9be-45db-a1bb-6e40c8a8ae76`, `cf5c39af-5371-46c9-95eb-31cc6d12d906`, `abf5cb39-dc17-4869-81b2-d16a6b04be79`, `27be5b39-4f6d-4484-a5ea-685f8f2284ac`, `88f2ebde-8d16-4276-9ac0-dfa062019459`, `585bfe61-cb3e-4b1a-900d-28596032d41a`, `489547d5-009a-48a1-994b-ee98d900b9b3`, `4eb6ddf8-035f-4daa-9005-716a9572a689`, `f76f19c1-7f76-4585-ba8d-30a9707dc1b8`, `797f1bf3-d58f-4030-8f7f-8e7a292286e6`, `0e776726-2868-47be-b570-0857e54c911f`, `890900bc-ad04-42e0-a0d1-e910691028a9`, `04ae4b2f-8b87-4600-914d-999057644d5d`, `c6b4e4c7-de89-4ba2-b58f-8fffbbce938d`, `9cd3817a-0c40-4f08-85f2-209a23f0dd94`, `f193e5c4-d6fa-4339-bef9-f9030fa61905`, `65f6a259-73fc-42b9-a723-ff52a415093a`, `de2064e9-d7a1-4257-8e25-72f53610fedd`, `44cf7e73-1d4d-453a-a5b9-72ee68e50361`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `839afebb-4530-471b-8d5c-b0667777d78c`, `8c1d37b4-e0a6-47cf-9a83-92a1c72ba66a`, `ce50a6b2-b202-48da-a378-8e994749dd4c`, `7abebc05-dcc3-4825-9683-98575755f607`, `fa17ff9c-bece-4617-88f5-d153b2db7e3e`, `27660b10-aa85-46b6-8f78-89fb0773a97f`, `6358e41a-7b06-4c0d-9d91-1c4bca51720a`, `55661b55-0e48-412f-9741-77596c89bc04`, `7a23e222-5a69-42f7-8bd2-7d932d4c3242`, `cfd602d5-4043-4125-99fc-94950097e784`, `6e28014a-5ed6-436d-8174-77c200c3232f`, `5613e61f-f7d9-4b1e-b13e-1f46950cb348`, `d2b9d1dd-a956-44df-b404-3f21addc2a8a`, `378ab46b-6fd8-4bc5-b363-4311c198ec4e`, `6d4e2e75-e269-4a3a-b3d2-09f868e81a65`, `f6a1c67e-33ce-4a61-be4b-0db93580562f`, `46ecbf46-01c0-472b-baa4-e5d94d813697`, `6a059981-bf75-4b9b-95e3-3c09048514b0`, `9b9872ee-7488-4566-9c98-e2d99466cfe9`, `ed33189a-2104-46ee-9efd-932d513b838b`, `09de64d0-a385-4996-ae7b-c743a8105352`, `5f6e3876-717b-45e3-899c-48e5d5b4ef4d`, `c0343a0c-aa2a-4ab2-957c-e726a3085ba3`, `69465d38-e1d1-408b-b1f9-0548c749b03e`, `4ad87e02-0545-4148-8bc5-dfb452a62476`, `bf168245-f9cb-4e17-81c1-c6e58aac9b19`, `d703e32b-7b43-4d5e-a079-a4a30372438c`, `8f7de350-8550-41dc-9990-41853c0054e3`, `593d820e-2f41-4755-8885-e219c953c44c`, `e87473d0-f33b-4ce7-88bc-c4ab9bc151be`, `d71bd68a-5fcf-48a2-806c-3c348ec64b53`, `7e806963-b7ed-4210-8121-34c9bda1ad3e`, `25256f04-1049-40e2-97c0-aaac162cb19d`, `16b17868-3d25-4116-af32-172402bcbcef`, `407f200b-200d-494e-937c-f93ad92a4861`, `d2e68b6c-0eaa-4463-868b-d4733226b641`, `aedc4948-62c0-4d47-97a4-1564ee6f655a`, `955ee0f2-d4e3-459e-9b96-09d1b7e65b0d`, `5354ef2c-f5ed-4484-adae-978736e299c3`, `dd6f2d1e-2165-413f-91b3-5ae00833871e`, `0d217fcc-b183-44b1-af40-b415afdb599f`, `9cb40da1-b910-4038-88fc-0e33e87fb52c`, `b1709014-d6bf-4806-a494-7f6698599e29`, `8704843d-9649-4ce1-9126-77b20255f7fa`, `fc71d790-583e-4131-b7b8-57cc0c3bce00`, `c2599aaa-a73f-4e0a-a034-15931be02a4e`, `8407fd18-44e8-4358-9d36-62fe16345fb0`, `557eb038-059b-4926-8fda-7c92ae3d1f96`, `824ed426-ce12-4332-988a-61faa3e39194`, `c4fc36ac-37d5-4cc1-a2f6-9fcaf2f3b789`, `86d092fa-4976-4c7d-ada4-3b255cc02f8e`, `7e7c921b-6396-4ef6-9077-f765cfb081c8`, `71e39edb-b5c4-4ac5-bc43-687c5f6cd593`, `c49523e3-0c62-44ad-aa79-0e991e94f522`, `d19cfed4-a8ec-4ca3-91ea-12ad0d14786b`, `305374f7-1cf7-4821-8a23-682e9b77d575`, `ab7e8cf8-90a6-4b05-9173-f137a5eefb25`, `f2ab0104-1f02-47c3-9987-00e8c61c5e11`, `e3947200-c8be-44a0-9c50-63d2bfa2c1b1`, `c293b5a1-df29-4e6f-bffe-9c319a8e17e8`, `ffd7b94a-32e0-4b9e-85cf-6c451f8ee73f`, `2be6a033-dac4-43ef-8495-a1b39039c80e`, `a1596259-b4dd-41b8-a686-845803faf343`, `2fe2fb14-d421-4bcb-ae55-3384810c5034`, `e90eb6fb-711a-429a-97fc-18baeb2916b0`, `928d247a-2ceb-4664-81cf-50f6832a40a4`.
+
+- Retained test context (2026-10-12T03:51:29.084Z): cf_dimensions_0377d704.master_vessel_types canonical master copies; target registered_fixture_context; references `0F441986-EB77-45BB-B5DB-57BCA670D5AD`, `4C3A087F-EC80-4418-99A1-A797483C8441`, `5E1BE183-4A26-4CE5-BB13-8020F5E1D166`, `5924D7A9-7EAC-490C-9023-460560B93B11`, `A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3`, `20583B5E-EEFE-492B-8B03-E134CE89A53C`, `1CA31CEB-CE3E-408A-A346-32BBAB71C040`, `5913A5C3-83A5-4A7E-8305-63A55D8A8F44`, `4C73FF84-FBAC-4261-92F2-2AA9C80EC050`, `31F110C7-FD27-4CF4-80EE-3ECB2F5E07AD`, `925370AF-D31B-4E4B-A3CD-B3AB26C2B6F0`, `52851612-A5A4-4454-AAD1-E9DF26C7C04D`, `BC553604-B1A8-476A-A0F2-6591CE6F1320`, `8f5cf00c-0ec9-46bb-bc11-bcd7af934ab3`, `209eb205-e53d-11f0-b9c6-06f16491c73e`, `20a14fb9-e53d-11f0-b9c6-06f16491c73e`, `20a260a5-e53d-11f0-b9c6-06f16491c73e`, `20a357b0-e53d-11f0-b9c6-06f16491c73e`, `20a770bc-e53d-11f0-b9c6-06f16491c73e`, `ef5283a2-7c19-46f0-ad50-efc4c6eb17ff`, `5ad759bc-fb6a-4651-aba7-9e075e5b6971`, `3997ca40-c849-40ec-b950-f9ec0109e64a`, `abf5e999-0c20-4cf4-8fea-b6b8e47d4369`, `001533c1-faf8-493a-9d82-e729d1a2609a`, `712dc776-5398-40a1-bcc4-c83c54f355f8`, `c68b931e-9f88-4767-ad94-536b43d7ca39`, `16877b4d-248b-4524-bdd3-68d61628dba3`, `2825d496-6a13-486f-a396-4cbb0a9b286d`, `68151d2c-42e4-4b6e-927b-6c8e7240192f`, `3b3dc5ea-b636-4c12-9247-9a75ebf27012`, `67e93015-36c0-41e2-b5f4-d7cfdb49bf30`, `a748b860-6c65-401c-938c-71d1aa7f778a`, `5e689803-f29d-434a-b191-5f5d7586ed2d`, `71d4a357-8cc1-42cc-988d-65fb1933e5d7`, `b3a5ed6b-bf83-4cd8-828b-47255e5bba24`, `440b8ebf-092f-4f16-8d9d-266c55d2d74e`, `a4f6cf98-8106-4510-b1f5-b3caee83c0c2`, `bb2a6534-c50a-4f54-a90e-88446c584d7b`, `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`, `603bfbd1-59a6-4189-a523-72c76c46e609`, `649260fe-93ce-4310-82f5-007d604b32f9`, `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`, `237bbf84-a3ce-4566-a7ab-25154bc80ba4`, `fb4caa09-f138-41b3-ba3a-72a76e367f9a`, `862943bb-dde1-42b7-9e35-7072d83d9347`, `778111eb-f9cd-433c-a508-687bc8e200f0`, `692fdfe7-2451-4624-aa86-0dc9f20c7c7c`, `6741c679-95d2-4f45-9078-3b774d0059d0`, `6d4e2e75-e269-4a3a-b3d2-09f868e81a65`, `03e2f8fa-dd38-4bec-83da-30f7e900efe8`, `3d68e244-15be-4258-a9cb-a2347a29885f`, `4ad87e02-0545-4148-8bc5-dfb452a62476`, `9d67e5f4-244e-488f-a2b9-4d2fe6f580d9`, `40544c38-57af-43f0-9d54-59390f6e6ebf`, `053fddc2-ee50-41a9-a009-7cc7a1124994`, `07f22f7e-2bcd-4aca-9686-be146d9cadc6`.
+
+- Retained test context (2026-10-12T03:51:29.104Z): cf_dimensions_0377d704.master_nationalities canonical master copies; target registered_fixture_context; references `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `b9ce5555-60b0-11ec-a42e-507b9da1cbd6`, `b9cff77c-60b0-11ec-a42e-507b9da1cbd6`, `b9d181d7-60b0-11ec-a42e-507b9da1cbd6`, `b9d34694-60b0-11ec-a42e-507b9da1cbd6`, `b9d53159-60b0-11ec-a42e-507b9da1cbd6`, `b9d7240f-60b0-11ec-a42e-507b9da1cbd6`, `b9d8ac37-60b0-11ec-a42e-507b9da1cbd6`, `b9da270a-60b0-11ec-a42e-507b9da1cbd6`, `b9dbafa2-60b0-11ec-a42e-507b9da1cbd6`, `b9dd63e9-60b0-11ec-a42e-507b9da1cbd6`, `b9df5040-60b0-11ec-a42e-507b9da1cbd6`, `b9e0c088-60b0-11ec-a42e-507b9da1cbd6`, `b9e22c63-60b0-11ec-a42e-507b9da1cbd6`, `b9e3a60f-60b0-11ec-a42e-507b9da1cbd6`, `b9e534db-60b0-11ec-a42e-507b9da1cbd6`, `b9e6fb72-60b0-11ec-a42e-507b9da1cbd6`, `b9e8a0eb-60b0-11ec-a42e-507b9da1cbd6`, `b9ea10e2-60b0-11ec-a42e-507b9da1cbd6`, `b9ebb2ec-60b0-11ec-a42e-507b9da1cbd6`, `b9ed1b93-60b0-11ec-a42e-507b9da1cbd6`, `b9ee65c6-60b0-11ec-a42e-507b9da1cbd6`, `b9efad95-60b0-11ec-a42e-507b9da1cbd6`, `b9f0fa40-60b0-11ec-a42e-507b9da1cbd6`, `b9f298ba-60b0-11ec-a42e-507b9da1cbd6`, `b9f416cd-60b0-11ec-a42e-507b9da1cbd6`, `b9f57b04-60b0-11ec-a42e-507b9da1cbd6`, `b9f70758-60b0-11ec-a42e-507b9da1cbd6`, `b9f85d35-60b0-11ec-a42e-507b9da1cbd6`, `b9f9c06a-60b0-11ec-a42e-507b9da1cbd6`, `b9fb1b7b-60b0-11ec-a42e-507b9da1cbd6`, `b9fc7dc1-60b0-11ec-a42e-507b9da1cbd6`, `b9fddd25-60b0-11ec-a42e-507b9da1cbd6`, `b9ff4253-60b0-11ec-a42e-507b9da1cbd6`, `ba00d79f-60b0-11ec-a42e-507b9da1cbd6`, `ba033808-60b0-11ec-a42e-507b9da1cbd6`, `ba04c41d-60b0-11ec-a42e-507b9da1cbd6`, `ba064562-60b0-11ec-a42e-507b9da1cbd6`, `ba0827d1-60b0-11ec-a42e-507b9da1cbd6`, `ba09f145-60b0-11ec-a42e-507b9da1cbd6`, `ba0b5a9f-60b0-11ec-a42e-507b9da1cbd6`, `ba0ce953-60b0-11ec-a42e-507b9da1cbd6`, `ba0e5367-60b0-11ec-a42e-507b9da1cbd6`, `ba0fcc45-60b0-11ec-a42e-507b9da1cbd6`, `ba119014-60b0-11ec-a42e-507b9da1cbd6`, `ba12f05f-60b0-11ec-a42e-507b9da1cbd6`, `ba14510c-60b0-11ec-a42e-507b9da1cbd6`, `ba15b76a-60b0-11ec-a42e-507b9da1cbd6`, `ba173569-60b0-11ec-a42e-507b9da1cbd6`, `ba18a3f9-60b0-11ec-a42e-507b9da1cbd6`, `ba1a2ba0-60b0-11ec-a42e-507b9da1cbd6`, `ba1bc198-60b0-11ec-a42e-507b9da1cbd6`, `ba1e3a6c-60b0-11ec-a42e-507b9da1cbd6`, `ba1faecf-60b0-11ec-a42e-507b9da1cbd6`, `ba21e441-60b0-11ec-a42e-507b9da1cbd6`, `ba23e744-60b0-11ec-a42e-507b9da1cbd6`, `ba2615aa-60b0-11ec-a42e-507b9da1cbd6`, `ba27d855-60b0-11ec-a42e-507b9da1cbd6`, `ba29caed-60b0-11ec-a42e-507b9da1cbd6`, `ba2c2a5a-60b0-11ec-a42e-507b9da1cbd6`, `ba320c6f-60b0-11ec-a42e-507b9da1cbd6`, `ba394c50-60b0-11ec-a42e-507b9da1cbd6`, `ba3d066d-60b0-11ec-a42e-507b9da1cbd6`, `ba41b255-60b0-11ec-a42e-507b9da1cbd6`, `ba48163a-60b0-11ec-a42e-507b9da1cbd6`, `ba4e0c03-60b0-11ec-a42e-507b9da1cbd6`, `ba53687b-60b0-11ec-a42e-507b9da1cbd6`, `ba56f032-60b0-11ec-a42e-507b9da1cbd6`, `ba5e2c52-60b0-11ec-a42e-507b9da1cbd6`, `ba5ffc7f-60b0-11ec-a42e-507b9da1cbd6`, `ba61aabb-60b0-11ec-a42e-507b9da1cbd6`, `ba6371c6-60b0-11ec-a42e-507b9da1cbd6`, `ba659d69-60b0-11ec-a42e-507b9da1cbd6`, `ba68798b-60b0-11ec-a42e-507b9da1cbd6`, `ba6a7066-60b0-11ec-a42e-507b9da1cbd6`, `ba6c8446-60b0-11ec-a42e-507b9da1cbd6`, `ba6dfd7b-60b0-11ec-a42e-507b9da1cbd6`, `ba6fcd65-60b0-11ec-a42e-507b9da1cbd6`, `ba71ba63-60b0-11ec-a42e-507b9da1cbd6`, `ba73c922-60b0-11ec-a42e-507b9da1cbd6`, `ba75adff-60b0-11ec-a42e-507b9da1cbd6`, `ba7722ae-60b0-11ec-a42e-507b9da1cbd6`, `ba7a38a7-60b0-11ec-a42e-507b9da1cbd6`, `ba7c2dd9-60b0-11ec-a42e-507b9da1cbd6`, `ba7f41bd-60b0-11ec-a42e-507b9da1cbd6`, `ba80a616-60b0-11ec-a42e-507b9da1cbd6`, `ba82b8b7-60b0-11ec-a42e-507b9da1cbd6`, `ba84707c-60b0-11ec-a42e-507b9da1cbd6`, `ba86223f-60b0-11ec-a42e-507b9da1cbd6`, `ba879118-60b0-11ec-a42e-507b9da1cbd6`, `ba8a5df0-60b0-11ec-a42e-507b9da1cbd6`, `ba8c74e4-60b0-11ec-a42e-507b9da1cbd6`, `ba8e9a38-60b0-11ec-a42e-507b9da1cbd6`, `ba9063eb-60b0-11ec-a42e-507b9da1cbd6`, `ba92090f-60b0-11ec-a42e-507b9da1cbd6`, `ba9427a0-60b0-11ec-a42e-507b9da1cbd6`, `ba95a08f-60b0-11ec-a42e-507b9da1cbd6`, `ba971218-60b0-11ec-a42e-507b9da1cbd6`, `ba9932b0-60b0-11ec-a42e-507b9da1cbd6`, `ba9b5287-60b0-11ec-a42e-507b9da1cbd6`, `ba9cddf2-60b0-11ec-a42e-507b9da1cbd6`, `ba9e817d-60b0-11ec-a42e-507b9da1cbd6`, `baa0079d-60b0-11ec-a42e-507b9da1cbd6`, `baa18491-60b0-11ec-a42e-507b9da1cbd6`, `baa35517-60b0-11ec-a42e-507b9da1cbd6`, `baa4edd1-60b0-11ec-a42e-507b9da1cbd6`, `baa6b2f4-60b0-11ec-a42e-507b9da1cbd6`, `baa839fd-60b0-11ec-a42e-507b9da1cbd6`, `baa9fe0c-60b0-11ec-a42e-507b9da1cbd6`, `baab9a9a-60b0-11ec-a42e-507b9da1cbd6`, `baad0909-60b0-11ec-a42e-507b9da1cbd6`, `baaeada3-60b0-11ec-a42e-507b9da1cbd6`, `bab01a1a-60b0-11ec-a42e-507b9da1cbd6`, `bab17be2-60b0-11ec-a42e-507b9da1cbd6`, `bab46b19-60b0-11ec-a42e-507b9da1cbd6`, `bab5bf19-60b0-11ec-a42e-507b9da1cbd6`, `bab713c2-60b0-11ec-a42e-507b9da1cbd6`, `bab8fc19-60b0-11ec-a42e-507b9da1cbd6`, `baba5868-60b0-11ec-a42e-507b9da1cbd6`, `babbf402-60b0-11ec-a42e-507b9da1cbd6`, `babd81f5-60b0-11ec-a42e-507b9da1cbd6`, `babf7ab7-60b0-11ec-a42e-507b9da1cbd6`, `bac16ef8-60b0-11ec-a42e-507b9da1cbd6`, `bac2d60f-60b0-11ec-a42e-507b9da1cbd6`, `bac43e80-60b0-11ec-a42e-507b9da1cbd6`, `bac59f03-60b0-11ec-a42e-507b9da1cbd6`, `bac99617-60b0-11ec-a42e-507b9da1cbd6`, `bad3f660-60b0-11ec-a42e-507b9da1cbd6`, `bad563c8-60b0-11ec-a42e-507b9da1cbd6`, `bad70983-60b0-11ec-a42e-507b9da1cbd6`, `bad8e875-60b0-11ec-a42e-507b9da1cbd6`, `bada71c0-60b0-11ec-a42e-507b9da1cbd6`, `badbd33e-60b0-11ec-a42e-507b9da1cbd6`, `badd8fd2-60b0-11ec-a42e-507b9da1cbd6`, `badf106e-60b0-11ec-a42e-507b9da1cbd6`, `bae08d44-60b0-11ec-a42e-507b9da1cbd6`, `bae209d5-60b0-11ec-a42e-507b9da1cbd6`, `bae373fa-60b0-11ec-a42e-507b9da1cbd6`, `bae6c7fe-60b0-11ec-a42e-507b9da1cbd6`, `bae82e91-60b0-11ec-a42e-507b9da1cbd6`, `baeaafc8-60b0-11ec-a42e-507b9da1cbd6`, `baec24ce-60b0-11ec-a42e-507b9da1cbd6`, `baedab75-60b0-11ec-a42e-507b9da1cbd6`, `baef4a12-60b0-11ec-a42e-507b9da1cbd6`, `baf1173b-60b0-11ec-a42e-507b9da1cbd6`, `baf291a1-60b0-11ec-a42e-507b9da1cbd6`, `baf44eb8-60b0-11ec-a42e-507b9da1cbd6`, `baf5cc3b-60b0-11ec-a42e-507b9da1cbd6`, `baf79fb0-60b0-11ec-a42e-507b9da1cbd6`, `baf90a78-60b0-11ec-a42e-507b9da1cbd6`, `bafaedc6-60b0-11ec-a42e-507b9da1cbd6`, `bafc4b2e-60b0-11ec-a42e-507b9da1cbd6`, `bafdc75c-60b0-11ec-a42e-507b9da1cbd6`, `baff648d-60b0-11ec-a42e-507b9da1cbd6`, `bb017dce-60b0-11ec-a42e-507b9da1cbd6`, `bb02f659-60b0-11ec-a42e-507b9da1cbd6`, `bb044685-60b0-11ec-a42e-507b9da1cbd6`, `bb059cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb074393-60b0-11ec-a42e-507b9da1cbd6`, `bb08cad0-60b0-11ec-a42e-507b9da1cbd6`, `bb0a4263-60b0-11ec-a42e-507b9da1cbd6`, `bb0ba33d-60b0-11ec-a42e-507b9da1cbd6`, `bb0cf9a7-60b0-11ec-a42e-507b9da1cbd6`, `bb0eabd4-60b0-11ec-a42e-507b9da1cbd6`, `bb10413e-60b0-11ec-a42e-507b9da1cbd6`, `bb1277e9-60b0-11ec-a42e-507b9da1cbd6`, `bb13d80b-60b0-11ec-a42e-507b9da1cbd6`, `bb152d05-60b0-11ec-a42e-507b9da1cbd6`, `bb16ed88-60b0-11ec-a42e-507b9da1cbd6`, `bb185d74-60b0-11ec-a42e-507b9da1cbd6`, `bb19c801-60b0-11ec-a42e-507b9da1cbd6`, `bb1b521a-60b0-11ec-a42e-507b9da1cbd6`, `bb1cba75-60b0-11ec-a42e-507b9da1cbd6`, `bb1f5e51-60b0-11ec-a42e-507b9da1cbd6`, `bb20f2dc-60b0-11ec-a42e-507b9da1cbd6`, `bb230520-60b0-11ec-a42e-507b9da1cbd6`, `bb248d3a-60b0-11ec-a42e-507b9da1cbd6`, `bb2613ab-60b0-11ec-a42e-507b9da1cbd6`, `bb279d6a-60b0-11ec-a42e-507b9da1cbd6`, `bb291c46-60b0-11ec-a42e-507b9da1cbd6`, `bb2a7446-60b0-11ec-a42e-507b9da1cbd6`, `bb2bccfb-60b0-11ec-a42e-507b9da1cbd6`, `bb2d1f36-60b0-11ec-a42e-507b9da1cbd6`, `bb2ec1df-60b0-11ec-a42e-507b9da1cbd6`, `bb30220b-60b0-11ec-a42e-507b9da1cbd6`, `bb31a100-60b0-11ec-a42e-507b9da1cbd6`, `bb356479-60b0-11ec-a42e-507b9da1cbd6`, `bb373e8f-60b0-11ec-a42e-507b9da1cbd6`, `bb388935-60b0-11ec-a42e-507b9da1cbd6`, `bb39fdd0-60b0-11ec-a42e-507b9da1cbd6`, `bb3b5886-60b0-11ec-a42e-507b9da1cbd6`, `bb3d3ad0-60b0-11ec-a42e-507b9da1cbd6`, `bb3e9ce6-60b0-11ec-a42e-507b9da1cbd6`, `bb405087-60b0-11ec-a42e-507b9da1cbd6`, `bb425702-60b0-11ec-a42e-507b9da1cbd6`, `bb44916a-60b0-11ec-a42e-507b9da1cbd6`, `bb466a38-60b0-11ec-a42e-507b9da1cbd6`, `bb47c221-60b0-11ec-a42e-507b9da1cbd6`, `bb492dab-60b0-11ec-a42e-507b9da1cbd6`, `bb4a7a42-60b0-11ec-a42e-507b9da1cbd6`, `bb4c17a0-60b0-11ec-a42e-507b9da1cbd6`, `bb4d7fd5-60b0-11ec-a42e-507b9da1cbd6`, `bb4f103c-60b0-11ec-a42e-507b9da1cbd6`, `bb50c9b7-60b0-11ec-a42e-507b9da1cbd6`, `bb52dcc7-60b0-11ec-a42e-507b9da1cbd6`, `bb54a221-60b0-11ec-a42e-507b9da1cbd6`, `bb563c7c-60b0-11ec-a42e-507b9da1cbd6`, `bb58a079-60b0-11ec-a42e-507b9da1cbd6`, `bb5a20f5-60b0-11ec-a42e-507b9da1cbd6`, `bb5bf870-60b0-11ec-a42e-507b9da1cbd6`, `bb5d6cd2-60b0-11ec-a42e-507b9da1cbd6`, `bb5f5485-60b0-11ec-a42e-507b9da1cbd6`, `bb62884e-60b0-11ec-a42e-507b9da1cbd6`, `bb6720e1-60b0-11ec-a42e-507b9da1cbd6`, `bb6ae150-60b0-11ec-a42e-507b9da1cbd6`, `bb6ded72-60b0-11ec-a42e-507b9da1cbd6`, `bb6f4eb8-60b0-11ec-a42e-507b9da1cbd6`, `bb710078-60b0-11ec-a42e-507b9da1cbd6`, `bb72935c-60b0-11ec-a42e-507b9da1cbd6`, `bb74562b-60b0-11ec-a42e-507b9da1cbd6`, `bb763740-60b0-11ec-a42e-507b9da1cbd6`, `bb77ba3f-60b0-11ec-a42e-507b9da1cbd6`, `bb792548-60b0-11ec-a42e-507b9da1cbd6`, `bb7a9daf-60b0-11ec-a42e-507b9da1cbd6`, `bb7c001f-60b0-11ec-a42e-507b9da1cbd6`, `bb7d55bb-60b0-11ec-a42e-507b9da1cbd6`, `bb7ea95c-60b0-11ec-a42e-507b9da1cbd6`, `bb80e0e5-60b0-11ec-a42e-507b9da1cbd6`, `bb823672-60b0-11ec-a42e-507b9da1cbd6`, `bb8387a6-60b0-11ec-a42e-507b9da1cbd6`, `bb852d1f-60b0-11ec-a42e-507b9da1cbd6`, `bb86aa3d-60b0-11ec-a42e-507b9da1cbd6`, `bb8833b6-60b0-11ec-a42e-507b9da1cbd6`, `bb89cb35-60b0-11ec-a42e-507b9da1cbd6`, `bb8c25b2-60b0-11ec-a42e-507b9da1cbd6`, `bb8e0fa0-60b0-11ec-a42e-507b9da1cbd6`, `bb903e7b-60b0-11ec-a42e-507b9da1cbd6`, `bb91bd05-60b0-11ec-a42e-507b9da1cbd6`, `bb9345a5-60b0-11ec-a42e-507b9da1cbd6`, `bb94b38d-60b0-11ec-a42e-507b9da1cbd6`, `bb962045-60b0-11ec-a42e-507b9da1cbd6`, `bb9892c0-60b0-11ec-a42e-507b9da1cbd6`, `bb9a103d-60b0-11ec-a42e-507b9da1cbd6`.
+
+- Retained test context (2026-10-12T03:51:29.118Z): cf_dimensions_0377d704.master_manning_agents canonical master copies; target registered_fixture_context; references `58210d45-1369-4884-b99c-68f13b0bcc96`, `60e19003-0327-4106-9a6f-8ef7101e6806`, `e7c088d0-617c-4fee-8f65-1d7e65f13de3`.
+
+- Retained test context (2026-10-12T03:51:29.138Z): cf_dimensions_0377d704.master_crew_pools canonical master copies; target registered_fixture_context; references `c14e9567-c3cb-4a8b-aeaf-a5122c4dd462`, `7ac5ad96-b686-4f54-836a-e3a3210b8814`, `29753593-5bbe-46da-a27d-c7bb1e586d9f`.
+
+- Retained test context (2026-10-12T03:51:29.154Z): cf_dimensions_0377d704.master_fleet_groups canonical master copies; target registered_fixture_context; references `8f303a7c-96de-490b-bea9-e3de5a58e354`, `d971d113-dc53-4756-81a4-e47b816f743c`, `ef419235-5061-4b39-ab30-cffee5112fd2`.
+
+- Retained test context (2026-10-12T03:51:29.332Z): cf_dimensions_0377d704.master_additional_groups canonical master copies; target registered_fixture_context; references `0015f133-5282-4652-8f2e-c5bd80c30926`, `15de419c-a1ed-4e8a-9ad5-82f8c45a178f`, `18212fb3-6f8a-48d2-b03a-62a388719895`.
+
+- Retained test context (2026-10-12T03:51:29.362Z): canonical master copies cf_dimensions_0377d704; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-12T03:51:30.542Z): requirement harness roots; target registered_fixture_context; references `bc7d81fc-181f-4191-8312-776d1cf6e7d2`, `26950155-60e6-4522-a205-a64a5554c6db`, `62f45361-dfad-4a51-8536-5270723f7cef`, `7bf3779a-2420-421a-a62d-1dd41a88ce75`.
+
+- Retained test context (2026-10-12T03:51:30.707Z): requirement harness pinned content; target registered_fixture_context; references `a8d138b7-be1c-4263-8f5c-c0092eb781ab`, `a5db1ff5-d195-4d47-ad2a-da6dfc7b85b1`, `512c65ac-f999-4ca2-aedd-957ee0b39ac3`, `14034678-bfae-4b08-b003-26d5d87933f5`.
+
+- Retained test context (2026-10-12T03:51:30.754Z): requirement harness roots; target registered_fixture_context; references `e180978e-4797-425f-bc25-10cbbc6daa18`, `3d5e9997-d713-4d44-b89f-2c2ad754ad7c`, `016791e8-2dca-4939-a97a-ae2d2d2c6ad9`, `dfc3d28d-c851-41f0-9bd9-e8b18e39d087`.
+
+- Retained test context (2026-10-12T03:51:30.793Z): requirement harness pinned content; target registered_fixture_context; references `d5c5e73f-e3c8-4a76-bfdc-bebf792c819d`, `7f64e2bb-2664-482a-84ff-088282101fce`, `e4a8be94-b315-4733-8769-fbdffbf47490`, `6b92bc2d-aa36-4357-810c-b692b0a598f1`.
+
+- Retained test context (2026-10-12T03:51:30.879Z): requirement harness complete ledger graph; target registered_fixture_context; references `7df0d10a-a604-4be0-9d61-04596e88dbb9`, `26950155-60e6-4522-a205-a64a5554c6db`, `c4db778f-d593-444e-81b2-fe345bdfd0af`, `a8d138b7-be1c-4263-8f5c-c0092eb781ab`, `61fd16ef-f789-49e6-993c-2dc7a4c7c68d`, `62f45361-dfad-4a51-8536-5270723f7cef`, `75ebc85a-c95e-47bb-a2db-8027bde4796e`.
+
+- Retained test context (2026-10-12T03:51:30.882Z): required start obligation; target registered_fixture_context; references `61fd16ef-f789-49e6-993c-2dc7a4c7c68d`.
+
+- Retained test context (2026-10-12T03:51:30.904Z): newer release for old-pin start; target registered_fixture_context; references `3008eb10-a254-46ad-96d9-a7071606947f`.
+
+- Retained test context (2026-10-12T03:51:30.963Z): manual without stage check; target registered_fixture_context; references `61636593-ec6a-4f2c-bf27-7c2718f0df89`.
+
+- Retained test context (2026-10-12T03:51:31.040Z): required old-pin form; target registered_fixture_context; references `8164519b-46d2-4dbd-8995-22742c0f23c8`.
+
+- Retained test context (2026-10-12T03:51:31.954Z): rule editor definition; target registered_fixture_context; references `6f748816-586b-4ed0-8064-bed56b08ad83`, `1be6cb12-bc73-416d-980c-bf258df21019`.
+
+- Retained test context (2026-10-12T03:51:32.059Z): rule editor automatically created versions and parts; target registered_fixture_context; references `6a3a1356-8737-42d2-9a0b-afac9dda387a`, `1be6cb12-bc73-416d-980c-bf258df21019`, `7649c77c-f79b-4c8c-88c4-702139d88a16`.
+
+- Retained test context (2026-10-12T03:51:32.059Z): rule editor draft; target registered_fixture_context; references `6a3a1356-8737-42d2-9a0b-afac9dda387a`.
+
+- Retained test context (2026-10-12T03:51:32.060Z): rule editor releasable content; target registered_fixture_context; references `7649c77c-f79b-4c8c-88c4-702139d88a16`, `852bb378-1e70-4760-96df-58d637322e32`, `1c4804ef-1954-4840-aa88-0c5e3b53b48d`.
+
+- Retained test context (2026-10-12T03:51:32.082Z): rule trial seafarer 1; target registered_fixture_context; references `4ff9733b-00f0-44aa-b63e-f3299d056770`, `9da32f1b-c29e-4c6a-bf43-05449a5e67bd`.
+
+- Retained test context (2026-10-12T03:51:32.093Z): rule trial seafarer 2; target registered_fixture_context; references `45376180-faa5-4b82-bdb6-1db3306d9232`, `3abdffed-cc01-453b-ae8c-cecc867630b0`.
+
+- Retained test context (2026-10-12T03:51:32.263Z): rule editor saved sets; target registered_fixture_context; references `1a07220a-e323-46ac-af89-93e9272bd505`, `9c0e1e75-fb40-4b41-96e2-17aeff3b691a`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `399fde02-44bc-4713-baf1-b9bfdaa78e83`, `19c06718-8b19-4e02-bc2b-51bd970799a9`, `2987e402-3951-4918-8a15-50e733b31d69`, `a8da33ec-b4d2-46db-84c8-3809df360563`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`.
+
+- Retained test context (2026-10-12T03:51:32.363Z): rule editor final released policy; target registered_fixture_context; references `19c3e9e7-4852-4915-a3e2-6c25579acf85`, `aebebd05-eb7f-49b4-9d5c-bb8c50470e78`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`, `f3a46b79-b15a-43a8-b8e9-575a4c44248e`, `920b9a91-bba5-44b1-9d96-43d6d3fbb21c`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `f48d6bec-409c-4f15-a71e-ed6b8fc45284`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:51:32.442Z): rule editor independent copied version; target registered_fixture_context; references `dfe75758-22f8-424e-a69b-4edc98f4b1b4`, `b6433d69-f5a7-4b39-bc5d-3a7401d54974`, `5076a21a-3ae0-40b4-90ff-e22b1058f935`.
+
+- Retained test context (2026-10-12T03:51:32.450Z): rule editor independent copied policy; target registered_fixture_context; references `3af6f44a-03d3-4cd4-9227-579509e21e37`, `200f97ea-88fa-4f33-9bbf-ebf4686b95ef`, `2987e402-3951-4918-8a15-50e733b31d69`, `d468efd3-d577-4a35-a0a7-1fcc3f8b33b8`, `b9caced5-60b0-11ec-a42e-507b9da1cbd6`, `ca413a7b-282c-4c9a-b7d1-0d66ace4ed34`, `7373bcd1-c58e-40e3-af15-0ef0a3e26236`, `4a388d9e-567e-4bff-afdf-162c6a636cdd`.
+
+- Retained test context (2026-10-12T03:51:33.662Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_settlements_v2; references `f325e40b-e06f-4a17-9354-6e845473973c`, `3f10dba4-e090-4a78-9498-8b26aecd597b`, `7a78304b-9757-4b58-b33a-1e0baef639fa`.
+
+- Retained test context (2026-10-12T03:51:33.663Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_ledger_v2; references `f325e40b-e06f-4a17-9354-6e845473973c`, `3f10dba4-e090-4a78-9498-8b26aecd597b`, `7a78304b-9757-4b58-b33a-1e0baef639fa`.
+
+- Retained test context (2026-10-12T03:51:33.664Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_calculation_runs_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:33.664Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_calculation_runs_v2; references `f325e40b-e06f-4a17-9354-6e845473973c`, `3f10dba4-e090-4a78-9498-8b26aecd597b`, `7a78304b-9757-4b58-b33a-1e0baef639fa`.
+
+- Retained test context (2026-10-12T03:51:33.665Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:33.665Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_monthly_transactions_v2; references `aab6d798-0896-4176-b035-4044b57f4067`.
+
+- Retained test context (2026-10-12T03:51:33.666Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_engagements_v2; references `f325e40b-e06f-4a17-9354-6e845473973c`, `3f10dba4-e090-4a78-9498-8b26aecd597b`, `7a78304b-9757-4b58-b33a-1e0baef639fa`.
+
+- Retained test context (2026-10-12T03:51:33.666Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_scale_lines_v2; references `830c9c4d-355b-47a9-b2ab-b30281f79775`.
+
+- Retained test context (2026-10-12T03:51:33.666Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_scales_v2; references `830c9c4d-355b-47a9-b2ab-b30281f79775`.
+
+- Retained test context (2026-10-12T03:51:33.667Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_pay_elements_v2; references `7742b4ac-16f7-4bd1-8e5f-a7d1cc1162da`, `aad11bb0-58a9-4daf-9cb4-3a2d6fe25ab9`.
+
+- Retained test context (2026-10-12T03:51:33.668Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:34.605Z): tests/integration/api/accounts-reports.test.ts; target cleanup context; references `64fe0f62-d6c1-4ae1-96f3-06836b2f4ed9`.
+
+- Retained test context (2026-10-12T03:51:34.637Z): tests/integration/api/accounts-reports.test.ts; target acc_wage_ledger_v2; references `3242a06e-120a-4d0d-bb4e-e99abbbff1b5`, `69704fec-0bcd-4b0a-8950-7cf2a4a16fdf`, `28759f97-0408-49ba-85df-02c164ded995`, `8b81dfdf-25a4-4778-9600-157eab118663`, `3d328fb0-8420-489b-b622-7a12fa26a60f`, `0844e6e7-7b94-4968-804e-e5581884b71b`, `5f0811bd-04f6-4e6e-94fe-9becdbc79b56`, `898905a4-5c04-4411-a558-0d6dd976b0e3`, `c4de24a4-c900-48d1-8091-f1782711412d`, `7e2ce0d7-2b11-4359-956d-8a03909276d5`, `545da192-a581-4149-950d-46510674c28b`, `75fafd5f-9114-4a1b-8141-b96311653b07`, `32f3dd1b-e9a7-4532-ba4c-7aa0ff198419`.
+
+- Retained test context (2026-10-12T03:51:34.638Z): tests/integration/api/accounts-reports.test.ts; target acc_portage_bills_v2; references `f64b1a4e-16e8-4c50-87a3-4f34844a83ec`.
+
+- Retained test context (2026-10-12T03:51:34.639Z): tests/integration/api/accounts-reports.test.ts; target acc_engagements_v2; references `d4fe98be-f6b0-47df-9e18-03e35f87a4da`, `817bf5a4-fa41-4449-8b57-0d1ab2fe582d`, `2041adc5-b67e-4984-a787-9a21132ab58d`, `4e5fbd0b-0fa3-43d2-aff4-faa5b500c6a4`.
+
+- Retained test context (2026-10-12T03:51:34.639Z): tests/integration/api/accounts-reports.test.ts; target crew_members_v2; references `6238a1bd-1e60-4ffe-aef4-82dad29d3b02`, `dc2aa0a5-48e6-4d24-bbfa-f939baecdf48`, `eebc9295-163b-44a9-a17b-971f1c67807c`.
+
+- Retained test context (2026-10-12T03:51:34.640Z): tests/integration/api/accounts-reports.test.ts; target acc_pay_elements_v2; references `9cbfda91-46f7-40c3-8ed1-dbefa73fa410`, `e836d366-65a8-408d-acef-fb1eb100b3a7`, `741b4c3d-3860-474c-9605-5ced8dc61e98`, `086b7e86-5bfe-46bd-a001-0ddff291160c`, `fb41c202-a7f6-40d1-b178-60ffac20aa2e`.
+
+- Retained test context (2026-10-12T03:51:38.014Z): tests/integration/api/approval-identity.test.ts; target acc_settlement_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:38.016Z): tests/integration/api/approval-identity.test.ts; target acc_settlements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:38.016Z): tests/integration/api/approval-identity.test.ts; target acc_portage_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:38.017Z): tests/integration/api/approval-identity.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:38.017Z): tests/integration/api/approval-identity.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:40.917Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `cf299a92-09e0-40c4-9ba0-48544f0fd590`.
+
+- Retained test context (2026-10-12T03:51:40.918Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `35a7b9f0-66bc-4641-832d-cf7bfd69f8b0`, `de63c140-e3cd-44d8-87c7-958d7d69f917`.
+
+- Retained test context (2026-10-12T03:51:40.918Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:40.919Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `cf299a92-09e0-40c4-9ba0-48544f0fd590`.
+
+- Retained test context (2026-10-12T03:51:40.919Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `cf299a92-09e0-40c4-9ba0-48544f0fd590`.
+
+- Retained test context (2026-10-12T03:51:40.919Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `cf299a92-09e0-40c4-9ba0-48544f0fd590`.
+
+- Retained test context (2026-10-12T03:51:40.919Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `65e9422a-0bc3-488e-9793-1ac078b94afe`.
+
+- Retained test context (2026-10-12T03:51:40.920Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `87ddd15f-1a90-4189-b01e-a4df8d18cc51`, `9c3ac83c-0be5-458d-a8b1-af8263d3c180`, `c9d6a516-098e-47f9-81e4-387a348750bf`.
+
+- Retained test context (2026-10-12T03:51:40.920Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `56f3427f-cbef-4668-acc2-45ecaa396819`.
+
+- Retained test context (2026-10-12T03:51:40.920Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `ee57712d-ba3e-4ff5-a87d-9a8a8b4de79d`, `eed25b0a-ed80-4f4a-a788-13951acfa7e4`.
+
+- Retained test context (2026-10-12T03:51:40.921Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:40.921Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:40.921Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `c2eaf908-068a-4763-9b97-67fde573f9f1`, `6dfaab78-89a4-4d92-9559-5a060749019a`, `f32d2ace-9766-4ce7-9b5c-b5faef653430`.
+
+- Retained test context (2026-10-12T03:51:40.921Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `f2f0a032-22f4-48b8-aac4-cacef9d8e72c`.
+
+- Retained test context (2026-10-12T03:51:40.922Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `0f75052b-1f20-4058-aa0a-056e113ac001`.
+
+- Retained test context (2026-10-12T03:51:40.922Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `1f111109-96bb-4ae0-8302-33d280565bcb`.
+
+- Retained test context (2026-10-12T03:51:40.922Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T03:51:46.050Z): verified-history/cf_verified_history_35b822b5; target registered_fixture_context; references `25580e48-41d2-4bd4-9e43-2cab5a2b8074`, `b338ac9a-856d-4389-b1e3-bb1e336954b1`, `17235495-91d2-48f1-aa90-edb501df4a3d`, `b14f7978-d8e1-45e8-ab2f-128abe73125b`, `be87cfbb-5b75-474c-8cd7-e8876993f0f2`, `fc91ea2e-caf9-4f18-a716-43908b962dfa`, `ab61ed86-0f4b-45fd-ab40-16a05180cd5c`, `868bb7c3-4343-4df9-b7b5-f91c2177c650`, `e95106bf-e3a8-4111-b7cb-dcbbd9ad9d65`, `55dbb828-41ed-4882-9675-7314b8c1cb1c`.
+
+- Retained test context (2026-10-12T03:51:49.913Z): dimension release definition; target registered_fixture_context; references `47bbc43f-4e6e-4fe7-a7a9-c2863fee84b2`, `74505d07-5d22-46f1-bdc6-a88e26d0077b`.
+
+- Retained test context (2026-10-12T03:51:50.005Z): dimension release draft content; target registered_fixture_context; references `6d52aab0-3ed3-4a2a-8000-8c52b414b1b2`, `c8f23d87-baed-4c71-a1fa-b12c1b0e24c5`, `caef90a3-d36c-4ebf-ac78-3c91831cea00`, `48975b45-b800-4782-8127-47adbf4b8750`.
+
+- Retained test context (2026-10-12T03:51:50.053Z): dimension release condition data; target registered_fixture_context; references `99a8ad89-fa21-4d18-a352-67432c8f561e`, `37758538-a112-4ed3-b0bb-cd88da65df6a`, `79578d3b-2d46-4413-9330-1fc2f972ae15`, `2987e402-3951-4918-8a15-50e733b31d69`.
+
+- Retained test context (2026-10-12T03:51:50.219Z): dimension release copied draft; target registered_fixture_context; references `c52f53dd-0f46-41d0-baf6-6bc31546924c`, `8a00d2d6-c7a3-4b49-9799-f829962f750f`, `33526194-0499-4841-a920-ea86a33667bc`, `2987e402-3951-4918-8a15-50e733b31d69`, `d7a24251-65e3-48e4-a300-8f2e0569d59f`.
+
+- Retained test context (2026-10-12T03:51:51.443Z): requirement harness roots; target registered_fixture_context; references `0aac4511-cff7-470f-b307-2f5b56dcc405`, `8db4a388-a00f-4eed-8f6d-e20ffea825e7`, `453f3afa-5798-498c-9cc4-25e2e49e84e7`, `3275ba2e-4846-435c-a55f-f04740edab4b`.
+
+- Retained test context (2026-10-12T03:51:51.553Z): requirement harness pinned content; target registered_fixture_context; references `ffe29129-797c-4adf-85bc-eac867c51c6c`, `7ceee5c0-b15f-41e2-87ab-f20cf6176961`, `08ece042-de42-4cb3-8c1d-03d3f19ccbca`, `66c76e88-1dc1-4ba7-8f09-e6fe1e43d280`.
+
+- Retained test context (2026-10-12T03:51:51.661Z): requirement harness complete ledger graph; target registered_fixture_context; references `0f52ce48-1d0d-42a8-9e05-7bf270649980`, `8db4a388-a00f-4eed-8f6d-e20ffea825e7`, `7a0ebceb-192e-4bce-9073-96e45e8757f6`.
+
+- Retained test context (2026-10-12T03:51:51.661Z): empty requirement run; target registered_fixture_context; references `0f52ce48-1d0d-42a8-9e05-7bf270649980`.
+
+- Retained test context (2026-10-12T03:51:51.694Z): requirement harness complete ledger graph; target registered_fixture_context; references `0f52ce48-1d0d-42a8-9e05-7bf270649980`, `8db4a388-a00f-4eed-8f6d-e20ffea825e7`, `7a0ebceb-192e-4bce-9073-96e45e8757f6`, `1f4fbdf8-7f0b-459e-beb0-7e3c1e86c9dd`, `ffe29129-797c-4adf-85bc-eac867c51c6c`, `815da150-4eb3-4ef4-acb5-ee898c131bfd`, `453f3afa-5798-498c-9cc4-25e2e49e84e7`, `afebd4bb-04d5-489f-938d-cdb4c0c83995`.
+
+- Retained test context (2026-10-12T03:51:51.701Z): pinned requirement and resolution; target registered_fixture_context; references `1f4fbdf8-7f0b-459e-beb0-7e3c1e86c9dd`, `815da150-4eb3-4ef4-acb5-ee898c131bfd`.
+
+- Retained test context (2026-10-12T03:51:51.719Z): requirement harness complete ledger graph; target registered_fixture_context; references `0f52ce48-1d0d-42a8-9e05-7bf270649980`, `8db4a388-a00f-4eed-8f6d-e20ffea825e7`, `7a0ebceb-192e-4bce-9073-96e45e8757f6`, `1f4fbdf8-7f0b-459e-beb0-7e3c1e86c9dd`, `ffe29129-797c-4adf-85bc-eac867c51c6c`, `c2bd8768-fc5c-4ab2-9802-51cbec053d29`, `815da150-4eb3-4ef4-acb5-ee898c131bfd`, `453f3afa-5798-498c-9cc4-25e2e49e84e7`, `afebd4bb-04d5-489f-938d-cdb4c0c83995`.
+
+- Retained test context (2026-10-12T03:52:14.042Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+### Rule editor retained inventory — 2026-10-12T03:56:48.649Z
+
+All authoring definitions, versions, parts, sections/questions, condition identities and test-only crew/assignments, including interrupted setup, are retained: `a1d983d7-9bf6-4fef-9cf4-011fb0c40a9e`, `4a9a5217-7939-4753-a8e6-364b5075f74f`, `4ff9733b-00f0-44aa-b63e-f3299d056770`, `332350f3-eec1-4978-bb5f-d1ee63c3a542`, `5076a21a-3ae0-40b4-90ff-e22b1058f935`, `fa74f320-9ef0-4411-b1ec-bb2f1a9c7043`, `36b0bea7-c41b-4e92-b650-fb0d4faa6170`, `40bb0e21-a3c4-42fc-9737-e419149d8552`, `4370b968-6f41-4bca-8a4d-956435b9cdc5`, `28eacbed-779a-4675-bc13-1007c514b969`, `3717cfe3-9623-489b-b95d-929eaae2b186`, `1d93a49c-4077-45e5-9123-74c6d7647335`, `fa66b61d-d9fa-41ca-962c-0cca31cc8275`, `1c4804ef-1954-4840-aa88-0c5e3b53b48d`, `422cf464-a248-49ba-9927-017e8b4c8aa0`, `ed212f70-a6e5-445d-b604-79f848a66330`, `393cbcc5-9a37-4993-b60c-d1570b7b7de3`, `1a41c946-53dd-46db-8fcb-ba51fbd629e4`, `4310ee7e-7aef-4c79-b102-01959b8d8df5`, `75c1a5e9-d2ad-409e-895a-b535c1a800de`, `4bad849e-2c0f-48f2-bd4b-162e65a34f95`, `6fa7fac9-aece-4a08-8ae6-97c401991ef4`, `bd8d82ca-f4d2-4e67-aaf9-8918d99d1195`, `851f13eb-0a8a-4a4a-8ce9-c5f6ff36c460`, `a0c7ea5d-b6c9-4e01-abb9-ff1b4de778d0`, `b3252438-91fa-4ba3-9d6e-ba370d211c2f`, `920b9a91-bba5-44b1-9d96-43d6d3fbb21c`, `4e115bc6-8906-4802-93e6-80a1f196d6d4`, `9ed7f0dd-a8d9-4432-9920-77377e20c02a`, `7793bc59-b5a2-4dac-8ea9-ab37bb8050a5`, `dfe75758-22f8-424e-a69b-4edc98f4b1b4`, `0f913b46-7dcb-4330-b6b1-06eedbcaf244`, `a58f106b-105b-4b70-9005-9f7325ce24e9`, `870bb9de-72ce-4710-b158-4aacd64a942b`, `2d3a7626-80da-43d8-919c-3074357f063a`, `5578bbd4-e611-4ae0-9f7e-41f4d8345f61`, `6ba388a8-10dd-4851-bda9-5366435362ad`, `d468efd3-d577-4a35-a0a7-1fcc3f8b33b8`, `6f748816-586b-4ed0-8064-bed56b08ad83`, `60f25422-64c8-465c-9f02-3611d820471e`, `ab78ec82-8db0-4764-bace-7aecee07c6f4`, `45376180-faa5-4b82-bdb6-1db3306d9232`, `3a701b30-c98c-4b0a-a928-4006ee77d15e`, `3a6b66f0-c352-4a22-a382-45933a93c4ac`, `d0814b0f-fe8d-4571-b650-eaf0d6a7071f`, `aa09b623-7da3-4089-ad4d-be8d72d5ceda`, `575f9218-83c3-4b13-98d8-0169a58898ae`, `71519338-3b7b-4dcd-ad3b-8a1aacce6834`, `d8fef11e-6f95-41d2-b8fb-e9156f23a452`, `ba1145f2-ebd7-42a5-86f2-1697fdc95f51`, `4dcc9e00-c804-4a5d-bb10-233bc75ba17d`, `f48d6bec-409c-4f15-a71e-ed6b8fc45284`, `852bb378-1e70-4760-96df-58d637322e32`, `f989a4ba-6865-49fe-a6c0-a2dba6c58a95`, `a1a60f82-7ca4-438f-8ac6-8602469bc4e3`, `34a0e2a0-977f-454b-b303-d33f61a6c536`, `94a622ab-d88c-45c2-a79c-03e32e989a9f`, `fe809efc-0d30-4de3-9fc4-420367e833a7`, `b8628b0e-2f56-406a-a264-5871887b278d`, `6cfd2364-414d-4ec5-9adb-770e433fd99a`, `ef904803-1753-40be-844e-1ed7b71cb2fe`, `d3d622a0-2c19-4442-aeef-58f1ad262ed1`, `cadf8951-99a7-4db5-9934-6acd0b58405f`, `4fab21c7-6aba-4450-aad3-a0e3e5479846`, `1be6cb12-bc73-416d-980c-bf258df21019`, `67eb1348-dd7a-4dd3-9686-9d17f7564856`, `787801d9-61cd-4803-93e6-4dc33db586cf`, `3af6f44a-03d3-4cd4-9227-579509e21e37`, `a05f3797-dd64-42c6-9559-01fde69a9742`, `493a9fa8-9dbb-4900-9844-499cef14f652`, `aebebd05-eb7f-49b4-9d5c-bb8c50470e78`, `1481e32b-655c-47a4-bd15-bc38ad4d18ec`, `fd308b4a-7d0f-4d9c-bb3e-4648770400cf`, `ef479d01-6562-4fdd-83fd-5bf7aa147a9c`, `3a6e3d6c-705a-41aa-880b-58fe68b12402`, `7649c77c-f79b-4c8c-88c4-702139d88a16`, `3abdffed-cc01-453b-ae8c-cecc867630b0`, `40dba08c-30ca-4da9-997d-813728f0c23a`, `c44ee47e-fc75-40c6-a5c4-413da0de2759`, `19c3e9e7-4852-4915-a3e2-6c25579acf85`, `9306905d-861d-4c58-a7e4-e683954a6560`, `3405d76d-ad03-4de9-aed0-bf6bfacdc916`, `8c0e2881-9bc4-4ea4-b9cf-6a99af5c1da0`, `8f4fb975-d899-44a9-ad78-e1d28c07fe19`, `24c726b8-36be-4634-82c9-591cff96e4be`, `93cb0e54-4855-488f-a83f-bc1ebaf3dbe5`, `83ec6d33-84b6-4a1b-a459-cdb2c2b4661a`, `200f97ea-88fa-4f33-9bbf-ebf4686b95ef`, `6e439e04-200c-4cf1-902c-b44130dc65d1`, `7d905ce3-ee3d-49a1-a590-eeacd2cc7487`, `c975bd17-6f7f-4ccd-9890-919bd6223cd1`, `9d7858a0-558d-43f1-ae3a-48585f2886e6`, `7c713e0a-2749-4f6d-805a-fa49a12fdbea`, `18b417c6-3753-4b8a-9fd7-d4c8454611e7`, `7516fe98-17c1-48b3-a18b-9a9224161323`, `208241d0-0cf4-42f0-a290-7c561ec0b784`, `30283425-a23b-4e61-814b-cf1471e56b37`, `9da32f1b-c29e-4c6a-bf43-05449a5e67bd`, `57c8e967-dc01-4a81-813e-1cb14e8f81e5`, `536c98ef-a75f-4aa6-beae-df888065227c`, `3899db05-cd3c-4a09-b418-6ed2e8e9a3d7`, `ba5c35af-17b5-4213-9c51-d924639d92c3`, `7373bcd1-c58e-40e3-af15-0ef0a3e26236`, `2c7621d6-e4f7-4ab0-9596-ba8596b3a148`, `6a3a1356-8737-42d2-9a0b-afac9dda387a`, `969c86f0-1b6d-432b-bb9a-d12be2e9c451`, `c87561ad-3d2e-4478-8c93-64ed615d0832`, `523de874-7c3e-459d-99bb-f3571900a5c6`, `4ef77925-0cc6-4535-8b29-1220f754a85a`, `8c429d91-9790-4260-9042-31521057c441`, `0bab760b-8bfa-441e-831d-00d439320761`, `3b66bf9a-d502-43c4-bd2c-43d566f5043c`, `5ada03b1-ad2d-433b-b311-286826f4686e`, `44c6d09d-ad3a-4d79-835b-c92b69dcec7b`, `f3a46b79-b15a-43a8-b8e9-575a4c44248e`, `b6433d69-f5a7-4b39-bc5d-3a7401d54974`, `ca413a7b-282c-4c9a-b7d1-0d66ace4ed34`, `b1877fc8-a23c-448e-80b3-9c2647150abb`, `0c03d917-e7b0-4d76-a0a3-90cf74bdf0d0`, `cacffc84-09fa-45c7-b9be-8669b28d4c99`, `8b5f59c0-d032-4805-8680-18964e74d0b1`, `920a07be-819a-455f-bf80-9549d3c2fe53`.
+The closing journey edits registered draft identities only; it never creates an operational form or resolution record. No fixture deletion.

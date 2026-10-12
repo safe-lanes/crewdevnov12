@@ -69,6 +69,8 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     menuName: "Forms",
     action: "edit",
   },
+  { key: "GET /form-versions/:id/applicability/assignments", menuName: "Forms", action: "view" },
+  { key: "POST /form-versions/:id/applicability/preview", menuName: "Forms", action: "view" },
   { key: "GET /rank-groups", menuName: "Forms", action: "view" },
   {
     key: "GET /rank-groups/check-assignment",

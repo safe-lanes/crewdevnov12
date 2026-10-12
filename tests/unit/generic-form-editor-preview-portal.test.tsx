@@ -2,6 +2,12 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GenericFormEditor } from "@/components/GenericFormEditor";
+vi.mock("@/contexts/PermissionsContext", () => ({
+  usePermissions: () => ({
+    isLoading: false,
+    permissions: [{ menuName: "Forms", canview: true, canedit: true }],
+  }),
+}));
 
 const queryResults = vi.hoisted(() => new Map<string, unknown>());
 const emptyQueryResult = vi.hoisted((): unknown[] => []);

@@ -92,7 +92,7 @@ describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
     renderEditor();
 
     expect(await screen.findByText("You can view these settings, but Forms edit permission is needed to change them.")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /When conditions match/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Applies when conditions match" })).toBeDisabled();
     expect(screen.getByTestId("button-save-applicability")).toBeDisabled();
   });
 
@@ -139,7 +139,7 @@ describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
       />,
     );
     await screen.findByText("Policy saved");
-    fireEvent.click(screen.getByRole("radio", { name: /Manual start only/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Manual only" }));
     await waitFor(() => expect(registeredSave).toBeTypeOf("function"));
     let saved = false;
     await act(async () => {

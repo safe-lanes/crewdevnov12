@@ -105,7 +105,7 @@ describe("Company Form applicability foundation", () => {
     });
     expect(resaved.status).toBe(200); expect(resaved.body.sets).toEqual(saved.body.sets);
     const release = await call("post", `/form-versions/${v.id}/release`);
-    expect(release.status).toBe(400); expect(release.body.error).toMatch(/master identifier/);
+    expect(release.status).toBe(400); expect(release.body.error).toMatch(/active values/);
     const other = await fixture();
     expect((await call("put", `/form-versions/${other.v.id}/applicability`, {
       mode: "conditional", obligation: "mandatory", sets: saved.body.sets,
