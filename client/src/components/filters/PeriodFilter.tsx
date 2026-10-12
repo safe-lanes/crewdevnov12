@@ -38,10 +38,11 @@ interface PeriodFilterProps {
   className?: string;
   rangeMode?: 'date' | 'month';
   useSharedMonthSelector?: boolean;
+  acceptCalendarInputEvents?: boolean;
   placeholder?: string;
 }
 
-export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', useSharedMonthSelector = false, placeholder }: PeriodFilterProps) => {
+export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', useSharedMonthSelector = false, acceptCalendarInputEvents = false, placeholder }: PeriodFilterProps) => {
   const [open, setOpen] = useState(false);
   const fullDateRangeRef = useRef<HTMLDivElement>(null);
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
@@ -432,6 +433,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     Date From
                   </Label>
                   <FormattedDateInput
+                    acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
                     placeholder="DD-MMM-YYYY"
@@ -444,6 +446,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     Date To
                   </Label>
                   <FormattedDateInput
+                    acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateTo(parseDateInput(e.target.value))}
                     placeholder="DD-MMM-YYYY"
