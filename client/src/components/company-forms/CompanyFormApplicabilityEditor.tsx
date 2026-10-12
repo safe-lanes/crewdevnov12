@@ -347,7 +347,8 @@ export function CompanyFormApplicabilityEditor({
     <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) closeSettings(); }}>
       <DialogContent
         id="company-form-applicability-settings"
-        className="max-w-4xl max-h-[90dvh]"
+        className="z-[310] max-w-4xl max-h-[90dvh]"
+        overlayClassName="z-[300]"
         data-testid="company-form-applicability-window"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
@@ -355,8 +356,14 @@ export function CompanyFormApplicabilityEditor({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Applicability settings</DialogTitle>
-          <DialogDescription>Set who this version applies to. Save applicability before releasing this version.</DialogDescription>
+          <DialogTitle>Applicability settings{isReleased || readOnly ? " — read only" : ""}</DialogTitle>
+          <DialogDescription>
+            {isReleased
+              ? "This version is released. Its applicability settings cannot be changed."
+              : readOnly
+                ? "You can view these settings, but cannot change them."
+                : "Set who this version applies to. Save applicability before releasing this version."}
+          </DialogDescription>
         </DialogHeader>
     <section
       className="mt-4 rounded-xl border border-[#d9e2e8] bg-[#f7fafb] p-4 sm:p-5"
@@ -523,9 +530,9 @@ export function CompanyFormApplicabilityEditor({
             <p className="text-xs text-[#6a808b]">
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}
             </p>
-            <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || !conditionSetsValid || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
+            {!isReleased && !readOnly && permissionToEdit && <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || !conditionSetsValid || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
               <Save className="mr-2 h-4 w-4" />Save applicability
-            </Button>
+            </Button>}
           </div>
         </>
       )}

@@ -35,6 +35,19 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const ready = () => screen.findByText(/Policy saved/);
 
 describe("Company Form applicability window state", () => {
+  it.each(["released", "draft"])("keeps a %s version's read-only settings frozen", async (status) => {
+    const register = vi.fn();
+    render(<CompanyFormApplicabilityEditor {...props} status={status} readOnly settingsOpen
+      onSettingsClose={vi.fn()} onRegisterSaveHandler={register} />);
+    await screen.findByTestId("applicability-summary");
+    expect(screen.getByRole("heading", { name: "Applicability settings — read only" })).toBeTruthy();
+    expect((screen.getByRole("radio", { name: "Applies to all", exact: true }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText(/^optional$/i).closest("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
+    expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    if (status === "released") expect(screen.queryByTestId("button-save-applicability")).toBeNull();
+    expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
+  });
+
   it("shows the draft trial inside the window only for conditional rules", async () => {
     render(<Harness />);
     await ready();
