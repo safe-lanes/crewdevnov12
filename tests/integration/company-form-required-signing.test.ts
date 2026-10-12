@@ -84,9 +84,41 @@ describe("required before-joining form: representative, witnessed seafarer, then
       USING(section_state_uuid) WHERE st.submission_uuid=$1 AND g.signature_type='seafarer'`, [submission])).rows[0];
     retainFixtureReferences("missing rank witnessed signature frozen after capture", [signature]);
     expect(signature.signer_rank).toBe("Not recorded");
-    const detail = await requirementApi.get(`${prefix}/${submission}/render`).set("Authorization", `Bearer ${requirementToken}`);
+    const detail = await requirementApi.get(`${prefix}/${submission}/form`).set("Authorization", `Bearer ${requirementToken}`);
     expect(detail.status).toBe(200);
     expect(detail.body.systemFields.find((field: any) => field.key === "rank").value).toBe("Not recorded");
     expect((await requirementPool.query("SELECT status FROM frm_requirements WHERE requirement_uuid=$1", [requirement])).rows[0].status).toBe("COMPLETED");
+  });
+
+  it("keeps Not recorded when capture happens between the representative and witnessed signatures", async () => {
+    const f = await createRequirementFixture("before_joining", { signatures: true, unresolvedContractRank: true, rankSystemField: true });
+    const prefix = "/api/v2/company-form-submissions";
+    await f.record("rank-capture-between-signatures", [{
+      formVersionUuid: f.version.fvUuid, status: "OUTSTANDING", matchedSetUuids: f.matchedSetUuids, values: {},
+    }]);
+    const requirement = (await requirementPool.query("SELECT requirement_uuid FROM frm_requirements WHERE subject_ref=$1", [f.assignUuid])).rows[0].requirement_uuid;
+    const start = await requirementApi.post(`${prefix}/subjects/crew_assignment/${f.assignUuid}/requirements/${requirement}/start`)
+      .set("Authorization", `Bearer ${requirementToken}`).send({});
+    expect(start.status, JSON.stringify(start.body)).toBe(201);
+    const submission = start.body.submissionUuid;
+    retainFixtureReferences("contract capture between signatures", [submission, requirement]);
+    const section = `${prefix}/${submission}/sections/${f.section}`;
+    const officer = await requirementApi.post(`${section}/signatures`).set("Authorization", `Bearer ${requirementToken}`)
+      .send({ signatureType: "officer", method: "officer", data: PNG });
+    expect(officer.status, JSON.stringify(officer.body)).toBe(201);
+    await requirementPool.query(`UPDATE crew_assignment_rule_context SET contract_rank_uuid=$2,contract_rank_label=$3
+      WHERE assign_uuid=$1`, [f.assignUuid, f.rank.ar_uuid, f.rank.name]);
+    const seafarer = await requirementApi.post(`${section}/signatures`).set("Authorization", `Bearer ${requirementToken}`)
+      .send({ signatureType: "seafarer", method: "witnessed", seafarerPresent: true, data: PNG });
+    expect(seafarer.status, JSON.stringify(seafarer.body)).toBe(201);
+    const submitted = await requirementApi.post(`${section}/submit`).set("Authorization", `Bearer ${requirementToken}`).send({});
+    expect(submitted.status, JSON.stringify(submitted.body)).toBe(200);
+    expect(submitted.body.completed).toBe(true);
+    const view = await requirementApi.get(`${prefix}/${submission}/form`).set("Authorization", `Bearer ${requirementToken}`);
+    expect(view.body.systemFields.find((field: any) => field.key === "rank").value).toBe("Not recorded");
+    const signatures = (await requirementPool.query(`SELECT g.* FROM frm_section_signatures g JOIN frm_section_states st
+      USING(section_state_uuid) WHERE st.submission_uuid=$1`, [submission])).rows;
+    retainFixtureReferences("capture-between-signatures retained children", signatures);
+    expect(signatures.find(s => s.signature_type === "seafarer").signer_rank).toBe("Not recorded");
   });
 });

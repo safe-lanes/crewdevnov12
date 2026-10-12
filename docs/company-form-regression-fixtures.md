@@ -22580,3 +22580,51 @@ The closing journey edits registered draft identities only; it never creates an 
 - Retained test context (2026-10-12T11:13:09.987Z): required signing unknown-rank submission; target registered_fixture_context; references `740f745f-c8cc-485e-9e97-1cdfae142b26`, `31e8751b-2f0d-4107-8ae8-6b697e58e1e5`.
 
 - Retained test context (2026-10-12T11:13:10.175Z): missing rank witnessed signature frozen after capture; target registered_fixture_context; references `c77a4d76-eb0c-4593-acc3-458b7087f038`, `a1b54759-daac-48c7-93aa-168f4b78d508`, `cc32b8ee-ff64-4da9-8c94-057a91dfd4b1`, `9f83f1c3-a8a7-479d-8fea-a67ccad01435`, `d57dd06b-7c4f-4152-8902-c8af0422b3e6`, `01f71343-e660-4437-89c7-46e812ba2be3`, `a390920e-c7dd-475d-820c-47f98b378bf0`, `9c88f964-2612-4088-a5c6-78096197bdea`.
+
+- Retained test context (2026-10-12T11:14:54.956Z): requirement harness roots; target registered_fixture_context; references `5903bdab-e80f-456f-b358-7936371d6ba5`, `f5972025-19a6-48c7-9898-013b682cc5e8`, `adf503e6-dbc2-42f8-b339-ef12c990b783`, `63d0197a-6ee5-4be4-8809-dafed5f868cb`.
+
+- Retained test context (2026-10-12T11:14:54.958Z): required signing isolated vessel; target registered_fixture_context; references `ea8d0ce3-12f4-4c57-9049-d8d9a91d927f`.
+
+- Retained test context (2026-10-12T11:14:55.102Z): requirement harness pinned content; target registered_fixture_context; references `ca3dcdbc-6c31-4c89-ad92-1e56ab69b9eb`, `7242e629-6ca0-4339-ab89-178517a81e2a`, `e4703af1-07e4-455d-ac29-60b6760c63e1`, `ea34053d-446a-4e07-9196-d3fc472245e3`.
+
+- Retained test context (2026-10-12T11:14:55.114Z): required signing contract rank System field; target registered_fixture_context; references `e75293dd-a8d6-4ce5-b65a-6f3e29e0875a`.
+
+- Retained test context (2026-10-12T11:14:55.257Z): requirement harness recorded stage readiness; target registered_fixture_context; references `d2920adb-f20a-45b5-a8cb-ca6b5cbf88e7`, `d6c2e821-74d1-49ef-abae-1295970f2782`, `a6b00bf6-251c-4df8-abc0-fe2268ab4912`.
+
+- Retained test context (2026-10-12T11:14:55.276Z): requirement harness complete ledger graph; target registered_fixture_context; references `acb4027c-8f1f-45aa-aa50-9dad6e0218bb`, `f5972025-19a6-48c7-9898-013b682cc5e8`, `a6b00bf6-251c-4df8-abc0-fe2268ab4912`, `ca3dcdbc-6c31-4c89-ad92-1e56ab69b9eb`, `07b02671-bb73-4631-87f7-a701c992bb33`, `2f919e34-f7c3-4063-b2ef-16cc401ee40d`, `adf503e6-dbc2-42f8-b339-ef12c990b783`, `56bd151b-28c4-4722-9d8d-0a7f4f640b84`.
+
+- Retained test context (2026-10-12T11:14:55.376Z): required dual-signature regression submission; target registered_fixture_context; references `650a3968-fb91-4de0-a2a5-9530f12fbc83`, `2f919e34-f7c3-4063-b2ef-16cc401ee40d`.
+
+- Retained test context (2026-10-12T11:14:55.541Z): required dual-signature regression retained children; target registered_fixture_context; references `ff44a0f8-5d65-47d1-bf4a-2d535f0e2fa4`, `00acee9e-2902-4c9c-a3c8-f5476dfbac69`, `b440ed3d-2ffb-4c59-8eac-f76a7628b8d4`, `9f83f1c3-a8a7-479d-8fea-a67ccad01435`, `d57dd06b-7c4f-4152-8902-c8af0422b3e6`, `5903bdab-e80f-456f-b358-7936371d6ba5`, `ea8d0ce3-12f4-4c57-9049-d8d9a91d927f`, `f5972025-19a6-48c7-9898-013b682cc5e8`, `819321bc-0d9b-4b78-8079-c3d88b9f02e0`, `958745a6-e6a3-43a3-a108-a962461f8156`.
+
+- Retained test context (2026-10-12T11:14:55.544Z): requirement harness roots; target registered_fixture_context; references `6a301e29-ef88-4a40-946c-7c5b09d43cc3`, `42d15aeb-74c2-44a0-bf15-66c6d9c6297c`, `f2f6bb50-bb2d-4748-894f-f2e388d16a86`, `bd65d7d3-e38f-4dd1-9b8f-bdce4613986f`.
+
+- Retained test context (2026-10-12T11:14:55.544Z): required signing isolated vessel; target registered_fixture_context; references `a932939b-112f-4282-aba6-2e55065e2fae`.
+
+- Retained test context (2026-10-12T11:14:55.588Z): requirement harness pinned content; target registered_fixture_context; references `9951da46-6567-47fc-bfad-4d1fe1c59bd5`, `ed367bdc-4fc7-495a-9d15-2b7e972a4e50`, `e26a0e13-cbe8-48d3-be5d-767f443db634`, `8a125953-eb0f-4956-8f06-e8a87592199f`.
+
+- Retained test context (2026-10-12T11:14:55.599Z): required signing contract rank System field; target registered_fixture_context; references `a010f032-2d4e-45f3-a608-2590a246e2fd`.
+
+- Retained test context (2026-10-12T11:14:55.677Z): requirement harness recorded stage readiness; target registered_fixture_context; references `b1a7031a-9dec-46d9-966d-dbcced55be35`, `862c60c7-a875-4959-8fb8-751c81cc2d73`, `db04a6c6-5436-4922-879c-e573a4ee94fe`.
+
+- Retained test context (2026-10-12T11:14:55.717Z): requirement harness complete ledger graph; target registered_fixture_context; references `04ba90f0-afb8-4af4-9832-517a48319301`, `42d15aeb-74c2-44a0-bf15-66c6d9c6297c`, `db04a6c6-5436-4922-879c-e573a4ee94fe`, `9951da46-6567-47fc-bfad-4d1fe1c59bd5`, `8043a5b8-3e6f-49dd-b023-9e18e9106d0a`, `ef659439-94dd-4409-b77a-5c3cc1c049af`, `f2f6bb50-bb2d-4748-894f-f2e388d16a86`, `9a2a0b6f-d29e-4efd-9dd5-dc249ef97907`.
+
+- Retained test context (2026-10-12T11:14:55.779Z): required signing unknown-rank submission; target registered_fixture_context; references `c1a2a016-069a-49ec-ab99-c7b1349a93af`, `ef659439-94dd-4409-b77a-5c3cc1c049af`.
+
+- Retained test context (2026-10-12T11:14:55.898Z): missing rank witnessed signature frozen after capture; target registered_fixture_context; references `caafe199-ab42-4f65-b302-53a9ae7c9cdf`, `431ae9e7-3025-46fa-9843-a9c32537caec`, `6aea3cc1-01fa-49f4-a7ce-dc6a611884c2`, `9f83f1c3-a8a7-479d-8fea-a67ccad01435`, `d57dd06b-7c4f-4152-8902-c8af0422b3e6`, `6a301e29-ef88-4a40-946c-7c5b09d43cc3`, `a932939b-112f-4282-aba6-2e55065e2fae`, `42d15aeb-74c2-44a0-bf15-66c6d9c6297c`.
+
+- Retained test context (2026-10-12T11:14:55.924Z): requirement harness roots; target registered_fixture_context; references `bae6cbab-9726-4912-a2a5-e0a1d9bceb47`, `5e1eae76-714d-4abd-896f-40bfc2b247fc`, `90573ffb-6976-42c7-9f83-6b46a1ac6624`, `bb391a47-0444-4069-86fe-5e61581480c8`.
+
+- Retained test context (2026-10-12T11:14:55.924Z): required signing isolated vessel; target registered_fixture_context; references `0b436d11-795b-40aa-9529-7b4a2f1229d5`.
+
+- Retained test context (2026-10-12T11:14:55.974Z): requirement harness pinned content; target registered_fixture_context; references `6443bc2e-4697-4522-add3-ae3f84138062`, `1baa0c7a-8226-4ee2-8450-5129cb11201b`, `55c6d05d-4852-4bce-b38f-6d54fdf72cac`, `ebb58463-3648-462b-873c-d372ef187ffe`.
+
+- Retained test context (2026-10-12T11:14:55.985Z): required signing contract rank System field; target registered_fixture_context; references `e04b2f2d-d9f5-4518-bef6-9c07564eb2a0`.
+
+- Retained test context (2026-10-12T11:14:56.118Z): requirement harness recorded stage readiness; target registered_fixture_context; references `bf501569-bf92-4e0b-8370-a4929c033db8`, `e443013e-b00a-43cc-82a8-b772f5717a63`, `26900ace-345d-4296-8522-5da667774523`.
+
+- Retained test context (2026-10-12T11:14:56.138Z): requirement harness complete ledger graph; target registered_fixture_context; references `a7bd414b-fb66-4aad-8aaa-f879237393ed`, `5e1eae76-714d-4abd-896f-40bfc2b247fc`, `26900ace-345d-4296-8522-5da667774523`, `6443bc2e-4697-4522-add3-ae3f84138062`, `22c06e3e-0f14-4b97-89e0-ed6177884c61`, `34a20c2d-c2bf-4196-9dce-306bebe0b4f1`, `90573ffb-6976-42c7-9f83-6b46a1ac6624`, `80f8a5e9-d659-4337-9f24-f2d0d881daa8`.
+
+- Retained test context (2026-10-12T11:14:56.199Z): contract capture between signatures; target registered_fixture_context; references `1a3d3c00-5446-4c87-b070-d01f3151c89b`, `34a20c2d-c2bf-4196-9dce-306bebe0b4f1`.
+
+- Retained test context (2026-10-12T11:14:56.511Z): capture-between-signatures retained children; target registered_fixture_context; references `0b1a6100-ac91-4da2-95f8-5d89cf35c021`, `24c1aa13-59c5-4c8e-8021-4468886d5b02`, `9502aad0-b12b-451f-b0fa-fba677a12b11`, `9f83f1c3-a8a7-479d-8fea-a67ccad01435`, `d57dd06b-7c4f-4152-8902-c8af0422b3e6`, `bae6cbab-9726-4912-a2a5-e0a1d9bceb47`, `0b436d11-795b-40aa-9529-7b4a2f1229d5`, `5e1eae76-714d-4abd-896f-40bfc2b247fc`, `90280658-12bd-4349-97c6-82fdddf099d4`, `11dccb51-f7f7-46b7-9b25-a54380e73a54`.

@@ -50,4 +50,9 @@ describe("Company Form readable system values", () => {
       statusCode: 400, code: "RANK_NOT_ELIGIBLE",
     });
   });
+  it("still refuses a captured identifier that no longer resolves to an eligible master", async () => {
+    const executor: any = { execute: async () => ({ rows: [{ contract_rank_uuid: "recorded-but-ineligible", rank: null }] }) };
+    await expect(createCrewAssignmentSubject().resolveSystemField("rank", { assignUuid: "synthetic" } as any,
+      { submission: { dateOfDeclaration: null } }, executor)).rejects.toMatchObject({ code: "RANK_NOT_ELIGIBLE" });
+  });
 });
