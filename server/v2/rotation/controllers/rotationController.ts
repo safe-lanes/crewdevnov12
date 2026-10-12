@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 import { 
   crewAvailabilityService, 
   rotationDeployService, 
@@ -330,8 +331,9 @@ export const rotationEntriesController = {
   async deploy(req: Request, res: Response) {
     try {
       const { entryUuid } = req.params;
-      const { deployedByUuid, auditUserUuid } = req.body;
-      const result = await rotationDeployService.deployEntry(entryUuid, deployedByUuid, auditUserUuid);
+      const actor = getAuditUserUuid(req);
+      if (!actor) return res.status(401).json({ error: "Authenticated identity required" });
+      const result = await rotationDeployService.deployEntry(entryUuid, actor, actor);
       
       if (!result.success) {
         return res.status(400).json({ error: result.error });

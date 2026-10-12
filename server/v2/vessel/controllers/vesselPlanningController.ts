@@ -64,6 +64,14 @@ async function persistIncoming(
 }
 
 export const vesselPlanningController = {
+  async deferRelief(req: Request, res: Response) {
+    const parsed = z.object({ reason: z.string().trim().min(1).max(5000) }).strict().safeParse(req.body);
+    const actor = getAuditUserUuid(req);
+    if (!parsed.success) { res.status(400).json({ message: "Provide only a written reason for deferring relief." }); return; }
+    if (!actor) { res.status(401).json({ message: "Authenticated identity required." }); return; }
+    try { res.json(await vesselPlanningService.deferRelief(req.params.planUuid, parsed.data.reason, actor)); }
+    catch (error: any) { res.status(409).json({ message: error.message }); }
+  },
   async getUnlinkedRelieverClearAudit(req: Request, res: Response) {
     if (req.resolvedRole?.ok !== true || req.resolvedRole.role.roleName.trim().toLowerCase() !== "admin"
       || !getAuditUserUuid(req)) {

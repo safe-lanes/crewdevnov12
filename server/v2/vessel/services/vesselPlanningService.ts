@@ -1,5 +1,5 @@
 import { captureJoiningHistory } from "../../company-forms/subjects/crewAssignmentHistory";
-import { checkLifecycle, checkReliefTransition, finishLifecycle } from "../../company-forms/stageResolutionService";
+import { checkLifecycle, checkReliefTransition, finishLifecycle, deferStageCycle } from "../../company-forms/stageResolutionService";
 import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from "../repositories";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2, vesselPlanningRelieverClearAudit } from "../../../../shared/v2/vessel/schema";
@@ -1020,6 +1020,9 @@ export const vesselPlanningService = {
   if (!existing) {
     throw new Error(`Planning record not found: ${planUuid}`);
   }
+  if (["Planned", "Confirmed"].includes(existing.reliefStatus || "") && "reliefStatus" in data
+    && !["Planned", "Confirmed", "Signed Off"].includes(data.reliefStatus || ""))
+    throw new Error("Use Defer relief with a written reason to reverse planned relief.");
 
   const auditedData = applyAuditUser(data, false);
 
@@ -1062,6 +1065,9 @@ export const vesselPlanningService = {
    const reliefDueChanged = "reliefDue" in resolvedData;
    const contractChanged = "contractPeriodMonths" in resolvedData;
    const syncIncumbent = async (tx: typeof db, locked: typeof existing) => {
+     if (["Planned", "Confirmed"].includes(locked.reliefStatus || "") && "reliefStatus" in resolvedData
+       && !["Planned", "Confirmed", "Signed Off"].includes(resolvedData.reliefStatus || ""))
+       throw new Error("Use Defer relief with a written reason to reverse planned relief.");
      if (!reliefDueChanged && !contractChanged) return;
      const effectiveCrewUuid = "crewUuid" in resolvedData ? resolvedData.crewUuid : locked.crewUuid;
      if (!effectiveCrewUuid) return;
@@ -1181,6 +1187,21 @@ export const vesselPlanningService = {
   await finishLifecycle(reliefEventUuid, data.auditUserUuid || "system");
   return updated;
 },
+
+  async deferRelief(planUuid: string, reason: string, actor: string) {
+    if (!reason.trim()) throw new Error("Defer relief requires a written reason.");
+    const db = getDb();
+    const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!existing) throw new Error("Planning record not found.");
+    return db.transaction(async (tx: any) => {
+      const locked = await lockPlanningAfterAssignments(tx, existing);
+      if (!locked || locked.isArchived || !["Planned", "Confirmed"].includes(locked.reliefStatus || ""))
+        throw new Error("Only planned or confirmed relief can be deferred.");
+      if (!locked.crewAssignUuid) throw new Error("Incumbent assignment link is missing; reconcile before deferring relief.");
+      await deferStageCycle(locked.crewAssignUuid, actor, reason.trim(), tx);
+      return vesselPlanningRepository.update(planUuid, { reliefStatus: "Deferred", updatedByUuid: actor }, tx);
+    });
+  },
 
   async archive(planUuid: string, archivedByUuid?: string, auditUserUuid?: string) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);

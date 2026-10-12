@@ -114,6 +114,28 @@ export async function checkReliefTransition(previous: any, next: any, actor: str
     sourceKey: next.planUuid, actor, businessDate: new Date().toISOString().slice(0, 10) }, executor, true);
 }
 
+/** Assignment-first caller lock serializes deferral with required starts and signatures. */
+export async function deferStageCycle(subjectRef: string, actor: string, reason: string, executor: any) {
+  const cycle = (await executor.execute(sql`SELECT * FROM frm_stage_cycles WHERE subject_ref=${subjectRef}
+    AND stage_key='at_sign_off' FOR UPDATE`)).rows[0];
+  if (!cycle) {
+    await stageAudit(actor, subjectRef, "at_sign_off", "DEFERRED", { reason, cycleUuid: null }, executor);
+    return [];
+  }
+  await executor.execute(sql`SELECT set_config('sail.forms_actor',${actor},true),
+    set_config('sail.forms_reason',${reason},true)`);
+  const withdrawn = (await executor.execute(sql`UPDATE frm_requirements SET status='WITHDRAWN',updated_at=now()
+    WHERE subject_type='crew_assignment' AND subject_ref=${subjectRef} AND stage_key='at_sign_off'
+    AND cycle_uuid=${cycle.cycle_uuid} AND status IN('OUTSTANDING','UNRESOLVED') RETURNING requirement_uuid`)).rows;
+  await executor.execute(sql`UPDATE frm_stage_cycles SET deferred=true WHERE subject_ref=${subjectRef} AND stage_key='at_sign_off'`);
+  const events = (await executor.execute(sql`SELECT event_uuid FROM frm_stage_events WHERE subject_ref=${subjectRef}
+    AND stage_key='at_sign_off' AND cycle_uuid=${cycle.cycle_uuid}`)).rows;
+  for (const event of events) await appendAttempt(event.event_uuid, actor, "DEFERRED", reason, null, executor);
+  await stageAudit(actor, subjectRef, "at_sign_off", "DEFERRED",
+    { reason, cycleUuid: cycle.cycle_uuid, withdrawn: withdrawn.map((r: any) => r.requirement_uuid) }, executor);
+  return withdrawn;
+}
+
 /** Replay only the immutable event. Caller already performed scoped Fill in authorization. */
 export async function resolveStageEvent(eventUuid: string, actor: string, executor: any = getDb()) {
   const adapter = companyFormSubjectRegistry.get(subjectType);

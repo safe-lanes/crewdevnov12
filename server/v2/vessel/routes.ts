@@ -56,6 +56,7 @@ router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningControl
 router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);
 router.patch("/planning/:planUuid", vesselPlanningController.update);
+router.post("/planning/:planUuid/defer-relief", requirePermission("Vessel", "edit"), vesselPlanningController.deferRelief);
 router.post("/planning/:planUuid/archive", vesselPlanningController.archive);
 router.get("/planning/attachments/:attUuid/raw", vesselPlanningController.serveAttachment);
 router.get("/planning/:planUuid/attachments", vesselPlanningController.getAttachments);
