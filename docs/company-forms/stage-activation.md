@@ -1,3 +1,6 @@
+### Failed tenant activation
+
+A failed go-live SQL transaction rolls back without changing enforcement. The migration runner treats only the Company Forms go-live migration as a deferred activation: it writes a server-owned `GO_LIVE_FAILED` audit entry, leaves that migration unapplied for the tenant's next upgrade, and continues ordinary application startup. Form screens show that activation is incomplete and manual starting remains available. A later successful activation records completion for that tenant and removes the failure warning. Other migration failures still stop upgrade; this is not a general schema-error bypass.
 # Tenant stage activation
 
 Every tenant runs its own migrations through `runMigrationsForTenant` on its

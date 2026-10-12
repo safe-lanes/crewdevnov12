@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -202,6 +203,7 @@ describe.sequential("Company Form answer round-trip through the client mapper", 
        VALUES ($1, $2, 'Planned', false, false)`,
       [assignmentUuid, crewUuid],
     );
+    await openHarnessStages(db, assignmentUuid);
 
     formUuid = u();
     formVersionUuid = u();

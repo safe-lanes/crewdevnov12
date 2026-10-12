@@ -30,7 +30,11 @@ export async function stageStatus(subjectRef: string, executor: any = getDb()) {
     WHERE c.subject_ref=${subjectRef}`)).rows;
   const failures = (await executor.execute(sql`SELECT stage_key,evidence,recorded_at FROM frm_stage_audit
     WHERE subject_ref=${subjectRef} AND event='CAPTURE_FAILED' ORDER BY recorded_at DESC`)).rows;
-  return { enforcementEnabled: Boolean(rollout?.enforcement_enabled), completedAt: rollout?.completed_at ?? null, stages, failures };
+  const activationFailure = !rollout?.enforcement_enabled
+    ? (await executor.execute(sql`SELECT evidence->>'reason' AS reason FROM frm_stage_audit
+        WHERE event='GO_LIVE_FAILED' ORDER BY recorded_at DESC LIMIT 1`)).rows[0]?.reason ?? null : null;
+  return { enforcementEnabled: Boolean(rollout?.enforcement_enabled), completedAt: rollout?.completed_at ?? null,
+    activationFailure, stages, failures };
 }
 
 export async function assertStageReady(subjectRef: string, stage: string | null, executor: any = getDb()) {

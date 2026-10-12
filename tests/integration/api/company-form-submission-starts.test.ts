@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -163,6 +164,7 @@ async function createAssignment(assignUuid: string, assignmentType: string) {
      VALUES ($1, $2, $3, false, false)`,
     [assignUuid, crewUuid, assignmentType],
   );
+  await openHarnessStages(db, assignUuid);
 }
 
 async function createRenderStructure(versionUuid: string, versionMarker: string, ownerFormUuid = formUuid): Promise<{

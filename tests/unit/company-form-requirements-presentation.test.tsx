@@ -39,11 +39,14 @@ describe("Company Form operational requirements presentation", () => {
   it("shows missing stage checks as information rather than hiding manual readiness", async () => {
     state.response = { runs: [], requirements: [], outstandingEligible: true };
     const view = render(wrap(<AssignmentFormRequirements subjectRef="subject" stageKey="on_board" canStartRequired onOpenSubmission={vi.fn()} />));
-    await screen.findByText(/No requirement check is recorded/);
+    await screen.findByText(/No legacy requirement check is recorded/);
     expect(view.container.textContent).not.toContain("unavailable");
   });
   it("starts an outstanding pin from its requirement and opens the returned form", async () => {
     state.response = { runs: [{ stage_key: "before_joining", outcome: "COMPLETED" }], outstandingEligible: true,
+      stageChecks: { enforcementEnabled: true, completedAt: "2026-10-01T00:00:00Z", canRetry: false, failures: [],
+        stages: [{ stage_key: "before_joining", cycle_uuid: "cycle", deferred: false, event_uuid: "event",
+          outcome: "COMPLETED", reason: null, recorded_at: "2026-10-01T00:00:00Z" }] },
       requirements: [{ requirement_uuid: "requirement", form_name: "Safety form", stage_key: "before_joining",
         status: "OUTSTANDING", mandatory: true, history: [], current_submission_uuid: null }] };
     const open = vi.fn();
@@ -51,6 +54,45 @@ describe("Company Form operational requirements presentation", () => {
     fireEvent.click(await screen.findByText("Start required form"));
     await waitFor(() => expect(open).toHaveBeenCalledWith("new-form"));
     expect(state.post).toHaveBeenCalledWith(expect.stringContaining("/requirements/requirement/start"), {});
+  });
+  it.each([
+    { readiness: "missing", stages: [] },
+    { readiness: "pending", stages: [{ stage_key: "before_joining", cycle_uuid: "cycle", deferred: false, event_uuid: "event", outcome: "PENDING", reason: "Check pending", recorded_at: null }] },
+    { readiness: "deferred", stages: [{ stage_key: "before_joining", cycle_uuid: "cycle", deferred: true, event_uuid: "event", outcome: "DEFERRED", reason: "Relief deferred", recorded_at: null }] },
+  ])("keeps required form start disabled when enforced readiness is $readiness", async ({ stages }) => {
+    state.response = {
+      runs: [], outstandingEligible: true,
+      stageChecks: { enforcementEnabled: true, completedAt: null, canRetry: false, failures: [], stages },
+      requirements: [{ requirement_uuid: "blocked-requirement", form_name: "Safety form", stage_key: "before_joining",
+        status: "OUTSTANDING", mandatory: true, history: [], current_submission_uuid: null }],
+    };
+    render(wrap(<AssignmentFormRequirements subjectRef="subject" canStartRequired onOpenSubmission={vi.fn()} />));
+    const startButton = await screen.findByText("Start required form");
+    expect(startButton).toBeDisabled();
+    fireEvent.click(startButton);
+    expect(state.post).not.toHaveBeenCalled();
+  });
+  it("renders a plain Fill in server reason and retries only the recorded stage check", async () => {
+    state.response = {
+      runs: [], requirements: [], outstandingEligible: true,
+      stageChecks: {
+        enforcementEnabled: true, completedAt: null, canRetry: true,
+        stages: [{ stage_key: "before_joining", cycle_uuid: "cycle-fill-in", deferred: false,
+          event_uuid: "retryable-event", outcome: "PENDING", reason: "Fill in check pending", recorded_at: null }],
+        failures: [{ stage_key: "before_joining", evidence: { reason: "Fill in is required before joining", formUuid: "private-form-id" } }],
+      },
+    };
+    const view = render(wrap(<AssignmentFormRequirements subjectRef="subject" stageKey="before_joining" />));
+    expect(await screen.findByText("Server reason: Fill in is required before joining")).toBeInTheDocument();
+    expect(view.container.textContent).not.toContain("private-form-id");
+    fireEvent.click(screen.getByRole("button", { name: "Retry check" }));
+    await waitFor(() => expect(state.post).toHaveBeenCalledWith(
+      expect.stringContaining("/checks/retryable-event/retry"),
+      {},
+    ));
+    expect(state.post.mock.calls.every(([path]) =>
+      String(path).includes("/checks/") && !String(path).includes("/authoring/"),
+    )).toBe(true);
   });
   it("shows earlier manual conflicts without linking or auto-voiding them", async () => {
     state.response = { runs: [], outstandingEligible: true, requirements: [{ requirement_uuid: "required",

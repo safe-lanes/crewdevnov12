@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { randomUUID } from "node:crypto";
 import { createRequirementFixture, requirementApi, requirementPool, requirementToken, requirementTokenFor } from "../../helpers/company-form-requirement-fixtures";
@@ -68,6 +69,7 @@ describe("atomic required form lifecycle and preserved cancellation history", ()
   });
   it("never substitutes manual fulfillment, and records unresolved decisions and failed checks", async () => {
     const manual = await createRequirementFixture();
+    await openHarnessStages(requirementPool, manual.assignUuid, ["before_joining"]);
     const root = `/api/v2/company-form-submissions/subjects/crew_assignment/${manual.assignUuid}`;
     const started = await post(`${root}/submissions`, { formUuid: manual.formUuid, formVersionUuid: manual.version.fvUuid });
     expect(started.status).toBe(201);

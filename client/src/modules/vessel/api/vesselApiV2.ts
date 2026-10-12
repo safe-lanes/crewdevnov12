@@ -83,6 +83,8 @@ export interface CreatePlanningInput {
   rankId: string;
   rank: string;
   crewUuid?: string;
+  /** Exact incumbent reference; the server locks and verifies it before linking a new planning row. */
+  crewAssignUuid?: string;
   crewStatus?: string;
   signOnDate?: string;
   reliefDue?: string;

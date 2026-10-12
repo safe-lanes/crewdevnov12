@@ -236,7 +236,7 @@ export const vesselPlanningController = {
   async create(req: Request, res: Response) {
     try {
       const validatedData = insertVesselPlanningV2Schema
-        .omit({ planUuid: true, relieverAssignUuid: true, crewAssignUuid: true })
+        .omit({ planUuid: true, relieverAssignUuid: true })
         .parse(req.body);
       const auditUserUuid = getAuditUserUuid(req);
       const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
@@ -246,6 +246,9 @@ export const vesselPlanningController = {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
       console.error("Error creating planning:", error);
+      if (error.message?.includes("Linked incumbent assignment is inconsistent")) {
+        return res.status(409).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to create planning record" });
     }
   },

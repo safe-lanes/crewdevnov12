@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -68,6 +69,7 @@ async function createAssignment(assignUuid: string): Promise<void> {
       assign_uuid, crew_uuid, assignment_type, is_current, is_deleted
     ) VALUES ($1, $2, 'Planned', true, false)
   `, [assignUuid, crewUuid]);
+  await openHarnessStages(db, assignUuid);
 }
 
 async function start(assignUuid: string, formId = formUuid, versionId = versionUuid) {

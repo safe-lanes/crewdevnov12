@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -244,6 +245,7 @@ async function createCrewAssignment(assignmentType: string, vesselUuid = subject
      VALUES ($1, $2, $3, $4, false, false)`,
     [assignUuid, subjectUuid, vesselUuid, assignmentType],
   );
+  await openHarnessStages(db, assignUuid);
   assignmentUuids.push(assignUuid);
   return assignUuid;
 }

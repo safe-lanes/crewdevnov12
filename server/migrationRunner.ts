@@ -1,3 +1,4 @@
+import { deferFailedStageActivation } from "./v2/company-forms/stageUpgradeFailure";
 import { Pool } from "pg";
 import { readdir, readFile } from "fs/promises";
 import { join, dirname } from "path";
@@ -114,6 +115,10 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
       } catch {
       }
       console.error(`❌ [${label}] Failed to apply migration ${filename}:`, error);
+      if (await deferFailedStageActivation(filename, client, error)) {
+        console.warn(`[${label}] Form-stage activation deferred; enforcement remains off and manual starting remains available.`);
+        continue;
+      }
       throw new Error(`Migration failed: ${filename}. ${error}`);
     } finally {
       client.release();

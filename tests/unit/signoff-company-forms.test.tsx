@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignoffCompanyForms, verifySignoffAssignment } from "../../client/src/modules/vessel/components/SignoffCompanyForms";
 
@@ -23,11 +23,21 @@ const released = {
 };
 function response(body: unknown) { return { json: async () => body }; }
 
-function fixture(submissions: unknown[] = []) {
+function fixture(submissions: unknown[] = [], checkOutcome = "COMPLETED") {
   request.mockImplementation(async (method: string, path: string) => {
     if (path === "/api/v2/vessel/planning/plan-01") {
       return response({ crewAssignUuid: context.assignmentUuid, crewUuid: context.crewUuid, vesselUuid: context.vesselUuid });
     }
+    if (path.endsWith("/requirements")) return response({
+      runs: [], requirements: [], outstandingEligible: true,
+      stageChecks: {
+        enforcementEnabled: true, completedAt: null, canRetry: false, failures: [],
+        stages: [{
+          stage_key: "at_sign_off", cycle_uuid: "cycle-signoff", deferred: checkOutcome === "DEFERRED",
+          event_uuid: "event-signoff", outcome: checkOutcome, reason: null, recorded_at: "2026-10-01T00:00:00Z",
+        }],
+      },
+    });
     if (path.includes("/eligible-forms?")) return response([released]);
     if (path.includes("/submissions") && method === "GET") return response({ submissions });
     if (path.includes("/submissions") && method === "POST") return response({ submissionUuid: "created-submission" });
@@ -83,6 +93,7 @@ describe("Planning at-sign-off company forms", () => {
     fixture();
     mount();
     const picker = await screen.findByTestId("select-signoff-form-version");
+    await waitFor(() => expect(picker).toBeEnabled());
     expect(screen.getByTestId("button-start-signoff-form")).toBeDisabled();
     fireEvent.change(picker, { target: { value: released.formVersionUuid } });
     fireEvent.click(screen.getByTestId("button-start-signoff-form"));
@@ -105,6 +116,15 @@ describe("Planning at-sign-off company forms", () => {
       `/api/v2/company-form-submissions/subjects/crew_assignment/assignment-01/eligible-forms?crewUuid=crew-01&planUuid=plan-01&vesselUuid=vessel-01&stageKey=at_sign_off`)).toBe(true);
   });
 
+  it("keeps the manual sign-off picker closed while an enforced check is deferred", async () => {
+    fixture([], "DEFERRED");
+    mount();
+    expect((await screen.findAllByText("Available once Relief Status is Planned or Confirmed.")).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("select-signoff-form-version")).toBeDisabled();
+    expect(screen.getByTestId("button-start-signoff-form")).toBeDisabled();
+    expect(request.mock.calls.some((call) => call[0] === "POST")).toBe(false);
+  });
+
   it("resumes one existing nonvoided at-sign-off declaration instead of creating a duplicate", async () => {
     fixture([{
       submissionUuid: "voided-replacement",
@@ -119,7 +139,9 @@ describe("Planning at-sign-off company forms", () => {
       status: "in_progress",
     }]);
     mount();
-    fireEvent.change(await screen.findByTestId("select-signoff-form-version"), { target: { value: released.formVersionUuid } });
+    const picker = await screen.findByTestId("select-signoff-form-version");
+    await waitFor(() => expect(picker).toBeEnabled());
+    fireEvent.change(picker, { target: { value: released.formVersionUuid } });
     fireEvent.click(screen.getByTestId("button-start-signoff-form"));
     expect(await screen.findByTestId("persisted-renderer")).toHaveTextContent("existing");
     expect(request.mock.calls.some((call) => call[0] === "POST")).toBe(false);

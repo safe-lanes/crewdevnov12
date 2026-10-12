@@ -77,7 +77,7 @@ describe("Sign-off stage policy", () => {
       : table === admCompanyRanksV2 ? [{ rankId: "R001", rank: "Master" }]
       : table === masterVessels ? [{ id: 2, vesselUuid: "v" }]
       : table === frmSections ? [{ section: pinned, part: { isOfficeOnly: false } }] : [];
-    const executor = { execute: async () => undefined, select: () => {
+    const executor = { execute: async () => ({ rows: [] }), select: () => {
       let table: any;
       const chain: any = { from: (value: any) => { table = value; return chain; }, innerJoin: () => chain, where: () => chain,
         limit: async () => tables(table), then: (resolve: any, reject: any) => Promise.resolve(tables(table)).then(resolve, reject) };

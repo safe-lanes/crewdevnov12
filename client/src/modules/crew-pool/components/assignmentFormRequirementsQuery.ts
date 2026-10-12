@@ -32,6 +32,7 @@ export type AssignmentFormRequirementsResponse = {
   stageChecks?: {
     enforcementEnabled: boolean;
     completedAt: string | null;
+    activationFailure?: string | null;
     canRetry: boolean;
     stages: StageCheck[];
     failures: StageCheckFailure[];

@@ -12,10 +12,24 @@ vi.mock("@/components/configured-form/companySubmissionContract", () => ({
 const context = { planUuid: "plan", assignmentUuid: "recorded-assignment", crewUuid: "crew", vesselUuid: "vessel" };
 const form = { formUuid: "form", formName: "Pre-Employment Declaration", formVersionUuid: "released-02", versionNo: "02", stageKey: "before_joining" };
 function response(body: unknown) { return { json: async () => body }; }
-function fixture({ eligible = [form], submissions = [] }: { eligible?: typeof form[]; submissions?: unknown[] } = {}) {
+function fixture({ eligible = [form], submissions = [], checkOutcome = "COMPLETED" }: {
+  eligible?: typeof form[];
+  submissions?: unknown[];
+  checkOutcome?: string;
+} = {}) {
   request.mockImplementation(async (method: string, path: string) => {
     if (path === "/api/v2/vessel/planning/plan") return response({ relieverAssignUuid: context.assignmentUuid, relieverCrewUuid: context.crewUuid, vesselUuid: context.vesselUuid });
     if (path.includes("/reliever-assignment/")) return response({ assignUuid: context.assignmentUuid, crewUuid: context.crewUuid, vesselUuid: context.vesselUuid, assignmentType: "Planned" });
+    if (path.endsWith("/requirements")) return response({
+      runs: [], requirements: [], outstandingEligible: true,
+      stageChecks: {
+        enforcementEnabled: true, completedAt: null, canRetry: false, failures: [],
+        stages: checkOutcome ? [{
+          stage_key: "before_joining", cycle_uuid: "cycle-before", deferred: checkOutcome === "DEFERRED",
+          event_uuid: "event-before", outcome: checkOutcome, reason: null, recorded_at: "2026-10-01T00:00:00Z",
+        }] : [],
+      },
+    });
     if (path.includes("/eligible-forms?stageKey=before_joining")) return response(eligible);
     if (path.endsWith("/submissions") && method === "GET") return response({ submissions });
     if (path.endsWith("/submissions") && method === "POST") return response({ submissionUuid: "created" });
@@ -79,6 +93,7 @@ describe("Joining Company Forms use the recorded planning association", () => {
   it("requires manual released-version selection and uses submission-owned endpoints", async () => {
     fixture(); mount();
     const picker = await screen.findByTestId("select-joining-form-version");
+    await waitFor(() => expect(picker).toBeEnabled());
     expect(screen.getByTestId("button-start-joining-form")).toBeDisabled();
     fireEvent.change(picker, { target: { value: form.formVersionUuid } });
     fireEvent.click(screen.getByTestId("button-start-joining-form"));
@@ -88,10 +103,20 @@ describe("Joining Company Forms use the recorded planning association", () => {
     });
     expect(request.mock.calls.every((call) => !call[1].includes("/admin/"))).toBe(true);
   });
+  it.each(["PENDING", "DEFERRED"])("keeps manual form entry closed for enforced %s readiness", async (checkOutcome) => {
+    fixture({ checkOutcome });
+    mount();
+    const picker = await screen.findByTestId("select-joining-form-version");
+    expect(picker).toBeDisabled();
+    expect(screen.getByTestId("button-start-joining-form")).toBeDisabled();
+    expect(request.mock.calls.some((call) => call[0] === "POST")).toBe(false);
+  });
   it("resumes the existing pinned parent instead of creating another declaration", async () => {
     fixture({ submissions: [{ submissionUuid: "pinned-01", formUuid: "form", formVersionUuid: "older-version", stageKey: "before_joining", status: "completed" }] });
     mount();
-    fireEvent.change(await screen.findByTestId("select-joining-form-version"), { target: { value: form.formVersionUuid } });
+    const picker = await screen.findByTestId("select-joining-form-version");
+    await waitFor(() => expect(picker).toBeEnabled());
+    fireEvent.change(picker, { target: { value: form.formVersionUuid } });
     fireEvent.click(screen.getByTestId("button-start-joining-form"));
     expect(await screen.findByText("Persisted renderer pinned-01")).toBeInTheDocument();
     expect(request.mock.calls.some((call) => call[0] === "POST")).toBe(false);
@@ -124,7 +149,9 @@ describe("Joining Company Forms use the recorded planning association", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const ui = (props: typeof context) => <QueryClientProvider client={client}><JoiningCompanyForms {...props} /></QueryClientProvider>;
     const view = render(ui(context));
-    fireEvent.change(await screen.findByTestId("select-joining-form-version"), { target: { value: form.formVersionUuid } });
+    const picker = await screen.findByTestId("select-joining-form-version");
+    await waitFor(() => expect(picker).toBeEnabled());
+    fireEvent.change(picker, { target: { value: form.formVersionUuid } });
     fireEvent.click(screen.getByTestId("button-start-joining-form"));
     fireEvent.click(screen.getByTestId("button-start-joining-form"));
     await waitFor(() => expect(request.mock.calls.filter((call) => call[0] === "POST")).toHaveLength(1));

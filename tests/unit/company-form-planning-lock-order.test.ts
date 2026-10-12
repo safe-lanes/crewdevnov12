@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../helpers/company-form-stage-fixtures";
 // @vitest-environment node
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
@@ -76,6 +77,7 @@ beforeEach(async () => {
     VALUES ($1,$2,'Private','Test','R001',false)`, [crew.crewUuid, namespace]);
   await pool.query(`INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_current,sign_on_date,is_deleted)
     VALUES ($1,$2,$3,'OnBoard',true,'2026-01-01',false)`, [assignment, crew.crewUuid, crew.vesselUuid]);
+  await openHarnessStages(pool, assignment);
   await pool.query(`INSERT INTO vessel_planning_v2(plan_uuid,crew_uuid,vessel_uuid,crew_assign_uuid,rank_id,rank,is_deleted)
     VALUES ($1,$2,$3,$4,'R001','Master',false)`, [plan, crew.crewUuid, crew.vesselUuid, assignment]);
   const form = fixture.forms[0];

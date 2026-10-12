@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { createRequirementFixture, formCall, requirementApi, requirementPool, requirementToken } from "../../helpers/company-form-requirement-fixtures";
 import { readRequirements } from "../../../server/v2/company-forms/requirementsRepository";
@@ -21,12 +22,13 @@ describe("pinned required and unchanged manual starting", () => {
     expect((await formCall("post", `/form-versions/${copy.body.id}/release`)).status).toBe(200);
   });
   afterAll(async () => { await requirementPool.end(); });
-  it("keeps manual starts available without any stage run", async () => {
+  it("keeps manual starts independent of requirements after the stage check", async () => {
+    await openHarnessStages(requirementPool, manual.assignUuid, ["before_joining"]);
     const result = await requirementApi.post(`/api/v2/company-form-submissions/subjects/crew_assignment/${manual.assignUuid}/submissions`)
       .set("Authorization", `Bearer ${requirementToken}`).send({ formUuid: manual.formUuid, formVersionUuid: manual.version.fvUuid });
     expect(result.status, JSON.stringify(result.body)).toBe(201);
     expect(result.body.origin).toBe("MANUAL"); expect(result.body.requirementUuid).toBeNull();
-    retainFixtureReferences("manual without stage check", [result.body.submissionUuid]);
+    retainFixtureReferences("manual after empty stage check", [result.body.submissionUuid]);
   });
   it("rejects browser pins and manual bypass, and starts the older pinned version", async () => {
     const picker = await requirementApi.get(`${base()}/eligible-forms?stageKey=before_joining`)

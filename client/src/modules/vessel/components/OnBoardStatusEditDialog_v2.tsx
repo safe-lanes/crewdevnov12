@@ -559,6 +559,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 } else {
                     await createPlanningV2.mutateAsync({
                         vesselUuid,
+                        crewUuid: planningData?.crewUuid,
+                        crewAssignUuid: planningData?.crewAssignUuid,
                         rankId,
                         rank,
                         signOnDate: cleanFormData.signOnDate,

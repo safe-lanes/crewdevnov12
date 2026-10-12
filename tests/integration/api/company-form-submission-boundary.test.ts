@@ -1,3 +1,4 @@
+import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { Client } from "pg";
@@ -334,6 +335,7 @@ describe("Company Form relationship boundary", () => {
        VALUES ($1, $2, $3, 'OnBoard', true, false)`,
       [assignUuid, crewUuid, targetVesselUuid],
     );
+    await openHarnessStages(db, assignUuid);
   }
 
   const routeMatrix: RouteRequest[] = [

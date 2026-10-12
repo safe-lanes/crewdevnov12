@@ -123,6 +123,7 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
     {query.isSuccess && stageChecks && !stageChecks.enforcementEnabled && <p className="mt-2 rounded bg-slate-100 px-2.5 py-2 text-xs text-slate-700">
       Stage-check enforcement is off for this assignment. Existing form controls remain available under the legacy behavior.
     </p>}
+    {query.isSuccess && stageChecks?.activationFailure && <p role="alert" className="mt-2 text-sm text-amber-900">{stageChecks.activationFailure}</p>}
     {query.isSuccess && (stageChecks?.failures ?? []).filter(failure =>
       (!stageKey || failure.stage_key === stageKey) && !visibleStageChecks.some(check => check.stage_key === failure.stage_key))
       .map((failure, index) => <p key={`capture-failure-${index}`} role="alert" className="mt-2 text-sm text-amber-900">
@@ -130,8 +131,8 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
       </p>)}
     {query.isSuccess && visibleStageChecks.length > 0 && <ul className="mt-3 space-y-2">
       {visibleStageChecks.map((check) => {
-        const retryable = stageChecks.canRetry && ["FAILED", "PENDING"].includes(check.outcome) && Boolean(check.event_uuid);
-        const failures = stageChecks.failures.filter((failure) => failure.stage_key === check.stage_key);
+        const retryable = stageChecks?.canRetry && ["FAILED", "PENDING"].includes(check.outcome) && Boolean(check.event_uuid);
+        const failures = (stageChecks?.failures ?? []).filter((failure) => failure.stage_key === check.stage_key);
         const deferred = check.deferred || check.outcome === "DEFERRED";
         return <li key={`${check.stage_key}-${check.cycle_uuid}`} className={`rounded border px-3 py-2 text-xs ${check.outcome === "COMPLETED" && !deferred ? "border-emerald-200 bg-emerald-50 text-emerald-900" : deferred ? "border-slate-200 bg-slate-50 text-slate-700" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">

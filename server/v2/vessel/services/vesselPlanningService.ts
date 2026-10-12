@@ -957,6 +957,16 @@ export const vesselPlanningService = {
     }
     let eventUuid: string | undefined;
     const created = await getDb().transaction(async (tx: any) => {
+      // Creation may name an exact assignment reference, never an inferred crew/vessel/state fallback.
+      if (data.crewAssignUuid) {
+        const [assignment] = await tx.select().from(crewAssignments)
+          .where(eq(crewAssignments.assignUuid, data.crewAssignUuid)).for("update");
+        if (!assignment || assignment.isDeleted || !assignment.isCurrent || assignment.assignmentType !== "OnBoard" ||
+            assignment.crewUuid !== resolvedData.crewUuid || assignment.vesselUuid !== resolvedData.vesselUuid) {
+          throw new Error("Linked incumbent assignment is inconsistent; reload before creating planning");
+        }
+        resolvedData.crewAssignUuid = assignment.assignUuid;
+      }
       const row = await vesselPlanningRepository.create(resolvedData, tx);
       const event = await checkReliefTransition(null, row, data.auditUserUuid || "system", tx);
       eventUuid = event?.event_uuid;

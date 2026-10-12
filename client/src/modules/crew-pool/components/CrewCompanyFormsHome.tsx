@@ -262,7 +262,8 @@ export function CrewCompanyFormsHome({
                   : 0;
                 const requirementState = requirementStateBySubject.get(group.subjectRef);
                 const signoffCheck = stageCheckFor(requirementState?.data, "at_sign_off");
-                const signoffBlocked = !requirementState || requirementState.isLoading || requirementState.isError ||
+                const signoffStagePermitted = group.startableStages?.includes("at_sign_off") === true;
+                const signoffBlocked = !signoffStagePermitted || !requirementState || requirementState.isLoading || requirementState.isError ||
                   stageCheckBlocksActions(requirementState.data, "at_sign_off");
                 const showSignoffPicker = group.startableStages?.includes("at_sign_off") ||
                   requirementState?.data?.stageChecks?.enforcementEnabled === true;
@@ -336,7 +337,7 @@ export function CrewCompanyFormsHome({
                                 ? "Checking whether this form stage is available…"
                                 : requirementState?.isError
                                   ? "Stage availability could not be verified. Manual form selection is disabled until the check can be loaded."
-                                  : !signoffCheck || signoffCheck.deferred || signoffCheck.outcome === "DEFERRED"
+                                  : !signoffStagePermitted || !signoffCheck || signoffCheck.deferred || signoffCheck.outcome === "DEFERRED"
                                     ? "Available once Relief Status is Planned or Confirmed."
                                     : "Manual form selection is unavailable until the enforced at-sign-off check is completed."
                               }

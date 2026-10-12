@@ -15,7 +15,7 @@ export const requirementApi = request("http://127.0.0.1:5000");
 export const formCall = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   requirementApi[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${requirementToken}`).send(body);
 
-export async function createRequirementFixture() {
+export async function createRequirementFixture(stageKey = "before_joining") {
   if (process.env.NODE_ENV === "production") throw new Error("Fixture harness is not permitted in production");
   const crewUuid = randomUUID(), assignUuid = randomUUID(), formUuid = randomUUID(), templatePart = randomUUID();
   retainFixtureReferences("requirement harness roots", [crewUuid, assignUuid, formUuid, templatePart]);
@@ -31,7 +31,7 @@ export async function createRequirementFixture() {
   await requirementPool.query(`INSERT INTO frm_form_parts(form_part_uuid,form_uuid,part_code,part_title,part_type)
     VALUES($1,$2,'MAIN','Requirement evidence','configurable')`, [templatePart, formUuid]);
   const v = (await formCall("post", `/forms/${f.id}/versions`, {
-    versionNo: "00", versionDate: "11-Oct-2026", configuration: "{}", stageKey: "before_joining",
+    versionNo: "00", versionDate: "11-Oct-2026", configuration: "{}", stageKey,
   })).body;
   if (!v.fvUuid) throw new Error(`Fixture version failed: ${JSON.stringify(v)}`);
   const part = (await requirementPool.query("SELECT form_part_uuid FROM frm_form_parts WHERE form_version_uuid=$1", [v.fvUuid])).rows[0].form_part_uuid;
@@ -48,12 +48,26 @@ export async function createRequirementFixture() {
   const cycleUuid = randomUUID();
   const base = { adapter: companyFormSubjectRegistry.get("crew_assignment"),
     actor: { userId: 24 } as any, subjectType: "crew_assignment", subjectRef: assignUuid,
-    stageKey: "before_joining", cycleUuid, triggerAt: new Date().toISOString(),
+    stageKey, cycleUuid, triggerAt: new Date().toISOString(),
     source: "retained_test_harness", outcome: "COMPLETED" as const,
     evidence: { fixture: true }, decisions: [] };
   return { crewUuid, assignUuid, formUuid, formId: f.id, version: v, section, question, cycleUuid, base,
     record: async (eventKey: string, decisions: Parameters<typeof recordResolution>[0]["decisions"] = []) => {
       const result = await recordResolution({ ...base, eventKey, decisions });
+      const stage = await requirementPool.query("SELECT 1 FROM frm_stage_cycles WHERE subject_ref=$1 AND stage_key=$2",
+        [assignUuid, base.stageKey]);
+      if (!stage.rows.length) {
+        const event = randomUUID(), attempt = randomUUID();
+        retainFixtureReferences("requirement harness recorded stage readiness", [event, attempt, cycleUuid]);
+        await requirementPool.query("INSERT INTO frm_stage_cycles(subject_ref,stage_key,cycle_uuid) VALUES($1,$2,$3)",
+          [assignUuid, base.stageKey, cycleUuid]);
+        await requirementPool.query(`INSERT INTO frm_stage_events(event_uuid,subject_ref,stage_key,cycle_uuid,source,
+          source_key,occurred_at,business_date,actor_uuid,snapshot)
+          VALUES($1,$2,$3,$4,'retained_test_harness',$1,now(),CURRENT_DATE,'24','{"legacy":true,"facts":null,"candidates":[],"testHarness":true}')`,
+          [event, assignUuid, base.stageKey, cycleUuid]);
+        await requirementPool.query(`INSERT INTO frm_stage_attempts(attempt_uuid,event_uuid,actor_uuid,outcome,run_uuid)
+          VALUES($1,$2,'24','COMPLETED',$3)`, [attempt, event, result.run.run_uuid]);
+      }
       const ledger = await readRequirements("crew_assignment", assignUuid);
       retainFixtureReferences("requirement harness complete ledger graph",
         [...ledger.runs, ...ledger.requirements]);
