@@ -1,10 +1,21 @@
 import { Router, type Request, type Response } from "express";
+import { outstandingCompanyForms } from "./outstandingReport";
 import { requirePermission } from "../../middleware/requirePermission";
 import { z } from "zod";
 import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 
 const router = Router();
+router.get("/outstanding", async (req, res) => {
+  try { res.json(await outstandingCompanyForms(req)); }
+  catch (error) { sendError(res, error); }
+});
+router.get("/subjects/:subjectType/:subjectRef/requirements/:requirementUuid/definition", async (req, res) => {
+  const parsed = paramsSchema.extend({ requirementUuid: z.string().uuid() }).safeParse(req.params);
+  if (!parsed.success) { res.status(400).json({ message: "Select a valid form requirement." }); return; }
+  try { res.json(await companyFormSubmissionsService.readRequirementDefinition({ req, ...parsed.data })); }
+  catch (error) { sendError(res, error); }
+});
 router.post("/subjects/:subjectType/:subjectRef/checks/:eventUuid/retry", async (req, res) => {
   const parsed = paramsSchema.extend({ eventUuid: z.string().uuid() }).safeParse(req.params);
   if (!parsed.success || !z.object({}).strict().safeParse(req.body).success) {

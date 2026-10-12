@@ -9,6 +9,16 @@ import { ChecklistGateError, checklistBlockerMessage, checklistOverrideEligible,
 
 export function humanFormFactReason(value: string | null): string {
   if (!value) return "A required contract fact is missing. Verify it and retry the rules check.";
+  const missing = [
+    [/first.?in.?rank/i, "first company service in this contract rank"],
+    [/first.?ever/i, "first company service"],
+    [/contract.?rank|rank.?uuid/i, "captured contract rank"],
+    [/national/i, "nationality"], [/vessel.?type/i, "vessel type"],
+    [/owner/i, "vessel owner"], [/flag/i, "vessel flag"],
+    [/crew.?group/i, "crew group"], [/agency/i, "manning agency"],
+  ] as const;
+  const facts = missing.filter(([pattern]) => pattern.test(value)).map(([, label]) => label);
+  if (facts.length) return `Missing or unverified: ${facts.join(", ")}. Review Form rule facts and retry the rules check.`;
   const labels: Record<string, string> = {
     first_ever: "first company service", first_in_rank: "first company service in this contract rank",
     contract_rank: "captured contract rank", nationality: "nationality", vessel_type: "vessel type",

@@ -549,6 +549,23 @@ export class CompanyFormSubmissionsService {
     };
   }
 
+  async readRequirementDefinition(input: {
+    req: Request; subjectType: string; subjectRef: string; requirementUuid: string;
+  }): Promise<CompanyFormSubmissionRenderContract> {
+    const adapter = this.contextAdapter(input.req, input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    const subject = await adapter.lookup(input.subjectRef);
+    if (!subject) throw new CompanyFormNotFoundError("Form assignment not found.");
+    await this.authorize(adapter, principal, "read_definition", subject.context);
+    const requirement = (await getDb().execute(sql`SELECT * FROM frm_requirements
+      WHERE requirement_uuid=${input.requirementUuid} AND subject_type=${input.subjectType}
+        AND subject_ref=${input.subjectRef}`)).rows[0];
+    if (!requirement) throw new CompanyFormNotFoundError("Form requirement not found.");
+    const data = await this.renderRepository.readPinnedRenderData("", getDb(), requirement);
+    if (!data) throw new CompanyFormNotFoundError("Pinned form version not found.");
+    return this.buildPinnedRender({ req: input.req, submissionUuid: "" }, adapter, subject, principal, data, true);
+  }
+
   async readSubmissionForm(input: {
     req: Request;
     submissionUuid: string;
@@ -560,15 +577,24 @@ export class CompanyFormSubmissionsService {
     );
     const data = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
     if (!data) throw new CompanyFormNotFoundError("Company Form submission not found.");
-    const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status, data.submission.stageKey);
-    const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
+    return this.buildPinnedRender(input, adapter, subject, principal, data);
+  }
+
+  private async buildPinnedRender(
+    input: { req: Request; submissionUuid: string }, adapter: CompanyFormSubjectAdapter<any>,
+    subject: any, principal: CompanyFormPrincipal,
+    data: NonNullable<Awaited<ReturnType<CompanyFormSubmissionRenderRepository["readPinnedRenderData"]>>>,
+    preview = false,
+  ): Promise<CompanyFormSubmissionRenderContract> {
+    const canEdit = !preview && await this.canEditSubmission(adapter, principal, subject.context, data.submission.status, data.submission.stageKey);
+    const canVoid = !preview && await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
 
     const stages = await adapter.loadStages();
     const stage = data.submission.stageKey
       ? stages.find((candidate) => candidate.stageKey === data.submission.stageKey)
       : undefined;
     const snapshotAt = data.submission.systemSnapshotAt as Date | string | null;
-    const dateOfDeclaration = isoCalendarDate(snapshotAt ?? data.submission.createdAt);
+    const dateOfDeclaration = preview ? null : isoCalendarDate(snapshotAt ?? data.submission.createdAt);
     const snapshots = data.systemSnapshots as any[];
     const snapshotByQuestion = new Map<string, any>(snapshots.map((snapshot) => [snapshot.questionUuid, snapshot]));
     const systemSnapshotExists = snapshotAt !== null;
@@ -808,7 +834,7 @@ export class CompanyFormSubmissionsService {
 
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = await this.mapStatesAndAnswers(data, formUrl, principal, canEdit);
-    const history = await this.readableHistory(input.req, data.submission);
+    const history = preview ? [] : await this.readableHistory(input.req, data.submission);
     if (systemValuesComparisonError && systemValuesChanged !== true) systemValuesChanged = null;
     return {
       submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),

@@ -50,7 +50,7 @@ export class CompanyFormSubmissionRenderRepository {
     return rows[0];
   }
 
-  async readPinnedRenderData(submissionUuid: string, executor: Executor = getDb()) {
+  async readPinnedRenderData(submissionUuid: string, executor: Executor = getDb(), previewRequirement?: any) {
     const parentRows = await executor.select({
       submission: frmCompanySubmissions,
       form: admFormsV2,
@@ -65,7 +65,21 @@ export class CompanyFormSubmissionRenderRepository {
         eq(frmCompanySubmissions.submissionUuid, submissionUuid),
         eq(frmCompanySubmissions.isDeleted, false),
       )).limit(1);
-    const parent = parentRows[0];
+    let parent = parentRows[0];
+    if (previewRequirement) {
+      const versions = await executor.select({ form: admFormsV2, version: admFormVersionsV2 })
+        .from(admFormVersionsV2).innerJoin(admFormsV2, eq(admFormVersionsV2.formId, admFormsV2.id))
+        .where(and(eq(admFormVersionsV2.fvUuid, previewRequirement.form_version_uuid),
+          eq(admFormsV2.formUuid, previewRequirement.form_uuid))).limit(1);
+      if (versions[0]) parent = { ...versions[0], submission: {
+        submissionUuid: "", subjectType: previewRequirement.subject_type,
+        subjectRef: previewRequirement.subject_ref, formUuid: previewRequirement.form_uuid,
+        formVersionUuid: previewRequirement.form_version_uuid, stageKey: previewRequirement.stage_key,
+        status: "in_progress", createdAt: previewRequirement.created_at,
+        systemSnapshotAt: null, systemSnapshotEvent: null, applicableSectionUuids: null,
+        origin: "REQUIRED", requirementUuid: previewRequirement.requirement_uuid,
+      } } as typeof parent;
+    }
     if (!parent) return undefined;
 
     const [parts, sections, optionSets, states, systemSnapshots, signatureHistory] = await Promise.all([
