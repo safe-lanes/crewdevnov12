@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatIsoDate } from "@/components/ui/formatted-date-input";
 import {
   Select,
   SelectContent,
@@ -674,6 +675,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     {
       headerName: 'Sign-On',
       field: 'signOn',
+      cellRenderer: (p: ICellRendererParams) => formatIsoDate(p.value || "") || p.value || "",
       flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
@@ -693,6 +695,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     {
       headerName: 'App. Date',
       field: 'appraisalDate',
+      cellRenderer: (p: ICellRendererParams) => formatIsoDate(p.value || "") || p.value || "",
       flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
