@@ -8,6 +8,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   CompanyFormConditionCard,
   createCondition,
@@ -34,6 +35,8 @@ export interface CompanyFormApplicabilityEditorProps {
     handler: () => Promise<boolean>,
   ) => (() => void) | void;
   onSaved?: () => void | Promise<void>;
+  settingsOpen: boolean;
+  onSettingsClose: () => void;
   onSummaryChange?: (
     summary: string,
     state: CompanyFormApplicabilitySummaryState,
@@ -131,6 +134,8 @@ export function CompanyFormApplicabilityEditor({
   onDirtyChange,
   onRegisterSaveHandler,
   onSaved,
+  settingsOpen,
+  onSettingsClose,
   onSummaryChange,
 }: CompanyFormApplicabilityEditorProps) {
   const { permissions, isLoading: permissionsLoading } = usePermissions();
@@ -326,15 +331,33 @@ export function CompanyFormApplicabilityEditor({
     }));
   };
 
-  if (!permissionToView) {
-    return (
-      <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600" aria-label="Company Form applicability">
-        You do not have permission to view Company Form applicability settings.
-      </section>
-    );
-  }
+  const closeSettings = () => {
+    if (saving) return;
+    if (isDirty) {
+      if (!window.confirm("Discard unsaved applicability changes and close this window?")) return;
+      setDraft(JSON.parse(baseline) as PolicyDraft);
+      setSaveError("");
+    }
+    onSettingsClose();
+  };
+
+  if (!permissionToView) return null;
 
   return (
+    <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) closeSettings(); }}>
+      <DialogContent
+        id="company-form-applicability-settings"
+        className="max-w-4xl max-h-[90dvh]"
+        data-testid="company-form-applicability-window"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          document.querySelector<HTMLButtonElement>('[data-testid="button-toggle-applicability-settings"]')?.focus();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Applicability settings</DialogTitle>
+          <DialogDescription>Set who this version applies to. Save applicability before releasing this version.</DialogDescription>
+        </DialogHeader>
     <section
       className="mt-4 rounded-xl border border-[#d9e2e8] bg-[#f7fafb] p-4 sm:p-5"
       aria-labelledby="company-form-applicability-title"
@@ -507,6 +530,8 @@ export function CompanyFormApplicabilityEditor({
         </>
       )}
     </section>
+      </DialogContent>
+    </Dialog>
   );
 }
 

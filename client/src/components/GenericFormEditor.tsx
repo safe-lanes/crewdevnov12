@@ -702,6 +702,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete: typeof confirmDelete;
     showLeaveDialog: boolean;
     releaseConfirmOpen: boolean;
+    applicabilitySettingsOpen: boolean;
     handleClose: () => void;
   }>({
     isPreview: false,
@@ -709,6 +710,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete: null,
     showLeaveDialog: false,
     releaseConfirmOpen: false,
+    applicabilitySettingsOpen: false,
     handleClose: () => undefined,
   });
 
@@ -1676,6 +1678,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete,
     showLeaveDialog,
     releaseConfirmOpen,
+    applicabilitySettingsOpen: isApplicabilitySettingsOpen,
     handleClose,
   };
 
@@ -1935,7 +1938,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   useEffect(() => {
     const focusEditor = () => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen || lifecycle.applicabilitySettingsOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       const [firstFocusable] = getFocusableElements(editor);
@@ -1944,7 +1947,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const focusTimer = window.setTimeout(focusEditor, 0);
     const handleConfigureKeys = (event: KeyboardEvent) => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen || lifecycle.applicabilitySettingsOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       if (hasOpenPortalledListbox()) return;
@@ -2114,16 +2117,15 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 variant="outline"
                 size="sm"
                 className="h-8 shrink-0"
-                onClick={() => setIsApplicabilitySettingsOpen((open) => !open)}
+                onClick={() => setIsApplicabilitySettingsOpen(true)}
                 aria-expanded={isApplicabilitySettingsOpen}
                 aria-controls="company-form-applicability-settings"
                 data-testid="button-toggle-applicability-settings"
               >
-                {applicabilitySummaryState.canEdit ? "Edit settings" : "View settings"}
+                {applicabilitySummaryState.canEdit ? "Edit" : "View"}
               </Button>
             </div>
           </div>
-          <div id="company-form-applicability-settings" hidden={!isApplicabilitySettingsOpen}>
             <CompanyFormApplicabilityEditor
               formId={realFormId}
               versionId={selectedVersion.id}
@@ -2138,8 +2140,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               onRegisterSaveHandler={registerApplicabilitySaveHandler}
               onSaved={async () => { await refetchVersions(); }}
               onSummaryChange={handleApplicabilitySummaryChange}
+              settingsOpen={isApplicabilitySettingsOpen}
+              onSettingsClose={() => setIsApplicabilitySettingsOpen(false)}
             />
-          </div>
         </section>
       )}
     </div>
