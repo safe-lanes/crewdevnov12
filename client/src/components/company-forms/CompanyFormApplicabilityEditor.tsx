@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Check, CircleHelp, LoaderCircle, LockKeyhole, Save } from "lucide-react";
+import { CalendarDays, Check, CircleHelp, LoaderCircle, LockKeyhole, Plus, Save } from "lucide-react";
 import type { VersionApplicability } from "@shared/v2/admin/applicability";
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
-import type { RuleDimension, RuleMasterChoice } from "@shared/v2/forms-engine/ruleDimensions";
 import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-type ApplicabilityDimension = RuleDimension & { choices: RuleMasterChoice[] };
+import {
+  CompanyFormConditionCard,
+  createCondition,
+  isApplicabilitySetValid,
+  type ApplicabilityEditorDimension,
+} from "./CompanyFormConditionCard";
+import type { EditableApplicabilityPolicy, EditableApplicabilitySet } from "./companyFormApplicabilityTypes";
+import { summarizeApplicability } from "./applicabilitySummary";
 
 export interface CompanyFormApplicabilityEditorProps {
   formId: number;
@@ -23,19 +28,14 @@ export interface CompanyFormApplicabilityEditorProps {
   onSaved?: () => void | Promise<void>;
 }
 
-type PolicyDraft = {
-  mode: VersionApplicability["mode"];
-  obligation: "mandatory" | "optional";
-  effectiveKind: "on_release" | "specific_date";
-  specificDate: string;
-  sets: VersionApplicability["sets"];
-};
+type PolicyDraft = EditableApplicabilityPolicy;
 
 const defaultDraft = (): PolicyDraft => ({
   mode: "all",
   obligation: "mandatory",
   effectiveKind: "on_release",
   specificDate: "",
+  effectiveFrom: null,
   sets: [],
 });
 
@@ -44,13 +44,25 @@ function asDateInput(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-function policyFromResponse(policy: VersionApplicability): PolicyDraft {
+function policyFromResponse(policy: VersionApplicability, nextUiKey: () => string): PolicyDraft {
   return {
     mode: policy.mode,
     obligation: policy.obligation ?? "mandatory",
     effectiveKind: policy.effectiveKind ?? "on_release",
     specificDate: asDateInput(policy.specificDate),
-    sets: policy.sets ?? [],
+    effectiveFrom: policy.effectiveFrom,
+    sets: (policy.sets ?? []).map((set) => ({
+      uiKey: nextUiKey(),
+      setUuid: set.setUuid,
+      conditions: set.conditions.map((condition) => ({
+        uiKey: nextUiKey(),
+        conditionUuid: condition.conditionUuid,
+        dimensionKey: condition.dimensionKey,
+        operator: condition.operator,
+        value: condition.value,
+        valueLabels: condition.valueLabels,
+      })),
+    })),
   };
 }
 
@@ -103,10 +115,11 @@ export function CompanyFormApplicabilityEditor({
   onDirtyChange,
   onSaved,
 }: CompanyFormApplicabilityEditorProps) {
-  const { canView, canEdit, isLoading: permissionsLoading } = usePermissions();
-  const permissionToView = canView("Forms");
-  const permissionToEdit = canEdit("Forms");
-  const isReleased = status === "released";
+  const { permissions, isLoading: permissionsLoading } = usePermissions();
+  const formsPermission = permissions.find((permission) => permission.menuName.trim().toLowerCase() === "forms");
+  const permissionToView = formsPermission?.canview === true;
+  const permissionToEdit = formsPermission?.canedit === true;
+  const isReleased = status !== "draft";
   const locked = readOnly || isReleased || permissionsLoading || !permissionToEdit || !permissionToView;
   const [draft, setDraft] = useState<PolicyDraft>(defaultDraft);
   const [baseline, setBaseline] = useState("");
@@ -114,11 +127,13 @@ export function CompanyFormApplicabilityEditor({
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
-  const [, setDimensions] = useState<ApplicabilityDimension[]>([]);
+  const [dimensions, setDimensions] = useState<ApplicabilityEditorDimension[]>([]);
   const requestGeneration = useRef(0);
+  const uiKeySequence = useRef(0);
   const onBusyRef = useRef(onBusyChange);
   const onDirtyRef = useRef(onDirtyChange);
   const onSavedRef = useRef(onSaved);
+  const nextUiKey = useCallback(() => `policy-input-${++uiKeySequence.current}`, []);
   onBusyRef.current = onBusyChange;
   onDirtyRef.current = onDirtyChange;
   onSavedRef.current = onSaved;
@@ -138,10 +153,10 @@ export function CompanyFormApplicabilityEditor({
       ]);
       const [policy, dimensions] = await Promise.all([
         parseResponse<VersionApplicability>(policyResponse),
-        parseResponse<ApplicabilityDimension[]>(dimensionsResponse),
+        parseResponse<ApplicabilityEditorDimension[]>(dimensionsResponse),
       ]);
       if (requestGeneration.current !== generation) return;
-      const next = policyFromResponse(policy);
+      const next = policyFromResponse(policy, nextUiKey);
       setDraft(next);
       setBaseline(JSON.stringify(next));
       setDimensions(Array.isArray(dimensions) ? dimensions : []);
@@ -151,7 +166,7 @@ export function CompanyFormApplicabilityEditor({
     } finally {
       if (requestGeneration.current === generation) setLoading(false);
     }
-  }, [formId, versionId]);
+  }, [formId, nextUiKey, versionId]);
 
   useEffect(() => {
     if (permissionsLoading || !permissionToView) {
@@ -184,7 +199,11 @@ export function CompanyFormApplicabilityEditor({
     setDraft((current) => ({
       ...current,
       mode: nextMode,
-      sets: nextMode === "conditional" ? current.sets : [],
+      sets: nextMode === "conditional"
+        ? current.sets.length > 0
+          ? current.sets
+          : [{ uiKey: nextUiKey(), conditions: [createCondition(nextUiKey(), dimensions)] }]
+        : [],
       obligation: nextMode === "manual_only" ? "mandatory" : current.obligation,
       effectiveKind: nextMode === "manual_only" ? "on_release" : current.effectiveKind,
       specificDate: nextMode === "manual_only" ? "" : current.specificDate,
@@ -204,10 +223,11 @@ export function CompanyFormApplicabilityEditor({
         `/api/v2/admin/form-versions/${versionId}/applicability`,
         toPayload(draft),
       );
-      await parseResponse<VersionApplicability>(response);
+      const savedPolicy = await parseResponse<VersionApplicability>(response);
       if (requestGeneration.current !== generationAtSave) return;
-      const saved = JSON.stringify(draft);
-      setBaseline(saved);
+      const normalized = policyFromResponse(savedPolicy, nextUiKey);
+      setDraft(normalized);
+      setBaseline(JSON.stringify(normalized));
       await onSavedRef.current?.();
     } catch (error) {
       if (requestGeneration.current !== generationAtSave) return;
@@ -215,6 +235,42 @@ export function CompanyFormApplicabilityEditor({
     } finally {
       if (requestGeneration.current === generationAtSave && versionUuid === versionAtSave) setSaving(false);
     }
+  };
+
+  const conditionSetsValid = draft.mode !== "conditional"
+    || (draft.sets.length > 0 && draft.sets.every((set) => isApplicabilitySetValid(set, dimensions)));
+  const summary = summarizeApplicability(draft, dimensions, { status });
+
+  const updateSet = (setKey: string, nextSet: EditableApplicabilitySet) => {
+    setDraft((current) => ({
+      ...current,
+      sets: current.sets.map((set) => set.uiKey === setKey ? nextSet : set),
+    }));
+  };
+
+  const addSet = () => {
+    setDraft((current) => ({
+      ...current,
+      sets: [...current.sets, { uiKey: nextUiKey(), conditions: [createCondition(nextUiKey(), dimensions)] }],
+    }));
+  };
+
+  const addCondition = (setKey: string) => {
+    setDraft((current) => ({
+      ...current,
+      sets: current.sets.map((set) => set.uiKey === setKey
+        ? { ...set, conditions: [...set.conditions, createCondition(nextUiKey(), dimensions)] }
+        : set),
+    }));
+  };
+
+  const removeCondition = (setKey: string, conditionKey: string) => {
+    setDraft((current) => ({
+      ...current,
+      sets: current.sets.map((set) => set.uiKey === setKey
+        ? { ...set, conditions: set.conditions.filter((condition) => condition.uiKey !== conditionKey) }
+        : set),
+    }));
   };
 
   if (!permissionToView) {
@@ -238,7 +294,7 @@ export function CompanyFormApplicabilityEditor({
             {isReleased && <span className="inline-flex items-center gap-1 rounded-full bg-[#e7eef1] px-2 py-0.5 text-xs text-[#536c79]"><LockKeyhole className="h-3 w-3" /> Read only</span>}
           </div>
           <p className="mt-1 max-w-2xl text-sm leading-5 text-[#59707d]">
-            Choose whether crew receive this Company Form automatically or only when an administrator assigns it.
+            Choose how crew enter this Company Form’s completion process.
           </p>
         </div>
         {isDirty && !locked && <span className="rounded-full bg-[#fff1d7] px-2.5 py-1 text-xs font-medium text-[#77551b]" role="status">Unsaved policy</span>}
@@ -277,7 +333,7 @@ export function CompanyFormApplicabilityEditor({
             </div>
             <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "manual_only" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
               <RadioGroupItem id="applicability-manual" value="manual_only" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual assignment only</span><span className="mt-1 block text-xs leading-4 text-[#637985]">No automatic assignment is created.</span></label>
+              <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual start only</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Crew start it only by choosing it; this policy does not start it automatically.</span></label>
             </div>
           </RadioGroup>
 
@@ -325,22 +381,56 @@ export function CompanyFormApplicabilityEditor({
           ) : (
             <div className="mt-4 flex gap-2 rounded-lg border border-[#dce5e9] bg-white p-4 text-sm text-[#5d7480]">
               <CircleHelp className="mt-0.5 h-4 w-4 shrink-0 text-[#527b8a]" aria-hidden="true" />
-              <p>Manual assignment creates no automatic completion obligation or effective date.</p>
+              <p>Manual start only. This does not make the form mandatory, block progress, satisfy another requirement, or skip a requirement.</p>
             </div>
           )}
 
           {draft.mode === "conditional" && (
-            <p className="mt-3 text-xs leading-5 text-[#637985]">
-              Conditions are preserved with this version. The condition editor will be available in the next step.
-              {stageKey ? " This policy is evaluated in the context of the selected subject stage." : " No subject stage is selected for this version."}
-            </p>
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-[#284959]">Who this applies to</h4>
+                  <p className="mt-0.5 text-xs text-[#637985]">Each group joins conditions with “and”. Groups join with “or”.</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addSet} disabled={locked || saving} className="border-[#cad9df] text-[#315f70]">
+                  <Plus className="mr-1.5 h-4 w-4" />Add crew group
+                </Button>
+              </div>
+              {draft.sets.map((set, index) => (
+                <div key={set.uiKey}>
+                  {index > 0 && <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-[#718892]" aria-label="Or">Or</p>}
+                  <CompanyFormConditionCard
+                    set={set}
+                    index={index}
+                    dimensions={dimensions}
+                    disabled={locked || saving}
+                    onChange={(nextSet) => updateSet(set.uiKey, nextSet)}
+                    onRemove={() => setDraft((current) => ({ ...current, sets: current.sets.filter((item) => item.uiKey !== set.uiKey) }))}
+                    onAddCondition={() => addCondition(set.uiKey)}
+                    onRemoveCondition={(conditionKey) => removeCondition(set.uiKey, conditionKey)}
+                  />
+                </div>
+              ))}
+              {!conditionSetsValid && (
+                <p className="rounded-md bg-[#fff5f2] px-3 py-2 text-sm text-[#9a4e42]" role="alert">
+                  Add a crew group with valid available values before saving. Unavailable or no-longer-listed selections stay visible until removed or replaced.
+                </p>
+              )}
+              <p className="text-xs leading-5 text-[#637985]">
+                {stageKey ? "This policy is evaluated in the context of the selected subject stage." : "No subject stage is selected for this version."}
+              </p>
+            </div>
           )}
+          <div className="mt-4 rounded-lg border border-[#dce5e9] bg-white px-4 py-3" aria-live="polite" data-testid="applicability-summary">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
+            <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
+          </div>
           {saveError && <p className="mt-3 text-sm text-[#a44738]" role="alert">{saveError}</p>}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">
             <p className="text-xs text-[#6a808b]">
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}
             </p>
-            <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
+            <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || !conditionSetsValid || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
               <Save className="mr-2 h-4 w-4" />Save applicability
             </Button>
           </div>
