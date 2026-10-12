@@ -8,6 +8,7 @@ const testState = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   permissions: [] as Array<{ menuName: string; canview?: boolean; canedit?: boolean }>,
   permissionsLoading: false,
+  summary: vi.fn(),
 }));
 
 vi.mock("../../../client/src/lib/queryClient", () => ({ apiRequest: testState.apiRequest }));
@@ -67,6 +68,9 @@ function renderEditor(status = "draft") {
       versionUuid="version-reference"
       status={status}
       stageKey=""
+      settingsOpen
+      onSettingsClose={vi.fn()}
+      onSummaryChange={testState.summary}
     />,
   );
 }
@@ -74,6 +78,7 @@ function renderEditor(status = "draft") {
 describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
   beforeEach(() => {
     testState.apiRequest.mockReset();
+    testState.summary.mockReset();
     testState.permissionsLoading = false;
     testState.permissions = [{ menuName: "Forms", canview: true, canedit: true }];
   });
@@ -82,7 +87,9 @@ describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
     testState.permissions = [{ menuName: "Another menu", canview: true, canedit: true }];
     renderEditor();
 
-    expect(await screen.findByText("You do not have permission to view Company Form applicability settings.")).toBeInTheDocument();
+    await waitFor(() => expect(testState.summary).toHaveBeenCalledWith(expect.any(String),
+      expect.objectContaining({ canView: false, canEdit: false })));
+    expect(screen.queryByTestId("company-form-applicability-window")).not.toBeInTheDocument();
     expect(testState.apiRequest).not.toHaveBeenCalled();
   });
 
@@ -93,7 +100,7 @@ describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
 
     expect(await screen.findByText("You can view these settings, but Forms edit permission is needed to change them.")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Applies when conditions match" })).toBeDisabled();
-    expect(screen.getByTestId("button-save-applicability")).toBeDisabled();
+    expect(screen.queryByTestId("button-save-applicability")).not.toBeInTheDocument();
   });
 
   it("freezes released condition cards and omits the draft trial", async () => {
@@ -135,6 +142,8 @@ describe("CompanyFormApplicabilityEditor permissions and frozen cards", () => {
         versionUuid="version-reference"
         status="draft"
         stageKey=""
+        settingsOpen
+        onSettingsClose={vi.fn()}
         onRegisterSaveHandler={onRegisterSaveHandler}
       />,
     );

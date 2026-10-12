@@ -237,13 +237,18 @@ describe("GenericFormEditor release workflow", () => {
     await flushAsyncWork();
     await flushAsyncWork();
 
-    click(editor.querySelector<HTMLElement>("#applicability-conditional")!);
+    click(editor.querySelector<HTMLElement>('[data-testid="button-toggle-applicability-settings"]')!);
+    await flushAsyncWork();
+    click(document.body.querySelector<HTMLElement>("#applicability-conditional")!);
     await flushAsyncWork();
     const releaseButton = editor.querySelector<HTMLButtonElement>('[data-testid="button-release-version"]');
     if (!releaseButton) throw new Error("Release button did not render");
     expect(releaseButton).toBeDisabled();
     expect(editor.querySelector('[data-testid="release-applicability-save-first"]')?.textContent).toContain("Save any applicability changes");
-    expect(editor.querySelector('[data-testid="company-form-header-settings-scroll"]')?.className).toContain("overflow-y-auto");
+    expect(editor.querySelector('[data-testid="company-form-header-settings-scroll"]')).toBeNull();
+    expect(editor.querySelector('[data-testid="company-form-applicability-summary"]')).toBeTruthy();
+    expect(editor.querySelector('[data-testid="company-form-applicability-editor"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="company-form-applicability-window"]')).toBeTruthy();
     expect(apiRequestMock).not.toHaveBeenCalledWith("POST", expect.stringContaining("/release"));
   });
 

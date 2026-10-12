@@ -834,6 +834,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       ? "Draft"
       : `Version ${String(selectedVersion.versionNo).padStart(2, "0")} · Released ${formatReleasedAt(selectedVersion.releasedAt)}`
     : undefined;
+  const compactVersionLabel = selectedVersion
+    ? `v${String(selectedVersion.versionNo).padStart(2, "0")} · ${selectedVersion.status === "draft" ? "Draft" : "Released"}`
+    : undefined;
   const displayNumbers = companyFormNumbers(allParts, trees);
   const sectionDisplay = (section: SectionModel) => isCompanyForm
     ? displayNumbers.section.get(section.section_uuid || section.clientKey) || ""
@@ -2021,8 +2024,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             onValueChange={requestVersionChange}
             disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy}
           >
-            <SelectTrigger className="w-[180px] h-9 bg-white" data-testid="select-form-version">
-              <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"} />
+            <SelectTrigger className={isCompanyForm ? "h-9 w-[190px] shrink-0 bg-white [&>span]:!line-clamp-none" : "w-[180px] h-9 bg-white"} data-testid="select-form-version">
+              <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"}>
+                {isCompanyForm ? compactVersionLabel : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {sortedVersions.map((version) => (
