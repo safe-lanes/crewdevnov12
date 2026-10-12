@@ -6,6 +6,7 @@ export const COMPANY_FORM_PERMISSIONS = [
   { action: "sign_representative", label: "Sign as Company Representative" },
   { action: "void", label: "Void" },
   { action: "void_completed", label: "Void completed" },
+  { action: "override_checklist", label: "Override checklist" },
 ] as const;
 export type CompanyFormPermission = typeof COMPANY_FORM_PERMISSIONS[number]["action"];
 export type CompanyFormGrants = Record<CompanyFormPermission, boolean>;

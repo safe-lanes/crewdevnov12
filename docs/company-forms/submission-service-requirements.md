@@ -106,6 +106,18 @@ Related project task: #333 (Company Form Submissions).
     is owed, and outstanding sign-off requirements remain outstanding
     afterwards, clearly flagged on the crew profile and in the
     outstanding report.
+    Pending or failed before-joining checks also block; refusals name
+    each blocking form and missing fact or check. Only an explicitly
+    granted Company Forms "Override checklist" permits an exception
+    with a written reason and server-derived audit identity, and only
+    if EVERY blocker is an UNRESOLVED mandatory requirement or a pending
+    or failed check. Any OUTSTANDING or STARTED mandatory form must be
+    COMPLETED and cannot be overridden. An override never changes the
+    requirement or check.
+    The outstanding report includes pending and failed stage checks
+    as their own rows, labelled "Rules check pending" or "Rules check
+    failed", opening to retry; failed resolution never means nothing
+    is owed.
 
 26. DECIDED.
     - Manual starting remains alongside applicability. A manually

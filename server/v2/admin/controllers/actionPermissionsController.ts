@@ -7,6 +7,7 @@ import { saveActionDecisions } from "../services/accessControlManagement";
 const grantsSchema = z.object({
   view: z.boolean(), fill_in: z.boolean(), witness: z.boolean(),
   sign_representative: z.boolean(), void: z.boolean(), void_completed: z.boolean(),
+  override_checklist: z.boolean().default(false),
 }).strict();
 
 export const actionPermissionsController = {
@@ -21,7 +22,7 @@ export const actionPermissionsController = {
   },
   async save(req: Request, res: Response) {
     const parsed = z.object({ grants: grantsSchema }).strict().safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Supply all six Company Forms permission flags." });
+    if (!parsed.success) return res.status(400).json({ message: "Supply valid Company Forms permission flags." });
     if (!req.user || !Number.isSafeInteger(req.user.id)) return res.status(403).json({ message: "Authenticated grant editor unavailable." });
     try {
       res.json({ grants: await saveActionDecisions(req, req.params.ruid, "company_forms", parsed.data.grants) });
