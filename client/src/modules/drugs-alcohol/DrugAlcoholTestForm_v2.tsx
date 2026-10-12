@@ -1460,6 +1460,7 @@ export function DrugAlcoholTestForm_v2({
                                   label="Date external test results received"
                                   disabled={isFormLocked}
                                   min={externalResultsMinDate}
+                                  beforeMinMessage="Date External Test Results received date cannot be before Date & Time Test completed"
                                   onChange={(event) => {
                                     const value = event.target.value;
                                     if (
