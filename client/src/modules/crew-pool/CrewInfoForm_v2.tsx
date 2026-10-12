@@ -763,6 +763,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isNextAvailabilityDraftValid, setIsNextAvailabilityDraftValid] = useState(false);
   const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
   const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -9297,8 +9298,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const today = new Date();
   const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+  const canSaveNextAvailability = Boolean(tempNextAvailability)
+    && isNextAvailabilityDraftValid
+    && tempNextAvailability >= todayDateString;
+
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
+    if (!canSaveNextAvailability) return;
     // V2: Use crewUuid as the primary identifier
     const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId && tempNextAvailability) {
@@ -10287,6 +10293,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
               min={todayDateString}
+              minDateErrorMessage="Next Availability Date cannot be before today"
+              onDraftValidityChange={setIsNextAvailabilityDraftValid}
               data-testid="input-next-availability"
             />
           </div>
@@ -10294,7 +10302,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button variant="outline" onClick={() => setIsNextAvailabilityEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+            <Button onClick={handleUpdateNextAvailability} disabled={!canSaveNextAvailability}>
               Save
             </Button>
           </DialogFooter>
