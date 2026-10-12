@@ -72,6 +72,8 @@ router.put(
   formStructureController.replaceStructures,
 );
 router.get("/form-versions/:id/applicability", requirePermission("Forms", "view"), applicabilityController.read);
+router.get("/form-versions/:id/applicability/assignments", requirePermission("Forms", "view"), applicabilityController.assignments);
+router.post("/form-versions/:id/applicability/preview", requirePermission("Forms", "view"), applicabilityController.preview);
 router.put("/form-versions/:id/applicability", requirePermission("Forms", "edit"), applicabilityController.write);
 router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
 router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);

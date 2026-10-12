@@ -16,7 +16,7 @@ const conditionInput = z.object({
   value: z.union([z.array(z.string().trim().min(1)).min(1).max(200), z.boolean()]),
 }).strict().refine(c => c.operator === "is" ? typeof c.value === "boolean" : Array.isArray(c.value),
   "Condition operator and value shape do not agree");
-const policyInput = z.object({
+export const policyInput = z.object({
   mode: z.enum(["manual_only", "all", "conditional"]),
   obligation: z.enum(["mandatory", "optional"]).optional(),
   effectiveKind: z.enum(["on_release", "specific_date"]).optional(),
@@ -51,7 +51,7 @@ export async function getPolicyVersion(id: number, tx: any, lock = false) {
   if (!initial.rows[0]) throw new ApplicabilityError("Form version not found", 404);
   const formId = initial.rows[0].form_id;
   if (lock) await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id=${formId} FOR UPDATE`);
-  const query = sql`SELECT v.fv_uuid,v.status,f.category,f.subject_type,f.archived_at FROM adm_form_versions_v2 v
+  const query = sql`SELECT v.fv_uuid,v.status,v.stage_key,f.category,f.subject_type,f.archived_at FROM adm_form_versions_v2 v
     JOIN adm_forms_v2 f ON f.id=v.form_id WHERE v.id=${id} AND v.is_deleted=false`;
   const result = await tx.execute(lock ? sql`${query} FOR UPDATE OF v` : query);
   const row = result.rows[0];

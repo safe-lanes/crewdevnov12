@@ -118,6 +118,9 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
   ruleDimensions?: readonly import("../../../shared/v2/forms-engine/ruleDimensions").RuleDimension[];
   ruleMasterChoices?(key: string, executor: unknown, lock?: boolean): Promise<readonly import("../../../shared/v2/forms-engine/ruleDimensions").RuleMasterChoice[]>;
   readRuleDimensions?(subject: Context, executor: unknown): Promise<import("../../../shared/v2/forms-engine/ruleDimensions").AssignmentDimensionReport>;
+  /** Authoring visibility only; not operational form permissions. */
+  authorizeRuleRead?(principal: CompanyFormPrincipal, subject: Context): boolean;
+  searchRuleSubjects?(principal: CompanyFormPrincipal, search: string, executor: unknown): Promise<import("../../../shared/v2/admin/applicabilityPreview").RuleAssignmentChoice[]>;
   subjectType: string;
   label: string;
   loadStages(executor?: unknown): Promise<readonly SubjectStage[]>;
