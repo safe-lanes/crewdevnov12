@@ -16,6 +16,10 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) :
   value && typeof value === "object" && !(value instanceof Date) ?
     Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const digest = row => crypto.createHash("sha256").update(JSON.stringify(canonical(row))).digest("hex");
+const strings = value => typeof value === "string" ? [value] :
+  Array.isArray(value) ? value.flatMap(strings) :
+    value && typeof value === "object" && !(value instanceof Date) ?
+      Object.values(value).flatMap(strings) : [];
 const data = new Map();
 const issues = [];
 try {
@@ -31,9 +35,10 @@ try {
   const tables = (await c.query(`SELECT tablename FROM pg_tables
     WHERE schemaname='public' ORDER BY tablename`)).rows.map(row => row.tablename);
   for (const table of tables) {
-    const rows = (await c.query(`SELECT * FROM public.${quote(table)}`)).rows;
-    data.set(table, rows.map((row, index) => ({
+    const rows = (await c.query(`SELECT t.*,row_to_json(t)::text AS __cleanup_raw FROM public.${quote(table)} t`)).rows;
+    data.set(table, rows.map(({ __cleanup_raw, ...row }, index) => ({
       row, index, decision: "KEEP", reasons: [], protected: false,
+      sqlSha256: crypto.createHash("sha256").update(__cleanup_raw).digest("hex"),
     })));
   }
   const entries = table => data.get(table) ?? [];
@@ -258,13 +263,14 @@ try {
             ["crew_assign_uuid", "reliever_assign_uuid", "deployed_to_plan_uuid"].includes(key) ||
             (key === "crew_uuid" && table !== "crew_members_v2")) continue;
         const value = e.row[key];
-        if (!uuid.test(String(value ?? ""))) continue;
+        if (typeof value !== "string" || !value ||
+          (!uuid.test(value) && !/(?:uuid|ruid|uid|rank_id)$/.test(key))) continue;
         const normalized = value.toLowerCase();
         if (!owners.has(normalized)) owners.set(normalized, []);
         owners.get(normalized).push(e);
       }
     for (const rows of data.values()) for (const child of rows.filter(e => e.decision === "KEEP"))
-      for (const value of JSON.stringify(child.row).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) ?? [])
+      for (const value of strings(child.row))
         for (const parent of owners.get(value.toLowerCase()) ?? [])
           changed = retain(parent, child) || changed;
   } while (changed);
@@ -281,6 +287,7 @@ try {
       index: e.index, decision: e.decision, reasons: e.reasons,
       key: Object.fromEntries([...ownKeys.get(table) ?? []].map(key => [key, e.row[key]])),
       sha256: digest(e.row),
+      sqlSha256: e.sqlSha256,
     }))])),
   };
   await fs.writeFile(`${out}/cleanup-dry-run.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
