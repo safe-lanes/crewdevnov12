@@ -11,7 +11,7 @@ const originalQuery = pg.Client.prototype.query;
 // Retired setup paths fail explicitly instead of accumulating new main fixtures.
 pg.Client.prototype.query = function(...args) {
   const text = typeof args[0] === "string" ? args[0] : args[0]?.text ?? "";
-  if (/\bINSERT\s+INTO\s+(?:"?public"?\.)?"?(crew_members_v2|crew_assignments|master_vessels|adm_forms_v2|adm_form_versions_v2|vessel_planning_v2)"?\b/i.test(text))
+  if (/\bINSERT\s+INTO\s+(?:"?public"?\.)?"?(crew_members_v2|crew_assignments|master_vessels|master_users|adm_rolemaster_ac|adm_rank_groups_v2|adm_forms_v2|adm_form_versions_v2|vessel_planning_v2|frm_form_parts|frm_sections|frm_questions)"?\b/i.test(text))
     throw new Error("Verification must reuse existing registered fixtures; creating a new operational fixture is refused.");
   if (/\b(INSERT|UPDATE)\b/i.test(text) && /\badm_form_versions_v2\b/i.test(text) && /\bstatus\b/i.test(text))
     throw new Error("Direct SQL fixture releases are refused. Use the guarded release API with a fixture-only vessel condition.");

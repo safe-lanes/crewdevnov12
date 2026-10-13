@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Development-only browser evidence against the existing managed main preview.
 import fs from "node:fs/promises";
 import { execFileSync } from "node:child_process";

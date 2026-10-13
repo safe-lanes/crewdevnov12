@@ -1,6 +1,7 @@
 import pg from "pg";
+import fs from "node:fs/promises";
 // @ts-ignore Node ESM helper outside the application compiler project.
-import { inspectTestTarget, prepareTestEnvironment, identitySQL, sameIdentity } from "./test-database-guard.mjs";
+import { inspectTestTarget, prepareTestEnvironment, readIdentity, identitySQL, sameIdentity } from "./test-database-guard.mjs";
 
 // Deliberately before installing worker connection guards: this maintenance
 // connection may read catalogs and recreate ONLY the verified test database.
@@ -27,6 +28,13 @@ try {
   await admin.query(`CREATE DATABASE "${target.database}"`);
 } finally { await admin.end(); }
 
+// Reset is the only maintenance operation allowed to replace the registered
+// OID. The recreated database's identity is checked independently of URL text.
+const recreated = await readIdentity(process.env.TEST_DATABASE_URL);
+if (recreated.clusterid !== target.clusterid || recreated.database !== target.database ||
+    protectedIdentities.some((identity: any) => sameIdentity(identity, recreated)))
+  throw new Error("Recreated test identity could not be safely registered.");
+await fs.writeFile(".local/test-database-identity.json", JSON.stringify(recreated, null, 2));
 const identity = await prepareTestEnvironment();
 const { runMigrations } = await import("../server/migrationRunner");
 await runMigrations();

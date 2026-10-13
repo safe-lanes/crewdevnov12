@@ -1,2 +1,4 @@
 /.local/verification/
 /test-results/
+/test-logs/
+/coverage/

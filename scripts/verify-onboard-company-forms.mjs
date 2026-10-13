@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Development-only retained-fixture acceptance against the managed main app.
 // Does not change authentication settings, original records, or on-board status.
 import fs from "node:fs/promises";

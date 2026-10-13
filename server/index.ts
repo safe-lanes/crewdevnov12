@@ -14,7 +14,7 @@ if (process.env.TEST_BACKEND === "true") {
   if (process.env.TEST_DATABASE_VERIFIED !== "true" || process.env.PORT === "5000")
     throw new Error("Dedicated test backend requires verified database isolation.");
   app.get("/api/test-database-identity", (_req, res) => {
-    res.json(JSON.parse(process.env.TEST_DATABASE_IDENTITY!));
+    res.json({ ...JSON.parse(process.env.TEST_DATABASE_IDENTITY!), instance: process.env.TEST_BACKEND_INSTANCE });
   });
 }
 app.set("trust proxy", 1);

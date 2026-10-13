@@ -22,6 +22,10 @@ Every new pg connection is verified before callers receive it. Tests inherit onl
 the verified target through the legacy application's `DATABASE_URL` interface;
 this is an explicit assignment after verification, not a fallback to development.
 Alternative PG, legacy DB and parent/master target variables are stripped.
+The registered cluster/OID in `.local/test-database-identity.json` is also
+checked, including in inherited workers. Only the guarded reset may replace
+that registration after recreating the designated database. A different URL
+cannot silently register a different database.
 
 ## Production protection
 
@@ -41,6 +45,12 @@ pool/agent/group choices and a synthetic author. Actor ID 24 is a compatibility
 slot created from literals in the test database, **not** a copied real person.
 Individual suites create their own crew, assignments and form definitions.
 No development dump, real crew or sea-service history is copied.
+Private schemas explicitly clone dependencies from this **test** database;
+they never append `public` to their search path. Suites run serially because
+fleet-wide automatic rules in one suite would otherwise match another suite's
+temporary assignments. Normal file-specific teardown runs; a final scoped
+archive of newly created definitions prevents pinned-history leftovers from
+affecting later suites. Reset removes all test history.
 
 ## Reset evidence
 

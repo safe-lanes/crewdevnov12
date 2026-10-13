@@ -24,7 +24,9 @@ secret returned `sail_automated_tests`, database OID `1032648`, and cluster syst
 identifier `7586633721581772821`. A separate development connection returned OID
 `16384` on the same cluster. This verifies distinct database identities without
 comparing connection text. No connection string or credential is recorded here.
-No migrations, seeds, or automated tests have been run in this task.
+This was the pre-migration identity. Subsequent guarded resets recreated the
+test database; current identities and suite evidence are recorded in
+`docs/testing-isolation-evidence.md`.
 
 ## Development pre-build counts
 
@@ -50,10 +52,15 @@ Forms include nonstandard subject types. Empty legacy `vessels` and
 The implementation must provide one documented reset command that checks the
 actual target identity before dropping and recreating only the test database,
 then applies migrations and synthetic seeds. A successful guarded reset run
-must appear in the closing evidence. The command is not implemented yet.
+must appear in the closing evidence. Implemented as `npm run test:reset`;
+see `docs/testing-isolation.md` and the closing evidence.
 
 Main-preview verification scripts must reuse registered fixtures. Any Company
 Form they release in development must use conditional applicability restricted
 to a registered fixture-only vessel, with that restriction in every alternative
 condition set. Tooling must refuse unrestricted or real-crew-matching releases.
-These tooling changes are still pending; documenting the rule does not enforce it.
+Enforced by the verification guard and fixture-vessel policy, imported by the
+main-preview verification entry points. Legacy fixture-creation paths now
+explicitly refuse rather than accumulate additional main-preview records.
+There is no approved fixture-vessel allowlist entry yet; releases fail closed
+until an existing registered fixture-only vessel is reviewed and allowlisted.

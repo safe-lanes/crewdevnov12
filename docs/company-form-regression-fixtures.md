@@ -1,3 +1,10 @@
+# Automated test database separation
+
+The fixture register below is only for deliberate main-preview acceptance
+fixtures. Automated suite fixtures live in the dedicated test database and use
+ordinary teardown, restoration and the guarded reset command. Their transient
+identifiers must never be appended here.
+
 # Main-preview verification rules
 
 Verification scripts reuse existing registered fixtures rather than creating new

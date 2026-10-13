@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Real development-persona browser acceptance against the managed main server.
 // No resets, occupied-slot changes, production-auth claims or cleanup.
 import { execFileSync } from "node:child_process";

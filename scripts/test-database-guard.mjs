@@ -1,4 +1,6 @@
 import pg from "pg";
+import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 export const identitySQL = `SELECT current_database() AS database,
   d.oid::text AS databaseOid,
@@ -42,6 +44,9 @@ export async function inspectTestTarget() {
   }
   const target = await readIdentity(process.env.TEST_DATABASE_URL);
   assertTestIdentity(target, protectedIdentities);
+  const registered = JSON.parse(await fs.readFile(".local/test-database-identity.json", "utf8"));
+  if (!sameIdentity(target, registered))
+    throw new Error("TEST_DATABASE_URL does not reach the independently registered test database identity.");
   return { target, protectedIdentities };
 }
 
@@ -75,13 +80,18 @@ export function installConnectionGuard() {
   if (!process.env.TEST_DATABASE_URL || process.env.TEST_DATABASE_VERIFIED !== "true")
     throw new Error("Test database preflight must finish before application imports.");
   const expected = JSON.parse(process.env.TEST_DATABASE_IDENTITY);
+  const registered = JSON.parse(readFileSync(".local/test-database-identity.json", "utf8"));
+  if (!sameIdentity(expected, registered))
+    throw new Error("Inherited test identity differs from the independently registered database.");
   const protectedIdentities = JSON.parse(process.env.TEST_PROTECTED_DATABASE_IDENTITIES);
   assertTestIdentity(expected, protectedIdentities);
   const connect = pg.Client.prototype.connect;
   const query = pg.Client.prototype.query;
   pg.Client.prototype.query = function(...args) {
     const text = typeof args[0] === "string" ? args[0] : args[0]?.text ?? "";
-    if (/\bsearch_path\b[^;\n]*,\s*"?public"?/i.test(text))
+    // Inspect executable SET statements, not historical migration DDL that
+    // contains a function's own pg_catalog/public configuration as text.
+    if (/^\s*SET\s+(?:LOCAL\s+)?search_path\b[^;\n]*,\s*"?public"?/i.test(text))
       throw new Error("Automated schema search_path must not fall through to public.");
     return query.apply(this, args);
   };

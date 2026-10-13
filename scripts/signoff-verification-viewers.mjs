@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 import { db, api, prefix, write, register, ensure } from "./signoff-verification-common.mjs";
 
 export async function verifyViewers({ fixture, actorPage, getPage, planning, visible, shot, report }) {

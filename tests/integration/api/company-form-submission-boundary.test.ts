@@ -488,9 +488,9 @@ describe("Company Form relationship boundary", () => {
       req: officeReq,
       subjectType: "crew_assignment",
       subjectRef: assignmentUuid,
-      stageKey: "before_joining",
+      stageKey: "on_board",
     });
-    expect(eligible.length).toBeGreaterThan(0);
+    expect(eligible.some(form => form.formUuid === formUuid)).toBe(true);
     const detail = await scopeUnavailableService.readSubmission({ req: officeReq, submissionUuid });
     expect(detail.submission.submissionUuid).toBe(submissionUuid);
 

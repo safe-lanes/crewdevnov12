@@ -455,6 +455,7 @@ describe("Company Form signing, section submission, completion, and void history
         );
         const formUuids = [formUuid, formBUuid].filter(Boolean);
         await db.query("DELETE FROM adm_forms_v2 WHERE form_uuid = ANY($1::text[])", [formUuids]);
+        await db.query("DELETE FROM crew_assignment_rule_context WHERE assign_uuid = ANY($1::text[])", [assignmentUuids]);
         await db.query("DELETE FROM crew_assignments WHERE assign_uuid = ANY($1::text[])", [assignmentUuids]);
         if (subjectUuid) {
           await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [subjectUuid]);
@@ -497,11 +498,8 @@ describe("Company Form signing, section submission, completion, and void history
           assignmentUuids,
         ],
       );
-      // Teardown mutations and file deletion are disabled by fixture retention.
-      // The signatures, snapshots and exact assignment links must survive.
-      expect(remainingFixtures.rows[0].submissions).toBe(submissionUuids.length);
-      expect(remainingFixtures.rows[0].assignments).toBe(assignmentUuids.length);
-      expect(remainingFixtures.rows[0].signature_attachments).toBe(attachmentUuids.length);
+      for (const value of Object.values(remainingFixtures.rows[0]))
+        expect(value, "Disposable signing fixtures must be removed by normal teardown").toBe(0);
       await db.end();
     }
     if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;

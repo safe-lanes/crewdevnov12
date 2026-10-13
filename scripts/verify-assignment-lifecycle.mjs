@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 /**
  * Opt-in MAIN development-workspace verification.
  * Creates only named verification fixtures; lifecycle writes use live HTTP.

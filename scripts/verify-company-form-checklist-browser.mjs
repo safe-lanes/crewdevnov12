@@ -1,4 +1,5 @@
 import { chromium } from "@playwright/test";
+import "./verification-guard.mjs";
 import pg from "pg";
 import fs from "node:fs/promises";
 import { execFileSync } from "node:child_process";

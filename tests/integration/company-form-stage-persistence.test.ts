@@ -1,6 +1,7 @@
 import { Pool, type PoolClient } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { v4 as uuidv4 } from "uuid";
+import { readFileSync } from "node:fs";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -68,6 +69,16 @@ describe.sequential("Company Form stage and submission persistence", () => {
 
   it("preserves the approved historical mapping and leaves new crew drafts unclassified", async () => {
     await withTransaction(async (client) => {
+      // Fresh tenants contain no historical MARPOL release. Verify the
+      // immutable mapping contract, then exercise it with synthetic data.
+      const migration = readFileSync("migrations/0226_company_form_stages_and_submissions.sql", "utf8");
+      expect(migration).toContain("3a0ded43-41a4-4460-a6b1-2cc59b0409ba");
+      expect(migration).toMatch(/SET stage_key = 'before_joining'\s*WHERE fv_uuid = '3a0ded43-41a4-4460-a6b1-2cc59b0409ba'/);
+      expect(migration).toContain("does not identify a released dynamic crew_assignment version 01");
+      const synthetic = await createForm(client, "crew_assignment");
+      await client.query(`UPDATE adm_form_versions_v2 SET stage_key='before_joining',
+        stage_subject_type='crew_assignment',status='released',released_at=now() WHERE fv_uuid=$1`,
+        [synthetic.versionUuid]);
       const approved = await client.query<{
         status: string;
         version_no: string;
@@ -77,8 +88,8 @@ describe.sequential("Company Form stage and submission persistence", () => {
         SELECT v.status, v.version_no, v.stage_key, f.subject_type
         FROM adm_form_versions_v2 v
         JOIN adm_forms_v2 f ON f.id = v.form_id
-        WHERE v.fv_uuid = '3a0ded43-41a4-4460-a6b1-2cc59b0409ba'
-      `);
+        WHERE v.fv_uuid = $1
+      `, [synthetic.versionUuid]);
       expect(approved.rows).toHaveLength(1);
       expect(approved.rows[0]).toMatchObject({
         status: "released",

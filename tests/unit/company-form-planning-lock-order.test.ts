@@ -14,6 +14,7 @@ import { CompanyFormSubmissionsService } from "../../server/v2/company-forms/sub
 import { CompanyFormSubjectRegistry } from "../../server/v2/company-forms/subjectRegistry";
 import { createCrewAssignmentSubject } from "../../server/v2/company-forms/subjects/crewAssignmentSubject";
 import { grantCompanyFormFixture } from "../helpers/companyFormGrants";
+import { bootstrapMissingTestTables } from "../helpers/private-schema";
 
 const namespace = `cf_lock_${randomUUID().replaceAll("-", "")}`;
 const admin = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -44,7 +45,8 @@ beforeAll(async () => {
   // Self-contained private fixtures: public retained rows may no longer exist
   // after parent master-data synchronization. Never mutate public operations.
   fixture = { actors: { master: { id: 99, userUuid: randomUUID(), roleUuid: randomUUID(), role: namespace } },
-    crews: [{ key: "viewers", crewUuid: randomUUID(), vesselUuid: "7440571a-841a-11ed-aa7c-7003bca91a86" }],
+    crews: [{ key: "viewers", crewUuid: randomUUID(),
+      vesselUuid: (await admin.query("SELECT vessel_uuid FROM master_vessels WHERE NOT is_deleted ORDER BY id LIMIT 1")).rows[0].vessel_uuid }],
     forms: [{ key: "aboard", formUuid: randomUUID(), versionUuid: randomUUID(),
       partUuid: randomUUID(), sectionUuid: randomUUID() }] };
   crew = fixture.crews.find((c: any) => c.key === "viewers");
@@ -62,7 +64,15 @@ beforeAll(async () => {
     await admin.query(`CREATE SEQUENCE "${namespace}"."${table}_local_seq"`);
     await admin.query(`ALTER TABLE "${namespace}"."${table}" ALTER COLUMN id SET DEFAULT nextval('"${namespace}"."${table}_local_seq"')`);
   }
+  for (const table of ["master_vessels", "adm_available_ranks_v2", "adm_company_ranks_v2",
+    "frm_resolution_runs", "frm_requirements", "frm_requirement_history", "frm_stage_events",
+    "frm_stage_attempts", "frm_stage_cycles", "frm_stage_audit", "frm_stage_rollout"]) {
+    await admin.query(`CREATE TABLE "${namespace}"."${table}" (LIKE public."${table}" INCLUDING ALL)`);
+    if (table === "master_vessels" || table.includes("ranks"))
+      await admin.query(`INSERT INTO "${namespace}"."${table}" SELECT * FROM public."${table}"`);
+  }
   state.db = drizzle(pool);
+  await bootstrapMissingTestTables(admin, namespace);
 }, 30000);
 
 beforeEach(async () => {

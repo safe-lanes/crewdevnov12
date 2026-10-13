@@ -199,6 +199,7 @@ describe.sequential("Office void versus trusted Master writes", () => {
       await db.query("DELETE FROM frm_form_parts WHERE form_part_uuid = $1", [partUuid]);
       await db.query("DELETE FROM adm_form_versions_v2 WHERE fv_uuid = $1", [versionUuid]);
       await db.query("DELETE FROM adm_forms_v2 WHERE form_uuid = $1", [formUuid]);
+      await db.query("DELETE FROM crew_assignment_rule_context WHERE assign_uuid = ANY($1::text[])", [assignments]);
       await db.query("DELETE FROM crew_assignments WHERE assign_uuid = ANY($1::text[])", [assignments]);
       await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewUuid]);
       await clearCompanyFormFixtures(db, [officeRole, masterRole]);

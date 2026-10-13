@@ -10,8 +10,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    environmentOptions: { happyDOM: { url: process.env.TEST_API_URL } },
     setupFiles: ['./tests/setup.ts'],
     globalSetup: ['./tests/global-setup.ts'],
+    // Fleet-wide automatic applicability must not resolve another suite's
+    // transient applies-to-all fixture while that fixture is being exercised.
+    fileParallelism: false,
+    hookTimeout: 60000,
+    sequence: { hooks: 'stack' },
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['tests/e2e/**/*', 'node_modules/**/*'],
     coverage: {

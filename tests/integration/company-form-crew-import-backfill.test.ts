@@ -1,3 +1,4 @@
+import { bootstrapMissingTestTables } from "../helpers/private-schema";
 import { beforeAll, afterAll, it, expect, vi } from "vitest";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -28,12 +29,13 @@ beforeAll(async () => {
     if (table.startsWith("adm_") && table.includes("ranks"))
       await pool.query(`INSERT INTO "${table}" SELECT * FROM public."${table}"`);
   }
+  await bootstrapMissingTestTables(root, namespace);
   rank = (await pool.query("SELECT ar_uuid,name FROM adm_available_ranks_v2 WHERE NOT is_deleted ORDER BY ar_uuid LIMIT 1")).rows[0];
   state.db = drizzle(pool);
   // Install only the new scoped backfill guards/audit in this retained schema.
   await pool.query(readFileSync("migrations/0250_rerunnable_verified_service_history.sql", "utf8"));
   retainFixtureReferences(`crew-import/${namespace}/schema`, [namespace, rank.ar_uuid]);
-});
+}, 60000);
 afterAll(async () => {
   await pool.end();
   await root.query(`DROP SCHEMA IF EXISTS "${namespace}" CASCADE`);

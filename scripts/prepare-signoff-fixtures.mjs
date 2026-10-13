@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Approved retained development fixtures only; never modify vessel masters,
 // configured ranks, existing Planning rows, or protected signed declarations.
 import { db, api, read, write, insert, clone, register, snapshot, protectedCheck, ensure, randomUUID, fs, root } from "./signoff-verification-common.mjs";

@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Development-only UI acceptance. No SQL writes, actor switching, assignment
 // resets, or mutation of the retained on-board declarations.
 import fs from "node:fs/promises";

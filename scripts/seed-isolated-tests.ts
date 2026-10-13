@@ -14,10 +14,19 @@ export async function seedIsolatedTests() {
       ON CONFLICT(id) DO UPDATE SET role='Admin',user_type='Office'`);
     await pool.query(`SELECT setval('master_users_id_seq',
       greatest((SELECT max(id) FROM master_users),24))`);
+    await pool.query("UPDATE master_users SET designation='Synthetic Crewing Superintendent' WHERE id=24");
     await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
       SELECT r.ruid,a.resource,a.action,true FROM adm_rolemaster_ac r
       CROSS JOIN adm_permission_actions a WHERE r.assigned_role='Admin'
       ON CONFLICT(role_id,resource,action) DO UPDATE SET allowed=true`);
+    await pool.query(`INSERT INTO adm_roleaccess_ac
+      (rauid,role_id,menu_id,canview,cancreate,canedit,candelete,is_deleted)
+      SELECT gen_random_uuid()::text,r.ruid,m.muid,true,true,true,true,false
+      FROM adm_rolemaster_ac r CROSS JOIN adm_menumaster_ac m
+      WHERE r.assigned_role='Admin' AND NOT m.is_deleted AND NOT EXISTS
+        (SELECT 1 FROM adm_roleaccess_ac a WHERE a.role_id=r.ruid AND a.menu_id=m.muid AND NOT a.is_deleted)`);
+    await pool.query(`UPDATE adm_roleaccess_ac SET canview=true,cancreate=true,canedit=true,candelete=true
+      WHERE role_id IN(SELECT ruid FROM adm_rolemaster_ac WHERE assigned_role='Admin') AND NOT is_deleted`);
     for (let n = 1; n <= 3; n++) {
       const uuid = `40400000-0000-4000-8000-${String(n).padStart(12, "0")}`;
       await pool.query(`INSERT INTO master_vessel_types(vt_uuid,vessel_type,is_active,is_deleted)
