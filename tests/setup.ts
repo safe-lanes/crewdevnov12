@@ -3,11 +3,9 @@ import '@testing-library/jest-dom';
 import fs from 'fs';
 import path from 'path';
 import { installConnectionGuard } from '../scripts/test-database-guard.mjs';
-import { installFixtureRetention } from './helpers/fixture-retention';
 import { verifyTestBackend } from './helpers/test-backend';
 
 installConnectionGuard();
-installFixtureRetention();
 await verifyTestBackend();
 
 // Create test results directories

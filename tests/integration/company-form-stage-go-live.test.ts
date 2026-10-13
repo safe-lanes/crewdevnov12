@@ -31,8 +31,6 @@ describe("Company Form tenant-local go-live upgrade", () => {
     upgrade = await fs.readFile("migrations/0249_company_form_tenant_go_live.sql", "utf8");
     const foundation = await fs.readFile("migrations/0248_company_form_stage_events.sql", "utf8");
     retainFixtureReferences("tenant-local go-live isolated retained upgrade schemas", assignments);
-    await fs.appendFile("docs/company-form-regression-fixtures.md",
-      `\n- Retained tenant go-live test schemas: ${schemas.map(s => `\`${s}\``).join(", ")}. No teardown deletion.\n`);
     for (let i = 0; i < schemas.length; i++) {
       await pool.query(`CREATE SCHEMA "${schemas[i]}"`);
       await query(i, `
@@ -48,7 +46,10 @@ describe("Company Form tenant-local go-live upgrade", () => {
         [assignments[i], i === 2 ? "2026-99-99" : "2020-01-01"]);
     }
   });
-  afterAll(async () => { await pool.end(); });
+  afterAll(async () => {
+    for (const schema of schemas) await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await pool.end();
+  });
   it("activates only the tenant upgraded, with recorded empty checks and no retrospective requirements", async () => {
     await activate(0);
     const a = (await query(0, "SELECT * FROM frm_stage_rollout")).rows[0];

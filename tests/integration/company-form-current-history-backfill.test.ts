@@ -34,7 +34,11 @@ beforeAll(async () => {
   }
   await db.query(readFileSync("migrations/0244_current_assignment_verified_history.sql", "utf8"));
 });
-afterAll(async () => { await db.end(); await root.end(); });
+afterAll(async () => {
+  await db.end();
+  await root.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+  await root.end();
+});
 it("excludes the one exact contract row, includes relief and records verified provenance", async () => {
   const row = (await db.query("SELECT * FROM crew_rule_history_backfill_report WHERE assign_uuid=$1", [assignments[0]])).rows[0];
   expect(row.first_ever).toBe(false); expect(row.first_in_rank).toBe(false);

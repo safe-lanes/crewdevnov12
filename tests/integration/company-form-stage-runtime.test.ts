@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, appendFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createRequirementFixture, requirementPool as db, requirementApi as api, requirementToken, requirementTokenFor } from "../helpers/company-form-requirement-fixtures";
 import { retainFixtureReferences } from "../helpers/fixture-retention";
 import { grantCompanyFormFixture } from "../helpers/companyFormGrants";
@@ -76,10 +76,8 @@ describe("Company Form immutable stage lifecycle, additive relief cycles and sco
       [`TEST ONLY Stage Author only ${authorRole.slice(0,8)}`])).rows[0].id;
     retainFixtureReferences("retained retry users", [filler, authorOnly]);
   }, 60000);
-  afterAll(async () => { await registerGraph(); await mkdir(".local/verification", { recursive: true });
-    await appendFile("docs/company-form-regression-fixtures.md",
-      `\n- Retained stage retry actors: master_users IDs ${filler}, ${authorOnly}; their TEST ONLY parent roles and grant graphs remain registered above. No actor or operational fixture is deleted.\n`);
-    await writeFile(".local/verification/stage-runtime-fixtures.json", JSON.stringify({ ...roots, forms, filler, authorOnly, day, rank }, null, 2));
+  afterAll(async () => { await registerGraph(); await mkdir("test-logs", { recursive: true });
+    await writeFile("test-logs/stage-runtime-fixtures.json", JSON.stringify({ ...roots, forms, filler, authorOnly, day, rank }, null, 2));
     await db.end();
   });
   it("Deploy, vacant sign-on, first Planned and Confirmed use one immutable event per stage", async () => {

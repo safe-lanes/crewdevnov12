@@ -40,7 +40,11 @@ describe("retained assignment deciding context", () => {
     await local.query("INSERT INTO crew_sea_service(sea_uuid,crew_uuid,service_type,rank,from_date,to_date,vessel_uuid) VALUES($1,$2,'company',$3,'2026-09-01','2026-09-01',$4)", [priorUuid, crewUuid, rank.rank_id, vesselUuid]);
     retainFixtureReferences(`canonical master copies ${schema}`, [rank.ar_uuid, vesselUuid]);
   });
-  afterAll(async () => { await local.end(); await root.end(); });
+  afterAll(async () => {
+    await local.end();
+    await root.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await root.end();
+  });
   it("captures the persisted planning alias's canonical rank, never present rank", async () => {
     await captureDeployRank(assignUuid, planUuid, tx);
     const context = (await local.query("SELECT * FROM crew_assignment_rule_context WHERE assign_uuid=$1", [assignUuid])).rows[0];

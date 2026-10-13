@@ -32,7 +32,11 @@ beforeAll(async () => {
   await pool.query(readFileSync("migrations/0250_rerunnable_verified_service_history.sql", "utf8"));
   retainFixtureReferences(`crew-import/${namespace}/schema`, [namespace, rank.ar_uuid]);
 });
-afterAll(async () => { await pool.end(); await root.end(); });
+afterAll(async () => {
+  await pool.end();
+  await root.query(`DROP SCHEMA IF EXISTS "${namespace}" CASCADE`);
+  await root.end();
+});
 
 async function fixture(history?: "exact" | "overlap") {
   const crew = randomUUID(), vessel = randomUUID(), plan = randomUUID(), sea = randomUUID();
