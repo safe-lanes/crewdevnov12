@@ -40,6 +40,7 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
+import { CURRENCIES } from "../accountsConstants";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
@@ -734,12 +735,30 @@ export default function MonthlyTransactionsPage() {
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                maxLength={3}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-txn-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-txn-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1 col-span-2">
               <Label>Remarks</Label>

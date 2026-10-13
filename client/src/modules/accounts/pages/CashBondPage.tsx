@@ -7,6 +7,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CURRENCIES } from "../accountsConstants";
 import {
   FormattedDateInput,
   formatIsoDate,
@@ -491,11 +492,30 @@ export function AdvancesTab({
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-advance-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-advance-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Date</Label>
@@ -1273,11 +1293,30 @@ export function BondTab({
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-bond-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-bond-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Sale Date</Label>
