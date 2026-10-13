@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 /** Main-workspace retained fixtures. No production data or fixture deletion. */
 import pg from "pg";
 import ExcelJS from "exceljs";

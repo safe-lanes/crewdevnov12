@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Retained authoring fixtures only. Never delete/reset crew, assignments or history.
 import fs from "node:fs/promises";
 import pg from "pg";

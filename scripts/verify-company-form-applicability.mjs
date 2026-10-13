@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Development-only acceptance against the managed main preview.
 // Creates labelled definitions and a temporary synthetic historical assignment.
 // Never starts a declaration or changes existing assignments, signatures,

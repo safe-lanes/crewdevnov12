@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Main-preview evidence. Test-owned records are retained; no auth configuration or client records are changed.
 import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";

@@ -16,15 +16,17 @@ import { createCrewAssignmentSubject } from "../../server/v2/company-forms/subje
 const namespace = `cf_crew_import_${randomUUID().slice(0, 8)}`;
 const root = new Pool({ connectionString: process.env.DATABASE_URL });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL,
-  options: `-c search_path=${namespace},public` });
+  options: `-c search_path=${namespace}` });
 let rank: any;
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA "${namespace}"`);
   for (const table of ["crew_members_v2", "crew_assignments", "vessel_planning_v2",
     "master_vessels", "crew_sea_service", "crew_assignment_rule_context", "adm_forms_v2",
     "adm_form_versions_v2", "frm_version_applicability", "frm_applicability_sets",
-    "frm_resolution_runs", "frm_requirements"]) {
+    "frm_resolution_runs", "frm_requirements", "adm_available_ranks_v2", "adm_company_ranks_v2"]) {
     await pool.query(`CREATE TABLE "${table}" (LIKE public."${table}" INCLUDING ALL)`);
+    if (table.startsWith("adm_") && table.includes("ranks"))
+      await pool.query(`INSERT INTO "${table}" SELECT * FROM public."${table}"`);
   }
   rank = (await pool.query("SELECT ar_uuid,name FROM adm_available_ranks_v2 WHERE NOT is_deleted ORDER BY ar_uuid LIMIT 1")).rows[0];
   state.db = drizzle(pool);

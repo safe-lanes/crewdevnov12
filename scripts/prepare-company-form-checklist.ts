@@ -1,3 +1,5 @@
+// @ts-ignore Main-preview verification-only guard.
+import "./verification-guard.mjs";
 /** Development-only, retained subjects for main-preview checklist/report evidence. */
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";

@@ -9,7 +9,7 @@ import { retainFixtureReferences } from "../helpers/fixture-retention";
 
 const schema = `cf_dimensions_${randomUUID().slice(0, 8)}`;
 const root = new Pool({ connectionString: process.env.DATABASE_URL });
-const local = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
+const local = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}` });
 const tx = drizzle(local);
 const crewUuid = randomUUID(), assignUuid = randomUUID(), planUuid = randomUUID(), priorUuid = randomUUID();
 let vesselUuid: string, rank: any;

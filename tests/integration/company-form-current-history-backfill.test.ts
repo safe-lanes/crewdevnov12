@@ -6,7 +6,7 @@ import { retainFixtureReferences } from "../helpers/fixture-retention";
 
 const schema = `cf_verified_history_${randomUUID().slice(0, 8)}`;
 const root = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
+const db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}` });
 const crews = [randomUUID(), randomUUID(), randomUUID()];
 const assignments = [randomUUID(), randomUUID(), randomUUID()];
 const sea = Array.from({ length: 4 }, () => randomUUID());

@@ -18,7 +18,7 @@ import { grantCompanyFormFixture } from "../helpers/companyFormGrants";
 const namespace = `cf_lock_${randomUUID().replaceAll("-", "")}`;
 const admin = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL,
-  options: `-c search_path=${namespace},public -c statement_timeout=10000`,
+  options: `-c search_path=${namespace} -c statement_timeout=10000`,
   application_name: namespace });
 const tables = ["crew_assignments", "vessel_planning_v2", "crew_members_v2", "crew_sea_service",
   "frm_company_submissions", "frm_company_submission_assignments",

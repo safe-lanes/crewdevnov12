@@ -13,7 +13,7 @@ describe("Company Form tenant-local go-live upgrade", () => {
   async function query(index: number, text: string, params: any[] = []) {
     const client = await pool.connect();
     try {
-      await client.query(`SET search_path TO "${schemas[index]}",public`);
+      await client.query(`SET search_path TO "${schemas[index]}"`);
       return await client.query(text, params);
     } finally { client.release(); }
   }
@@ -21,7 +21,7 @@ describe("Company Form tenant-local go-live upgrade", () => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query(`SET LOCAL search_path TO "${schemas[index]}",public`);
+      await client.query(`SET LOCAL search_path TO "${schemas[index]}"`);
       await client.query(upgrade);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }

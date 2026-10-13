@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 // Development-only, test-owned records. Uses the existing managed preview.
 import fs from "node:fs/promises";
 import { execFileSync } from "node:child_process";

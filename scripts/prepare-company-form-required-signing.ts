@@ -1,3 +1,5 @@
+// @ts-ignore Main-preview verification-only guard.
+import "./verification-guard.mjs";
 /** Retained, test-owned subjects using the real released SL01 definition. */
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";

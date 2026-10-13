@@ -1,3 +1,5 @@
+// @ts-ignore Main-preview verification-only guard.
+import "./verification-guard.mjs";
 import { writeFile } from "node:fs/promises";
 import { sql } from "drizzle-orm";
 import { getDb } from "../server/v2/db";

@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 import { chromium } from "@playwright/test";
 import pg from "pg";
 import fs from "node:fs/promises";

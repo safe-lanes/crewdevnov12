@@ -67,6 +67,8 @@ export class DatabaseStorage implements IStorage {
   private columnCache: Map<string, Set<string>> = new Map(); // Cache existing column names per table
 
   constructor() {
+    if (process.env.NODE_ENV === "test" && process.env.TEST_DATABASE_VERIFIED !== "true")
+      throw new Error("Automated database access requires verified TEST_DATABASE_URL.");
     const { DATABASE_URL } = process.env;
     
     if (!DATABASE_URL) {

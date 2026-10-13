@@ -1,3 +1,5 @@
+// @ts-ignore Main-preview verification-only guard.
+import "./verification-guard.mjs";
 /** Retained test-owned forms and assignments; never deletes or resets fixtures. */
 import fs from "node:fs/promises";
 import { createRequirementFixture, requirementPool } from "../tests/helpers/company-form-requirement-fixtures";

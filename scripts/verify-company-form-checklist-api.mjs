@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 import fs from "node:fs/promises";
 import pg from "pg";
 const dir = ".local/verification/company-forms-checklist";

@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 /** Click-through main-preview evidence; closing mode only reads completed forms. */
 import { chromium } from "@playwright/test";
 import pg from "pg";

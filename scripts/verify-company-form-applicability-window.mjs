@@ -1,3 +1,4 @@
+import "./verification-guard.mjs";
 import fs from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import pg from "pg";

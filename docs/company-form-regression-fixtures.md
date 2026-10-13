@@ -15,6 +15,17 @@ These rules apply to deliberate main-preview acceptance fixtures. Automated
 fixtures belong in the isolated test database, with normal cleanup and
 restoration; automated tests must not append to this register.
 
+Release tooling uses `scripts/verification-guard.mjs`. The explicit fixture-only
+vessel allowlist is `docs/company-form-verification-vessels.json`; it starts empty
+rather than guessing which historic vessels are safe. Register an existing vessel
+here and in that allowlist only after reviewing all its crew and assignments.
+An empty allowlist refuses every verification release. Every alternative card
+must contain a positive `vessel in` restriction entirely inside that allowlist.
+The guard also checks crew/assignment registration and refuses direct SQL release.
+Legacy fixture-building scripts refuse new crew, assignments, vessels, forms or
+versions instead of creating another set; reuse or explicitly prepare an existing
+registered fixture. This does not modify existing released development rules.
+
 # Retained Company Form regression fixtures
 
 ## Applicability window presentation evidence

@@ -79,8 +79,16 @@ export function installConnectionGuard() {
   assertTestIdentity(expected, protectedIdentities);
   const connect = pg.Client.prototype.connect;
   const query = pg.Client.prototype.query;
+  pg.Client.prototype.query = function(...args) {
+    const text = typeof args[0] === "string" ? args[0] : args[0]?.text ?? "";
+    if (/\bsearch_path\b[^;\n]*,\s*"?public"?/i.test(text))
+      throw new Error("Automated schema search_path must not fall through to public.");
+    return query.apply(this, args);
+  };
   pg.Client.prototype.connect = function(callback) {
     const operation = (async () => {
+      if (/\bsearch_path\b[^;\n]*,\s*"?public"?/i.test(this.connectionParameters.options ?? ""))
+        throw new Error("Automated schema search_path must not fall through to public.");
       await connect.call(this);
       try {
         const target = (await query.call(this, identitySQL)).rows[0];
