@@ -1,3 +1,20 @@
+# Main-preview verification rules
+
+Verification scripts reuse existing registered fixtures rather than creating new
+vessels, crew, assignments or forms on every run. Missing or incompatible fixtures
+must be reported explicitly, not silently replaced with freshly created ones.
+
+Any Company Form released in the development database for verification must use
+conditional applicability restricted to a registered fixture-only vessel. Every
+alternative condition set must include that vessel restriction, so no alternative
+can match a real seafarer. Verification must never release an "applies to all"
+fixture rule or a rule that can match a real seafarer. Verification tooling must
+refuse release when this restriction is absent or cannot be verified.
+
+These rules apply to deliberate main-preview acceptance fixtures. Automated
+fixtures belong in the isolated test database, with normal cleanup and
+restoration; automated tests must not append to this register.
+
 # Retained Company Form regression fixtures
 
 ## Applicability window presentation evidence
