@@ -9,7 +9,7 @@ import { retainFixtureReferences } from "../../helpers/fixture-retention";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const enc = (x: object) => Buffer.from(JSON.stringify(x)).toString("base64url");
 const token = `${enc({ alg: "none", typ: "JWT" })}.${enc({ id: 24, userType: "Office", domain: "test" })}.devsig`;
-const api = request("http://127.0.0.1:5000");
+const api = request(process.env.TEST_API_URL!);
 const call = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   api[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${token}`).send(body);
 

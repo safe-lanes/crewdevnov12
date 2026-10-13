@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = process.env.TEST_API_URL!;
 
 describe('Rotation API Integration', () => {
   let testPlanId: number;

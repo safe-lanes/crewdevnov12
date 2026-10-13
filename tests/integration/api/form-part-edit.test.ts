@@ -20,7 +20,7 @@ function token(id = actorId, userType = "Office") {
 }
 
 async function api(method: string, path: string, body?: unknown, bearer: string | null = token()) {
-  const agent = request("http://127.0.0.1:5000");
+  const agent = request(process.env.TEST_API_URL!);
   const url = `${BASE}${path}`;
   let call = method === "POST" ? agent.post(url)
     : method === "PATCH" ? agent.patch(url)
@@ -202,7 +202,7 @@ describe.sequential("version-scoped part edit API", () => {
   });
 
   it("cannot reclassify a SAIL fixed form to bypass the part-edit gate", async () => {
-    const res = await request("http://127.0.0.1:5000")
+    const res = await request(process.env.TEST_API_URL!)
       .put(`/api/v2/admin/forms/${fixed.form.id}`)
       .set("Authorization", `Bearer ${token()}`)
       .send({ category: "dynamic" });

@@ -14,7 +14,7 @@ import {
 } from "@shared/v2/forms-engine/schema";
 import { frmSubjectTypes } from "@shared/v2/forms-engine/subjectRegistry";
 
-const agent = request("http://127.0.0.1:5000");
+const agent = request(process.env.TEST_API_URL!);
 const formUuids: string[] = [];
 const temporarySubjectTypes: string[] = [];
 

@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { prepareTestEnvironment } from './scripts/test-database-guard.mjs';
+
+await prepareTestEnvironment();
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -14,7 +17,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:5000',
+    baseURL: process.env.TEST_API_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -26,9 +29,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5000',
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run test:backend',
+    url: `${process.env.TEST_API_URL}/api/test-database-identity`,
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

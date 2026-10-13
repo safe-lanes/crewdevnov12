@@ -61,7 +61,7 @@ describe("client form creation category boundary", () => {
         name: `Form API proof ${uuidv4()}`,
         rankGroup: "", versionNo: "00", versionDate: "26-Sep-2026",
       };
-      const agent = request("http://127.0.0.1:5000");
+      const agent = request(process.env.TEST_API_URL!);
       const standard = await agent.post(endpoint).set("Authorization", `Bearer ${token()}`)
         .send({ ...payload, category: "briefing" });
       console.info("POST create category briefing:", JSON.stringify({

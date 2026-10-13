@@ -24,7 +24,7 @@ import { vesselPlanningService } from '../../../server/v2/vessel/services/vessel
 import { and, eq, inArray } from 'drizzle-orm';
 import { findNextPromotionRank } from '../../../client/src/modules/promotions/promotionUtils';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = process.env.TEST_API_URL!;
 
 describe('Promotions API Integration', () => {
   let testHierarchyId: number;

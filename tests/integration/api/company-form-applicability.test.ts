@@ -7,7 +7,7 @@ import { copyApplicability, readApplicability } from "@server/v2/admin/services/
 import { canonical, policySnapshot } from "@server/v2/admin/services/versionChanges";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const agent = request("http://127.0.0.1:5000");
+const agent = request(process.env.TEST_API_URL!);
 const forms: string[] = [];
 const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString("base64url");
 const token = `${b64({ alg: "none", typ: "JWT" })}.${b64({ id: 24, domain: "test", userType: "Office" })}.devsig`;

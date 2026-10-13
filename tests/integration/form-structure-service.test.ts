@@ -227,7 +227,7 @@ describe.sequential("form structure service integration", () => {
   }
 
   it("exposes System field keys through the create, single-part, and batch HTTP APIs", async () => {
-    const agent = request("http://127.0.0.1:5000");
+    const agent = request(process.env.TEST_API_URL!);
     const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
     const authorization = `Bearer ${b64({ alg: "none", typ: "JWT" })}.${b64({ id: 24, domain: "test", userType: "Office" })}.devsig`;
     const created = await agent.post("/api/v2/admin/forms").set("Authorization", authorization)

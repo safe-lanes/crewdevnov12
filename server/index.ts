@@ -10,6 +10,13 @@ import { authMiddleware } from "./middleware/authMiddleware";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 
 const app = express();
+if (process.env.TEST_BACKEND === "true") {
+  if (process.env.TEST_DATABASE_VERIFIED !== "true" || process.env.PORT === "5000")
+    throw new Error("Dedicated test backend requires verified database isolation.");
+  app.get("/api/test-database-identity", (_req, res) => {
+    res.json(JSON.parse(process.env.TEST_DATABASE_IDENTITY!));
+  });
+}
 app.set("trust proxy", 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
