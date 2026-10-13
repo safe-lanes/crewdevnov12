@@ -405,16 +405,15 @@ export default function CbaReferencePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Pay element (optional)</Label>
+              <Label>Pay element</Label>
               <Select
-                value={form.payElementUuid}
+                value={form.payElementUuid === NONE ? "" : form.payElementUuid}
                 onValueChange={(v) => set("payElementUuid", v)}
               >
                 <SelectTrigger className="h-9" data-testid="select-cba-element">
-                  <SelectValue />
+                  <SelectValue placeholder="Select Pay Element" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>None</SelectItem>
                   {elements.map((e: any) => (
                     <SelectItem
                       key={e.payElementUuid}
@@ -428,7 +427,7 @@ export default function CbaReferencePage() {
               </Select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="hidden">
               <Label>Category (optional)</Label>
               <Select
                 value={form.category}
