@@ -2,8 +2,10 @@ import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import fs from 'fs';
 import path from 'path';
+import { installConnectionGuard } from '../scripts/test-database-guard.mjs';
 import { installFixtureRetention } from './helpers/fixture-retention';
 
+installConnectionGuard();
 installFixtureRetention();
 
 // Create test results directories

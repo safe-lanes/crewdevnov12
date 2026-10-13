@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { prepareTestEnvironment } from './scripts/test-database-guard.mjs';
+
+await prepareTestEnvironment();
 
 export default defineConfig({
   plugins: [react()],
