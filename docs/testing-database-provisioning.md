@@ -1,6 +1,6 @@
 # Dedicated test database: provisioning evidence
 
-## Step 1 — database created; secret configuration pending
+## Step 1 — database created and configured
 
 An empty database named `sail_automated_tests` was created on the existing
 PostgreSQL server using `CREATE DATABASE sail_automated_tests`.
@@ -19,8 +19,11 @@ The platform's production query returned `PRODUCTION_DATABASE_ERROR` with the
 explicit result that this project has no production database. That observation
 is not a permanent exemption from checking production identity.
 
-`TEST_DATABASE_URL` was absent. It must be supplied through Replit Secrets before
-the remaining work proceeds. No connection string or credential is recorded here.
+`TEST_DATABASE_URL` was supplied through Replit Secrets. A connection using that
+secret returned `sail_automated_tests`, database OID `1032648`, and cluster system
+identifier `7586633721581772821`. A separate development connection returned OID
+`16384` on the same cluster. This verifies distinct database identities without
+comparing connection text. No connection string or credential is recorded here.
 No migrations, seeds, or automated tests have been run in this task.
 
 ## Development pre-build counts
