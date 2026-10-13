@@ -65,15 +65,14 @@ try {
   const apiNames = (await response.json()).map(v => v.vessel).sort();
   if (JSON.stringify(apiNames) !== JSON.stringify(expected))
     throw Error("Main-preview vessel API returned an unexpected list.");
-  const trigger = page.getByTestId("select-vessel-detail");
-  await trigger.waitFor({ timeout: 60000 });
-  await trigger.click();
-  const box = page.getByRole("listbox");
-  await box.waitFor();
-  const visible = (await box.getByRole("option").allTextContents()).map(s => s.trim()).sort();
+  // The route opens the Vessel Database list, not a selected-vessel detail.
+  // Check the rendered grid itself without opening or editing a vessel.
+  await page.getByText("vessel 10", { exact: true }).first().waitFor({ timeout: 60000 });
+  const cells = page.locator('.ag-cell[col-id="vessel"]');
+  const visible = (await cells.allTextContents()).map(s => s.trim()).sort();
   if (JSON.stringify(visible) !== JSON.stringify(expected))
-    throw Error("The visible vessel picker does not show exactly vessel 02 through vessel 10.");
-  await box.screenshot({ path: `${directory}/vessel-picker.jpg`, type: "jpeg" });
+    throw Error("The visible vessel list does not show exactly vessel 02 through vessel 10.");
+  await page.screenshot({ path: `${directory}/vessel-list.jpg`, type: "jpeg" });
   if (report.errors.length) throw Error("Browser errors during vessel verification.");
   report.visibleVessels = visible; report.passed = true;
 } finally {

@@ -277,3 +277,8 @@ privately in `generated-artifacts/private-db-backups/` as the
 `import-vessel-execute-*.json` report. The original cleanup's counts above
 remain historical measurements taken *before* this later, narrowly approved
 removal; they are not the current vessel/assignment/planning counts.
+
+The post-cleanup isolated full suite reports **1,245 passed, 163 failed and
+67 pending**. The Company Forms subset is **86 files, 514 passed, zero failed,
+zero skipped**. TypeScript remains at **222 diagnostics**. These are the
+accepted ceilings, not a claim that the whole test suite or compiler is green.
