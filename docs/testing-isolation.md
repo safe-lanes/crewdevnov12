@@ -64,3 +64,25 @@ preflight probes the new identity rather than trusting the old OID.
 Automated teardown executes normally in the isolated database and does not
 append to the main-preview fixture register. Deliberate registered acceptance
 fixtures in development are separate and must not be cleaned up by this command.
+
+## Closing checks and main preview
+
+The measured full-suite baseline and raw-SQL count comparison are recorded in
+`docs/testing-isolation-evidence.md`. TypeScript currently reports 222
+diagnostics; the full suite is not green. Do not describe its skipped legacy
+cases as passing, and do not use the previous shared-database failure count as
+a target.
+
+After the final build commit, start the existing **Start application** workflow
+(`npm run dev`) for the main preview on port 5000. Do not substitute the test
+backend or reuse port 5100. Record the actual backend process start time and
+compare it with `git log -1 --format='%H %cI'`; the process must start later.
+Check startup logs and the public preview without changing authentication.
+
+Keep generated backend logs, count snapshots and screenshots outside Git and
+deployment. No further database reset is needed to start the main preview.
+
+Safety note: the current no-production attestation expires at
+**2026-10-14 00:00 UTC**. Preflight then deliberately refuses until production
+status is authoritatively reverified (or a configured production target's SQL
+identity is protected). It must never silently assume production is absent.
