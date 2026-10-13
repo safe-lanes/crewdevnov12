@@ -47,3 +47,20 @@ These unrelated fixture deficiencies have not been repaired or hidden.
 
 Raw logs and reports remain outside Git in `/tmp/allowlist-*.log`,
 `/tmp/cleanup-typescript.log`, and `.local/verification/company-forms-all-tests-*`.
+
+## Step 1: full backup and restore proof
+
+Completed at **2026-10-13 03:57:55 UTC** using
+`node scripts/backup-development-for-cleanup.mjs`.
+
+- Backup: `generated-artifacts/private-db-backups/development-2026-10-13T03-55-23-357Z.dump`.
+- PostgreSQL custom archive, **51,102,425 bytes**, all application schemas.
+- A repeatable-read exported snapshot was shared by the count queries and dump.
+- Restored into a new scratch database with a distinct verified OID; compared
+  **2,736 tables**, with **zero count differences**.
+- Scratch database was dropped after verification.
+- Directory permissions are 0700 and backup/report files are 0600.
+- Backup and detailed proof are excluded from both Git and publishing.
+  They contain personal data and must not be shared as downloadable assets.
+- Development records were not changed. Restore used `--no-owner --no-acl`
+  in scratch; the archive retains the original ownership/ACL information.
