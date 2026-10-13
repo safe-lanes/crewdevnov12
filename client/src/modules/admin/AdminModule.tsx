@@ -3,7 +3,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
-import { loadRowVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
+import { readListVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -136,7 +136,11 @@ import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypes
 import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2, useFormCopySourcesV2, useCopyFormConfigurationV2 } from './hooks/useAdminV2';
 
 const V2_KEY = '/api/v2/admin';
-type CompanyForm = Form & { formUuid?: string; subjectType?: string | null; description?: string | null; archivedAt?: string | null };
+type CompanyForm = Form & {
+  formUuid?: string; subjectType?: string | null; description?: string | null; archivedAt?: string | null;
+  versionSummary?: VersionLoadResult; rankGroups?: RankGroup[]; parts?: ConfigurableFormPart[];
+  partsLoadState?: "loaded" | "error";
+};
 type CompanyFormVersion = { id: number; formId: number; fvUuid: string; rankGroupId: number | null; versionNo: string; versionDate: string; status: string };
 
 // StableInput component - uses local state to prevent value loss during re-renders
@@ -3376,74 +3380,42 @@ const AdminModuleInner = (): JSX.Element => {
     queryKey: ["/api/v2/admin/forms"],
     enabled: selectedAdminPage === "forms",
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/v2/admin/forms");
+      const response = await apiRequest("GET", "/api/v2/admin/forms?includeSummary=true");
       return response.json();
     },
-  });
-  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
-
-  // The generic editor is selected from form-part metadata rather than from
-  // an expanding list of form names. Keep this read-only lookup beside the
-  // Forms table so the factory can preserve the two legacy editors exactly.
-  const { data: allFormParts = [] } = useQuery<Array<ConfigurableFormPart & { formId: number }>>({
-    queryKey: ["/api/v2/admin/form-parts-all", formIds],
-    queryFn: async () => {
-      if (formIds.length === 0) return [];
-      const results = await Promise.allSettled(formIds.map(async (formId) => {
-        const response = await apiRequest("GET", `/api/v2/admin/forms/${formId}/parts`);
-        const parts = await response.json() as ConfigurableFormPart[];
-        return parts.map((part) => ({ ...part, formId }));
-      }));
-      return results.flatMap(result => result.status === "fulfilled" ? result.value : []);
-    },
-    enabled: selectedAdminPage === "forms" && formIds.length > 0,
   });
 
   const formPartsByFormId = useMemo(() => {
-    return allFormParts.reduce((result, part) => {
-      (result[part.formId] ||= []).push(part);
+    return formsData.reduce((result, form) => {
+      result[form.id] = form.parts || [];
       return result;
     }, {} as Record<number, ConfigurableFormPart[]>);
-  }, [allFormParts]);
+  }, [formsData]);
+  const allRankGroups = useMemo(() => formsData.flatMap(form => form.rankGroups || []), [formsData]);
 
-  const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
-    queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/v2/admin/rank-groups?includeArchived=true");
-      return response.json();
-    },
-    enabled: selectedAdminPage === "forms",
-  });
-
-  const versionQueryKey = ["/api/v2/admin/form-versions-all", formIds];
-  const { data: versionResults, error: versionLoadError } = useQuery<Record<number, VersionLoadResult>>({
-    queryKey: versionQueryKey,
-    queryFn: async () => {
-      if (formIds.length === 0) return {};
-      const results = await Promise.all(
-        formIds.map(async (fid) => {
-          return [fid, await loadRowVersions(async () => {
-            const response = await apiRequest("GET", `/api/v2/admin/forms/${fid}/versions`);
-            return response.json();
-          })];
-        })
-      );
-      return Object.fromEntries(results);
-    },
-    enabled: selectedAdminPage === "forms" && formIds.length > 0,
-  });
+  const versionResults = useMemo(() => Object.fromEntries(formsData.map(form => {
+    let result: VersionLoadResult = form.versionSummary || { state: "loading" };
+    if (result.state === "loaded") {
+      try { result = { state: "loaded", versions: readListVersions(result.versions) }; }
+      catch { result = { state: "error" }; }
+    }
+    return [form.id, result];
+  })), [formsData]);
   const allFormVersions = useMemo(() => Object.values(versionResults || {})
     .flatMap(result => result.state === "loaded" ? result.versions : []), [versionResults]);
   const versionState = (id: number): VersionLoadResult["state"] =>
-    versionResults?.[id]?.state ?? (versionLoadError ? "error" : "loading");
+    versionResults?.[id]?.state ?? "loading";
   const retryFormVersions = async (id: number) => {
-    const setResult = (result: VersionLoadResult) => rq.setQueryData<Record<number, VersionLoadResult>>(
-      versionQueryKey, old => ({ ...old, [id]: result }));
+    const setResult = (result: VersionLoadResult, refreshed?: CompanyForm) => rq.setQueryData<CompanyForm[]>(
+      ["/api/v2/admin/forms"], old => old?.map(form => form.id === id
+        ? { ...form, ...refreshed, versionSummary: result } : form));
     setResult({ state: "loading" });
-    setResult(await loadRowVersions(async () => {
-      const response = await apiRequest("GET", `/api/v2/admin/forms/${id}/versions`);
-      return response.json();
-    }));
+    try {
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${id}?includeSummary=true`);
+      const refreshed: CompanyForm = await response.json();
+      if (refreshed.versionSummary?.state !== "loaded") throw new Error("Version summary unavailable.");
+      setResult({ state: "loaded", versions: readListVersions(refreshed.versionSummary.versions) }, refreshed);
+    } catch { setResult({ state: "error" }); }
   };
 
   // Transform forms data to create separate rows for each rank group with category grouping
@@ -3674,9 +3646,8 @@ const AdminModuleInner = (): JSX.Element => {
     onSuccess: ({ form, version }) => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/form-versions-all"] });
-      rq.setQueryData<CompanyForm[]>(["/api/v2/admin/forms"], old => [form, ...(old || [])]);
-      rq.setQueryData<Record<number, VersionLoadResult>>(versionQueryKey,
-        old => ({ ...old, [form.id]: { state: "loaded", versions: [version] } }));
+      rq.setQueryData<CompanyForm[]>(["/api/v2/admin/forms"],
+        old => [{ ...form, versionSummary: { state: "loaded", versions: [version] } }, ...(old || [])]);
       setShowCreateFormDialog(false);
       setNewFormName("");
       setNewFormDescription("");
@@ -8469,7 +8440,7 @@ const AdminModuleInner = (): JSX.Element => {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" title="Preview Company Form" aria-label={`Preview ${form.name}`} onClick={() => {
+                    <Button variant="ghost" size="icon" title="Preview Company Form" aria-label={`Preview ${form.name}`} disabled={versionState(form.id) !== "loaded"} onClick={() => {
                       setEditingRankGroup(null); setEditingRankGroupId(null); setPreviewCompanyForm(true); setEditingForm(form);
                     }}><Eye className="h-4 w-4" /></Button>
                     {!form.archivedAt && (permissions.length === 0 || canEdit("Forms")) && <>
@@ -8477,7 +8448,7 @@ const AdminModuleInner = (): JSX.Element => {
                         setCompanyEditName(form.name); setCompanyEditDescription(form.description || "");
                         setEditingCompanyMetadata(form);
                       }}><EditIcon className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Configure Company Form" aria-label={`Configure ${form.name}`} onClick={() => {
+                      <Button variant="ghost" size="icon" title="Configure Company Form" aria-label={`Configure ${form.name}`} disabled={versionState(form.id) !== "loaded"} onClick={() => {
                         setEditingRankGroup(null); setEditingRankGroupId(null); setPreviewCompanyForm(false); setEditingForm(form);
                       }}><Settings className="h-4 w-4" /></Button>
                     </>}
@@ -8579,7 +8550,7 @@ const AdminModuleInner = (): JSX.Element => {
               </TableHeader>
               <TableBody className="bg-white">
                 {expandedFormsData.map((form) => (
-                  <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                  <TableRow key={form.id} data-testid={`standard-form-row-${form.id}`} className="border-b border-gray-200 bg-white hover:bg-gray-50">
                     {form.isFirstInGroup && (
                       <TableCell 
                         rowSpan={form.groupSize}
@@ -8720,6 +8691,7 @@ const AdminModuleInner = (): JSX.Element => {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
+                          disabled={versionState(form.originalFormId) !== "loaded"}
                           onClick={() => handleEditClick(form)}
                         >
                           <EditIcon className="h-[18px] w-[18px] text-gray-500" />

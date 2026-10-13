@@ -32,7 +32,12 @@ const token = `${encode({ alg: "none", typ: "JWT" })}.${encode({
 const browser = await chromium.launch({ executablePath: shell("which", ["chromium"]),
   headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 const context = await browser.newContext({ viewport: { width: 1560, height: 1050 },
-  extraHTTPHeaders: { Authorization: `Bearer ${token}` }, ignoreHTTPSErrors: true });
+  ignoreHTTPSErrors: true });
+await context.route("**/api/**", route => route.continue({
+  headers: { ...route.request().headers(),
+    ...(new URL(route.request().url()).hostname === process.env.REPLIT_DEV_DOMAIN
+      ? { authorization: `Bearer ${token}` } : {}) },
+}));
 await context.addInitScript(({ actor, token }) => {
   const profile = { personaKey: "crewing-executive", masterUserId: actor.id,
     userId: String(actor.id), role: actor.role, roleId: actor.ruid,
@@ -45,6 +50,8 @@ await context.route("**/src/**", async route =>
   route.fulfill({ response: await route.fetch({ maxRetries: 2, timeout: 60000 }) }));
 const page = await context.newPage();
 page.on("pageerror", error => report.errors.push(error.message));
+page.on("requestfailed", request =>
+  report.errors.push(`${request.failure()?.errorText} ${new URL(request.url()).pathname}`));
 page.on("response", response => {
   if (response.url().includes("/api/") && response.status() >= 400)
     report.errors.push(`${response.status()} ${new URL(response.url()).pathname}`);
@@ -58,6 +65,11 @@ try {
   await page.getByTestId("tab-standard-forms").click();
   for (const name of names) await page.getByText(name, { exact: true }).first().waitFor({ timeout: 45000 });
   report.checks.push("Forms Configuration renders all six original Standard Forms.");
+  for (const [group, version] of [["Cadets", "v02"], ["Promotion to Master", "v09"], ["Promotion to Chief Officer", "v10"]]) {
+    const row = page.getByRole("row").filter({ has: page.getByText(group, { exact: true }) });
+    await row.getByText(version, { exact: true }).waitFor();
+    report.checks.push(`${group} shows its real ${version}.`);
+  }
   await page.screenshot({ path: "generated-artifacts/cleanup-preview/standard-forms.jpg" });
   await page.getByTestId("tab-company-forms").click();
   await page.getByText("0 Company Forms", { exact: true }).waitFor({ timeout: 30000 });

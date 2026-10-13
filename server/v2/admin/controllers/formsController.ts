@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 import { companyFormSubjectRegistry } from "../../company-forms/registry";
 import { getDb } from "../../db";
+import { loadFormListSummaries } from "../services/formsListSummary";
 
 export const formsController = {
   async getRuleDimensions(req: Request, res: Response) {
@@ -26,7 +27,7 @@ export const formsController = {
     try {
       const includeArchived = req.query.showArchived !== "false";
       const forms = await formsService.getAll(includeArchived);
-      res.json(forms);
+      res.json(req.query.includeSummary === "true" ? await loadFormListSummaries(forms) : forms);
     } catch (error) {
       console.error("Error fetching forms:", error);
       res.status(500).json({ error: "Failed to fetch forms" });
@@ -40,7 +41,7 @@ export const formsController = {
         return res.status(400).json({ error: "Invalid form ID" });
       }
       const form = await formsService.getById(id);
-      res.json(form);
+      res.json(req.query.includeSummary === "true" ? (await loadFormListSummaries([form]))[0] : form);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
