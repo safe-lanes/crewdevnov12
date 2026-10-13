@@ -19,6 +19,7 @@
     "setup-microfrontend": "node scripts/setup-microfrontend.js",
     "test": "vitest run",
     "test:backend": "tsx scripts/start-test-backend.ts",
+    "test:reset": "tsx scripts/reset-test-database.ts",
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",

@@ -31,13 +31,9 @@ export async function readIdentity(connectionString) {
 // No URL, password or other credential is persisted in the attestation.
 const productionAbsenceVerifiedUntil = Date.parse("2026-10-14T00:00:00Z");
 
-export async function prepareTestEnvironment() {
+export async function inspectTestTarget() {
   if (!process.env.TEST_DATABASE_URL)
     throw new Error("TEST_DATABASE_URL is required. DATABASE_URL is never a test fallback.");
-  if (process.env.TEST_DATABASE_VERIFIED === "true") {
-    installConnectionGuard();
-    return JSON.parse(process.env.TEST_DATABASE_IDENTITY);
-  }
   const protectedIdentities = [await readIdentity(process.env.DATABASE_URL)];
   if (process.env.PRODUCTION_DATABASE_URL) {
     protectedIdentities.push(await readIdentity(process.env.PRODUCTION_DATABASE_URL));
@@ -46,6 +42,17 @@ export async function prepareTestEnvironment() {
   }
   const target = await readIdentity(process.env.TEST_DATABASE_URL);
   assertTestIdentity(target, protectedIdentities);
+  return { target, protectedIdentities };
+}
+
+export async function prepareTestEnvironment() {
+  if (!process.env.TEST_DATABASE_URL)
+    throw new Error("TEST_DATABASE_URL is required. DATABASE_URL is never a test fallback.");
+  if (process.env.TEST_DATABASE_VERIFIED === "true") {
+    installConnectionGuard();
+    return JSON.parse(process.env.TEST_DATABASE_IDENTITY);
+  }
+  const { target, protectedIdentities } = await inspectTestTarget();
   process.env.TEST_DATABASE_IDENTITY = JSON.stringify(target);
   process.env.TEST_PROTECTED_DATABASE_IDENTITIES = JSON.stringify(protectedIdentities);
   process.env.TEST_DATABASE_VERIFIED = "true";
