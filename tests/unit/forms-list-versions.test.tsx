@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { readListVersions, storedStandardVersion } from "../../client/src/modules/admin/formsListVersions";
+import { loadRowVersions, readListVersions, storedStandardVersion } from "../../client/src/modules/admin/formsListVersions";
 import { VersionLoadStatus } from "../../client/src/modules/admin/components/VersionLoadStatus";
 
 const version = (id: number, versionNo: string, status: string) =>
@@ -31,5 +31,18 @@ describe("Truthful Forms Configuration versions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledOnce();
     cleanup();
+  });
+  it("keeps healthy rows when one version request fails, and recovers only that row on retry", async () => {
+    const good = [version(1, "02", "released")];
+    const rows = await Promise.all([
+      loadRowVersions(async () => good),
+      loadRowVersions(async () => { throw new Error("SQL details must not reach the UI"); }),
+      loadRowVersions(async () => good),
+    ]);
+    expect(rows).toEqual([
+      { state: "loaded", versions: good }, { state: "error" }, { state: "loaded", versions: good },
+    ]);
+    rows[1] = await loadRowVersions(async () => good);
+    expect(rows.every(row => row.state === "loaded")).toBe(true);
   });
 });

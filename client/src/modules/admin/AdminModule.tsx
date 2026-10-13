@@ -3,7 +3,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
-import { readListVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
+import { loadRowVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -3389,12 +3389,12 @@ const AdminModuleInner = (): JSX.Element => {
     queryKey: ["/api/v2/admin/form-parts-all", formIds],
     queryFn: async () => {
       if (formIds.length === 0) return [];
-      const results = await Promise.all(formIds.map(async (formId) => {
+      const results = await Promise.allSettled(formIds.map(async (formId) => {
         const response = await apiRequest("GET", `/api/v2/admin/forms/${formId}/parts`);
         const parts = await response.json() as ConfigurableFormPart[];
         return parts.map((part) => ({ ...part, formId }));
       }));
-      return results.flat();
+      return results.flatMap(result => result.status === "fulfilled" ? result.value : []);
     },
     enabled: selectedAdminPage === "forms" && formIds.length > 0,
   });
@@ -3422,8 +3422,10 @@ const AdminModuleInner = (): JSX.Element => {
       if (formIds.length === 0) return {};
       const results = await Promise.all(
         formIds.map(async (fid) => {
-          const response = await apiRequest("GET", `/api/v2/admin/forms/${fid}/versions`);
-          return [fid, { state: "loaded", versions: readListVersions(await response.json()) }];
+          return [fid, await loadRowVersions(async () => {
+            const response = await apiRequest("GET", `/api/v2/admin/forms/${fid}/versions`);
+            return response.json();
+          })];
         })
       );
       return Object.fromEntries(results);
@@ -3438,12 +3440,10 @@ const AdminModuleInner = (): JSX.Element => {
     const setResult = (result: VersionLoadResult) => rq.setQueryData<Record<number, VersionLoadResult>>(
       versionQueryKey, old => ({ ...old, [id]: result }));
     setResult({ state: "loading" });
-    try {
+    setResult(await loadRowVersions(async () => {
       const response = await apiRequest("GET", `/api/v2/admin/forms/${id}/versions`);
-      setResult({ state: "loaded", versions: readListVersions(await response.json()) });
-    } catch {
-      setResult({ state: "error" });
-    }
+      return response.json();
+    }));
   };
 
   // Transform forms data to create separate rows for each rank group with category grouping

@@ -21,6 +21,14 @@ export function readListVersions(value: unknown): ListVersion[] {
   return value;
 }
 
+export async function loadRowVersions(load: () => Promise<unknown>): Promise<VersionLoadResult> {
+  try {
+    return { state: "loaded", versions: readListVersions(await load()) };
+  } catch {
+    return { state: "error" };
+  }
+}
+
 // A released version remains the operative Standard version. If none exists,
 // display the actual draft, never the legacy form mirror or a synthetic draft.
 export function storedStandardVersion(versions: ListVersion[], rankGroupId: number | null) {
