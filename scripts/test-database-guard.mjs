@@ -29,24 +29,19 @@ export async function readIdentity(connectionString) {
   }
 }
 
-// Published identity status must be re-attested when production is provisioned.
-// No URL, password or other credential is persisted in the attestation.
-const productionAbsenceVerifiedUntil = Date.parse("2026-10-14T00:00:00Z");
+export function assertRegisteredIdentity(target, registered, protectedIdentities) {
+  assertTestIdentity(target, protectedIdentities);
+  if (!registered?.clusterid || !registered?.databaseoid || !sameIdentity(target, registered))
+    throw new Error("Test target does not match THE independently registered test database identity.");
+}
 
 export async function inspectTestTarget() {
   if (!process.env.TEST_DATABASE_URL)
     throw new Error("TEST_DATABASE_URL is required. DATABASE_URL is never a test fallback.");
   const protectedIdentities = [await readIdentity(process.env.DATABASE_URL)];
-  if (process.env.PRODUCTION_DATABASE_URL) {
-    protectedIdentities.push(await readIdentity(process.env.PRODUCTION_DATABASE_URL));
-  } else if (Date.now() >= productionAbsenceVerifiedUntil) {
-    throw new Error("Production database status needs authoritative re-verification before tests can run.");
-  }
   const target = await readIdentity(process.env.TEST_DATABASE_URL);
-  assertTestIdentity(target, protectedIdentities);
   const registered = JSON.parse(await fs.readFile(".local/test-database-identity.json", "utf8"));
-  if (!sameIdentity(target, registered))
-    throw new Error("TEST_DATABASE_URL does not reach the independently registered test database identity.");
+  assertRegisteredIdentity(target, registered, protectedIdentities);
   return { target, protectedIdentities };
 }
 
@@ -81,10 +76,8 @@ export function installConnectionGuard() {
     throw new Error("Test database preflight must finish before application imports.");
   const expected = JSON.parse(process.env.TEST_DATABASE_IDENTITY);
   const registered = JSON.parse(readFileSync(".local/test-database-identity.json", "utf8"));
-  if (!sameIdentity(expected, registered))
-    throw new Error("Inherited test identity differs from the independently registered database.");
   const protectedIdentities = JSON.parse(process.env.TEST_PROTECTED_DATABASE_IDENTITIES);
-  assertTestIdentity(expected, protectedIdentities);
+  assertRegisteredIdentity(expected, registered, protectedIdentities);
   const connect = pg.Client.prototype.connect;
   const query = pg.Client.prototype.query;
   pg.Client.prototype.query = function(...args) {

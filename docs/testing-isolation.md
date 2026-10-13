@@ -27,15 +27,15 @@ checked, including in inherited workers. Only the guarded reset may replace
 that registration after recreating the designated database. A different URL
 cannot silently register a different database.
 
-## Production protection
+## Identity allowlist
 
-The platform explicitly reported no production database during this task.
-This authoritative absence attestation expires on 14 October 2026 UTC; test
-preflight fails closed thereafter until status is reverified. If an external
-production target is configured, its actual SQL identity must be provided through
-`PRODUCTION_DATABASE_URL` in Secrets and is checked too. Provisioning production
-invalidates the absence attestation immediately: reverify and protect its identity
-before running tests. Unknown production status must never be treated as absent.
+Every run, including standalone `npm test`, must reach THE registered test
+database: both its cluster system identifier and database OID must match
+`.local/test-database-identity.json`. Every other target is refused, regardless
+of its name or URL. Independently querying and refusing the development identity
+remains a second layer. There is no production-absence attestation or expiry.
+The guarded reset verifies the old registered identity before dropping anything,
+then registers the newly created database's identity before migrations or tests.
 
 ## Synthetic data
 
@@ -82,7 +82,3 @@ Check startup logs and the public preview without changing authentication.
 Keep generated backend logs, count snapshots and screenshots outside Git and
 deployment. No further database reset is needed to start the main preview.
 
-Safety note: the current no-production attestation expires at
-**2026-10-14 00:00 UTC**. Preflight then deliberately refuses until production
-status is authoritatively reverified (or a configured production target's SQL
-identity is protected). It must never silently assume production is absent.
