@@ -1055,6 +1055,7 @@ export function BondTab({
         type: "rightAligned",
         valueFormatter: (p) => (p.value ? formatMoney(p.value) : ""),
       },
+      { headerName: "Ccy", field: "currency", width: 70 },
       {
         headerName: "Deduction",
         field: "deductionAmount",
@@ -1064,25 +1065,6 @@ export function BondTab({
           formatMoney(p.value ?? p.data.totalPrice ?? "0"),
       },
       { headerName: "Sale Date", field: "saleDate", width: 110 },
-      {
-        headerName: "Status",
-        field: "status",
-        width: 110,
-        cellRenderer: (p: any) => (
-          <Badge
-            variant="outline"
-            className={`text-xs ${
-              p.value === "cancelled"
-                ? "border-gray-300 bg-gray-50 text-gray-600"
-                : p.value === "deducted"
-                  ? "border-green-300 bg-green-50 text-green-800"
-                  : ""
-            }`}
-          >
-            {p.value}
-          </Badge>
-        ),
-      },
       {
         headerName: "Actions",
         width: 110,
