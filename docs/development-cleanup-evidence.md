@@ -178,3 +178,62 @@ The 161 → 164 full-suite increase consists of:
 Pre-deletion full-suite run on 13 October: **1,233 passed, 163 failed, 67 pending**.
 Only the third defect above was fixed, as requested. The remaining baseline
 failures are not claimed green.
+
+## Step 3: executed, one committed maintenance transaction
+
+Run `d27e14ef-c21d-4547-a55f-e64614726584`, 13 October 2026,
+**04:53:57–04:58:17 UTC**, executed at HEAD
+`410580aa358a4a99e56aa66f1e4c6fb771fe5f32`.
+
+The approved dependency closure retains the import vessel, planning ID 1112,
+its incumbent fixture seafarer, incumbent assignment, captured rule context,
+source sea-service row and creator user ID 25. The protected rotation entry
+473 and archive 414 remain unchanged. Personal names and detailed dependency
+keys are not published in this repository.
+
+| Category | Before | Removed | After cleanup |
+|---|---:|---:|---:|
+| Vessels | 1,243 | 1,233 | 10 |
+| Seafarers | 1,804 | 1,676 | 128 |
+| Assignments | 2,462 | 2,218 | 244 |
+| Planning | 1,111 | 980 | 131 |
+| Forms, both kinds | 1,275 | 1,269 | 6 |
+| Versions | 1,956 | 1,906 | 50 |
+| Rank groups | 85 | 37 | 48 |
+| Company submissions | 1,235 | 1,235 | 0 |
+| Requirements | 65,674 | 65,674 | 0 |
+| Requirement history | 67,016 | 67,016 | 0 |
+| Roles | 894 | 842 | 52 |
+| Parent users/test actors | 1,142 | 1,117 | 25 |
+| Sea service | 663 | 189 | 474 |
+| Test schemas | 224 | 224 | 0 |
+
+Only the six original Standard Forms remain. The extra vessel, seafarer and
+creator are approved retention exceptions, not claimed deletions.
+
+### Integrity and stage reopening
+
+- Exact PostgreSQL `row_to_json` SHA-256 fingerprints, including timestamp
+  precision, match for every kept record. Checks run under exclusive table locks,
+  after deletion and again after go-live. No kept row was repaired or rewritten.
+- **Zero remaining references to removed row identities**: enforced database
+  foreign keys stay enabled, supplemented by exact scalar/nested JSON identity
+  checks. Public constraint definitions and original user-trigger states match.
+- Immutable-history user triggers are suspended only within the locked
+  maintenance transaction, then restored. The cyclic RESTRICT link between
+  requirements and submissions is deleted in one SQL statement, not by
+  weakening its foreign keys.
+- Item 30 ran tenant-locally for all current, non-cancelled open assignments,
+  also opening already-reached earlier stage entry points. **168 of 168 current
+  stages are open**. There are **195 recorded empty completed checks**, no
+  requirements, and enforcement remains enabled. Tenant go-live and cleanup
+  completion are recorded in the stage audit.
+- All 252 public tables have before, removed, after-cleanup and after-go-live
+  counts in `generated-artifacts/cleanup-before-after-counts.csv`.
+- Private execution details are in
+  `generated-artifacts/private-db-backups/cleanup-execution-latest.json`.
+
+Closing verification uses `scripts/verify-cleaned-forms-preview.mjs` against the
+existing main preview and original parent Office account. It creates no fixtures
+or grants and records the checked HEAD, backend start, rendered original forms
+and empty Company Forms tab in the ignored generated-artifacts directory.
