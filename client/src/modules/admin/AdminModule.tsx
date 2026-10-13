@@ -3,6 +3,8 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { readListVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
+import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -3413,20 +3415,36 @@ const AdminModuleInner = (): JSX.Element => {
     enabled: selectedAdminPage === "forms",
   });
 
-  const { data: allFormVersions = [] } = useQuery<CompanyFormVersion[]>({
-    queryKey: ["/api/v2/admin/form-versions-all", formIds],
+  const versionQueryKey = ["/api/v2/admin/form-versions-all", formIds];
+  const { data: versionResults, error: versionLoadError } = useQuery<Record<number, VersionLoadResult>>({
+    queryKey: versionQueryKey,
     queryFn: async () => {
-      if (formIds.length === 0) return [];
+      if (formIds.length === 0) return {};
       const results = await Promise.all(
         formIds.map(async (fid) => {
           const response = await apiRequest("GET", `/api/v2/admin/forms/${fid}/versions`);
-          return response.json();
+          return [fid, { state: "loaded", versions: readListVersions(await response.json()) }];
         })
       );
-      return results.flat();
+      return Object.fromEntries(results);
     },
     enabled: selectedAdminPage === "forms" && formIds.length > 0,
   });
+  const allFormVersions = useMemo(() => Object.values(versionResults || {})
+    .flatMap(result => result.state === "loaded" ? result.versions : []), [versionResults]);
+  const versionState = (id: number): VersionLoadResult["state"] =>
+    versionResults?.[id]?.state ?? (versionLoadError ? "error" : "loading");
+  const retryFormVersions = async (id: number) => {
+    const setResult = (result: VersionLoadResult) => rq.setQueryData<Record<number, VersionLoadResult>>(
+      versionQueryKey, old => ({ ...old, [id]: result }));
+    setResult({ state: "loading" });
+    try {
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${id}/versions`);
+      setResult({ state: "loaded", versions: readListVersions(await response.json()) });
+    } catch {
+      setResult({ state: "error" });
+    }
+  };
 
   // Transform forms data to create separate rows for each rank group with category grouping
   // Filters out archived rank groups but keeps form rows visible even when all rank groups are archived
@@ -3438,31 +3456,8 @@ const AdminModuleInner = (): JSX.Element => {
         .filter(rg => rg.formId === formId && rg.archivedAt == null && !!rg.name && rg.name.trim().length > 0);
     };
 
-    const getLatestVersionForRankGroup = (rankGroupId: number, formId: number): { versionNo: string; versionDate: string } | null => {
-      const versions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rankGroupId && v.status === 'released'
-      );
-      if (versions.length === 0) return null;
-      const latest = versions.reduce((max, v) => {
-        const vNo = parseInt(v.versionNo, 10);
-        const maxNo = parseInt(max.versionNo, 10);
-        return vNo > maxNo ? v : max;
-      }, versions[0]);
-      return { versionNo: latest.versionNo, versionDate: latest.versionDate };
-    };
-
-    // Show the Draft pill whenever the rank group has no released version yet
-    // (either a real in-progress draft exists, OR the rank group has nothing
-    // saved at all — in which case the Form Editor synthesizes a v00 Draft
-    // placeholder). Keeps this list consistent with the editor's state.
-    const hasDraftForRankGroup = (rankGroupId: number, formId: number): boolean => {
-      const rgVersions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rankGroupId
-      );
-      const hasRealDraft = rgVersions.some(v => v.status === 'draft');
-      const hasReleased = rgVersions.some(v => v.status === 'released');
-      return hasRealDraft || !hasReleased;
-    };
+    const getVersion = (formId: number, rankGroupId: number | null) =>
+      storedStandardVersion(allFormVersions.filter(v => v.formId === formId), rankGroupId);
 
     // Group forms by category first
     const formsByCategory = formsData.filter(form => form.category !== "dynamic").reduce((acc, form) => {
@@ -3514,8 +3509,8 @@ const AdminModuleInner = (): JSX.Element => {
         const activeRankGroups = getActiveRankGroupsForForm(form.id);
         if (activeRankGroups.length > 0) {
           activeRankGroups.forEach((rankGroup, index) => {
-              const rgVersion = getLatestVersionForRankGroup(rankGroup.id, form.id);
-              const hasDraft = hasDraftForRankGroup(rankGroup.id, form.id);
+              const rgVersion = getVersion(form.id, rankGroup.id);
+              const hasDraft = rgVersion?.status === "draft";
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index,
@@ -3523,12 +3518,8 @@ const AdminModuleInner = (): JSX.Element => {
                 expandedRankGroup: rankGroup.name,
                 rankGroup: rankGroup.name,
                 rankGroupId: rankGroup.id,
-                versionNo: rgVersion?.versionNo || '00',
-                versionDate: rgVersion?.versionDate || (() => {
-                  const d = new Date();
-                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                  return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
-                })(),
+                versionNo: rgVersion?.versionNo ?? "",
+                versionDate: rgVersion?.versionDate ?? "",
                 hasDraft,
                 isFirstInGroup: index === 0,
                 groupSize: activeRankGroups.length,
@@ -3544,6 +3535,9 @@ const AdminModuleInner = (): JSX.Element => {
           // placeholder row and the existing "+" action.
           expanded.push({
             ...form,
+            versionNo: getVersion(form.id, null)?.versionNo ?? "",
+            versionDate: getVersion(form.id, null)?.versionDate ?? "",
+            hasDraft: getVersion(form.id, null)?.status === "draft",
             id: form.id * 1000,
             originalFormId: form.id,
             expandedRankGroup: '',
@@ -3570,7 +3564,7 @@ const AdminModuleInner = (): JSX.Element => {
       const latest = [...versions].sort((a, b) => Number(b.versionNo) - Number(a.versionNo))[0];
       const released = versions.some(version => version.status === "released");
       const draft = versions.some(version => version.status === "draft");
-      return { form, latest, status: !released ? "Not released" : draft ? "Released · draft in progress" : "Released" };
+      return { form, latest, status: versions.length === 0 ? "No versions" : !released ? "Not released" : draft ? "Released · draft in progress" : "Released" };
     }), [formsData, allFormVersions, showArchivedCompany]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
@@ -3681,7 +3675,8 @@ const AdminModuleInner = (): JSX.Element => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/form-versions-all"] });
       rq.setQueryData<CompanyForm[]>(["/api/v2/admin/forms"], old => [form, ...(old || [])]);
-      rq.setQueryData<CompanyFormVersion[]>(["/api/v2/admin/form-versions-all", formIds], old => [...(old || []), version]);
+      rq.setQueryData<Record<number, VersionLoadResult>>(versionQueryKey,
+        old => ({ ...old, [form.id]: { state: "loaded", versions: [version] } }));
       setShowCreateFormDialog(false);
       setNewFormName("");
       setNewFormDescription("");
@@ -8462,11 +8457,13 @@ const AdminModuleInner = (): JSX.Element => {
               <TableRow key={form.id} data-testid={`company-form-row-${form.id}`}>
                 <TableCell className="text-xs font-semibold">{form.name}</TableCell>
                 <TableCell className="text-xs">{form.description || "—"}</TableCell>
-                <TableCell className="text-xs">{latest ? `v${latest.versionNo}` : "—"}</TableCell>
-                <TableCell className="text-xs">{latest?.versionDate || "—"}</TableCell>
+                <TableCell className="text-xs">{versionState(form.id) === "loaded"
+                  ? latest ? `v${latest.versionNo}` : "No versions"
+                  : <VersionLoadStatus state={versionState(form.id)} retry={() => void retryFormVersions(form.id)} />}</TableCell>
+                <TableCell className="text-xs">{versionState(form.id) === "loaded" ? latest?.versionDate || "—" : "—"}</TableCell>
                 <TableCell>
                   <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${status === "Not released" ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-emerald-50 text-emerald-800 border-emerald-200"}`} data-testid={`company-status-${form.id}`}>
-                    {status}
+                    {versionState(form.id) === "loaded" ? status : "—"}
                   </span>
                   {form.archivedAt && <span className="ml-2 text-xs text-gray-500">Archived</span>}
                 </TableCell>
@@ -8701,8 +8698,10 @@ const AdminModuleInner = (): JSX.Element => {
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       <div className="flex items-center gap-2">
-                        <span>{form.versionNo}</span>
-                        {form.hasDraft && (
+                        {versionState(form.originalFormId) === "loaded"
+                          ? <span>{form.versionNo ? `v${form.versionNo}` : "No versions"}</span>
+                          : <VersionLoadStatus state={versionState(form.originalFormId)} retry={() => void retryFormVersions(form.originalFormId)} />}
+                        {versionState(form.originalFormId) === "loaded" && form.hasDraft && (
                           <span
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
                             data-testid={`badge-draft-${form.id}`}
@@ -8713,7 +8712,7 @@ const AdminModuleInner = (): JSX.Element => {
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
-                      {form.versionDate}
+                      {versionState(form.originalFormId) === "loaded" ? form.versionDate || "—" : "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2 justify-center">
