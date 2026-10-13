@@ -242,3 +242,38 @@ The browser verification passed using the original parent Office/Admin account.
 Independent post-preview SQL rechecked **14,269 kept records**, with zero content
 differences, all 252 public-table counts matching the execution, 195 COMPLETED
 checks, zero requirements, no retained test schemas and enforcement enabled.
+
+## Subsequent, separately approved historical-import-vessel cleanup
+
+On 13 October 2026, a fresh backup was written outside Git under
+`generated-artifacts/private-db-backups/`. A restore into a separate scratch
+database matched counts in all **253 backed-up tables**; the scratch database
+was dropped before the deletion. The backup is retained privately.
+
+One recorded maintenance transaction removed only the previously retained
+`Import-744535d0-841a-11ed-aa7c-7003bca91a866` vessel, its three
+assignments (two already soft-deleted Planned and one Cancelled), the
+Cancelled assignment's rule-context row, and 24 empty **Test Officer**
+planning rows exclusively owned by the removed vessel. No seafarer row was
+removed. The vessel 02 incumbent fixture, its assignment, planning row 1112,
+rotation entry 473, archive 414 and the real reliever's records were excluded.
+
+| Table | Before | Removed | After |
+|---|---:|---:|---:|
+| `master_vessels` | 10 | 1 | 9 |
+| `crew_assignments` | 244 | 3 | 241 |
+| `crew_assignment_rule_context` | 57 | 1 | 56 |
+| `vessel_planning_v2` | 131 | 24 | 107 |
+
+The transaction compared exact row-content fingerprints for **15,022 kept
+records across all 252 public tables**. All matched. Declared foreign keys
+and nested/free-text UUID references to removed records were checked, with
+zero remaining. User triggers temporarily suspended for the frozen context
+were restored; foreign-key constraints were never disabled. The final vessel
+list is exactly vessel 02 through vessel 10.
+
+The single committed run and per-table before/after fingerprints are recorded
+privately in `generated-artifacts/private-db-backups/` as the
+`import-vessel-execute-*.json` report. The original cleanup's counts above
+remain historical measurements taken *before* this later, narrowly approved
+removal; they are not the current vessel/assignment/planning counts.
