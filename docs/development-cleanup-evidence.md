@@ -187,7 +187,7 @@ Run `d27e14ef-c21d-4547-a55f-e64614726584`, 13 October 2026,
 
 The approved dependency closure retains the import vessel, planning ID 1112,
 its incumbent fixture seafarer, incumbent assignment, captured rule context,
-source sea-service row and creator user ID 25. The protected rotation entry
+source sea-service row and creator user ID 99. The protected rotation entry
 473 and archive 414 remain unchanged. Personal names and detailed dependency
 keys are not published in this repository.
 
@@ -237,3 +237,8 @@ Closing verification uses `scripts/verify-cleaned-forms-preview.mjs` against the
 existing main preview and original parent Office account. It creates no fixtures
 or grants and records the checked HEAD, backend start, rendered original forms
 and empty Company Forms tab in the ignored generated-artifacts directory.
+
+The browser verification passed using the original parent Office/Admin account.
+Independent post-preview SQL rechecked **14,269 kept records**, with zero content
+differences, all 252 public-table counts matching the execution, 195 COMPLETED
+checks, zero requirements, no retained test schemas and enforcement enabled.
