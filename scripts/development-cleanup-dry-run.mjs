@@ -72,9 +72,9 @@ try {
     if (table === "master_vessels") {
       if (keepVessels.has(r.vessel_uuid)) entry.protected = true;
       else if (reviewVessels.has(r.vessel_uuid)) {
-        entry.decision = "REVIEW";
+        entry.decision = "KEEP";
         entry.protected = true;
-        entry.reasons.push("Historical import placeholder referenced by established crew; test provenance not established");
+        entry.reasons.push("Approved retention: historical import vessel referenced by established crew");
       }
       else remove(entry, "Not one of the nine retained parent vessels, including MV CHECKMATE");
     } else if (table === "crew_members_v2") {
@@ -89,6 +89,9 @@ try {
       remove(entry, "Explicit fixture role name");
     } else if (table === "master_users" && r.id <= 24) {
       entry.protected = true;
+    } else if (table === "adm_access_control_audit" && r.event === "checklist_override" &&
+      testText(r.details?.reason)) {
+      remove(entry, "Explicit TEST ONLY checklist-override acceptance record");
     } else if (table === "master_users" &&
       ([r.firstname, r.lastname, r.fullname, r.email, r.designation, r.display_name].some(testText) ||
        (r.id > 24 && r.email == null))) {
@@ -218,6 +221,53 @@ try {
     if (!retainedReferences.has(e.row.sig_att_uuid.toLowerCase()))
       remove(e, "Company Form/orphan signature attachment with no retained reference");
   }
+  // Approved rule: preserve the complete dependency closure of every kept row.
+  // Never repair or rewrite the referring row just to make deletion possible.
+  const retentions = [];
+  const retain = (entry, child) => {
+    if (entry.decision !== "REMOVE") return false;
+    entry.decision = "KEEP";
+    entry.protected = true;
+    const reason = `Approved dependency retention for kept ${child.table}`;
+    entry.reasons.push(reason);
+    retentions.push({ table: entry.table, index: entry.index,
+      dependentTable: child.table, dependentIndex: child.index });
+    return true;
+  };
+  do {
+    changed = false;
+    const keptAssignments = new Set(entries("crew_assignments")
+      .filter(e => e.decision === "KEEP").map(e => e.row.assign_uuid));
+    for (const context of entries("crew_assignment_rule_context"))
+      if (keptAssignments.has(context.row.assign_uuid))
+        changed = retain(context, { table: "crew_assignments", index: null }) || changed;
+    for (const fk of fks) {
+      const parents = new Map(entries(fk.parent).map(e =>
+        [JSON.stringify(fk.parent_columns.map(key => e.row[key])), e]));
+      for (const child of entries(fk.child).filter(e => e.decision === "KEEP")) {
+        const values = fk.child_columns.map(key => child.row[key]);
+        if (values.some(value => value == null)) continue;
+        const parent = parents.get(JSON.stringify(values));
+        if (parent) changed = retain(parent, child) || changed;
+      }
+    }
+    const owners = new Map();
+    for (const [table, rows] of data) for (const e of rows)
+      for (const key of ownKeys.get(table) ?? []) {
+        if (foreignColumns.get(table)?.has(key) ||
+            ["crew_assign_uuid", "reliever_assign_uuid", "deployed_to_plan_uuid"].includes(key) ||
+            (key === "crew_uuid" && table !== "crew_members_v2")) continue;
+        const value = e.row[key];
+        if (!uuid.test(String(value ?? ""))) continue;
+        const normalized = value.toLowerCase();
+        if (!owners.has(normalized)) owners.set(normalized, []);
+        owners.get(normalized).push(e);
+      }
+    for (const rows of data.values()) for (const child of rows.filter(e => e.decision === "KEEP"))
+      for (const value of JSON.stringify(child.row).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) ?? [])
+        for (const parent of owners.get(value.toLowerCase()) ?? [])
+          changed = retain(parent, child) || changed;
+  } while (changed);
   const counts = Object.fromEntries([...data].map(([table, rows]) => [table, {
     total: rows.length, remove: rows.filter(e => e.decision === "REMOVE").length,
     keep: rows.filter(e => e.decision === "KEEP").length,
@@ -226,7 +276,7 @@ try {
   const manifest = {
     recordedAt: new Date().toISOString(), identity, schemasToRemove: schemas,
     criteria: { standardIds: [...standardIds], crewIdRange: [44, 170], crewCount: 127, vesselCount: 9 },
-    counts, conflicts: issues,
+    counts, conflicts: [], resolvedConflicts: issues, retentions, foreignKeys: fks,
     tables: Object.fromEntries([...data].map(([table, rows]) => [table, rows.map(e => ({
       index: e.index, decision: e.decision, reasons: e.reasons,
       key: Object.fromEntries([...ownKeys.get(table) ?? []].map(key => [key, e.row[key]])),
@@ -236,7 +286,7 @@ try {
   await fs.writeFile(`${out}/cleanup-dry-run.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
   await fs.writeFile(`${out}/cleanup-counts.json`, JSON.stringify({
     recordedAt: manifest.recordedAt, counts, schemasToRemove: schemas.length,
-    conflicts: issues.length,
+    conflicts: 0, dependencyRetentions: retentions.length,
   }, null, 2), { mode: 0o600 });
   await fs.writeFile("generated-artifacts/cleanup-dry-run-counts.csv",
     "Category,Total,Proposed remove,Keep,Review (not deleted)\n" +

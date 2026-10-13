@@ -1394,6 +1394,14 @@ describe("assignment vessel UUID guard", () => {
   });
 
   it("returns 400 for invalid crew-pool API creates/updates and stores the master casing", async () => {
+    // Own this prerequisite: a reset test database intentionally has no
+    // original parent vessel 04. Do not depend on a later test seeding it.
+    const validVessel = u();
+    importedVesselUuids.push(validVessel);
+    await db.query(
+      "INSERT INTO master_vessels(vessel_uuid,vessel,is_deleted) VALUES ($1,'Assignment casing API fixture',false)",
+      [validVessel],
+    );
     const crewUuid = u();
     crewUuids.push(crewUuid);
     await insert("crew_members_v2", { crew_uuid: crewUuid, emp_no: `EMP-${crewUuid}` });
@@ -1407,16 +1415,16 @@ describe("assignment vessel UUID guard", () => {
     }
     const created = await request(server).post(endpoint)
       .set("Authorization", `Bearer ${token()}`)
-      .send({ vesselUuid: vessel04.toUpperCase(), assignmentType: "Planned" });
+      .send({ vesselUuid: validVessel.toUpperCase(), assignmentType: "Planned" });
     expect(created.status).toBe(201);
-    expect(created.body.vesselUuid).toBe(vessel04);
+    expect(created.body.vesselUuid).toBe(validVessel);
     assignUuids.push(created.body.assignUuid);
     const rejected = await request(server).patch(`${endpoint}/${created.body.assignUuid}`)
       .set("Authorization", `Bearer ${token()}`)
       .send({ vesselUuid: malformed });
     expect(rejected.status).toBe(400);
     expect((await db.query("SELECT vessel_uuid FROM crew_assignments WHERE assign_uuid=$1", [created.body.assignUuid]))
-      .rows[0].vessel_uuid).toBe(vessel04);
+      .rows[0].vessel_uuid).toBe(validVessel);
   });
 
   it("rejects invalid deploys atomically and deploys successfully to vessel 04", async () => {

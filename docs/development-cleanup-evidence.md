@@ -153,3 +153,28 @@ Raw SQL re-counted all **2,736 tables** against the backup snapshot before final
 review: **zero differences**. The dry run itself has no development write path.
 Deletion remains unauthorized, and these exceptions must be resolved before a
 single-run executor can satisfy the requested final invariants.
+
+## Approved step 3: pre-deletion gate
+
+Approval retains the historical import vessel and the complete dependency closure
+of kept records. No referring row is rewritten. The revised manifest records
+each newly retained dependency separately. Explicit TEST ONLY checklist-override
+audit entries are fixture records, not reasons to retain their deleted forms.
+Subject/stage catalogues and rollout configuration remain unchanged.
+
+The 161 → 164 full-suite increase consists of:
+
+1. `promotions.test.ts`, “rejects Promotion Type changes after Part B has been
+   submitted”: setup expects an approved review without furnishing the released
+   Promotion form pin required by the service; it receives 400 instead of 201.
+2. `reliever-unassign-assignment.test.ts`, “rejects malformed and absent master IDs
+   in SQL, canonicalizes case, and preserves legacy unrelated updates”: expects
+   malformed historical assignments to exist; the isolated database has none.
+3. Same file, “returns 400 for invalid crew-pool API creates/updates and stores the
+   master casing”: depended on original vessel 04, seeded only by a later test.
+   It now owns a unique synthetic vessel and removes it through normal teardown.
+   The success, refusal, persisted-value and casing assertions are unchanged.
+
+Pre-deletion full-suite run on 13 October: **1,233 passed, 163 failed, 67 pending**.
+Only the third defect above was fixed, as requested. The remaining baseline
+failures are not claimed green.
