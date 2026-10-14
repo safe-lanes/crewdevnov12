@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { generateTemplate } from "../../server/v2/recruitment/import/workbook";
 import { BLOCKS, cellLocation, labelLocation } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
@@ -74,13 +75,35 @@ describe("Professional application workbook styling", () => {
       } else expect(cell.value).toBe(field.label);
     });
     expect(sheet.getCell("A4").text).toBe(FORM_LEGEND);
-    expect(JSON.stringify(sheet.getCell("A22").note)).toContain("Married");
+    expect(sheet.getCell("A26").text).toBe("Spouse first name and surname are required if Married.");
+    expect(sheet.getCell("A229").text).toContain("Only populated cells and rows are saved.");
+    expect(sheet.getCell("A230").text).toContain("YYYY-MM-DD or DD-MMM-YYYY");
+  });
+  it("has no cell notes or comment XML after downloading and saving again", async () => {
+    const book = await workbook();
+    const saved = Buffer.from(await book.xlsx.writeBuffer());
+    const reopened = new ExcelJS.Workbook();
+    await reopened.xlsx.load(saved as any);
+    for (const current of [book, reopened]) {
+      const notedCells: string[] = [];
+      current.worksheets[0].eachRow({ includeEmpty: true }, row => row.eachCell({ includeEmpty: true }, cell => {
+        if (cell.note) notedCells.push(cell.address);
+      }));
+      expect(notedCells).toEqual([]);
+    }
+    for (const bytes of [template, saved]) {
+      const zip = await JSZip.loadAsync(bytes);
+      expect(Object.keys(zip.files).filter(name => /comments[^/]*\.xml$/i.test(name))).toEqual([]);
+    }
   });
   it("accepts old plain labels/legend and new rich labels with identical parsed values and fingerprint", async () => {
     const modern = await workbook(), legacy = await workbook();
     const sheet = legacy.worksheets[0];
     for (const block of BLOCKS) block.fields.forEach((field, j) => { sheet.getCell(labelLocation(block, j)).value = field.label; });
     sheet.getCell("A4").value = LEGACY_LEGEND;
+    sheet.getCell("A8").note = "Required for every application.";
+    sheet.getCell("F8").note = "Blank values are not saved.";
+    sheet.getCell("I51").note = "Use a real Excel date, YYYY-MM-DD or DD-MMM-YYYY.";
     const current = await parse(modern), previous = await parse(legacy);
     expect(current.isValid).toBe(true);
     expect(previous).toEqual(current);

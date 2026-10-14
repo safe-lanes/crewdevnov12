@@ -24,6 +24,11 @@ async function main() {
     await workbook.xlsx.load(bytes);
     assert.equal(workbook.worksheets.length, 1);
     const sheet = workbook.getWorksheet("APPLICATION FORM");
+    const notedCells = [];
+    sheet.eachRow({ includeEmpty: true }, row => row.eachCell({ includeEmpty: true }, cell => {
+      if (cell.note) notedCells.push(cell.address);
+    }));
+    assert.deepEqual(notedCells, [], "Downloaded template must not contain cell notes");
     assert.equal(sheet.getCell("A2").font.name, "Calibri");
     assert.equal(sheet.getCell("A2").font.size, 16);
     assert.equal(sheet.getCell("A2").fill.fgColor.argb, "FF808080");
@@ -51,7 +56,7 @@ async function main() {
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

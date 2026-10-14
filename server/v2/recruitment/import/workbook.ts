@@ -71,11 +71,8 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
   });
   for (const block of BLOCKS) {
     block.fields.forEach((field, j) => {
-      const cell = box(block.placements[j].label,
+      box(block.placements[j].label,
         isRequiredLabel(block.entity, field.key) ? requiredLabel(field.label) : field.label, "label", !!block.rows);
-      if (isRequiredLabel(block.entity, field.key)) cell.note = block.entity === "family"
-        ? "Required only when marital status is Married."
-        : block.entity === "candidate" ? "Required for every application." : "Required only when this row is populated. Leave unused rows blank.";
     });
     if (block.rows) {
       sheet.getRow(block.start - (block.entity === "sea" ? 2 : 1)).height = 40;
@@ -85,7 +82,6 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
       block.fields.forEach((field, j) => {
         const cell = box(inputRange(block, j, row), null);
         cell.numFmt = field.date ? "dd-mmm-yyyy" : "@";
-        cell.note = field.date ? "Use a real Excel date, YYYY-MM-DD or DD-MMM-YYYY." : "Blank values are not saved.";
         if (field.choices || (field.catalog && ranges[field.catalog])) cell.dataValidation = {
           type: "list", allowBlank: true, showErrorMessage: true, errorTitle: "Select a valid value",
           error: "Choose a value from the dropdown.", formulae: [field.choices ? `"${field.choices.join(",")}"` : ranges[field.catalog!]],
