@@ -219,53 +219,53 @@ export default function ContractsListPage({
             Contracts are created by the Payroll Run sync, not here.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={vesselFilter} onValueChange={setVesselFilter}>
-            <SelectTrigger
-              className="w-[220px]"
-              data-testid="select-contracts-vessel"
-            >
-              <SelectValue
-                placeholder={vesselsLoading ? "Loading vessels…" : "Vessel"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All vessels</SelectItem>
-              {vessels.map((v: any) => (
-                <SelectItem key={v.entryId} value={v.entryId}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger
-              className="w-[160px]"
-              data-testid="select-contracts-status"
-            >
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-            onClick={() => {
-              setVesselFilter("__all__");
-              setStatusFilter("__all__");
-            }}
-            data-testid="button-clear-filters"
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <Select value={vesselFilter} onValueChange={setVesselFilter}>
+          <SelectTrigger
+            className="h-9 w-[220px] bg-white"
+            data-testid="select-contracts-vessel"
           >
-            Clear
-          </Button>
-        </div>
+            <SelectValue
+              placeholder={vesselsLoading ? "Loading vessels…" : "Vessel"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All vessels</SelectItem>
+            {vessels.map((v: any) => (
+              <SelectItem key={v.entryId} value={v.entryId}>
+                {v.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger
+            className="h-9 w-[160px] bg-white"
+            data-testid="select-contracts-status"
+          >
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            setVesselFilter("__all__");
+            setStatusFilter("__all__");
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
       </div>
 
       {/* Bulk action bar — visible when unconfirmed rows are selected */}
