@@ -180,15 +180,7 @@ export const DaExternalResultsDateTimeInput =
           const next = resolve(draft);
           const error = pickerInvalid ? FORMAT_MESSAGE : reason(next);
           setWarning(error);
-          if (error === EXTERNAL_RESULTS_EARLY_MESSAGE) {
-            setDraft(display(value));
-            if (pickerRef.current) {
-              pickerRef.current.value =
-                externalResultsDateTimeKey(value)
-                  ? value.slice(0, 16)
-                  : '';
-            }
-          } else if (!error && next !== null) {
+          if (!error && next !== null) {
             setDraft(display(next));
           }
         }
