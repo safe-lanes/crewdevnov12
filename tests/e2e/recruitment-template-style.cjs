@@ -26,7 +26,8 @@ async function main() {
     const sheet = workbook.getWorksheet("APPLICATION FORM");
     assert.equal(sheet.getCell("A2").font.name, "Calibri");
     assert.equal(sheet.getCell("A2").font.size, 16);
-    assert.equal(sheet.getCell("A10").fill.fgColor.argb, "FFDCE3E9");
+    assert.equal(sheet.getCell("A10").fill.fgColor.argb, "FF808080");
+    assert.equal(sheet.getCell("A28").fill.fgColor.argb, "FFE7E7E7");
     assert.equal(sheet.getCell("A8").text, "First name *");
     assert.equal(sheet.getCell("A8").value.richText[1].font.color.argb, "FFC62828");
     assert.equal(sheet.getCell("A5").text, "Gender");

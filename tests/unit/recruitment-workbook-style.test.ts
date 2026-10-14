@@ -24,10 +24,13 @@ async function parse(book: ExcelJS.Workbook) {
 describe("Professional application workbook styling", () => {
   it("round trips the font hierarchy and separate neutral title/section/label/input fills", async () => {
     const sheet = (await workbook()).worksheets[0];
+    expect(FORM_COLORS.section).toBe("FF808080");
+    expect(FORM_COLORS.label).toBe("FFE7E7E7");
     expect(sheet.getCell("A2").font).toMatchObject({ name: "Calibri", size: 16, bold: true });
     for (const address of ["A10", "A132", "A178", "A210", "A228"]) {
       expect(sheet.getCell(address).font).toMatchObject({ name: "Calibri", size: 11, bold: true });
       expect(sheet.getCell(address).fill).toMatchObject({ fgColor: { argb: FORM_COLORS.section } });
+      expect(sheet.getCell(address).font.color).toMatchObject({ argb: FORM_COLORS.sectionText });
     }
     expect(sheet.getCell("A2").fill).toMatchObject({ fgColor: { argb: FORM_COLORS.title } });
     for (const block of BLOCKS) block.fields.forEach((_, j) => {

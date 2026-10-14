@@ -1,8 +1,8 @@
 import type ExcelJS from "exceljs";
 
 export const FORM_COLORS = {
-  text: "FF25313C", muted: "FF596773", label: "FFF3F5F7",
-  section: "FFDCE3E9", title: "FFCFD8E1", white: "FFFFFFFF",
+  text: "FF25313C", muted: "FF596773", label: "FFE7E7E7", sectionText: "FF111111",
+  section: "FF808080", title: "FFCFD8E1", white: "FFFFFFFF",
   line: "FFBBC4CD", dotted: "FF9EAAB5", required: "FFC62828",
 } as const;
 export const FORM_LEGEND = "* Required; table fields only when a row is filled. Spouse fields only if Married. Blank cells are not saved.";
@@ -14,7 +14,7 @@ export function styleBox(cell: ExcelJS.Cell, kind: BoxStyle, centered: boolean) 
   cell.font = {
     name: "Calibri", size: kind === "title" ? 16 : kind === "section" ? 11 : kind === "note" || kind === "meta" ? 9 : 10,
     bold: heading || kind === "label",
-    color: { argb: kind === "note" || kind === "meta" ? FORM_COLORS.muted : FORM_COLORS.text },
+    color: { argb: kind === "section" ? FORM_COLORS.sectionText : kind === "note" || kind === "meta" ? FORM_COLORS.muted : FORM_COLORS.text },
   };
   cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb:
     kind === "title" ? FORM_COLORS.title : kind === "section" ? FORM_COLORS.section :
