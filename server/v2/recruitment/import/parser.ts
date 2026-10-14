@@ -4,6 +4,8 @@ import { BLOCKS, VERSION, cellLocation, labelLocation, type Catalogs, type Parse
 import { FORM_SHEET, LOOKUP_START_COLUMN } from "./formLayout";
 import { createTemplateWorkbook } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
+import { isRequiredLabel, ROW_REQUIRED, MARRIED_REQUIRED } from "./requirements";
+import { fixedText, FORM_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export function decodeFile(fileData: unknown, fileName: unknown): Buffer {
@@ -56,17 +58,20 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   // Verify all fixed text once. Labels and instructions are not input data,
   // and merged aliases must not be counted as extra populated cells.
   const fixed = new Set<string>();
+  const labels = new Map(BLOCKS.flatMap(block => block.fields.map((field, j) =>
+    [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key) }] as const)));
   expected.eachRow(row => row.eachCell(cell => {
     if (cell.type === ExcelJS.ValueType.Merge || isLookup(Number(cell.col)) || cell.value === null) return;
     fixed.add(cell.address);
-    if (sheet.getCell(cell.address).value !== cell.value) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
+    const actual = fixedText(sheet.getCell(cell.address).value);
+    const label = labels.get(cell.address);
+    const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
+      : cell.address === "A4" ? actual === FORM_LEGEND || actual === LEGACY_LEGEND
+      : actual !== undefined && actual === fixedText(cell.value);
+    if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
   const today = new Date().toISOString().slice(0, 10);
   for (const block of BLOCKS) {
-    block.fields.forEach((field, j) => {
-      const heading = sheet.getCell(labelLocation(block, j));
-      if (heading.value !== field.label) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading in ${block.sheet}: ${field.label}. Do not move or rename template fields.`);
-    });
     data[block.entity] = [];
     for (let row = 0; row < (block.rows || 1); row++) {
       const record: Record<string, string> = {};
@@ -114,14 +119,8 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
       }
       const present = Object.keys(record).length > 0 || rowErrors.length > 0;
       if (!present) continue;
-      const required: Record<string, string[]> = {
-        candidate: ["firstName"], documents: ["documentName"], visas: ["countryUuid", "visaType"],
-        education: ["qualifications"], licenses: ["certificateDocument"], training: ["trainingCourse"],
-        sea: ["vesselName", "vesselTypeUuid", "rank", "fromDate", "toDate"],
-        children: ["firstName"], vesselTypes: ["vesselTypeUuid"], additional: ["information"],
-      };
-      for (const key of required[block.entity] || []) if (!record[key]) report(key, "Required for a populated row.");
-      if (block.entity === "family" && record.maritalStatus === "Married") for (const key of ["spouseFirstName", "spouseFamilyName"]) if (!record[key]) report(key, "Required when marital status is Married.");
+      for (const key of ROW_REQUIRED[block.entity] || []) if (!record[key]) report(key, "Required for a populated row.");
+      if (block.entity === "family" && record.maritalStatus === "Married") for (const key of MARRIED_REQUIRED) if (!record[key]) report(key, "Required when marital status is Married.");
       if (record.issued && record.expiry && record.expiry < record.issued) report("expiry", "Expiry cannot be earlier than issued date.");
       if (record.fromDate && record.toDate && record.toDate < record.fromDate) report("toDate", "End date cannot be earlier than start date.");
       // Keep workbook row identity for errors while ignoring empty rows.

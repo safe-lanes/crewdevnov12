@@ -9,6 +9,8 @@ import { FORM_SHEET, FORM_LAST_ROW, LOOKUP_START_COLUMN } from "../../server/v2/
 import { candidateFingerprint, persistCandidate, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 import { authorizeImport } from "../../server/v2/recruitment/import/access";
 import { accessControlService } from "../../server/v2/admin/services/accessControlService";
+import { FORM_COLORS } from "../../server/v2/recruitment/import/workbookStyle";
+import { isRequiredLabel } from "../../server/v2/recruitment/import/requirements";
 
 const dbMock = vi.hoisted(() => ({ db: null as any }));
 vi.mock("../../server/v2/db", () => ({ getDb: () => dbMock.db }));
@@ -159,13 +161,14 @@ describe("Recruitment A1-A5 workbook", () => {
     const sheet = book.worksheets[0];
     expect(sheet.getCell("A1").value).toBe(VERSION);
     expect(sheet.getCell("A2").value).toBe("APPLICATION FOR EMPLOYMENT");
-    expect(sheet.getCell("A2").fill).toMatchObject({ fgColor: { argb: "FFC0C0C0" } });
+    expect(sheet.getCell("A2").fill).toMatchObject({ fgColor: { argb: FORM_COLORS.title } });
     expect(sheet.getCell("F8").fill).toMatchObject({ fgColor: { argb: "FFFFFFFF" } });
     expect(sheet.pageSetup.printArea).toBe(`A1:AF${FORM_LAST_ROW}`);
     expect(sheet.getColumn(LOOKUP_START_COLUMN).hidden).toBe(true);
     expect(sheet.getCell("F15").dataValidation.formulae?.[0]).toMatch(/^\$[A-Z]+\$2:\$[A-Z]+\$\d+$/);
     expect(sheet.getCell("AC4").value).toContain("Not imported");
-    for (const block of BLOCKS) block.fields.forEach((field, j) => expect(sheet.getCell(labelLocation(block, j)).value).toBe(field.label));
+    for (const block of BLOCKS) block.fields.forEach((field, j) =>
+      expect(sheet.getCell(labelLocation(block, j)).text).toBe(field.label + (isRequiredLabel(block.entity, field.key) ? " *" : "")));
     const locations = BLOCKS.flatMap(block => Array.from({ length: block.rows || 1 }, (_, row) => block.fields.map((_, j) => cellLocation(block, j, row))).flat());
     expect(new Set(locations).size).toBe(locations.length);
   });

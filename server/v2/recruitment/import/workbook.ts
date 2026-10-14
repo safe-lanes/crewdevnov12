@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
 import { BLOCKS, VERSION, cellLocation, inputRange, type Catalogs } from "./contract";
 import { FORM_SHEET, FORM_LAST_ROW, LOOKUP_START_COLUMN, columnLetter } from "./formLayout";
+import { isRequiredLabel } from "./requirements";
+import { styleBox, requiredLabel, FORM_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
 
 export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
   const book = new ExcelJS.Workbook();
@@ -17,24 +19,24 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
   for (let col = 1; col <= 32; col++) sheet.getColumn(col).width = 4;
   for (let row = 1; row <= FORM_LAST_ROW; row++) sheet.getRow(row).height = 23;
 
-  function box(range: string, value: string | null, grey = false, centered = false) {
+  function box(range: string, value: ExcelJS.CellValue, kind: BoxStyle = "input", centered = false) {
     if (range.split(":")[0] !== range.split(":")[1]) sheet.mergeCells(range);
     const cell = sheet.getCell(range.split(":")[0]);
     cell.value = value;
-    cell.font = { name: "Arial", size: 10, bold: grey, color: { argb: "FF111111" } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: grey ? "FFC0C0C0" : "FFFFFFFF" } };
-    cell.alignment = { vertical: "middle", horizontal: centered ? "center" : "left", wrapText: true };
-    cell.border = {
-      top: { style: "thin", color: { argb: "FF666666" } }, bottom: { style: grey ? "thin" : "dotted", color: { argb: "FF666666" } },
-      left: { style: "thin", color: { argb: "FF666666" } }, right: { style: "thin", color: { argb: "FF666666" } },
-    };
+    styleBox(cell, kind, centered);
     return cell;
   }
-  box("A1:P1", VERSION);
-  box("Q1:AF1", "Template revision: 2 · Recruitment A1–A5", false, true);
-  box("A2:AF3", "APPLICATION FOR EMPLOYMENT", true, true).font = { name: "Arial", size: 16, bold: true };
-  box("A4:AB4", "Note: First name is required. Fill white input boxes; blank cells are not saved.", false, true);
-  box("AC4:AF9", "Photo\nUpload separately\nNot imported", false, true).font = { name: "Arial", size: 9, color: { argb: "FF666666" } };
+  box("A1:P1", VERSION, "meta");
+  box("Q1:AF1", "Template revision: 2 · Recruitment A1–A5", "meta", true);
+  box("A2:AF3", "APPLICATION FOR EMPLOYMENT", "title", true);
+  const legend = box("A4:AB4", FORM_LEGEND, "note", true);
+  legend.value = { richText: [
+    { text: "*", font: { name: "Calibri", size: 9, bold: true, color: { argb: FORM_COLORS.required } } },
+    { text: FORM_LEGEND.slice(1), font: { name: "Calibri", size: 9, color: { argb: FORM_COLORS.muted } } },
+  ] };
+  sheet.getRow(1).height = 20;
+  sheet.getRow(4).height = 32;
+  box("AC4:AF9", "Photo\nUpload separately\nNot imported", "note", true);
   [
     ["A10:P10", "Home Address / Contact — A1"], ["Q10:AF10", "Personal Details — A1"],
     ["A19:P19", "Family Details — A1"], ["Q19:AF19", "Next Of Kin's Detail — A1"],
@@ -43,9 +45,9 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
     ["A149:AF149", "Visas — A2"], ["A161:AF161", "Licenses / DCE — A3"],
     ["A178:AF178", "Training Courses — A3"], ["A210:AF210", "Additional Information — A5"],
     ["A228:AF228", "Guidelines for Filling and Uploading"],
-  ].forEach(([range, title]) => box(range, title, true, true));
-  box("A26:P26", "Spouse first name and surname are required if Married.", false, true);
-  box("A48:AF48", "Enter the latest sea service first, then older services below. Each record has From above To; period is calculated.", false, true);
+  ].forEach(([range, title]) => { box(range, title, "section", true); sheet.getRow(Number(range.match(/\d+/)![0])).height = 26; });
+  box("A26:P26", "Spouse first name and surname are required if Married.", "note", true);
+  box("A48:AF48", "Enter the latest sea service first, then older services below. Each record has From above To; period is calculated.", "note", true);
   [
     "One candidate per workbook. Only populated cells and rows are saved. A populated row must satisfy its required fields.",
     "Dates: real Excel dates, YYYY-MM-DD or DD-MMM-YYYY. Keep phone, document and certificate numbers as text.",
@@ -53,7 +55,7 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
     "Required in populated rows: document type; visa country/type; qualification; license/course; child first name; information.",
     "Sea service requires vessel name/type, rank, From and To. Dates cannot overlap; age and period are calculated.",
     "Upload → validate → confirm. Status is Applied. Photos, bank details, clothing sizes and other unsupported reference fields are not imported.",
-  ].forEach((text, i) => { box(`A${229 + i}:AF${229 + i}`, text); sheet.getRow(229 + i).height = 30; });
+  ].forEach((text, i) => { box(`A${229 + i}:AF${229 + i}`, text, "note"); sheet.getRow(229 + i).height = 30; });
 
   // Lookup labels live on the same worksheet, outside printing and hidden from
   // normal form entry. Uploaded lookup values never authorize/resolve masters.
@@ -68,7 +70,13 @@ export function createTemplateWorkbook(catalogs: Catalogs): ExcelJS.Workbook {
     if (labels.length) ranges[name] = `$${letter}$2:$${letter}$${labels.length + 1}`;
   });
   for (const block of BLOCKS) {
-    block.fields.forEach((field, j) => box(block.placements[j].label, field.label, true, !!block.rows));
+    block.fields.forEach((field, j) => {
+      const cell = box(block.placements[j].label,
+        isRequiredLabel(block.entity, field.key) ? requiredLabel(field.label) : field.label, "label", !!block.rows);
+      if (isRequiredLabel(block.entity, field.key)) cell.note = block.entity === "family"
+        ? "Required only when marital status is Married."
+        : block.entity === "candidate" ? "Required for every application." : "Required only when this row is populated. Leave unused rows blank.";
+    });
     if (block.rows) {
       sheet.getRow(block.start - (block.entity === "sea" ? 2 : 1)).height = 40;
       if (block.entity === "sea") sheet.getRow(50).height = 24;
