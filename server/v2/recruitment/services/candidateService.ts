@@ -442,7 +442,10 @@ export class CandidateService {
         masterNationalities,
         and(eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid), eq(masterNationalities.isDeleted, false))
       )
-      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
+      .where(and(
+        eq(recruitmentCandidatesV2.recCanUuid, recCanUuid),
+        eq(recruitmentCandidatesV2.isDeleted, false)
+      ))
       .limit(1);
 
     if (result.length === 0) return undefined;

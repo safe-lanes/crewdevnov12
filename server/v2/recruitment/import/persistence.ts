@@ -23,13 +23,27 @@ export function candidateFingerprint(parsed: Parsed): string {
 }
 export class DuplicateImportError extends Error {}
 
+async function availableImportUuid(tx: any, fingerprint: string): Promise<string> {
+  let uuid = fingerprint; // Generation zero stays compatible with existing imports.
+  for (;;) {
+    const [existing] = await tx.select().from(tables.recruitmentCandidatesV2)
+      .where(eq(tables.recruitmentCandidatesV2.recCanUuid, uuid)).limit(1);
+    if (!existing) return uuid;
+    if (existing.isDeleted !== true) {
+      throw new DuplicateImportError("This candidate workbook was already imported. Open the active candidate; it has not been changed.");
+    }
+    // Preserve each tombstone and derive a new application identity. Subsequent
+    // retries walk the same retained history and still find the active generation.
+    // This relies on normal soft deletion, not hard deletion of intermediate history.
+    uuid = v5(`reimport:${uuid}`, NAMESPACE);
+  }
+}
+
 // All database reads/writes here use the supplied tenant transaction, never another repository connection.
 export async function writeCandidate(tx: any, parsed: Parsed, auditUuid: string | null): Promise<string> {
-  const recCanUuid = candidateFingerprint(parsed);
   await tx.execute(sql`SELECT pg_advisory_xact_lock(9522026)`);
+  const recCanUuid = await availableImportUuid(tx, candidateFingerprint(parsed));
   const core = cleanRecord(parsed.data.candidate[0]);
-  const existing = await tx.select().from(tables.recruitmentCandidatesV2).where(eq(tables.recruitmentCandidatesV2.recCanUuid, recCanUuid)).limit(1);
-  if (existing.length) throw new DuplicateImportError("This candidate workbook was already imported. Open the existing candidate; it has not been changed.");
   if (core.dob && core.familyName) {
     const matches = await tx.select({ id: tables.recruitmentCandidatesV2.id }).from(tables.recruitmentCandidatesV2).where(and(
       eq(tables.recruitmentCandidatesV2.isDeleted, false),
