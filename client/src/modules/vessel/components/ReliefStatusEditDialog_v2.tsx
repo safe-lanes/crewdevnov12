@@ -22,6 +22,7 @@ import {
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
 import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -728,13 +729,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
-                                        {renderDateSelector(
-                                            field,
-                                            undefined,
-                                            watchedSignOnStatus === "Signed On"
-                                                ? format(new Date(), "yyyy-MM-dd")
-                                                : undefined,
-                                        )}
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign On date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                undefined,
+                                                watchedSignOnStatus === "Signed On"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                 </FormItem>
                             )}

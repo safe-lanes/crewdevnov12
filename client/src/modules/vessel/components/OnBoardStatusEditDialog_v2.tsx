@@ -12,6 +12,7 @@ import {
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
 import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -866,13 +867,18 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 <FormItem>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
-                                        {renderDateSelector(
-                                            field,
-                                            getPickerDay(parseDate(form.getValues("signOnDate") || "")),
-                                            watchedReliefStatus === "Signed Off"
-                                                ? format(new Date(), "yyyy-MM-dd")
-                                                : undefined,
-                                        )}
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign Off date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                getPickerDay(parseDate(form.getValues("signOnDate") || "")),
+                                                watchedReliefStatus === "Signed Off"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                     <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
                                 </FormItem>
