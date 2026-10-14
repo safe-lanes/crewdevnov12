@@ -229,7 +229,7 @@ export default function ContractsListPage({
           <Select value={vesselFilter} onValueChange={setVesselFilter}>
             <SelectTrigger
               id="select-contracts-vessel"
-              className="h-9 w-[220px] bg-white"
+              className="h-8 w-[220px] text-xs"
               data-testid="select-contracts-vessel"
             >
               <SelectValue
@@ -253,7 +253,7 @@ export default function ContractsListPage({
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
               id="select-contracts-status"
-              className="h-9 w-[160px] bg-white"
+              className="h-8 w-[160px] text-xs"
               data-testid="select-contracts-status"
             >
               <SelectValue placeholder="Status" />

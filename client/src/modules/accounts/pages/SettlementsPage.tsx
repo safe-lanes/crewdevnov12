@@ -488,7 +488,7 @@ export default function SettlementsPage() {
             <Select value={filterVessel} onValueChange={setFilterVessel}>
               <SelectTrigger
                 id="select-filter-vessel"
-                className="w-[200px] h-9"
+                className="w-[200px] h-8 text-xs"
                 data-testid="select-filter-vessel"
               >
                 <SelectValue placeholder="All vessels" />
@@ -510,7 +510,7 @@ export default function SettlementsPage() {
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger
                 id="select-filter-status"
-                className="w-[160px] h-9"
+                className="w-[160px] h-8 text-xs"
                 data-testid="select-filter-status"
               >
                 <SelectValue placeholder="All statuses" />

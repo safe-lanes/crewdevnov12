@@ -154,7 +154,7 @@ export default function FleetSummaryPage() {
           <Label className="text-xs text-gray-600">Vessel</Label>
           <Select value={vesselUuid} onValueChange={setVesselUuid}>
             <SelectTrigger
-              className="h-9 w-64 bg-white"
+              className="h-8 w-64 text-xs"
               data-testid="select-fleet-vessel"
             >
               <SelectValue
@@ -177,7 +177,7 @@ export default function FleetSummaryPage() {
             type="month"
             value={period}
             onChange={(e) => e.target.value && setPeriod(e.target.value)}
-            className="h-9 w-44 bg-white"
+            className="h-8 w-44 bg-transparent px-3 py-2 text-xs md:text-xs"
             data-testid="input-fleet-period"
           />
         </div>

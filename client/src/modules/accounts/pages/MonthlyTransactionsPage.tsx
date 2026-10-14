@@ -593,7 +593,7 @@ export default function MonthlyTransactionsPage() {
           <Label className="text-xs text-gray-600">Origin</Label>
           <Select value={originFilter} onValueChange={setOriginFilter}>
             <SelectTrigger
-              className="h-9 w-32 bg-white"
+              className="h-8 w-32 text-xs"
               data-testid="select-filter-origin"
             >
               <SelectValue />
@@ -609,7 +609,7 @@ export default function MonthlyTransactionsPage() {
           <Label className="text-xs text-gray-600">Status</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
-              className="h-9 w-32 bg-white"
+              className="h-8 w-32 text-xs"
               data-testid="select-filter-status"
             >
               <SelectValue />

@@ -56,7 +56,7 @@ export default function VesselPeriodBar({
         <Label className="text-xs text-gray-600">Vessel</Label>
         <Select value={vesselUuid} onValueChange={onVesselChange}>
           <SelectTrigger
-            className="h-9 w-64 bg-white"
+            className="h-8 w-64 text-xs"
             data-testid="select-vessel"
           >
             <SelectValue
@@ -78,7 +78,7 @@ export default function VesselPeriodBar({
           type="month"
           value={period}
           onChange={(e) => e.target.value && onPeriodChange(e.target.value)}
-          className="h-9 w-44 bg-white"
+          className="h-8 w-44 bg-transparent px-3 py-2 text-xs md:text-xs"
           data-testid="input-period"
         />
       </div>

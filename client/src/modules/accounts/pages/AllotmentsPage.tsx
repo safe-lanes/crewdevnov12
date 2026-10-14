@@ -510,7 +510,7 @@ export default function AllotmentsPage({
           <Label className="text-xs text-gray-600">Vessel</Label>
           <Select value={vesselFilter} onValueChange={setVesselFilter}>
             <SelectTrigger
-              className="h-9 w-44 bg-white"
+              className="h-8 w-44 text-xs"
               data-testid="select-filter-vessel"
             >
               <SelectValue />
@@ -529,7 +529,7 @@ export default function AllotmentsPage({
           <Label className="text-xs text-gray-600">Status</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
-              className="h-9 w-36 bg-white"
+              className="h-8 w-36 text-xs"
               data-testid="select-filter-status"
             >
               <SelectValue />
