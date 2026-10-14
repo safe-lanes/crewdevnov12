@@ -480,38 +480,50 @@ export default function SettlementsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={filterVessel} onValueChange={setFilterVessel}>
-            <SelectTrigger
-              className="w-[200px] h-9"
-              data-testid="select-filter-vessel"
-            >
-              <SelectValue placeholder="All vessels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All vessels</SelectItem>
-              {vesselOptions.map((v) => (
-                <SelectItem key={v.uuid} value={v.uuid}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger
-              className="w-[160px] h-9"
-              data-testid="select-filter-status"
-            >
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, label]) => (
-                <SelectItem key={k} value={k}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label htmlFor="select-filter-vessel" className="text-xs text-gray-600">
+              Vessel
+            </Label>
+            <Select value={filterVessel} onValueChange={setFilterVessel}>
+              <SelectTrigger
+                id="select-filter-vessel"
+                className="w-[200px] h-9"
+                data-testid="select-filter-vessel"
+              >
+                <SelectValue placeholder="All vessels" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All vessels</SelectItem>
+                {vesselOptions.map((v) => (
+                  <SelectItem key={v.uuid} value={v.uuid}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="select-filter-status" className="text-xs text-gray-600">
+              Status
+            </Label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger
+                id="select-filter-status"
+                className="w-[160px] h-9"
+                data-testid="select-filter-status"
+              >
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {Object.entries(STATUS_LABEL).map(([k, label]) => (
+                  <SelectItem key={k} value={k}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             type="button"
             variant="outline"

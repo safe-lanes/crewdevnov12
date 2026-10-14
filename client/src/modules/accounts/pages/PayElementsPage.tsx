@@ -483,6 +483,7 @@ export default function PayElementsPage() {
 
       <div className="mb-3 flex flex-wrap gap-3">
         <FilterSelect
+          label="Type"
           value={typeFilter}
           onChange={setTypeFilter}
           options={PAY_ELEMENT_TYPES}
@@ -490,6 +491,7 @@ export default function PayElementsPage() {
           testId="filter-type"
         />
         <FilterSelect
+          label="Category"
           value={categoryFilter}
           onChange={setCategoryFilter}
           options={PAY_ELEMENT_CATEGORIES}
@@ -497,6 +499,7 @@ export default function PayElementsPage() {
           testId="filter-category"
         />
         <FilterSelect
+          label="Status"
           value={statusFilter}
           onChange={setStatusFilter}
           options={PAY_ELEMENT_STATUSES}
@@ -800,12 +803,14 @@ export default function PayElementsPage() {
 }
 
 function FilterSelect({
+  label,
   value,
   onChange,
   options,
   allLabel,
   testId,
 }: {
+  label: string;
   value: string;
   onChange: (v: string) => void;
   options: Option[];
@@ -813,19 +818,28 @@ function FilterSelect({
   testId: string;
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-[180px] text-xs" data-testid={testId}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">{allLabel}</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="space-y-1">
+      <Label htmlFor={testId} className="text-xs text-gray-600">
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          id={testId}
+          className="h-8 w-[180px] text-xs"
+          data-testid={testId}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{allLabel}</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

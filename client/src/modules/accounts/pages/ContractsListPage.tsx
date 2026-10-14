@@ -5,6 +5,7 @@ import type { ColDef, SelectionChangedEvent } from "ag-grid-community";
 import AgGridTable from "./AccountsGridTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -221,39 +222,51 @@ export default function ContractsListPage({
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <Select value={vesselFilter} onValueChange={setVesselFilter}>
-          <SelectTrigger
-            className="h-9 w-[220px] bg-white"
-            data-testid="select-contracts-vessel"
-          >
-            <SelectValue
-              placeholder={vesselsLoading ? "Loading vessels…" : "Vessel"}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All vessels</SelectItem>
-            {vessels.map((v: any) => (
-              <SelectItem key={v.entryId} value={v.entryId}>
-                {v.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger
-            className="h-9 w-[160px] bg-white"
-            data-testid="select-contracts-status"
-          >
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label htmlFor="select-contracts-vessel" className="text-xs text-gray-600">
+            Vessel
+          </Label>
+          <Select value={vesselFilter} onValueChange={setVesselFilter}>
+            <SelectTrigger
+              id="select-contracts-vessel"
+              className="h-9 w-[220px] bg-white"
+              data-testid="select-contracts-vessel"
+            >
+              <SelectValue
+                placeholder={vesselsLoading ? "Loading vessels…" : "Vessel"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All vessels</SelectItem>
+              {vessels.map((v: any) => (
+                <SelectItem key={v.entryId} value={v.entryId}>
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="select-contracts-status" className="text-xs text-gray-600">
+            Status
+          </Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger
+              id="select-contracts-status"
+              className="h-9 w-[160px] bg-white"
+              data-testid="select-contracts-status"
+            >
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button
           type="button"
           variant="outline"
