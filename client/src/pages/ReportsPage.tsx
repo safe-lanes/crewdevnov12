@@ -585,7 +585,7 @@ function FilterControl({
           <FormattedDateInput
             value={range.from}
             onChange={(e) => onChange({ from: e.target.value, to: range.to })}
-            placeholder="DD-MMM-YYYY"
+            placeholder="DD-MMM-YYYY or DD-MM-YYYY"
             className="h-8 w-[150px]"
             data-testid={`${testIdBase}-from`}
           />
@@ -593,7 +593,7 @@ function FilterControl({
           <FormattedDateInput
             value={range.to}
             onChange={(e) => onChange({ from: range.from, to: e.target.value })}
-            placeholder="DD-MMM-YYYY"
+            placeholder="DD-MMM-YYYY or DD-MM-YYYY"
             className="h-8 w-[150px]"
             data-testid={`${testIdBase}-to`}
           />
@@ -651,7 +651,7 @@ function FilterControl({
           onChange={(v) => onChange(v)}
           rangeMode={filter.kind === "periodMonth" ? "month" : "date"}
           useSharedMonthSelector={reportId === "rh-compliance-summary" && filter.kind === "periodMonth"}
-          placeholder={filter.kind === "periodMonth" ? "MMM-YYYY" : "DD-MMM-YYYY"}
+          placeholder={filter.kind === "periodMonth" ? "MMM-YYYY or MM-YYYY" : "DD-MMM-YYYY or DD-MM-YYYY"}
         />
       );
     }
