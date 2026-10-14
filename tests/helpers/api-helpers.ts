@@ -2,7 +2,7 @@
 import request from 'supertest';
 
 // Base URL for API requests
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = process.env.TEST_API_URL!;
 
 /**
  * Create a supertest request wrapper for API testing

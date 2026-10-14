@@ -7,6 +7,7 @@ import {
   type ConfiguredFormSection,
 } from "../../client/src/components/configured-form/ConfiguredFormRenderer";
 import { sailDesignSystem } from "../../client/src/config/sailDesignSystem";
+import { companyFormNumbers } from "../../client/src/components/configured-form/displayNumbering";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -139,6 +140,7 @@ function render(element: React.ReactElement) {
 function renderPreview(
   sections: ConfiguredFormSection[] = [configuredSection],
   vesselType = "all",
+  companyForm = false,
 ) {
   return render(
     <ConfiguredFormRenderer
@@ -153,6 +155,7 @@ function renderPreview(
         { vtUuid: "bulk", name: "Bulk Carrier" },
       ]}
       selectedVesselTypeUuid={vesselType}
+      companyForm={companyForm}
     />,
   );
 }
@@ -168,6 +171,192 @@ afterEach(() => {
 });
 
 describe("configured form renderer preview", () => {
+  it("shows seafarer section responsibility without a role or department", () => {
+    renderPreview([{
+      ...configuredSection,
+      responsible_mode: "seafarer",
+      responsible_role_uuid: null,
+      responsible_department: null,
+    }], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByText("To be completed by: Seafarer")).toBeTruthy();
+  });
+
+  it("numbers Company Form list and matrix points by position in preview and live without changing codes", () => {
+    const list = { ...configuredSection, section_uuid: "section-list", section_code: "opaque-section",
+      questions: [{ ...configuredSection.questions[0], question_uuid: "point-list", question_code: "opaque-point" }] };
+    const matrix = { ...configuredSection, section_uuid: "section-matrix", section_code: "opaque-matrix",
+      effectiveLayout: "matrix" as const, questions: [{ ...configuredSection.questions[2], question_uuid: "point-matrix", question_code: "opaque-matrix-point" }] };
+    const companyParts = [
+      { formPartUuid: "one", partCode: "Popaque1", partTitle: "First", partType: "configurable" },
+      { formPartUuid: "two", partCode: "Popaque2", partTitle: "Second", partType: "configurable" },
+    ];
+    const structures = { one: [list, matrix], two: [{ ...list, section_uuid: "other-section", questions: [{ ...list.questions[0], question_uuid: "other-point" }] }] };
+    const view = (mode: "preview" | "live", ordered = companyParts) => <ConfiguredFormRenderer mode={mode} companyForm parts={ordered} structures={structures} />;
+    const mounted = render(view("preview"));
+    expect(screen.getByTestId("text-step-title-one")).toHaveTextContent("1 · First");
+    expect(screen.getByTestId("configured-part-card-Popaque1")).toHaveTextContent("1 · First");
+    expect(screen.getByTestId("preview-section-section-one").querySelector("h3")).toHaveTextContent("1.1");
+    expect(screen.getByTestId("preview-point-yes-no")).toHaveTextContent("1.1.1");
+    expect(screen.getByTestId("preview-matrix-point-single")).toHaveTextContent("1.2.1");
+    expect(activeContainer?.textContent).not.toContain("opaque-point");
+    mounted.rerender(view("live"));
+    expect(screen.getByTestId("preview-matrix-point-single")).toHaveTextContent("1.2.1");
+    mounted.rerender(view("preview", [...companyParts].reverse()));
+    click(screen.getByTestId("button-step-one"));
+    expect(screen.getByTestId("preview-point-yes-no")).toHaveTextContent("2.1.1");
+    expect(screen.getByTestId("preview-matrix-point-single")).toHaveTextContent("2.2.1");
+    expect(list.section_code).toBe("opaque-section");
+    expect(list.questions[0].question_code).toBe("opaque-point");
+  });
+
+  it("omits inactive nodes, sorts supplied orders and keeps stable identities through renames", () => {
+    const trees = {
+      a: [{ section_uuid: "s", sortOrder: 5, questions: [{ question_uuid: "q", sortOrder: 9 }, { clientKey: "new", sortOrder: 1 }] },
+        { clientKey: "deleted", is_deleted: true, questions: [] }],
+      b: [{ clientKey: "hidden", isHidden: true, questions: [] }, { clientKey: "new-section", questions: [{ clientKey: "new-point" }] }],
+    };
+    const numbers = companyFormNumbers(
+      [{ formPartUuid: "a", sortOrder: 2, partTitle: "Renamed" }, { formPartUuid: "gone", isDeleted: true }, { formPartUuid: "b", sortOrder: 1 }],
+      trees,
+    );
+    expect([...numbers.part.entries()]).toEqual([["b", "1"], ["a", "2"]]);
+    expect(numbers.section.get("new-section")).toBe("1.1");
+    expect(numbers.section.get("s")).toBe("2.1");
+    expect(numbers.question.get("new")).toBe("2.1.1");
+    expect(numbers.question.get("q")).toBe("2.1.2");
+    expect(numbers.section.has("deleted")).toBe(false);
+    expect(numbers.section.has("hidden")).toBe(false);
+  });
+
+  it("does not number Content or shift surrounding Company Form point numbers", () => {
+    const numbered = companyFormNumbers(
+      [{ formPartUuid: "part" }],
+      { part: [{ clientKey: "section", questions: [
+        { clientKey: "before", response_type: "yes_no" },
+        { clientKey: "content", response_type: "content" },
+        { clientKey: "after", response_type: "free_text" },
+      ] }] },
+    );
+    expect(numbered.question.get("before")).toBe("1.1.1");
+    expect(numbered.question.has("content")).toBe(false);
+    expect(numbered.question.get("after")).toBe("1.1.2");
+  });
+
+  it("renders System fields read-only without an answer, comment, or consumed point number", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      questions: [
+        { clientKey: "system-before", question_code: "B1.1", question_text: "Before", response_type: "yes_no", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "declaration-date", question_code: "INTERNAL_SYSTEM_CODE", question_text: "Date of declaration", system_field_key: "date_of_declaration", response_type: "system_field", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "system-after", question_code: "B1.3", question_text: "After", response_type: "free_text", is_mandatory: false, comment_enabled: false, options: [] },
+      ],
+    };
+    const numbered = companyFormNumbers([{ formPartUuid: "part-b" }], { "part-b": [section] });
+    expect(numbered.question.get("system-before")).toBe("1.1.1");
+    expect(numbered.question.has("declaration-date")).toBe(false);
+    expect(numbered.question.get("system-after")).toBe("1.1.2");
+
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const previewRow = screen.getByTestId("preview-system-field-declaration-date");
+    expect(previewRow).toHaveTextContent("Form date");
+    expect(previewRow).toHaveTextContent("Filled from the record when opened");
+    expect(previewRow.textContent).not.toContain("INTERNAL_SYSTEM_CODE");
+    expect(previewRow.textContent).not.toContain("1.1.2");
+    expect(screen.queryByTestId("preview-response-declaration-date")).toBeNull();
+
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        companyForm
+        subjectType="crew_assignment"
+        parts={[parts[1]]}
+        structures={{ "part-b": [section] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange: vi.fn() }}
+      />,
+    );
+    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Form date");
+    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Filled from the record when opened");
+    expect(screen.queryByTestId("preview-response-declaration-date")).toBeNull();
+  });
+
+  it("renders sanitized Content as display-only HTML without a response or point number", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      questions: [{
+        clientKey: "content-preview",
+        question_code: "INTERNAL_CONTENT",
+        question_text: "Safety notice",
+        content_html: "<p>Read <strong>carefully</strong></p><ul><li>First</li></ul>",
+        response_type: "content",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [],
+      }],
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const content = screen.getByTestId("preview-content-content-preview");
+    expect(content.textContent).toBe("Read carefullyFirst");
+    expect(content.querySelector("strong")?.textContent).toBe("carefully");
+    expect(content.querySelectorAll("li")).toHaveLength(1);
+    expect(screen.getByTestId("preview-point-content-preview").textContent).not.toContain("INTERNAL_CONTENT");
+    expect(screen.queryByTestId("preview-response-content-preview")).toBeNull();
+    const table = screen.getByTestId("preview-point-content-preview").closest("table")!;
+    expect(table.querySelector("thead")).toBeNull();
+    expect(table.className).not.toContain("min-w-[600px]");
+    expect(screen.getByTestId("preview-point-content-preview").querySelector("td")?.colSpan).toBe(3);
+  });
+
+  it("keeps the shared header and a full-width Content row in a mixed Company Form section", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      effectiveLayout: "matrix",
+      questions: [
+        { clientKey: "before", question_code: "B1", question_text: "Ready?", response_type: "yes_no", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "notice", question_code: "INTERNAL", question_text: "Notice", content_html: "<p>Read this</p>", response_type: "content", is_mandatory: false, comment_enabled: false, options: [] },
+      ],
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const table = screen.getByTestId("preview-point-notice").closest("table")!;
+    expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(["Point", "Response", "Comment"]);
+    expect(screen.getByTestId("preview-point-notice").querySelector("td")?.colSpan).toBe(3);
+    expect(screen.getByTestId("preview-response-before")).toBeDefined();
+  });
+
+  it("uses Company Representative for Company Form officer signatures in preview and live, leaving Standard Forms unchanged", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      signature_required: false,
+      signature_officer_required: true,
+      signature_seafarer_required: false,
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Company Representative");
+
+    renderPreview([section], "all", false);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Officer signature");
+
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        companyForm
+        parts={[parts[1]]}
+        structures={{ "part-b": [section] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange: vi.fn() }}
+      />,
+    );
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Company Representative");
+  });
+
   it("separates the preview banner from content using section spacing", () => {
     renderPreview();
     click(screen.getByTestId("button-step-part-b"));
@@ -179,6 +368,15 @@ describe("configured form renderer preview", () => {
     expect(banner.nextElementSibling).toBe(content);
     expect(content.style.marginTop).toBe(sailDesignSystem.spacing.sectionSpacing);
     expect(sectionStack.style.gap).toBe(sailDesignSystem.spacing.sectionSpacing);
+  });
+
+  it("retains Standard Form part letters, section codes and point codes", () => {
+    renderPreview();
+    expect(screen.getByTestId("button-step-part-b")).toHaveTextContent("B");
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("configured-part-card-B").querySelector("h3")).toHaveTextContent("Part B:");
+    expect(screen.getByTestId("preview-section-section-one").querySelector("h3")).toHaveTextContent("B1");
+    expect(screen.getByTestId("preview-point-yes-no")).toHaveTextContent("B1.1");
   });
 
   it("renders each configured section like an Appraisal F white outlined panel", () => {

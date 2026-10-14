@@ -6,7 +6,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = process.env.TEST_API_URL!;
 const V2_BASE = `${API_BASE}/api/v2/accounts`;
 
 /**

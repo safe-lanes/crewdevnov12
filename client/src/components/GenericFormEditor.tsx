@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { getCrewUserId } from "@/lib/crewUser";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -39,10 +40,17 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
+import { ContentPointEditor } from "@/components/configured-form/ContentPointEditor";
+import { companyFormNumbers } from "@/components/configured-form/displayNumbering";
 import { getFixedParts } from "@/components/configured-form/fixedPartRegistry";
+import { COMPANY_FORM_SUBJECT_TYPES, getSystemFieldsForSubject } from "@shared/v2/forms-engine/systemFields";
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
+import {
+  CompanyFormApplicabilityEditor,
+  type CompanyFormApplicabilitySummaryState,
+} from "@/components/company-forms/CompanyFormApplicabilityEditor";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -53,13 +61,34 @@ export interface ConfigurableFormPart {
   isOfficeOnly?: boolean;
 }
 
+const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
+
+function editorErrorMessage(error: unknown, action: Parameters<typeof companyFormErrorMessage>[1], isCompanyForm: boolean): string {
+  if (isCompanyForm) return companyFormErrorMessage(error, action);
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function loadVersionParts(formId: number, versionUuid: string, allowEmpty = false): Promise<ConfigurableFormPart[]> {
+  const response = await apiRequest("GET",
+    `/api/v2/admin/forms/${formId}/parts?formVersionUuid=${encodeURIComponent(versionUuid)}`,
+  );
+  const parts = await response.json();
+  if (!Array.isArray(parts) || (!allowEmpty && parts.length === 0) || parts.some((part) => part.formVersionUuid !== versionUuid)) {
+    throw new Error(`Form version ${versionUuid} has no valid version-owned parts`);
+  }
+  return parts;
+}
+
 interface GenericFormEditorProps {
-  form: Form & { originalFormId?: number };
+  form: Form & { originalFormId?: number; subjectType?: string | null };
   formName: string;
+  useV2?: boolean;
   rankGroupName?: string;
   rankGroupId?: number;
   rankGroupConfig?: unknown;
   configurableParts?: ConfigurableFormPart[];
+  readOnly?: boolean;
+  initialPreview?: boolean;
   onClose: () => void;
   onSave: (data: unknown) => void;
 }
@@ -72,7 +101,19 @@ interface VersionRow {
   versionNo: string;
   versionDate: string;
   status: string;
+  releasedAt?: string | null;
   configuration?: string | null;
+  stageKey?: string | null;
+  stageSubjectType?: string | null;
+  applicability?: import("@shared/v2/admin/applicability").VersionApplicability;
+  changeSummary?: import("@shared/v2/admin/applicability").VersionChangeSummary | null;
+}
+
+interface SubjectStageRow {
+  subjectType: string;
+  stageKey: string;
+  label: string;
+  sortOrder: number;
 }
 
 interface SavedStructuresResponse {
@@ -87,6 +128,7 @@ interface SavedStructuresResponse {
 
 interface RoleRow {
   ruid: string;
+  roletype?: string;
   assignedRole?: string;
   name?: string;
   roleName?: string;
@@ -138,6 +180,8 @@ interface QuestionModel {
   question_uuid?: string;
   question_code: string;
   question_text: string;
+  content_html?: string | null;
+  system_field_key?: string | null;
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
@@ -153,7 +197,7 @@ interface SectionModel {
   section_code: string;
   section_title: string;
   applicable_vessel_types: string[];
-  responsible_mode: "role" | "department" | "not_applicable";
+  responsible_mode: "role" | "department" | "seafarer" | "not_applicable";
   responsible_role_uuid: string | null;
   responsible_department: string | null;
   comment_box_required: boolean;
@@ -161,6 +205,8 @@ interface SectionModel {
   signature_required?: boolean;
   signature_officer_required?: boolean;
   signature_seafarer_required?: boolean;
+  signature_vessel_management_required?: boolean;
+  vessel_signature_role_uuids?: string[];
   default_option_set_uuid: string | null;
   layout_preference: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
@@ -177,6 +223,8 @@ const RESPONSE_TYPES = [
   ["number", "Number"],
   ["checkbox", "Checkbox"],
   ["info_only", "Information Only"],
+  ["content", "Content"],
+  ["system_field", "System Field"],
 ] as const;
 
 let clientKeyCounter = 0;
@@ -306,6 +354,7 @@ function emptyQuestion(
     clientKey: clientKey("question"),
     question_code: `${sectionCode}.${questionIndex + 1}`,
     question_text: "",
+    content_html: null,
     response_type: "yes_no",
     is_mandatory: false,
     comment_enabled: true,
@@ -326,6 +375,8 @@ function emptySection(partCode: string, sectionIndex: number): SectionModel {
     comment_box_required: false,
     signature_officer_required: false,
     signature_seafarer_required: false,
+    signature_vessel_management_required: false,
+    vessel_signature_role_uuids: [],
     default_option_set_uuid: null,
     layout_preference: "auto",
     questions: [],
@@ -367,10 +418,11 @@ function normalizeTree(
   data: any,
   partCode: string,
   optionSets: OptionSetModel[] = normalizeOptionSets(data),
+  preserveCodes = false,
 ): SectionModel[] {
   const sections = Array.isArray(data?.sections) ? data.sections : [];
   const optionSetsByUuid = new Map(optionSets.map((set) => [set.option_set_uuid, set]));
-  return renumberSections(partCode, sections.map((section: any) => ({
+  const normalized = sections.map((section: any) => ({
     clientKey: clientKey("section"),
     section_uuid: section.section_uuid,
     section_code: section.section_code || "",
@@ -384,6 +436,8 @@ function normalizeTree(
     comment_box_required: !!section.comment_box_required,
     signature_officer_required: !!section.signature_officer_required,
     signature_seafarer_required: !!section.signature_seafarer_required,
+    signature_vessel_management_required: !!section.signature_vessel_management_required,
+    vessel_signature_role_uuids: section.vessel_signature_role_uuids ?? [],
     default_option_set_uuid: section.default_option_set_uuid ?? null,
     layout_preference: section.layout_preference || "auto",
     effectiveLayout: section.effectiveLayout,
@@ -392,19 +446,21 @@ function normalizeTree(
       question_uuid: question.question_uuid,
       question_code: question.question_code || "",
       question_text: question.question_text || "",
+      content_html: question.content_html ?? null,
+      system_field_key: question.response_type === "system_field" ? question.system_field_key ?? null : null,
       response_type: question.response_type || "yes_no",
-      is_mandatory: !!question.is_mandatory,
-      comment_enabled: question.comment_enabled !== false,
+      is_mandatory: question.response_type === "system_field" ? false : !!question.is_mandatory,
+      comment_enabled: question.response_type === "system_field" ? false : question.comment_enabled !== false,
       // The repository persists resolved question references. A question that
       // comes back with the same set as its section default is represented in
       // the editor as inherited, so changing that default after a reload
       // updates it while a different set remains an explicit override.
-      option_set_uuid: question.option_set_uuid === section.default_option_set_uuid
+      option_set_uuid: question.response_type === "system_field" ? null : question.option_set_uuid === section.default_option_set_uuid
         ? null
         : question.option_set_uuid ?? null,
       low_end_label: question.low_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.low_end_label ?? null,
       high_end_label: question.high_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.high_end_label ?? null,
-      options: ((Array.isArray(question.options) && question.options.length > 0)
+      options: question.response_type === "system_field" ? [] : ((Array.isArray(question.options) && question.options.length > 0)
         ? question.options
         : (optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.options || [])
       ).map((option: any) => ({
@@ -415,7 +471,8 @@ function normalizeTree(
         option_value: option.option_value || slugOptionValue(option.option_label || "option"),
       })),
     })) : [],
-  })));
+  }));
+  return preserveCodes ? normalized : renumberSections(partCode, normalized);
 }
 
 function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) {
@@ -442,17 +499,21 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
       comment_box_required: section.comment_box_required,
       signature_officer_required: !!section.signature_officer_required,
       signature_seafarer_required: !!section.signature_seafarer_required,
+      signature_vessel_management_required: !!section.signature_vessel_management_required,
+      vessel_signature_role_uuids: section.vessel_signature_role_uuids ?? [],
       default_option_set_uuid: section.default_option_set_uuid,
       layout_preference: section.layout_preference,
       questions: section.questions.map((question) => ({
         ...(question.question_uuid ? { question_uuid: question.question_uuid } : {}),
         question_code: question.question_code,
         question_text: question.question_text.trim(),
+        content_html: question.response_type === "content" ? question.content_html ?? "" : null,
+        system_field_key: question.response_type === "system_field" ? question.system_field_key ?? null : null,
         response_type: question.response_type,
-        is_mandatory: question.is_mandatory,
-        comment_enabled: question.comment_enabled,
-        option_set_uuid: question.option_set_uuid,
-        options: (question.option_set_uuid || section.default_option_set_uuid ? [] : question.options).map((option) => ({
+        is_mandatory: question.response_type === "system_field" ? false : question.is_mandatory,
+        comment_enabled: question.response_type === "system_field" ? false : question.comment_enabled,
+        option_set_uuid: question.response_type === "system_field" ? null : question.option_set_uuid,
+        options: question.response_type === "system_field" ? [] : (question.option_set_uuid || section.default_option_set_uuid ? [] : question.options).map((option) => ({
           ...(option.option_uuid ? { option_uuid: option.option_uuid } : {}),
           option_label: option.option_label.trim(),
           // This is intentionally preserved on edits and only created for new options.
@@ -466,6 +527,14 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
 function formatVersionDate(date = new Date()): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${String(date.getDate()).padStart(2, "0")}-${months[date.getMonth()]}-${date.getFullYear()}`;
+}
+
+function formatReleasedAt(value?: string | null): string {
+  if (!value) return "date unavailable";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "date unavailable";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${String(date.getUTCDate()).padStart(2, "0")}-${months[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
 }
 
 function responseLabel(responseType: string): string {
@@ -533,7 +602,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   rankGroupName,
   rankGroupId: providedRankGroupId,
   rankGroupConfig,
-  configurableParts: partsFromParent = [],
+  readOnly = false,
+  initialPreview = false,
   onClose,
   onSave,
 }) => {
@@ -541,15 +611,34 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const realFormId = form.originalFormId ?? form.id;
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const [selectedVersionUuid, setSelectedVersionUuid] = useState("");
+  const [stageSelection, setStageSelection] = useState<{ versionUuid: string; stageKey: string } | null>(null);
   const [authoritativeVersion, setAuthoritativeVersion] = useState<VersionRow | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
+  const [viewMode, setViewMode] = useState<EditorViewMode>(initialPreview ? "preview" : "configure");
   const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
   const [trees, setTrees] = useState<Record<string, SectionModel[]>>({});
   const [optionSets, setOptionSets] = useState<Record<string, OptionSetModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingStage, setIsSavingStage] = useState(false);
+  const [isSavingAndContinuing, setIsSavingAndContinuing] = useState(false);
+  const [isApplicabilityBusy, setIsApplicabilityBusy] = useState(() => form.category === "dynamic");
+  const [isApplicabilityDirty, setIsApplicabilityDirty] = useState(false);
+  const [isApplicabilitySettingsOpen, setIsApplicabilitySettingsOpen] = useState(false);
+  const [applicabilitySummary, setApplicabilitySummary] = useState("Loading applicability policy…");
+  const [applicabilitySummaryState, setApplicabilitySummaryState] = useState<CompanyFormApplicabilitySummaryState>({
+    loading: true,
+    error: "",
+    canView: true,
+    canEdit: false,
+  });
   const [isReleasing, setIsReleasing] = useState(false);
+  const [isPartMutating, setIsPartMutating] = useState(false);
+  const [addPartOpen, setAddPartOpen] = useState(false);
+  const [newPartTitle, setNewPartTitle] = useState("");
+  const [newPartOfficeOnly, setNewPartOfficeOnly] = useState(false);
+  const [renamingPartUuid, setRenamingPartUuid] = useState<string | null>(null);
+  const [partTitleDraft, setPartTitleDraft] = useState("");
   const [saveError, setSaveError] = useState("");
   const [selectedSection, setSelectedSection] = useState<{ partUuid: string; index: number } | null>(null);
   const [settingsDialog, setSettingsDialog] = useState<"vessel" | "responsible" | "comment" | "signature" | null>(null);
@@ -561,6 +650,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     commentRequired: false,
     officerSignatureRequired: false,
     seafarerSignatureRequired: false,
+    vesselManagementRequired: false,
+    vesselSignatureRoleUuids: [] as string[],
   });
   const [confirmDelete, setConfirmDelete] = useState<{
     title: string;
@@ -574,6 +665,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
+  const applicabilitySaveHandlerRef = useRef<{
+    versionUuid: string;
+    save: () => Promise<boolean>;
+  } | null>(null);
+  const registerApplicabilitySaveHandler = useCallback((
+    versionUuid: string,
+    saveHandler: () => Promise<boolean>,
+  ) => {
+    const registration = { versionUuid, save: saveHandler };
+    applicabilitySaveHandlerRef.current = registration;
+    return () => {
+      if (applicabilitySaveHandlerRef.current === registration) {
+        applicabilitySaveHandlerRef.current = null;
+      }
+    };
+  }, []);
+  const handleApplicabilitySummaryChange = useCallback((
+    summary: string,
+    state: CompanyFormApplicabilitySummaryState,
+  ) => {
+    setApplicabilitySummary(summary);
+    setApplicabilitySummaryState(state);
+  }, []);
   const baselineRef = useRef<string | null>(null);
   const treeLoadGenerationRef = useRef(0);
   const saveTransitionRef = useRef(false);
@@ -588,6 +702,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete: typeof confirmDelete;
     showLeaveDialog: boolean;
     releaseConfirmOpen: boolean;
+    applicabilitySettingsOpen: boolean;
     handleClose: () => void;
   }>({
     isPreview: false,
@@ -595,36 +710,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete: null,
     showLeaveDialog: false,
     releaseConfirmOpen: false,
+    applicabilitySettingsOpen: false,
     handleClose: () => undefined,
   });
-
-  const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
-    queryKey: [`/api/v2/admin/forms/${realFormId}/parts`],
-    queryFn: async () => {
-      const response = await fetch(`/api/v2/admin/forms/${realFormId}/parts`);
-      if (!response.ok) throw new Error("Failed to load form parts");
-      return response.json();
-    },
-    enabled: !!realFormId,
-  });
-
-  const allParts = useMemo(
-    () => (partsFromParent.length > 0 ? partsFromParent : formPartsData),
-    [partsFromParent, formPartsData],
-  );
-  const configurableParts = useMemo(
-    () => allParts.filter((part) => part.partType === "configurable"),
-    [allParts],
-  );
 
   const { data: rankGroups = [] } = useQuery<Array<{ id: number; name: string; formId: number }>>({
     queryKey: ["/api/v2/admin/rank-groups", realFormId],
     queryFn: async () => {
-      const response = await fetch(`/api/v2/admin/rank-groups/form/${realFormId}?includeArchived=true`);
-      if (!response.ok) throw new Error("Failed to load rank groups");
+      const response = await apiRequest("GET", `/api/v2/admin/rank-groups/form/${realFormId}?includeArchived=true`);
       return response.json();
     },
-    enabled: !!realFormId,
+    enabled: !!realFormId && form.category !== "dynamic",
   });
 
   const rankGroupId = useMemo(
@@ -636,17 +732,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     queryKey: [`/api/v2/admin/forms/${realFormId}/versions`, rankGroupId],
     queryFn: async () => {
       const query = rankGroupId ? `?rankGroupId=${rankGroupId}` : "";
-      const response = await fetch(`/api/v2/admin/forms/${realFormId}/versions${query}`);
-      if (!response.ok) throw new Error("Failed to load form versions");
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${realFormId}/versions${query}`);
       return response.json();
     },
-    enabled: !!realFormId && rankGroupId !== null,
+    enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
+  });
+
+  const {
+    data: subjectStages = [],
+    isLoading: isLoadingSubjectStages,
+    error: subjectStagesError,
+  } = useQuery<SubjectStageRow[]>({
+    queryKey: [`/api/v2/admin/forms/${realFormId}/subject-stages`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${realFormId}/subject-stages`);
+      return response.json();
+    },
+    enabled: !!realFormId && form.category === "dynamic",
   });
 
   const { data: roles = [] } = useQuery<RoleRow[]>({
     queryKey: ["/api/v2/admin/access-control/roles", "includeInactive"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/access-control/roles?includeInactive=true");
+      const response = await apiRequest("GET", "/api/v2/admin/access-control/roles?includeInactive=true");
       if (!response.ok) return [];
       return response.json();
     },
@@ -655,7 +763,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: departments = [] } = useQuery<DepartmentRow[]>({
     queryKey: ["/api/v2/masters/departments"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/masters/departments");
+      const response = await apiRequest("GET", "/api/v2/masters/departments");
       if (!response.ok) return [];
       return response.json();
     },
@@ -663,7 +771,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: vesselTypes = [] } = useQuery<VesselTypeRow[]>({
     queryKey: ["/api/v2/masters/vessel-types"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/masters/vessel-types");
+      const response = await apiRequest("GET", "/api/v2/masters/vessel-types");
       if (!response.ok) return [];
       const result = await response.json();
       return Array.isArray(result) ? result : (result.data || []);
@@ -692,6 +800,54 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
+  const currentStageKey = stageSelection && selectedVersion
+    && stageSelection.versionUuid === selectedVersion.fvUuid
+    ? stageSelection.stageKey
+    : selectedVersion?.stageKey ?? "";
+
+  useEffect(() => {
+    setStageSelection(selectedVersion
+      ? { versionUuid: selectedVersion.fvUuid, stageKey: selectedVersion.stageKey ?? "" }
+      : null);
+  }, [selectedVersion?.fvUuid, selectedVersion?.stageKey]);
+  const { data: versionParts, isFetching: isLoadingParts, error: partsError, refetch: refetchParts } = useQuery<ConfigurableFormPart[]>({
+    queryKey: ["admin-form-version-parts", realFormId, selectedVersion?.fvUuid],
+    queryFn: () => loadVersionParts(realFormId, selectedVersion!.fvUuid, form.category === "dynamic"),
+    enabled: !!realFormId && !!selectedVersion?.fvUuid,
+    retry: false,
+  });
+  // Form-level parts passed by AdminModule are templates used only to choose
+  // this editor. Structure reads and writes must use the selected version's UUIDs.
+  const allParts = versionParts ?? EMPTY_FORM_PARTS;
+  const isCompanyForm = form.category === "dynamic";
+  useEffect(() => {
+    setIsApplicabilityBusy(isCompanyForm && !!selectedVersion);
+  }, [isCompanyForm, selectedVersion?.fvUuid]);
+  const companySubjectType = isCompanyForm
+    ? (COMPANY_FORM_SUBJECT_TYPES as readonly string[]).includes(form.subjectType || "")
+      ? form.subjectType as (typeof COMPANY_FORM_SUBJECT_TYPES)[number]
+      : null
+    : null;
+  const systemFields = companySubjectType ? getSystemFieldsForSubject(companySubjectType) : [];
+  const selectedVersionLabel = isCompanyForm && selectedVersion
+    ? selectedVersion.status === "draft"
+      ? "Draft"
+      : `Version ${String(selectedVersion.versionNo).padStart(2, "0")} · Released ${formatReleasedAt(selectedVersion.releasedAt)}`
+    : undefined;
+  const compactVersionLabel = selectedVersion
+    ? `v${String(selectedVersion.versionNo).padStart(2, "0")} · ${selectedVersion.status === "draft" ? "Draft" : "Released"}`
+    : undefined;
+  const displayNumbers = companyFormNumbers(allParts, trees);
+  const sectionDisplay = (section: SectionModel) => isCompanyForm
+    ? displayNumbers.section.get(section.section_uuid || section.clientKey) || ""
+    : section.section_code;
+  const pointDisplay = (question: QuestionModel) => isCompanyForm
+    ? displayNumbers.question.get(question.question_uuid || question.clientKey) || ""
+    : question.question_code;
+  const configurableParts = useMemo(
+    () => allParts.filter((part) => part.partType === "configurable"),
+    [allParts],
+  );
   // Navigation includes every part. Only configurable parts have editable
   // trees; registered fixed parts reuse their feature-owned read-only preview.
   const selectedPart = allParts.find((part) => part.formPartUuid === selectedPartUuid) ?? configurableParts[0];
@@ -704,33 +860,43 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   ])), [trees]);
   const serializedState = JSON.stringify({ trees, optionSets });
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
-  const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
-  const canModify = canEdit && !isSaving;
+  const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft");
+  const canModify = canEdit && !isSaving && !isSavingAndContinuing && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
+  const canManageParts = form.category === "dynamic" && !!selectedVersion &&
+    selectedVersion.status === "draft" && canEdit && !isSaving && !isSavingAndContinuing && !isReleasing &&
+    !isPartMutating && !isLoadingParts && !isLoadingTree && !partsError;
   const isPreview = viewMode === "preview";
   const previewFixedParts = getFixedParts(form.category, { readOnly: true });
 
   useEffect(() => {
-    if (!selectedPartUuid && configurableParts[0]) {
-      setSelectedPartUuid(configurableParts[0].formPartUuid);
+    if (allParts.length && !allParts.some((part) => part.formPartUuid === selectedPartUuid)) {
+      setSelectedPartUuid(configurableParts[0]?.formPartUuid ?? allParts[0].formPartUuid);
     }
-  }, [configurableParts, selectedPartUuid]);
+  }, [allParts, configurableParts, selectedPartUuid]);
 
   useEffect(() => {
     if (selectedVersionUuid) return;
     if (sortedVersions[0]) {
       setSelectedVersionUuid(sortedVersions[0].fvUuid);
       setIsEditing(sortedVersions[0].status === "draft");
-    } else if (!isLoadingVersions && rankGroupId !== null) {
+    } else if (!isLoadingVersions && (form.category === "dynamic" || rankGroupId !== null)) {
       setIsEditing(true);
     }
   }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions]);
 
   useEffect(() => {
     if (saveTransitionRef.current) return;
+    if (isLoadingParts) return;
+    if (partsError) {
+      setSaveError(editorErrorMessage(partsError, "editorLoad", isCompanyForm));
+      baselineRef.current = null;
+      return;
+    }
     if (!selectedVersion?.fvUuid || configurableParts.length === 0) {
       setTrees({});
       setOptionSets({});
       baselineRef.current = null;
+      if (selectedVersion?.fvUuid && allParts.length === 0 && form.category === "dynamic") setSaveError("");
       return;
     }
     if (skipNextTreeLoadVersionRef.current === selectedVersion.fvUuid) {
@@ -743,14 +909,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     setIsLoadingTree(true);
     setSaveError("");
     Promise.all(configurableParts.map(async (part) => {
-      const response = await fetch(
+      const response = await apiRequest("GET",
         `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}/structure`,
       );
-      if (!response.ok) throw new Error(`Failed to load ${part.partTitle}`);
       const data = await response.json();
       const normalizedOptionSets = normalizeOptionSets(data);
       return [part.formPartUuid, {
-        sections: normalizeTree(data, part.partCode, normalizedOptionSets),
+        sections: normalizeTree(data, part.partCode, normalizedOptionSets, form.category === "dynamic"),
         optionSets: normalizedOptionSets,
       }] as const;
     }))
@@ -769,7 +934,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           setTrees(emptyTrees);
           setOptionSets(emptyOptionSets);
           baselineRef.current = JSON.stringify({ trees: emptyTrees, optionSets: emptyOptionSets });
-          setSaveError(error.message);
+          setSaveError(editorErrorMessage(error, "editorLoad", isCompanyForm));
         }
       })
       .finally(() => {
@@ -778,7 +943,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [configurableParts, selectedVersion?.fvUuid]);
+  }, [allParts.length, configurableParts, isLoadingParts, partsError, selectedVersion?.fvUuid]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -802,6 +967,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       commentRequired: section.comment_box_required,
       officerSignatureRequired: !!section.signature_officer_required,
       seafarerSignatureRequired: !!section.signature_seafarer_required,
+      vesselManagementRequired: !!section.signature_vessel_management_required,
+      vesselSignatureRoleUuids: section.vessel_signature_role_uuids ?? [],
     });
   }, [selectedSection, trees]);
 
@@ -811,9 +978,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (!part) return;
     setTrees((previous) => ({
       ...previous,
-      [partUuid]: renumberSections(part.partCode, updater(previous[partUuid] || [])),
+      [partUuid]: isCompanyForm ? updater(previous[partUuid] || []) : renumberSections(part.partCode, updater(previous[partUuid] || [])),
     }));
-  }, [configurableParts]);
+  }, [configurableParts, isCompanyForm]);
 
   const updateSection = (partUuid: string, sectionIndex: number, updater: (section: SectionModel) => SectionModel) => {
     updatePartTree(partUuid, (sections) => sections.map((section, index) => index === sectionIndex ? updater(section) : section));
@@ -866,10 +1033,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const addSection = (partUuid: string) => {
-    updatePartTree(partUuid, (sections) => [...sections, emptySection(
-      configurableParts.find((part) => part.formPartUuid === partUuid)?.partCode || "B",
-      sections.length,
-    )]);
+    updatePartTree(partUuid, (sections) => {
+      const next = emptySection(
+        configurableParts.find((part) => part.formPartUuid === partUuid)?.partCode || "B",
+        sections.length,
+      );
+      if (isCompanyForm) next.section_code = `S${newUuid().replace(/-/g, "")}`;
+      return [...sections, next];
+    });
   };
 
   const addQuestion = (partUuid: string, sectionIndex: number) => {
@@ -883,6 +1054,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           inherited?.options || [],
           null,
         );
+        if (isCompanyForm) question.question_code = `Q${newUuid().replace(/-/g, "")}`;
         return inherited ? { ...question, response_type: "single_select" } : question;
       })()],
     }));
@@ -917,9 +1089,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const previousQuestion = trees[partUuid]?.[sectionIndex]?.questions[questionIndex];
     const previousSet = optionSetFor(partUuid, previousQuestion?.option_set_uuid);
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
+      if (responseType === "system_field") {
+        const field = systemFields[0];
+        return {
+          ...question,
+          response_type: responseType,
+          system_field_key: field?.key ?? null,
+          question_text: field?.label ?? "",
+          content_html: null,
+          is_mandatory: false,
+          comment_enabled: false,
+          option_set_uuid: null,
+          options: [],
+        };
+      }
       const isSelect = responseType === "single_select" || responseType === "multi_select";
       if (!isSelect) {
-        return { ...question, response_type: responseType, option_set_uuid: null, options: [] };
+        return {
+          ...question, response_type: responseType, option_set_uuid: null, options: [],
+          content_html: responseType === "content" ? question.content_html ?? "" : null,
+          system_field_key: null,
+          is_mandatory: responseType === "content" ? false : question.is_mandatory,
+          comment_enabled: responseType === "content" ? false : question.comment_enabled,
+        };
       }
       const section = trees[partUuid]?.[sectionIndex];
       const inherited = section?.default_option_set_uuid
@@ -929,6 +1121,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return {
           ...question,
           response_type: responseType,
+          system_field_key: null,
           option_set_uuid: null,
           options: cloneOptions(inherited.options),
           low_end_label: inherited.low_end_label,
@@ -941,6 +1134,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return {
           ...question,
           response_type: responseType,
+          system_field_key: null,
           options: cloneOptions(currentSet.options),
           low_end_label: currentSet.low_end_label,
           high_end_label: currentSet.high_end_label,
@@ -950,6 +1144,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       return {
         ...question,
         response_type: responseType,
+        system_field_key: null,
         option_set_uuid: customSet.option_set_uuid || null,
         options: customSet.options,
         low_end_label: customSet.low_end_label,
@@ -971,6 +1166,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         updatePartOptionSets(partUuid, (sets) => sets.filter((set) => set.option_set_uuid !== previousSet.option_set_uuid));
       }
     }
+  };
+
+  const changeSystemField = (partUuid: string, sectionIndex: number, questionIndex: number, fieldKey: string) => {
+    const field = systemFields.find((candidate) => candidate.key === fieldKey);
+    if (!field) return;
+    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => ({
+      ...question,
+      response_type: "system_field",
+      system_field_key: field.key,
+      question_text: field.label,
+      content_html: null,
+      is_mandatory: false,
+      comment_enabled: false,
+      option_set_uuid: null,
+      options: [],
+    }));
   };
 
   const setSectionDefault = (partUuid: string, sectionIndex: number, value: string) => {
@@ -1094,7 +1305,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const optionSetUsage = (_partUuid: string, setUuid: string): string[] =>
     Object.values(trees).flatMap((sections) => sections.flatMap((section) => section.questions
       .filter((question) => (question.option_set_uuid || section.default_option_set_uuid) === setUuid)
-      .map((question) => `${question.question_code}${question.question_text.trim() ? ` — ${question.question_text.trim()}` : ""}`)));
+      .map((question) => `${pointDisplay(question)}${question.question_text.trim() ? ` — ${question.question_text.trim()}` : ""}`)));
 
   const deleteNamedOptionSet = (partUuid: string, set: OptionSetModel) => {
     const usage = optionSetUsage(partUuid, set.option_set_uuid || "");
@@ -1226,23 +1437,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return "Named option-set option labels cannot be empty";
       }
       for (const section of trees[part.formPartUuid] || []) {
-        if (!section.section_title.trim()) return `${section.section_code}: section title is required`;
+        if (!section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
         if (section.responsible_mode === "role" && !section.responsible_role_uuid) {
-          return `${section.section_code}: select a responsible role`;
+          return `${sectionDisplay(section)}: select a responsible role`;
         }
         if (section.responsible_mode === "department" && !section.responsible_department) {
-          return `${section.section_code}: select a responsible department`;
+          return `${sectionDisplay(section)}: select a responsible department`;
         }
         for (const question of section.questions) {
-          if (!question.question_text.trim()) return `${question.question_code}: point text is required`;
+          if (question.response_type === "system_field" && !systemFields.some((field) => field.key === question.system_field_key)) {
+            return "Select a valid system field";
+          }
+          if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
+          if (question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
+            return "Content point body is required";
+          }
           if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
-            return `${question.question_code}: add at least one option`;
+            return `${pointDisplay(question)}: add at least one option`;
           }
           if (question.option_set_uuid && !optionSetFor(part.formPartUuid, question.option_set_uuid)) {
-            return `${question.question_code}: selected option set is unavailable`;
+            return `${pointDisplay(question)}: selected option set is unavailable`;
           }
           if (question.options.some((option) => !option.option_label.trim())) {
-            return `${question.question_code}: option labels cannot be empty`;
+            return `${pointDisplay(question)}: option labels cannot be empty`;
           }
         }
       }
@@ -1252,6 +1469,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const save = async (): Promise<VersionRow | null> => {
     if (!canEdit || saveTransitionRef.current) return null;
+    if (isLoadingParts || isLoadingTree || partsError || !configurableParts.length || baselineRef.current === null) {
+      setSaveError("Wait for the selected version's parts and structures to load before saving.");
+      return null;
+    }
     const validationError = validateTrees();
     if (validationError) {
       setSaveError(validationError);
@@ -1267,15 +1488,24 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       const treesAtSave = trees;
       const optionSetsAtSave = optionSets;
       const draft = await createDraft();
+      // Creating a draft copies parts with new UUIDs. Never send UUIDs from
+      // the released source or the form-level templates to the draft writer.
+      const draftParts = await loadVersionParts(realFormId, draft.fvUuid);
+      const draftConfigurableParts = draftParts.filter((part) => part.partType === "configurable");
+      const sourcePartByCode = new Map(configurableParts.map((part) => [part.partCode, part]));
+      if (!draftConfigurableParts.length || draftConfigurableParts.length !== configurableParts.length ||
+          draftConfigurableParts.some((part) => !sourcePartByCode.has(part.partCode))) {
+        throw new Error("Draft parts do not match the loaded form; reload the draft before saving.");
+      }
       const response = await apiRequest(
         "PUT",
         `/api/v2/admin/form-versions/${draft.fvUuid}/structures`,
         {
-          parts: configurableParts.map((part) => ({
+          parts: draftConfigurableParts.map((part) => ({
             form_part_uuid: part.formPartUuid,
             structure: toPayload(
-              treesAtSave[part.formPartUuid] || [],
-              optionSetsAtSave[part.formPartUuid] || [],
+              treesAtSave[sourcePartByCode.get(part.partCode)!.formPartUuid] || [],
+              optionSetsAtSave[sourcePartByCode.get(part.partCode)!.formPartUuid] || [],
             ),
           })),
           auditUserUuid: getCrewUserId(),
@@ -1286,12 +1516,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (savedResponse.form_version_uuid !== draft.fvUuid || !Array.isArray(savedResponse.parts)) {
         throw new Error("Form structure save returned an invalid response");
       }
-      const savedEntries = configurableParts.map((part) => {
+      const savedEntries = draftConfigurableParts.map((part) => {
         const savedPart = savedResponse.parts.find((item) => item.form_part_uuid === part.formPartUuid);
         if (!savedPart) throw new Error(`Form structure save omitted ${part.partTitle}`);
         const savedOptionSets = normalizeOptionSets(savedPart);
         return [part.formPartUuid, {
-          sections: normalizeTree(savedPart, part.partCode, savedOptionSets),
+          sections: normalizeTree(savedPart, part.partCode, savedOptionSets, form.category === "dynamic"),
           optionSets: savedOptionSets,
         }] as const;
       });
@@ -1310,14 +1540,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       onSave({
         formId: realFormId,
         formVersionUuid: draft.fvUuid,
-        savedParts: configurableParts.length,
+        savedParts: draftConfigurableParts.length,
         durationMs: Math.round(performance.now() - startedAt),
       });
       toast({ title: "Draft saved", description: "The complete form structure has been saved." });
       await refetchVersions();
       return draft;
     } catch (error: any) {
-      const message = error?.message || "Failed to save form structure";
+      const message = editorErrorMessage(error, "editorSave", isCompanyForm);
       setSaveError(message);
       toast({ title: "Unable to save form", description: message, variant: "destructive" });
       return null;
@@ -1329,9 +1559,18 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const releaseSelectedVersion = async () => {
     const versionToRelease = selectedVersion;
+    if (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage)) {
+      toast({
+        title: "Save changes first",
+        description: "Save any applicability changes first, then wait for policy and subject-stage saves to finish before release.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       isReleasing
       || isSaving
+      || isSavingAndContinuing
       || !versionToRelease?.id
       || versionToRelease.status !== "draft"
     ) {
@@ -1363,7 +1602,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         description: "The version has been released successfully.",
       });
     } catch (error: any) {
-      const message = error?.message || "Failed to release form version";
+      const message = editorErrorMessage(error, "release", isCompanyForm);
       setSaveError(message);
       toast({ title: "Unable to release form", description: message, variant: "destructive" });
     } finally {
@@ -1371,20 +1610,65 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     }
   };
 
+  const updateVersionStage = async (value: string) => {
+    if (!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage) return;
+    const version = selectedVersion;
+    const stageKey = value === "none" ? "" : value;
+    setStageSelection({ versionUuid: version.fvUuid, stageKey });
+    setSaveError("");
+    setIsSavingStage(true);
+    try {
+      const response = await apiRequest("PUT", `/api/v2/admin/form-versions/${version.id}`, {
+        stageKey: stageKey || null,
+        auditUserUuid: getCrewUserId(),
+      });
+      const updated = await response.json() as VersionRow;
+      setAuthoritativeVersion((current) => current?.fvUuid === updated.fvUuid ? updated : current);
+      await refetchVersions();
+      toast({ title: "Stage saved", description: "The draft's subject stage has been saved." });
+    } catch (error: any) {
+      setStageSelection((current) => current?.versionUuid === version.fvUuid
+        ? { versionUuid: version.fvUuid, stageKey: version.stageKey ?? "" }
+        : current);
+      const message = editorErrorMessage(error, "manageVersion", isCompanyForm);
+      setSaveError(message);
+      toast({ title: "Unable to save stage", description: message, variant: "destructive" });
+    } finally {
+      setIsSavingStage(false);
+    }
+  };
+
   const requestRelease = () => {
+    if (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage)) {
+      toast({
+        title: "Save changes first",
+        description: "Save any applicability changes first, then wait for policy and subject-stage saves to finish before release.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       isReleasing
       || isSaving
+      || isSavingStage
+      || isLoadingSubjectStages
       || !selectedVersion?.id
       || selectedVersion.status !== "draft"
     ) {
+      return;
+    }
+    if (subjectStages.length > 0 && !currentStageKey) {
+      const message = "Select a subject stage before releasing this Company Form version. Drafts may remain without a stage.";
+      setSaveError(message);
+      toast({ title: "Stage required to release", description: message, variant: "destructive" });
       return;
     }
     setReleaseConfirmOpen(true);
   };
 
   const handleClose = () => {
-    if (isDirty) {
+    if (isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy) return;
+    if (isDirty || isApplicabilityDirty) {
       setPendingVersionUuid(null);
       setShowLeaveDialog(true);
     } else {
@@ -1397,6 +1681,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     confirmDelete,
     showLeaveDialog,
     releaseConfirmOpen,
+    applicabilitySettingsOpen: isApplicabilitySettingsOpen,
     handleClose,
   };
 
@@ -1404,10 +1689,157 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     setSelectedVersionUuid(versionUuid);
     const version = availableVersions.find((item) => item.fvUuid === versionUuid);
     setIsEditing(version?.status === "draft");
+    setRenamingPartUuid(null);
+    setAddPartOpen(false);
+  };
+
+  const saveAndContinue = async () => {
+    if (
+      isSavingAndContinuing
+      || isSaving
+      || isSavingStage
+      || isApplicabilityBusy
+      || isReleasing
+    ) return;
+
+    const targetVersionUuid = pendingVersionUuid;
+    const sourceVersionUuid = selectedVersion?.fvUuid;
+    const policyRegistration = applicabilitySaveHandlerRef.current;
+    if (
+      isApplicabilityDirty
+      && (!sourceVersionUuid || policyRegistration?.versionUuid !== sourceVersionUuid)
+    ) {
+      toast({
+        title: "Applicability changes were not saved",
+        description: "Keep editing and retry once the policy editor is ready.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingAndContinuing(true);
+    try {
+      if (isDirty) {
+        const savedContent = await save();
+        if (!savedContent) {
+          toast({
+            title: "Form changes were not saved",
+            description: "Your changes are still here. Fix any errors, then try Save and continue again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (isApplicabilityDirty) {
+        if (applicabilitySaveHandlerRef.current !== policyRegistration) {
+          toast({
+            title: "Applicability changes were not saved",
+            description: "The selected version changed. Keep editing and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const savedPolicy = await policyRegistration!.save();
+        if (!savedPolicy) {
+          toast({
+            title: "Applicability changes were not saved",
+            description: "Your policy changes are still here. Retry the save or keep editing.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (targetVersionUuid) {
+        applyVersionChange(targetVersionUuid);
+        setPendingVersionUuid(null);
+      } else {
+        onClose();
+      }
+      setShowLeaveDialog(false);
+    } finally {
+      setIsSavingAndContinuing(false);
+    }
+  };
+
+  const partAction = async (action: () => Promise<string | void>, success: string) => {
+    if (!canManageParts) return;
+    if (isDirty) {
+      setSaveError("Save or discard unsaved section changes before editing parts.");
+      return;
+    }
+    setIsPartMutating(true);
+    setSaveError("");
+    try {
+      const selectUuid = await action();
+      const refreshed = await refetchParts();
+      if (refreshed.error) throw refreshed.error;
+      if (selectUuid) setSelectedPartUuid(selectUuid);
+      else if (!refreshed.data?.some((part) => part.formPartUuid === selectedPartUuid)) {
+        setSelectedPartUuid(refreshed.data?.[0]?.formPartUuid ?? "");
+      }
+      toast({ title: success });
+    } catch (error) {
+      setSaveError(editorErrorMessage(error, "manageVersion", isCompanyForm));
+    } finally {
+      setIsPartMutating(false);
+    }
+  };
+
+  const addPart = async () => {
+    const title = newPartTitle.trim();
+    if (!title || !selectedVersion) return;
+    await partAction(async () => {
+      const response = await apiRequest("POST", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts`, {
+        part_title: title, is_office_only: newPartOfficeOnly,
+      });
+      const part: ConfigurableFormPart = await response.json();
+      setAddPartOpen(false);
+      setNewPartTitle("");
+      setNewPartOfficeOnly(false);
+      return part.formPartUuid;
+    }, "Part added");
+  };
+
+  const renamePart = async (part: ConfigurableFormPart) => {
+    const title = partTitleDraft.trim();
+    if (!title || !selectedVersion) return;
+    if (title === part.partTitle) { setRenamingPartUuid(null); return; }
+    await partAction(async () => {
+      await apiRequest("PATCH", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}`, {
+        part_title: title,
+      });
+      setRenamingPartUuid(null);
+      return part.formPartUuid;
+    }, "Part renamed");
+  };
+
+  const movePart = async (direction: -1 | 1) => {
+    if (!selectedPart || !selectedVersion) return;
+    const index = allParts.findIndex((part) => part.formPartUuid === selectedPart.formPartUuid);
+    if (index + direction < 0 || index + direction >= allParts.length) return;
+    const reordered = [...allParts];
+    [reordered[index], reordered[index + direction]] = [reordered[index + direction], reordered[index]];
+    await partAction(async () => {
+      await apiRequest("PUT", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/reorder`, {
+        part_uuids: reordered.map((part) => part.formPartUuid),
+      });
+      return selectedPart.formPartUuid;
+    }, "Parts reordered");
+  };
+
+  const removePart = async () => {
+    if (!selectedPart || !selectedVersion) return;
+    const part = selectedPart;
+    await partAction(async () => {
+      await apiRequest("DELETE", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}`);
+    }, "Part removed");
   };
 
   const requestVersionChange = (versionUuid: string) => {
-    if (shouldConfirmVersionChange(isDirty, selectedVersion?.fvUuid || "", versionUuid)) {
+    if (isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy) return;
+    if (shouldConfirmVersionChange(isDirty || isApplicabilityDirty, selectedVersion?.fvUuid || "", versionUuid)) {
       setPendingVersionUuid(versionUuid);
       setShowLeaveDialog(true);
       return;
@@ -1424,7 +1856,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       await refetchVersions();
       toast({ title: "Draft ready", description: "You can now edit this form version." });
     } catch (error: any) {
-      toast({ title: "Unable to create draft", description: error?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Unable to create draft", description: editorErrorMessage(error, "manageVersion", isCompanyForm), variant: "destructive" });
     }
   };
 
@@ -1452,6 +1884,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         ...section,
         signature_officer_required: settingsValues.officerSignatureRequired,
         signature_seafarer_required: settingsValues.seafarerSignatureRequired,
+        signature_vessel_management_required: settingsValues.vesselManagementRequired,
+        vessel_signature_role_uuids: settingsValues.vesselSignatureRoleUuids,
       }));
     }
     setSettingsDialog(null);
@@ -1507,7 +1941,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   useEffect(() => {
     const focusEditor = () => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen || lifecycle.applicabilitySettingsOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       const [firstFocusable] = getFocusableElements(editor);
@@ -1516,7 +1950,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const focusTimer = window.setTimeout(focusEditor, 0);
     const handleConfigureKeys = (event: KeyboardEvent) => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen || lifecycle.applicabilitySettingsOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       if (hasOpenPortalledListbox()) return;
@@ -1560,49 +1994,169 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, [closePreview, isPreview]);
 
   const editorHeader = (
-    <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
+    <div className="sticky top-0 shrink-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
+            {isCompanyForm && selectedVersionLabel && (
+              <Badge variant={selectedVersion?.status === "draft" ? "secondary" : "outline"} data-testid="company-form-version-display">
+                {selectedVersionLabel}
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {rankGroupName || "All rank groups"} · configure the form structure and response points
+            {form.category === "dynamic" ? "Company Form" : rankGroupName || "All rank groups"} · configure the form structure and response points
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
-            <Button type="button" variant={viewMode === "configure" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "preview" ? toggleViewMode : undefined} aria-pressed={viewMode === "configure"} data-testid="button-configure-mode">
+            {!readOnly && <Button type="button" variant={viewMode === "configure" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "preview" ? toggleViewMode : undefined} aria-pressed={viewMode === "configure"} data-testid="button-configure-mode">
               Configure
-            </Button>
-            <Button type="button" variant={viewMode === "preview" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "configure" ? toggleViewMode : undefined} aria-pressed={viewMode === "preview"} data-testid="button-preview-mode">
+            </Button>}
+            <Button type="button" variant={viewMode === "preview" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={!readOnly && viewMode === "configure" ? toggleViewMode : undefined} aria-pressed={viewMode === "preview"} data-testid="button-preview-mode">
               Preview
             </Button>
           </div>
           <span className="text-gray-500">Version</span>
-          <Select value={selectedVersion?.fvUuid || ""} onValueChange={requestVersionChange}>
-            <SelectTrigger className="w-[180px] h-9 bg-white" data-testid="select-form-version">
-              <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"} />
+          <Select
+            value={selectedVersion?.fvUuid || ""}
+            onValueChange={requestVersionChange}
+            disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy}
+          >
+            <SelectTrigger className={isCompanyForm ? "h-9 w-[190px] shrink-0 bg-white [&>span]:!line-clamp-none" : "w-[180px] h-9 bg-white"} data-testid="select-form-version">
+              <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"}>
+                {isCompanyForm ? compactVersionLabel : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {sortedVersions.map((version) => (
                 <SelectItem value={version.fvUuid} key={version.fvUuid}>
                   v{version.versionNo} · {version.status === "draft" ? "Draft" : "Released"}
+                  {isCompanyForm && version.applicability && (
+                    <span data-testid={`version-policy-${version.fvUuid}`}>
+                      {" · "}{version.applicability.mode === "manual_only" ? "Manual only" :
+                        version.applicability.mode === "all" ? "Applies to all" : "Applies when conditions match"}
+                      {version.status === "released" && <> · {version.changeSummary
+                        ? !version.changeSummary.previousVersionUuid ? "Initial release"
+                          : version.changeSummary.contentChanged && version.changeSummary.applicabilityChanged ? "Content + applicability changed"
+                            : version.changeSummary.contentChanged ? "Content changed"
+                              : version.changeSummary.applicabilityChanged ? "Applicability changed" : "No change"
+                        : "Legacy — change history unavailable"}
+                        {version.changeSummary?.details.includes("Signing configuration changed") && " · Signing configuration changed"}
+                      </>}
+                    </span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {selectedVersion && <Badge variant={selectedVersion.status === "draft" ? "secondary" : "outline"}>{selectedVersion.status === "draft" ? "Draft" : "Released"}</Badge>}
-          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
+          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Close" disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
+      {isCompanyForm && selectedVersion && (
+        <section
+          className="mt-3 border-t pt-3"
+          aria-label="Company Form stage and applicability settings"
+          data-testid="company-form-header-settings"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {(subjectStages.length > 0 || subjectStagesError) && (
+              <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="company-form-stage-editor">
+                <label htmlFor="company-form-stage" className="sr-only">Subject stage</label>
+                {subjectStagesError ? (
+                  <span className="text-xs text-red-700">Unable to load subject stages.</span>
+                ) : (
+                  <>
+                    <Select
+                      value={currentStageKey || "none"}
+                      onValueChange={(value) => void updateVersionStage(value)}
+                      disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages}
+                    >
+                      <SelectTrigger id="company-form-stage" className="h-9 w-[min(13rem,65vw)] bg-white" data-testid="select-company-form-stage">
+                        <SelectValue placeholder={isLoadingSubjectStages ? "Loading stages..." : "No stage selected"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No stage selected</SelectItem>
+                        {subjectStages.map((stage) => (
+                          <SelectItem value={stage.stageKey} key={stage.stageKey}>{stage.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isSavingStage && <span className="text-xs text-gray-500" role="status">Saving stage…</span>}
+                  </>
+                )}
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <div className="min-w-0 flex-1" aria-live="polite" data-testid="company-form-applicability-summary">
+                <p className="text-sm leading-5 text-gray-700">
+                  {applicabilitySummaryState.loading
+                    ? "Loading applicability policy…"
+                    : applicabilitySummaryState.error
+                      ? "Policy summary unavailable."
+                      : applicabilitySummaryState.canView
+                        ? applicabilitySummary
+                        : "Applicability policy unavailable."}
+                </p>
+                {isApplicabilityDirty && <span className="text-xs font-medium text-amber-700">Unsaved policy changes</span>}
+                {applicabilitySummaryState.loading && (
+                  <span className="block text-xs text-gray-500" role="status">Loading applicability settings…</span>
+                )}
+                {applicabilitySummaryState.error && (
+                  <span className="block text-xs text-red-700" role="alert">{applicabilitySummaryState.error}</span>
+                )}
+                {!applicabilitySummaryState.loading && !applicabilitySummaryState.canView && (
+                  <span className="block text-xs text-gray-600">You do not have permission to view applicability settings.</span>
+                )}
+                {!applicabilitySummaryState.loading && applicabilitySummaryState.canView
+                  && selectedVersion.status === "draft" && !applicabilitySummaryState.canEdit && (
+                    <span className="block text-xs text-gray-600">Forms edit permission is needed to change this policy.</span>
+                  )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0"
+                onClick={() => setIsApplicabilitySettingsOpen(true)}
+                aria-expanded={isApplicabilitySettingsOpen}
+                aria-controls="company-form-applicability-settings"
+                data-testid="button-toggle-applicability-settings"
+              >
+                {applicabilitySummaryState.canEdit ? "Edit" : "View"}
+              </Button>
+            </div>
+          </div>
+            <CompanyFormApplicabilityEditor
+              formId={realFormId}
+              versionId={selectedVersion.id}
+              versionUuid={selectedVersion.fvUuid}
+              status={selectedVersion.status}
+              stageKey={currentStageKey}
+              stageBusy={isSavingStage}
+              navigationBusy={isSavingAndContinuing}
+              readOnly={readOnly}
+              onBusyChange={setIsApplicabilityBusy}
+              onDirtyChange={setIsApplicabilityDirty}
+              onRegisterSaveHandler={registerApplicabilitySaveHandler}
+              onSaved={async () => { await refetchVersions(); }}
+              onSummaryChange={handleApplicabilitySummaryChange}
+              settingsOpen={isApplicabilitySettingsOpen}
+              onSettingsClose={() => setIsApplicabilitySettingsOpen(false)}
+            />
+        </section>
+      )}
     </div>
   );
 
   const editorFooter = (
     <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
-      <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
-      <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
+      <Button variant="ghost" onClick={handleClose} disabled={isSaving || isSavingStage || isSavingAndContinuing || isReleasing || isApplicabilityBusy} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+      <div className="text-xs text-gray-500">{isDirty || isApplicabilityDirty ? "Unsaved changes" : "All changes saved"}{isApplicabilityBusy ? " · applicability loading or saving" : ""} · option values stay hidden and stable after creation</div>
     </div>
   );
   const tableClasses = getTableClasses();
@@ -1614,9 +2168,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           title={`${formName} form editor`}
           sections={allParts.map((part) => ({
             id: part.formPartUuid,
-            title: part.partTitle || `Part ${part.partCode}`,
-            letter: part.partCode,
+            title: form.category === "dynamic" ? `${displayNumbers.part.get(part.formPartUuid)} · ${part.partTitle || "Untitled part"}` : part.partTitle || `Part ${part.partCode}`,
+            letter: form.category === "dynamic" ? undefined : part.partCode,
           }))}
+          hideSectionLetters={form.category === "dynamic"}
           activeSection={selectedPart?.formPartUuid || selectedPartUuid}
           onActiveSectionChange={setSelectedPartUuid}
           onClose={handleClose}
@@ -1632,8 +2187,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 mode="preview"
                 embedded
                 formTitle={formName}
+                formVersionLabel={selectedVersionLabel}
+                subjectType={companySubjectType}
                 parts={allParts}
-                structures={previewStructures}
+                structures={previewStructures as any}
                 roles={roles}
                 departments={departments}
                 vesselTypes={vesselTypes}
@@ -1641,43 +2198,73 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 selectedVesselTypeUuid={previewVesselTypeUuid}
                 onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
                 fixedParts={previewFixedParts}
+                companyForm={isCompanyForm}
               />
             ) : (
                <>
                  <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-4 backdrop-blur">
                    <div className="flex flex-wrap items-start justify-between gap-3">
                      <div className="min-w-0 flex-1">
-                       <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
-                         {selectedPart?.partCode} · {selectedPart?.partTitle}
-                       </div>
-                       <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
+                       {renamingPartUuid === selectedPart?.formPartUuid && canManageParts ? (
+                         <div className="flex items-center gap-2">
+                           <Input value={partTitleDraft} onChange={(event) => setPartTitleDraft(event.target.value)}
+                             onKeyDown={(event) => { if (event.key === "Enter") void renamePart(selectedPart); if (event.key === "Escape") setRenamingPartUuid(null); }}
+                             maxLength={500} autoFocus data-testid="input-rename-part" aria-label="Part title" />
+                           <Button size="sm" onClick={() => void renamePart(selectedPart)} disabled={!partTitleDraft.trim()} data-testid="button-save-part-name">Save</Button>
+                           <Button size="sm" variant="ghost" onClick={() => setRenamingPartUuid(null)}>Cancel</Button>
+                         </div>
+                       ) : (
+                         <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }} data-testid="part-heading">
+                           {selectedPart ? (isCompanyForm ? `${displayNumbers.part.get(selectedPart.formPartUuid)} · ${selectedPart.partTitle}` : `${selectedPart.partCode} · ${selectedPart.partTitle}`) : "No parts yet"}
+                         </div>
+                       )}
+                       {selectedPart && <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
                          {currentSections.length} section{currentSections.length === 1 ? "" : "s"} ·
                          {" "}{currentSections.reduce((sum, section) => sum + section.questions.length, 0)} points
-                       </div>
+                       </div>}
                      </div>
+                     {canManageParts && (
+                       <div className="flex flex-wrap items-center gap-1" data-testid="company-part-controls">
+                         {selectedPart && <>
+                           <Button size="sm" variant="outline" onClick={() => { setRenamingPartUuid(selectedPart.formPartUuid); setPartTitleDraft(selectedPart.partTitle); }} data-testid="button-rename-part">Rename</Button>
+                           <Button size="icon" variant="outline" aria-label="Move part up" disabled={allParts[0]?.formPartUuid === selectedPart.formPartUuid} onClick={() => void movePart(-1)} data-testid="button-move-part-up"><ArrowUp className="h-4 w-4" /></Button>
+                           <Button size="icon" variant="outline" aria-label="Move part down" disabled={allParts[allParts.length - 1]?.formPartUuid === selectedPart.formPartUuid} onClick={() => void movePart(1)} data-testid="button-move-part-down"><ArrowDown className="h-4 w-4" /></Button>
+                           <Button size="icon" variant="outline" aria-label="Remove part" onClick={() => void removePart()} data-testid="button-remove-part"><Trash2 className="h-4 w-4" /></Button>
+                         </>}
+                         <Button size="sm" variant="outline" onClick={() => {
+                           if (isDirty) setSaveError("Save or discard unsaved section changes before editing parts.");
+                           else setAddPartOpen(true);
+                         }} data-testid="button-add-part"><Plus className="h-4 w-4 mr-1" /> Add part</Button>
+                       </div>
+                     )}
                      <div className="flex items-center gap-2">
-                   <Button
+                   {!readOnly && <Button
                      onClick={requestRelease}
                      className="bg-green-600 hover:bg-green-700 text-white"
                      size="sm"
-                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing}
+                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing || isSavingStage || isSavingAndContinuing || isLoadingSubjectStages || (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy))}
                      data-testid="button-release-version"
                    >
                      Release Ver
-                   </Button>
-                   {viewMode === "configure" && !canEdit && (
+                   </Button>}
+                   {isCompanyForm && !readOnly && (isApplicabilityDirty || isApplicabilityBusy || isSavingStage) && (
+                     <span className="max-w-[15rem] text-xs leading-4 text-[#805b1c]" role="status" data-testid="release-applicability-save-first">
+                       Save any applicability changes first, then wait for policy and stage saves to finish before release.
+                     </span>
+                   )}
+                   {viewMode === "configure" && !readOnly && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
                       Released versions are read-only. Create a new draft to make changes.
                     </div>
                   )}
-                   {viewMode === "configure" && !canEdit && (
+                   {viewMode === "configure" && !readOnly && !canEdit && (
                     <Button onClick={startEditing} data-testid="button-edit-as-new-draft">
                       <Plus className="h-4 w-4 mr-2" /> Edit as new draft
                     </Button>
                   )}
                    {viewMode === "configure" && canEdit && (
-                    <Button onClick={save} disabled={isSaving || isLoadingTree} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
+                     <Button onClick={save} disabled={isSaving || isSavingAndContinuing || isLoadingTree || isLoadingParts || !!partsError || !configurableParts.length || baselineRef.current === null} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
                       <Save className="h-4 w-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
                     </Button>
                   )}
@@ -1694,7 +2281,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               )}
 
                 <div>
-                 {isLoadingTree ? (
+                 {isLoadingTree || isLoadingParts ? (
                    <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
                  ) : (
                    <div className="p-6 space-y-5">
@@ -1775,8 +2362,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       mode="preview"
                       embedded
                       formTitle={formName}
+                      formVersionLabel={selectedVersionLabel}
+                      subjectType={companySubjectType}
                       parts={allParts}
-                      structures={previewStructures}
+                      structures={previewStructures as any}
                       roles={roles}
                       departments={departments}
                       vesselTypes={vesselTypes}
@@ -1784,6 +2373,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       selectedVesselTypeUuid={previewVesselTypeUuid}
                       onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
                        fixedParts={previewFixedParts}
+                       companyForm={isCompanyForm}
                     />
                   ) : (
                   <>
@@ -1794,7 +2384,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                            <div className="flex items-start justify-between gap-3">
                              <div className="min-w-0 flex-1">
                                <div className="flex items-center gap-2">
-                                 <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{section.section_code}</span>
+                                 <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{sectionDisplay(section)}</span>
                                  <Input
                                    value={section.section_title}
                                    disabled={!canModify}
@@ -1831,11 +2421,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                    );
                                  })() : (
                                    <Badge variant="outline" className="text-[10px] font-normal">
-                                     {section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
+                                      {section.responsible_mode === "department"
+                                        ? `Dept: ${section.responsible_department || "Not set"}`
+                                        : section.responsible_mode === "seafarer" ? "Seafarer" : "No responsible party"}
                                    </Badge>
                                  )}
                                  {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
-                                  {section.signature_officer_required && <Badge variant="outline" className="text-[10px] font-normal">Officer signature required</Badge>}
+                                  {section.signature_officer_required && <Badge variant="outline" className="text-[10px] font-normal">{isCompanyForm ? "Company Representative required" : "Officer signature required"}</Badge>}
                                   {section.signature_seafarer_required && <Badge variant="outline" className="text-[10px] font-normal">Seafarer signature required</Badge>}
                                   {section.default_option_set_uuid && <Badge variant="outline" className="text-[10px] font-normal">Default: {optionSetFor(selectedPart.formPartUuid, section.default_option_set_uuid)?.option_set_name || "Custom set"}</Badge>}
                                   <Badge variant="outline" className="text-[10px] font-normal">Layout: {section.layout_preference}</Badge>
@@ -1880,7 +2472,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                 <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
                                   <Select value={bulkResponseTypes[section.clientKey] || "single_select"} onValueChange={(value) => setBulkResponseTypes((current) => ({ ...current, [section.clientKey]: value }))}>
                                     <SelectTrigger className="h-7 w-[155px] text-xs" data-testid={`select-bulk-response-type-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                     <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || (value !== "content" && value !== "system_field")).map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                   </Select>
                                   <Button variant="ghost" size="sm" onClick={() => {
                                     const type = bulkResponseTypes[section.clientKey] || "single_select";
@@ -1905,10 +2497,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                              {section.questions.map((question, questionIndex) => (
                                <tr key={question.clientKey} className={tableClasses.row} data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                   <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code}</div>
+                                     <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.response_type === "content" ? "Content" : question.response_type === "system_field" ? "System field" : pointDisplay(question)}</div>
                                    <Textarea
-                                     value={question.question_text}
-                                     disabled={!canModify}
+                                      value={question.response_type === "system_field"
+                                        ? systemFields.find((field) => field.key === question.system_field_key)?.label || question.question_text
+                                        : question.question_text}
+                                      disabled={!canModify || question.response_type === "system_field"}
                                      onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, question_text: event.target.value }))}
                                      onKeyDown={(event) => {
                                        if (event.key === "Enter" && !event.shiftKey && canModify) {
@@ -1916,18 +2510,43 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                          addQuestion(selectedPart.formPartUuid, sectionIndex);
                                        }
                                      }}
-                                     placeholder="Enter point text, then press Enter for the next point"
+                                       placeholder={question.response_type === "content" ? "Short content label" : question.response_type === "system_field" ? "Select a system field" : "Enter point text, then press Enter for the next point"}
                                      className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canModify ? "border-b border-red-300" : ""}`}
                                      data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
                                    />
-                                   {!question.question_text.trim() && canModify && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                    {!question.question_text.trim() && canModify && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                    {question.response_type === "content" && <div className="mt-3">
+                                      <ContentPointEditor
+                                        key={question.question_uuid || question.clientKey}
+                                        html={question.content_html || ""}
+                                        disabled={!canModify}
+                                        onChange={(html) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, content_html: html }))}
+                                      />
+                                    </div>}
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <Select value={question.response_type} disabled={!canModify} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
                                      <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                     <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                     <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || (value !== "content" && value !== "system_field")).map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                    </Select>
-                                    <div className="mt-2 text-[11px] text-gray-500">Single Selection allows one answer, Multi Selection allows several.</div>
+                                      <div className="mt-2 text-[11px] text-gray-500">{question.response_type === "content" ? "Display only — no answer." : question.response_type === "system_field" ? "Read-only field supplied by the record." : "Single Selection allows one answer, Multi Selection allows several."}</div>
+                                      {question.response_type === "system_field" && (
+                                        <div className="mt-3 space-y-1.5">
+                                          <span className="text-xs font-semibold text-gray-700">System field</span>
+                                          <Select
+                                            value={question.system_field_key || ""}
+                                            disabled={!canModify || systemFields.length === 0}
+                                            onValueChange={(value) => changeSystemField(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}
+                                          >
+                                            <SelectTrigger className="h-8 w-full min-w-[160px] text-xs" data-testid={`select-system-field-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                              <SelectValue placeholder={systemFields.length ? "Select system field" : "No fields available"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {systemFields.map((field) => <SelectItem value={field.key} key={field.key}>{field.label}</SelectItem>)}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      )}
                                    {(question.response_type === "single_select" || question.response_type === "multi_select") && (
                                       <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -1999,6 +2618,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
+                                      {question.response_type === "content" || question.response_type === "system_field" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
                                        <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory
@@ -2007,6 +2627,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                        <Checkbox checked={question.comment_enabled} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Comment enabled
                                      </label>
+                                     </>}
                                    </div>
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
@@ -2047,6 +2668,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         document.body,
       )}
 
+      <Dialog open={addPartOpen} onOpenChange={setAddPartOpen}>
+        <DialogContent data-testid="dialog-add-part">
+          <DialogHeader>
+            <DialogTitle>Add part</DialogTitle>
+            <DialogDescription>Name the new Company Form part.</DialogDescription>
+          </DialogHeader>
+          <Input value={newPartTitle} onChange={(event) => setNewPartTitle(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") void addPart(); }}
+            maxLength={500} autoFocus placeholder="Part title" aria-label="New part title" data-testid="input-new-part-title" />
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={newPartOfficeOnly} onCheckedChange={(checked) => setNewPartOfficeOnly(checked === true)} />
+            Office only
+          </label>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddPartOpen(false)}>Cancel</Button>
+            <Button onClick={() => void addPart()} disabled={!newPartTitle.trim() || isPartMutating} data-testid="button-confirm-add-part">Add part</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={settingsDialog !== null} onOpenChange={(open) => !open && setSettingsDialog(null)}>
         <DialogContent className="max-w-lg" data-testid="section-settings-dialog">
           <DialogHeader>
@@ -2054,7 +2695,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               {settingsDialog === "vessel" ? "Vessel Type Applicability" : settingsDialog === "responsible" ? "Responsible Role / Department" : settingsDialog === "comment" ? "Section Comment Box" : "Electronic Signature"}
             </DialogTitle>
             <DialogDescription>
-              {sectionForSettings?.section_code} · {sectionForSettings?.section_title || "Untitled section"}
+              {sectionForSettings && sectionDisplay(sectionForSettings)} · {sectionForSettings?.section_title || "Untitled section"}
             </DialogDescription>
           </DialogHeader>
           {settingsDialog === "vessel" && (
@@ -2076,9 +2717,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           )}
           {settingsDialog === "responsible" && (
             <div className="space-y-4">
-              <RadioGroup value={settingsValues.responsibleMode} onValueChange={(value) => setSettingsValues((current) => ({ ...current, responsibleMode: value as SectionModel["responsible_mode"] }))} className="gap-3">
+              <RadioGroup value={settingsValues.responsibleMode} onValueChange={(value) => setSettingsValues((current) => ({
+                ...current,
+                responsibleMode: value as SectionModel["responsible_mode"],
+                ...(value === "seafarer" ? { responsibleRoleUuid: "", responsibleDepartment: "" } : {}),
+              }))} className="gap-3">
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="role" /> Responsible Role</label>
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="department" /> Responsible Department</label>
+                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="seafarer" /> Seafarer</label>
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_applicable" /> Not Applicable</label>
               </RadioGroup>
               {settingsValues.responsibleMode === "role" && (
@@ -2107,7 +2753,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           {settingsDialog === "signature" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Officer signature</p>
+                <p className="text-sm font-medium">{isCompanyForm ? "Company Representative" : "Officer signature"}</p>
                 <RadioGroup value={settingsValues.officerSignatureRequired ? "required" : "not_required"} onValueChange={(value) => setSettingsValues((current) => ({ ...current, officerSignatureRequired: value === "required" }))}>
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
@@ -2120,6 +2766,27 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
                 </RadioGroup>
               </div>
+              {isCompanyForm && ["on_board", "at_sign_off"].includes(currentStageKey ?? "") && <>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Vessel Management signature</p>
+                  <RadioGroup value={settingsValues.vesselManagementRequired ? "required" : "not_required"} onValueChange={value => setSettingsValues(current => ({ ...current, vesselManagementRequired: value === "required" }))}>
+                    <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
+                    <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
+                  </RadioGroup>
+                </div>
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Permitted vessel roles for signing and on-board witnessing</legend>
+                  <p className="text-xs text-muted-foreground">Select one or more. Permissions use role identifiers, not these display names.</p>
+                  {activeRoles.filter(role => role.roletype?.toLowerCase() === "ship").map(role => (
+                    <label key={role.ruid} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={settingsValues.vesselSignatureRoleUuids.includes(role.ruid)}
+                        onCheckedChange={checked => setSettingsValues(current => ({ ...current,
+                          vesselSignatureRoleUuids: checked ? [...new Set([...current.vesselSignatureRoleUuids, role.ruid])] : current.vesselSignatureRoleUuids.filter(id => id !== role.ruid),
+                        }))} /> {roleTitle(role)}
+                    </label>
+                  ))}
+                </fieldset>
+              </>}
             </div>
           )}
           <DialogFooter>
@@ -2183,6 +2850,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={
+                isSaving
+                || isSavingStage
+                || isSavingAndContinuing
+                || (isCompanyForm && (isApplicabilityDirty || isApplicabilityBusy))
+              }
               onClick={() => {
                 setReleaseConfirmOpen(false);
                 void releaseSelectedVersion();
@@ -2197,17 +2870,41 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       </AlertDialog>
 
       <AlertDialog open={showLeaveDialog} onOpenChange={(open) => {
+        if (isSavingAndContinuing && !open) return;
         setShowLeaveDialog(open);
         if (!open) setPendingVersionUuid(null);
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{pendingVersionUuid ? "Switch without saving?" : "Leave without saving?"}</AlertDialogTitle>
-            <AlertDialogDescription>{pendingVersionUuid ? "Your changes will be discarded before loading the selected version." : "Your changes will be discarded if you leave this editor."}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {isCompanyForm
+                ? pendingVersionUuid ? "Switch with unsaved changes?" : "Leave with unsaved changes?"
+                : pendingVersionUuid ? "Switch without saving?" : "Leave without saving?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isCompanyForm
+                ? pendingVersionUuid
+                  ? "Save and continue saves both the form content and applicability policy before switching. Discard changes switches without saving."
+                  : "Save and continue saves both the form content and applicability policy before leaving. Discard changes leaves without saving."
+                : pendingVersionUuid
+                  ? "Your changes will be discarded before loading the selected version."
+                  : "Your changes will be discarded if you leave this editor."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep editing</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
+            <AlertDialogCancel disabled={isSavingAndContinuing}>Keep editing</AlertDialogCancel>
+            {isCompanyForm && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void saveAndContinue()}
+                disabled={isSavingAndContinuing || isSaving || isSavingStage || isApplicabilityBusy || isReleasing}
+                data-testid="button-save-and-continue"
+              >
+                {isSavingAndContinuing ? "Saving…" : "Save and continue"}
+              </Button>
+            )}
+            <AlertDialogAction disabled={isSavingAndContinuing} onClick={() => {
               if (pendingVersionUuid) {
                 applyVersionChange(pendingVersionUuid);
                 setPendingVersionUuid(null);

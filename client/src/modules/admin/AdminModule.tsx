@@ -4,6 +4,9 @@ import { formatIsoDate } from "@/components/ui/formatted-date-input";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { readListVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
+import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -69,7 +72,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import type { ConfigurableFormPart } from "@/components/GenericFormEditor";
-import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   useDataMasters, 
@@ -136,6 +138,12 @@ import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypes
 import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2, useFormCopySourcesV2, useCopyFormConfigurationV2 } from './hooks/useAdminV2';
 
 const V2_KEY = '/api/v2/admin';
+type CompanyForm = Form & {
+  formUuid?: string; subjectType?: string | null; description?: string | null; archivedAt?: string | null;
+  versionSummary?: VersionLoadResult; rankGroups?: RankGroup[]; parts?: ConfigurableFormPart[];
+  partsLoadState?: "loaded" | "error";
+};
+type CompanyFormVersion = { id: number; formId: number; fvUuid: string; rankGroupId: number | null; versionNo: string; versionDate: string; status: string };
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -552,14 +560,23 @@ interface SeafarerData {
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
-  const { canView, canCreate, canEdit, canDelete, permissions, userType } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions, userType, accessControlManagement } = usePermissions();
   const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
-    const standardPages = permissions.length === 0 ? all : all.filter(p => canView(adminPageToMenu[p] || p));
-    return standardPages;
-  }, [permissions, canView, userType]);
+    const standardPages = permissions.length === 0
+      ? (accessControlManagement ? [] : all.filter(page => page !== "access-control"))
+      : all.filter(page => page !== "access-control" && (accessControlManagement
+        ? permissions.some(permission => permission.menuName.toLowerCase() === (adminPageToMenu[page] || page).toLowerCase() && permission.canview)
+        : canView(adminPageToMenu[page] || page)));
+    return accessControlManagement ? [...standardPages, "access-control"] : standardPages;
+  }, [permissions, canView, accessControlManagement, userType]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
+  useEffect(() => {
+    if (adminAllowedPages.length > 0 && !adminAllowedPages.includes(selectedAdminPage)) {
+      setSelectedAdminPage(adminAllowedPages[0]);
+    }
+  }, [adminAllowedPages, selectedAdminPage]);
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);
   const [isCrewImportOpen, setIsCrewImportOpen] = useState(false);
@@ -569,7 +586,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [showTrainingFilters, setShowTrainingFilters] = useState(true);
   const [trainingSearchFilter, setTrainingSearchFilter] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [editingForm, setEditingForm] = useState<Form | null>(null);
+  const [editingForm, setEditingForm] = useState<(Form & { subjectType?: string | null }) | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [editingRankGroupId, setEditingRankGroupId] = useState<number | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
@@ -581,9 +598,13 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedCopySourceUuid, setSelectedCopySourceUuid] = useState("");
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
-  const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
-  const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [newFormDescription, setNewFormDescription] = useState("");
+  const [formsTab, setFormsTab] = useState<"standard" | "company">("standard");
+  const [showArchivedCompany, setShowArchivedCompany] = useState(false);
+  const [editingCompanyMetadata, setEditingCompanyMetadata] = useState<CompanyForm | null>(null);
+  const [companyEditName, setCompanyEditName] = useState("");
+  const [companyEditDescription, setCompanyEditDescription] = useState("");
+  const [previewCompanyForm, setPreviewCompanyForm] = useState(false);
   const { data: copySourcesData, isLoading: copySourcesLoading, error: copySourcesError } = useFormCopySourcesV2(copyTargetRankGroup?.id ?? null);
   const copyFormConfigurationMutation = useCopyFormConfigurationV2();
 
@@ -3369,71 +3390,47 @@ const AdminModuleInner = (): JSX.Element => {
   // Vessel column definitions removed - using placeholder for now
 
   // Fetch forms data from API
-  const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
+  const { data: formsData = [], isLoading, error } = useQuery<CompanyForm[]>({
     queryKey: ["/api/v2/admin/forms"],
     enabled: selectedAdminPage === "forms",
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/forms");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await apiRequest("GET", "/api/v2/admin/forms?includeSummary=true");
       return response.json();
     },
-  });
-  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
-
-  // The generic editor is selected from form-part metadata rather than from
-  // an expanding list of form names. Keep this read-only lookup beside the
-  // Forms table so the factory can preserve the two legacy editors exactly.
-  const { data: allFormParts = [] } = useQuery<Array<ConfigurableFormPart & { formId: number }>>({
-    queryKey: ["/api/v2/admin/form-parts-all", formIds],
-    queryFn: async () => {
-      if (formIds.length === 0) return [];
-      const results = await Promise.all(formIds.map(async (formId) => {
-        const response = await fetch(`/api/v2/admin/forms/${formId}/parts`);
-        if (!response.ok) return [];
-        const parts = await response.json() as ConfigurableFormPart[];
-        return parts.map((part) => ({ ...part, formId }));
-      }));
-      return results.flat();
-    },
-    enabled: selectedAdminPage === "forms" && formIds.length > 0,
   });
 
   const formPartsByFormId = useMemo(() => {
-    return allFormParts.reduce((result, part) => {
-      (result[part.formId] ||= []).push(part);
+    return formsData.reduce((result, form) => {
+      result[form.id] = form.parts || [];
       return result;
     }, {} as Record<number, ConfigurableFormPart[]>);
-  }, [allFormParts]);
+  }, [formsData]);
+  const allRankGroups = useMemo(() => formsData.flatMap(form => form.rankGroups || []), [formsData]);
 
-  const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
-    queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
-    queryFn: async () => {
-      const response = await fetch("/api/v2/admin/rank-groups?includeArchived=true");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-    enabled: selectedAdminPage === "forms",
-  });
-
-  const { data: allFormVersions = [] } = useQuery<Array<{ id: number; formId: number; rankGroupId: number | null; versionNo: string; versionDate: string; status: string }>>({
-    queryKey: ["/api/v2/admin/form-versions-all", formIds],
-    queryFn: async () => {
-      if (formIds.length === 0) return [];
-      const results = await Promise.all(
-        formIds.map(async (fid) => {
-          const response = await fetch(`/api/v2/admin/forms/${fid}/versions`);
-          if (!response.ok) return [];
-          return response.json();
-        })
-      );
-      return results.flat();
-    },
-    enabled: selectedAdminPage === "forms" && formIds.length > 0,
-  });
+  const versionResults = useMemo(() => Object.fromEntries(formsData.map(form => {
+    let result: VersionLoadResult = form.versionSummary || { state: "loading" };
+    if (result.state === "loaded") {
+      try { result = { state: "loaded", versions: readListVersions(result.versions) }; }
+      catch { result = { state: "error" }; }
+    }
+    return [form.id, result];
+  })), [formsData]);
+  const allFormVersions = useMemo(() => Object.values(versionResults || {})
+    .flatMap(result => result.state === "loaded" ? result.versions : []), [versionResults]);
+  const versionState = (id: number): VersionLoadResult["state"] =>
+    versionResults?.[id]?.state ?? "loading";
+  const retryFormVersions = async (id: number) => {
+    const setResult = (result: VersionLoadResult, refreshed?: CompanyForm) => rq.setQueryData<CompanyForm[]>(
+      ["/api/v2/admin/forms"], old => old?.map(form => form.id === id
+        ? { ...form, ...refreshed, versionSummary: result } : form));
+    setResult({ state: "loading" });
+    try {
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${id}?includeSummary=true`);
+      const refreshed: CompanyForm = await response.json();
+      if (refreshed.versionSummary?.state !== "loaded") throw new Error("Version summary unavailable.");
+      setResult({ state: "loaded", versions: readListVersions(refreshed.versionSummary.versions) }, refreshed);
+    } catch { setResult({ state: "error" }); }
+  };
 
   // Transform forms data to create separate rows for each rank group with category grouping
   // Filters out archived rank groups but keeps form rows visible even when all rank groups are archived
@@ -3445,34 +3442,11 @@ const AdminModuleInner = (): JSX.Element => {
         .filter(rg => rg.formId === formId && rg.archivedAt == null && !!rg.name && rg.name.trim().length > 0);
     };
 
-    const getLatestVersionForRankGroup = (rankGroupId: number, formId: number): { versionNo: string; versionDate: string } | null => {
-      const versions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rankGroupId && v.status === 'released'
-      );
-      if (versions.length === 0) return null;
-      const latest = versions.reduce((max, v) => {
-        const vNo = parseInt(v.versionNo, 10);
-        const maxNo = parseInt(max.versionNo, 10);
-        return vNo > maxNo ? v : max;
-      }, versions[0]);
-      return { versionNo: latest.versionNo, versionDate: latest.versionDate };
-    };
-
-    // Show the Draft pill whenever the rank group has no released version yet
-    // (either a real in-progress draft exists, OR the rank group has nothing
-    // saved at all — in which case the Form Editor synthesizes a v00 Draft
-    // placeholder). Keeps this list consistent with the editor's state.
-    const hasDraftForRankGroup = (rankGroupId: number, formId: number): boolean => {
-      const rgVersions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rankGroupId
-      );
-      const hasRealDraft = rgVersions.some(v => v.status === 'draft');
-      const hasReleased = rgVersions.some(v => v.status === 'released');
-      return hasRealDraft || !hasReleased;
-    };
+    const getVersion = (formId: number, rankGroupId: number | null) =>
+      storedStandardVersion(allFormVersions.filter(v => v.formId === formId), rankGroupId);
 
     // Group forms by category first
-    const formsByCategory = formsData.reduce((acc, form) => {
+    const formsByCategory = formsData.filter(form => form.category !== "dynamic").reduce((acc, form) => {
       const category = form.category || 'appraisal';
       if (!acc[category]) acc[category] = [];
       acc[category].push(form);
@@ -3521,8 +3495,8 @@ const AdminModuleInner = (): JSX.Element => {
         const activeRankGroups = getActiveRankGroupsForForm(form.id);
         if (activeRankGroups.length > 0) {
           activeRankGroups.forEach((rankGroup, index) => {
-              const rgVersion = getLatestVersionForRankGroup(rankGroup.id, form.id);
-              const hasDraft = hasDraftForRankGroup(rankGroup.id, form.id);
+              const rgVersion = getVersion(form.id, rankGroup.id);
+              const hasDraft = rgVersion?.status === "draft";
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index,
@@ -3530,12 +3504,8 @@ const AdminModuleInner = (): JSX.Element => {
                 expandedRankGroup: rankGroup.name,
                 rankGroup: rankGroup.name,
                 rankGroupId: rankGroup.id,
-                versionNo: rgVersion?.versionNo || '00',
-                versionDate: rgVersion?.versionDate || (() => {
-                  const d = new Date();
-                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                  return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
-                })(),
+                versionNo: rgVersion?.versionNo ?? "",
+                versionDate: rgVersion?.versionDate ?? "",
                 hasDraft,
                 isFirstInGroup: index === 0,
                 groupSize: activeRankGroups.length,
@@ -3551,6 +3521,9 @@ const AdminModuleInner = (): JSX.Element => {
           // placeholder row and the existing "+" action.
           expanded.push({
             ...form,
+            versionNo: getVersion(form.id, null)?.versionNo ?? "",
+            versionDate: getVersion(form.id, null)?.versionDate ?? "",
+            hasDraft: getVersion(form.id, null)?.status === "draft",
             id: form.id * 1000,
             originalFormId: form.id,
             expandedRankGroup: '',
@@ -3569,6 +3542,16 @@ const AdminModuleInner = (): JSX.Element => {
 
     return expanded;
   }, [formsData, allRankGroups, allFormVersions]);
+
+  const companyRows = useMemo(() => formsData
+    .filter(form => form.category === "dynamic" && Boolean(form.archivedAt) === showArchivedCompany)
+    .map(form => {
+      const versions = allFormVersions.filter(version => version.formId === form.id && version.rankGroupId == null);
+      const latest = [...versions].sort((a, b) => Number(b.versionNo) - Number(a.versionNo))[0];
+      const released = versions.some(version => version.status === "released");
+      const draft = versions.some(version => version.status === "draft");
+      return { form, latest, status: versions.length === 0 ? "No versions" : !released ? "Not released" : draft ? "Released · draft in progress" : "Released" };
+    }), [formsData, allFormVersions, showArchivedCompany]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
     queryKey: ["/api/v2/admin/available-ranks"],
@@ -3669,17 +3652,49 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   const createFormMutation = useMutation({
-    mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
+    mutationFn: async (data: { name: string; description: string | null }) => {
       const auditUserUuid = getCrewUserId();
-      return await apiRequest("POST", "/api/v2/admin/forms", { ...data, auditUserUuid });
+      const response = await apiRequest("POST", "/api/v2/admin/forms", { ...data, category: "dynamic", auditUserUuid });
+      return response.json() as Promise<{form: CompanyForm; version: CompanyFormVersion}>;
+    },
+    onSuccess: ({ form, version }) => {
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/form-versions-all"] });
+      rq.setQueryData<CompanyForm[]>(["/api/v2/admin/forms"],
+        old => [{ ...form, versionSummary: { state: "loaded", versions: [version] } }, ...(old || [])]);
+      setShowCreateFormDialog(false);
+      setNewFormName("");
+      setNewFormDescription("");
+      setPreviewCompanyForm(false);
+      setEditingRankGroup(null);
+      setEditingRankGroupId(null);
+      setEditingForm(form);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Unable to create Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" });
+    },
+  });
+
+  const updateCompanyMetadata = useMutation({
+    mutationFn: async ({ id, name, description }: { id: number; name: string; description: string | null }) => {
+      const response = await apiRequest("PUT", `/api/v2/admin/forms/${id}`, { name, description, auditUserUuid: getCrewUserId() });
+      return response.json();
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
-      setShowCreateFormDialog(false);
-      setNewFormName("");
-      setNewFormCategory("appraisal");
-      setSelectedTemplate("");
+      setEditingCompanyMetadata(null);
+      toast({ title: "Company Form updated" });
     },
+    onError: (error: Error) => toast({ title: "Unable to update Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" }),
+  });
+
+  const archiveCompanyMutation = useMutation({
+    mutationFn: async (id: number) => apiRequest("POST", `/api/v2/admin/forms/${id}/archive`, { auditUserUuid: getCrewUserId() }),
+    onSuccess: () => {
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      toast({ title: "Company Form archived" });
+    },
+    onError: (error: Error) => toast({ title: "Unable to archive Company Form", description: companyFormErrorMessage(error, "manageVersion"), variant: "destructive" }),
   });
 
   const deleteFormMutation = useMutation({
@@ -3698,17 +3713,9 @@ const AdminModuleInner = (): JSX.Element => {
       // Also invalidate cache on error to refresh state
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
 
-      // Extract specific error message from server response
-      let errorMessage = "Failed to delete form";
-      if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
       toast({
         title: "Error",
-        description: errorMessage,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -3788,7 +3795,7 @@ const AdminModuleInner = (): JSX.Element => {
     } catch (error: any) {
       toast({
         title: "Copy failed",
-        description: error?.message || "Failed to copy form configuration.",
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     }
@@ -3848,29 +3855,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleCreateForm = () => {
     if (!newFormName.trim()) return;
-
-    const formData = {
-      name: newFormName.trim(),
-      category: newFormCategory,
-      rankGroup: "", // Empty string for forms without rank groups
-      versionNo: "00",
-      versionDate: new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }).replace(/ /g, '-')
-    };
-
-    createFormMutation.mutate(formData);
-
-    // If using a template, generate the form editor
-    if (createFormType === "template" && selectedTemplate) {
-      try {
-        createFormEditor(selectedTemplate);
-      } catch (error) {
-        // Error creating form editor
-      }
-    }
+    createFormMutation.mutate({ name: newFormName.trim(), description: newFormDescription.trim() || null });
   };
 
   const updateFormMutation = useMutation({
@@ -3891,7 +3876,7 @@ const AdminModuleInner = (): JSX.Element => {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: `Failed to save form configuration: ${error.message}`,
+        description: companyFormErrorMessage(error, "editorSave"),
         variant: "destructive",
       });
     },
@@ -3918,7 +3903,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
       toast({
         title: "Error",
-        description: `Failed to update Lock Form setting: ${error.message}`,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -3961,7 +3946,7 @@ const AdminModuleInner = (): JSX.Element => {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: `Failed to save rank group configuration: ${error.message}`,
+        description: companyFormErrorMessage(error, "manageVersion"),
         variant: "destructive",
       });
     },
@@ -8445,23 +8430,75 @@ const AdminModuleInner = (): JSX.Element => {
     </div>
   );
 
+  const renderCompanyForms = () => (
+    <div className="flex min-h-0 flex-1 flex-col p-4 bg-[#f7fafc]">
+      <div className="flex items-center gap-2 mb-3">
+        <Checkbox id="show-archived-company-forms" checked={showArchivedCompany} onCheckedChange={checked => setShowArchivedCompany(checked === true)} data-testid="checkbox-show-archived-company-forms" />
+        <label htmlFor="show-archived-company-forms" className="text-sm cursor-pointer">Show archived</label>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+        <Table>
+          <TableHeader><TableRow className="bg-[#52baf3]">
+            {["Form", "Description", "Latest Version", "Version Date", "Status", "Actions"].map(label =>
+              <TableHead key={label} className="text-white text-xs bg-[#52baf3]">{label}</TableHead>)}
+          </TableRow></TableHeader>
+          <TableBody>
+            {companyRows.map(({ form, latest, status }) => (
+              <TableRow key={form.id} data-testid={`company-form-row-${form.id}`}>
+                <TableCell className="text-xs font-semibold">{form.name}</TableCell>
+                <TableCell className="text-xs">{form.description || "—"}</TableCell>
+                <TableCell className="text-xs">{versionState(form.id) === "loaded"
+                  ? latest ? `v${latest.versionNo}` : "No versions"
+                  : <VersionLoadStatus state={versionState(form.id)} retry={() => void retryFormVersions(form.id)} />}</TableCell>
+                <TableCell className="text-xs">{versionState(form.id) === "loaded" ? latest?.versionDate || "—" : "—"}</TableCell>
+                <TableCell>
+                  <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${status === "Not released" ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-emerald-50 text-emerald-800 border-emerald-200"}`} data-testid={`company-status-${form.id}`}>
+                    {versionState(form.id) === "loaded" ? status : "—"}
+                  </span>
+                  {form.archivedAt && <span className="ml-2 text-xs text-gray-500">Archived</span>}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" title="Preview Company Form" aria-label={`Preview ${form.name}`} disabled={versionState(form.id) !== "loaded"} onClick={() => {
+                      setEditingRankGroup(null); setEditingRankGroupId(null); setPreviewCompanyForm(true); setEditingForm(form);
+                    }}><Eye className="h-4 w-4" /></Button>
+                    {!form.archivedAt && (permissions.length === 0 || canEdit("Forms")) && <>
+                      <Button variant="ghost" size="icon" title="Edit Company Form" aria-label={`Edit ${form.name}`} onClick={() => {
+                        setCompanyEditName(form.name); setCompanyEditDescription(form.description || "");
+                        setEditingCompanyMetadata(form);
+                      }}><EditIcon className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Configure Company Form" aria-label={`Configure ${form.name}`} disabled={versionState(form.id) !== "loaded"} onClick={() => {
+                        setEditingRankGroup(null); setEditingRankGroupId(null); setPreviewCompanyForm(false); setEditingForm(form);
+                      }}><Settings className="h-4 w-4" /></Button>
+                    </>}
+                    {!form.archivedAt && (permissions.length === 0 || canDelete("Forms")) &&
+                      <Button variant="ghost" size="icon" title="Archive Company Form" aria-label={`Archive ${form.name}`}
+                        disabled={archiveCompanyMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Archive "${form.name}"? Existing submissions will stay readable, but this form cannot be edited or used for new submissions.`)) archiveCompanyMutation.mutate(form.id);
+                        }}><Archive className="h-4 w-4" /></Button>}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {companyRows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-10 text-sm text-gray-500">{showArchivedCompany ? "No archived Company Forms" : "No Company Forms yet"}</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="mt-4 text-xs">{companyRows.length} Company Form{companyRows.length === 1 ? "" : "s"}</div>
+    </div>
+  );
+
   const renderFormsTable = () => (
     <div className="flex min-h-0 flex-1 flex-col">
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
-          {/* Create Form button hidden per Task #333. Kept commented in case
-              this entry point is restored later.
-          {(permissions.length === 0 || canCreate("Forms")) && (
-          <Button
-            variant="outline"
-            onClick={() => setShowCreateFormDialog(true)}
-            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="text-xs">Create Form</span>
-          </Button>
+          {formsTab === "company" && !showArchivedCompany && (permissions.length === 0 || canCreate("Forms")) && (
+            <Button variant="outline" onClick={() => setShowCreateFormDialog(true)}
+              className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2" data-testid="button-new-company-form">
+              <Plus className="h-4 w-4" /><span className="text-xs">New Form</span>
+            </Button>
           )}
-          */}
           <Button
             variant="outline"
             className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
@@ -8470,6 +8507,14 @@ const AdminModuleInner = (): JSX.Element => {
           </Button>
         </div>
       </SectionTitleComponents>
+      <div className="flex border-b bg-white px-4" role="tablist" aria-label="Forms Configuration tabs">
+        <button type="button" role="tab" aria-selected={formsTab === "standard"} data-testid="tab-standard-forms"
+          className={`px-4 py-3 text-sm font-semibold border-b-2 ${formsTab === "standard" ? "border-[#16569e] text-[#16569e]" : "border-transparent text-gray-500"}`}
+          onClick={() => setFormsTab("standard")}>Standard Forms</button>
+        <button type="button" role="tab" aria-selected={formsTab === "company"} data-testid="tab-company-forms"
+          className={`px-4 py-3 text-sm font-semibold border-b-2 ${formsTab === "company" ? "border-[#16569e] text-[#16569e]" : "border-transparent text-gray-500"}`}
+          onClick={() => setFormsTab("company")}>Company Forms</button>
+      </div>
 
       {/* Loading state */}
       {isLoading && (
@@ -8480,16 +8525,24 @@ const AdminModuleInner = (): JSX.Element => {
 
       {/* Error state */}
       {error && (
-        <div className="flex justify-center items-center p-8">
-          <div className="text-red-500 text-sm">Error loading forms. Please try again.</div>
-          <div className="text-red-500 text-xs mt-2">
-            {error instanceof Error ? error.message : String(error)}
-          </div>
+        <div className="flex flex-col items-center justify-center gap-2 p-8 text-center" role="alert">
+          {error instanceof Error && error.message.startsWith("403:") ? (
+            <>
+              <div className="text-red-600 text-sm">Forms access is required to view this page.</div>
+              <div className="text-gray-600 text-xs">Sign in with a user who can view Forms. In development, select an Office persona from the account menu.</div>
+            </>
+          ) : (
+            <>
+              <div className="text-red-500 text-sm">Error loading forms. Please try again.</div>
+              <div className="text-red-500 text-xs">{companyFormErrorMessage(error, "editorLoad")}</div>
+            </>
+          )}
         </div>
       )}
 
       {/* Table */}
-      {!isLoading && !error && (
+      {!isLoading && !error && formsTab === "company" && renderCompanyForms()}
+      {!isLoading && !error && formsTab === "standard" && (
         <Card className="flex min-h-0 flex-1 flex-col border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="flex min-h-0 flex-1 flex-col p-4 pl-0 bg-[#f7fafc]">
             <div className="flex min-h-0 flex-1 flex-col bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -8516,7 +8569,7 @@ const AdminModuleInner = (): JSX.Element => {
               </TableHeader>
               <TableBody className="bg-white">
                 {expandedFormsData.map((form) => (
-                  <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                  <TableRow key={form.id} data-testid={`standard-form-row-${form.id}`} className="border-b border-gray-200 bg-white hover:bg-gray-50">
                     {form.isFirstInGroup && (
                       <TableCell 
                         rowSpan={form.groupSize}
@@ -8635,8 +8688,10 @@ const AdminModuleInner = (): JSX.Element => {
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       <div className="flex items-center gap-2">
-                        <span>{form.versionNo}</span>
-                        {form.hasDraft && (
+                        {versionState(form.originalFormId) === "loaded"
+                          ? <span>{form.versionNo ? `v${form.versionNo}` : "No versions"}</span>
+                          : <VersionLoadStatus state={versionState(form.originalFormId)} retry={() => void retryFormVersions(form.originalFormId)} />}
+                        {versionState(form.originalFormId) === "loaded" && form.hasDraft && (
                           <span
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
                             data-testid={`badge-draft-${form.id}`}
@@ -8647,7 +8702,7 @@ const AdminModuleInner = (): JSX.Element => {
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
-                      {form.versionDate}
+                      {versionState(form.originalFormId) === "loaded" ? form.versionDate || "—" : "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2 justify-center">
@@ -8655,6 +8710,7 @@ const AdminModuleInner = (): JSX.Element => {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
+                          disabled={versionState(form.originalFormId) !== "loaded"}
                           onClick={() => handleEditClick(form)}
                         >
                           <EditIcon className="h-[18px] w-[18px] text-gray-500" />
@@ -8672,7 +8728,7 @@ const AdminModuleInner = (): JSX.Element => {
       )}
 
       {/* Pagination */}
-      {!isLoading && !error && (
+      {!isLoading && !error && formsTab === "standard" && (
         <div className="mt-4 shrink-0 text-xs font-normal font-['Mulish',Helvetica] text-black">
           {expandedFormsData.length > 0 ? `1 to ${expandedFormsData.length} of ${expandedFormsData.length}` : "0 to 0 of 0"}
         </div>
@@ -8741,6 +8797,8 @@ const AdminModuleInner = (): JSX.Element => {
             return null;
           })()}
           useV2={true}
+          readOnly={previewCompanyForm || Boolean((editingForm as CompanyForm).archivedAt)}
+          initialPreview={previewCompanyForm}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />
@@ -8981,7 +9039,7 @@ const AdminModuleInner = (): JSX.Element => {
       <Dialog open={showCreateFormDialog} onOpenChange={setShowCreateFormDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Form</DialogTitle>
+            <DialogTitle>New Company Form</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -8990,63 +9048,14 @@ const AdminModuleInner = (): JSX.Element => {
                 value={newFormName}
                 onChange={(e) => setNewFormName(e.target.value)}
                 placeholder="Enter form name"
+                data-testid="input-new-company-form-name"
               />
             </div>
-
             <div className="space-y-2">
-              <label className="text-sm font-medium">Form Category</label>
-              <Select value={newFormCategory} onValueChange={(value: "appraisal" | "promotion") => setNewFormCategory(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="appraisal">Appraisal Form</SelectItem>
-                  <SelectItem value="promotion">Promotion Form</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Description</label>
+              <Input value={newFormDescription} onChange={event => setNewFormDescription(event.target.value)}
+                placeholder="What is this form for?" data-testid="input-new-company-form-description" />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Creation Type</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    value="template"
-                    checked={createFormType === "template"}
-                    onChange={(e) => setCreateFormType(e.target.value as "template" | "blank")}
-                  />
-                  <span>Use Template</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    value="blank"
-                    checked={createFormType === "blank"}
-                    onChange={(e) => setCreateFormType(e.target.value as "template" | "blank")}
-                  />
-                  <span>Blank Form</span>
-                </label>
-              </div>
-            </div>
-
-            {createFormType === "template" && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Template</label>
-                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(formTemplates).map((templateName) => (
-                      <SelectItem key={templateName} value={templateName}>
-                        {templateName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
           <div className="flex justify-end space-x-2">
@@ -9060,15 +9069,31 @@ const AdminModuleInner = (): JSX.Element => {
             <Button
               type="button"
               onClick={handleCreateForm}
-              disabled={
-                !newFormName.trim() ||
-                (createFormType === "template" && !selectedTemplate) ||
-                createFormMutation.isPending
-              }
+              disabled={!newFormName.trim() || createFormMutation.isPending}
+              data-testid="button-submit-company-form"
             >
               {createFormMutation.isPending ? "Creating..." : "Create Form"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingCompanyMetadata} onOpenChange={open => { if (!open) setEditingCompanyMetadata(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Company Form</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><label className="text-sm font-medium">Form Name</label>
+              <Input value={companyEditName} onChange={event => setCompanyEditName(event.target.value)} data-testid="input-edit-company-form-name" /></div>
+            <div><label className="text-sm font-medium">Description</label>
+              <Input value={companyEditDescription} onChange={event => setCompanyEditDescription(event.target.value)} data-testid="input-edit-company-form-description" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCompanyMetadata(null)}>Cancel</Button>
+            <Button disabled={!companyEditName.trim() || updateCompanyMetadata.isPending} data-testid="button-save-company-form"
+              onClick={() => editingCompanyMetadata && updateCompanyMetadata.mutate({
+                id: editingCompanyMetadata.id, name: companyEditName.trim(), description: companyEditDescription.trim() || null,
+              })}>Save</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

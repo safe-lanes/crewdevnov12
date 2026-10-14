@@ -1,0 +1,550 @@
+import { assertStageReady } from "../stageEventRepository";
+import { and, eq, sql } from "drizzle-orm";
+import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
+import {
+  masterNationalities,
+  masterVessels,
+  masterVesselTypes,
+} from "../../../../shared/schema";
+import {
+  crewAssignments,
+  crewMembersV2,
+} from "../../../../shared/v2/crew-pool/schema";
+import { frmCompanySubmissionAssignments } from "../../../../shared/v2/forms-engine/submissions";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { CompanyFormPermissionError, CompanyFormValidationError } from "../errors";
+import { frmSections, frmFormParts } from "../../../../shared/v2/forms-engine/schema";
+import {
+  SHARED_SYSTEM_FIELDS,
+  SUBJECT_SYSTEM_FIELDS,
+} from "../../../../shared/v2/forms-engine/systemFields";
+import { getDb } from "../../db";
+import type {
+  CompanyFormAction,
+  CompanyFormPrincipal,
+  CompanyFormSubjectAdapter,
+  SubjectSystemField,
+  SystemFieldResolutionContext,
+} from "../contracts";
+import { authorizeOfficeAction, type PrincipalDependencies } from "../trustedPrincipalService";
+import { authorizeCompanyFormAction, assertCompanyFormSignaturePermission } from "../operationalPermissions";
+import { loadPersistedSubjectStages } from "../subjectStageRepository";
+import { authorizeCrewSectionAction, captureVesselSigner } from "./vesselSigningPolicy";
+import { crewAssignmentRuleDimensions, crewRuleMasterChoices, readCrewRuleDimensions } from "./crewAssignmentDimensions";
+
+export const CREW_ASSIGNMENT_SUBJECT_TYPE = "crew_assignment";
+
+export type CrewAssignmentSubject = {
+  assignUuid: string;
+  crewUuid: string;
+  vesselUuid: string | null;
+  vesselName?: string | null;
+  vesselTypeUuid?: string | null;
+  signOnDate: string | null;
+  signOffDate: string | null;
+  assignmentType: string;
+  isCurrent: boolean;
+  isDeleted: boolean;
+  contractRankLabel?: string | null;
+};
+
+export type CrewAssignmentSubjectDependencies = {
+  loadStages?: (subjectType: string, executor?: unknown) => Promise<readonly {
+    stageKey: string;
+    label: string;
+    sortOrder: number;
+  }[]>;
+  lookup?: (assignUuid: string, executor?: unknown) => Promise<CrewAssignmentSubject | undefined>;
+  authorizeOffice?: (
+    principal: CompanyFormPrincipal,
+    action: CompanyFormAction,
+  ) => Promise<boolean>;
+  principalDependencies?: PrincipalDependencies;
+};
+
+const subjectSystemFieldSources = new Set<string>(
+  SUBJECT_SYSTEM_FIELDS.crew_assignment.map((field) => field.key),
+);
+
+const systemFields: readonly SubjectSystemField[] = [
+  ...SHARED_SYSTEM_FIELDS.map((field) => ({
+    key: field.key,
+    label: field.label,
+    source: "submission" as const,
+  })),
+  ...SUBJECT_SYSTEM_FIELDS.crew_assignment.map((field) => ({
+    key: field.key,
+    label: field.label,
+    source: "subject" as const,
+  })),
+];
+
+const allowedActions = {
+  office: [
+    "read_eligible_forms",
+    "list_submissions",
+    "count_submissions",
+    "read_submission",
+    "read_definition",
+    "read_asset",
+    "create_submission",
+    "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
+    "void_submission",
+    "void_completed_submission",
+  ],
+  vessel: [
+    "read_eligible_forms",
+    "list_submissions",
+    "count_submissions",
+    "read_submission",
+    "read_definition",
+    "read_asset",
+    "create_submission",
+    "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
+    "void_submission",
+    "void_completed_submission",
+  ],
+  seafarer: [
+    "read_eligible_forms",
+    "list_submissions",
+    "count_submissions",
+    "read_submission",
+    "read_definition",
+    "read_asset",
+    "create_submission",
+    "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
+  ],
+} as const satisfies CompanyFormSubjectAdapter<CrewAssignmentSubject>["allowedActions"];
+
+function mapAssignmentRow(row: any): CrewAssignmentSubject {
+  return {
+    assignUuid: row.assignUuid,
+    crewUuid: row.crewUuid,
+    vesselUuid: row.vesselUuid,
+    vesselName: row.vesselName ?? null,
+    vesselTypeUuid: row.vesselTypeUuid ?? null,
+    signOnDate: row.signOnDate,
+    signOffDate: row.signOffDate,
+    assignmentType: row.assignmentType,
+    isCurrent: row.isCurrent === true,
+    isDeleted: row.isDeleted === true,
+    contractRankLabel: row.contractRankLabel ?? null,
+  };
+}
+
+async function lookupCrewAssignment(
+  assignUuid: string,
+  executor: any = getDb(),
+  lock = false,
+): Promise<CrewAssignmentSubject | undefined> {
+  let query = executor
+    .select({
+      assignUuid: crewAssignments.assignUuid,
+      crewUuid: crewAssignments.crewUuid,
+      vesselUuid: crewAssignments.vesselUuid,
+      vesselName: masterVessels.vessel,
+      contractRankLabel: sql<string | null>`(SELECT c.contract_rank_label FROM crew_assignment_rule_context c
+        WHERE c.assign_uuid=${crewAssignments.assignUuid})`,
+      vesselType: masterVessels.vesselType,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
+      assignmentType: crewAssignments.assignmentType,
+      isCurrent: crewAssignments.isCurrent,
+      isDeleted: crewAssignments.isDeleted,
+    })
+    .from(crewAssignments)
+    .leftJoin(masterVessels, eq(masterVessels.vesselUuid, crewAssignments.vesselUuid))
+    .where(eq(crewAssignments.assignUuid, assignUuid))
+    .limit(1);
+  if (lock) query = query.for("update", { of: crewAssignments });
+
+  // Deliberately do not filter cancelled or non-current assignments here:
+  // those records remain valid historical subjects for authorized reads.
+  const row = (await query)[0];
+  if (!row) return undefined;
+  let vesselTypeUuid: string | null = null;
+  if (row.vesselType) {
+    const types = await executor.select({ vesselTypeUuid: masterVesselTypes.vtUuid })
+      .from(masterVesselTypes)
+      .where(and(
+        eq(masterVesselTypes.vesselType, row.vesselType),
+        eq(masterVesselTypes.isActive, true),
+        eq(masterVesselTypes.isDeleted, false),
+      )).limit(2);
+    if (types.length === 1) vesselTypeUuid = types[0].vesselTypeUuid;
+  }
+  return mapAssignmentRow({ ...row, vesselTypeUuid });
+}
+
+async function resolveCrewSystemField(
+  key: string,
+  subject: CrewAssignmentSubject,
+  context: SystemFieldResolutionContext,
+  executor: any = getDb(),
+): Promise<string | null> {
+  if (key === "date_of_declaration") {
+    const date = context.submission.dateOfDeclaration;
+    return context.raw || !date ? date : sailDate(date);
+  }
+  if (!subjectSystemFieldSources.has(key)) {
+    throw new Error(`Unknown System field key for Company Form subject "${CREW_ASSIGNMENT_SUBJECT_TYPE}": ${key}`);
+  }
+
+  if (key === "sign_on_date") return context.raw || !subject.signOnDate ? subject.signOnDate : sailDate(subject.signOnDate);
+
+  const db = executor;
+  if (key === "rank") return resolveSigningContractRank(subject, executor, context.raw);
+  if (key === "seafarer_name" || key === "nationality") {
+    const crewRows = await db.select({
+      firstName: crewMembersV2.firstName,
+      middleName: crewMembersV2.middleName,
+      familyName: crewMembersV2.familyName,
+      nationalityUuid: crewMembersV2.nationalityUuid,
+    }).from(crewMembersV2)
+      .where(eq(crewMembersV2.crewUuid, subject.crewUuid))
+      .limit(1);
+    const crew = crewRows[0];
+    if (!crew) return null;
+    if (key === "seafarer_name") {
+      return [crew.firstName, crew.middleName, crew.familyName]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(" ") || null;
+    }
+    if (!crew.nationalityUuid) return null;
+    const nationalityRows = await db.select({ nationality: masterNationalities.nationality })
+      .from(masterNationalities)
+      .where(and(
+        eq(masterNationalities.natUuid, crew.nationalityUuid),
+        eq(masterNationalities.isDeleted, false),
+      ))
+      .limit(1);
+    return nationalityRows[0]?.nationality ?? null;
+  }
+
+  if (key === "vessel_to_join") {
+    if (!subject.vesselUuid) return null;
+    const vesselRows = await db.select({ vessel: masterVessels.vessel })
+      .from(masterVessels)
+      .where(eq(masterVessels.vesselUuid, subject.vesselUuid))
+      .limit(1);
+    return vesselRows[0]?.vessel ?? null;
+  }
+
+  return null;
+}
+
+/** Signing is assignment-bound; the mutable crew profile is not its rank authority. */
+async function resolveSigningContractRank(subject: CrewAssignmentSubject, executor: any, raw = false): Promise<string> {
+  const rows = (await executor.execute(sql`SELECT c.contract_rank_uuid,r.name AS rank
+    FROM crew_assignment_rule_context c
+    LEFT JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid AND NOT r.is_deleted
+    WHERE c.assign_uuid=${subject.assignUuid} FOR SHARE OF c`)).rows;
+  if (!rows.length || (rows.length === 1 && !rows[0].contract_rank_uuid)) return "Not recorded";
+  if (rows.length === 1 && rows[0].rank?.trim()) return raw ? rows[0].contract_rank_uuid : rows[0].rank;
+  throw new CompanyFormValidationError(
+    "The assignment's captured contract rank cannot be verified. Ask your administrator to check the assignment's deployment rank, then try again.",
+    "RANK_NOT_ELIGIBLE",
+  );
+}
+
+export function createCrewAssignmentSubject(
+  dependencies: CrewAssignmentSubjectDependencies = {},
+): CompanyFormSubjectAdapter<CrewAssignmentSubject> {
+  const authorizeOffice = (principal: CompanyFormPrincipal, action: CompanyFormAction) =>
+    (dependencies.authorizeOffice ?? ((actor, requestedAction) =>
+      authorizeOfficeAction(actor, requestedAction, dependencies.principalDependencies)))(
+      principal,
+      action,
+    );
+
+  return {
+    ruleDimensions: crewAssignmentRuleDimensions,
+    ruleMasterChoices: crewRuleMasterChoices,
+    readRuleDimensions: readCrewRuleDimensions,
+    authorizeRuleRead: (principal, subject) =>
+      !subject.isDeleted && (principal.kind === "office" ||
+        principal.kind === "vessel" && !!subject.vesselUuid && principal.vesselUuids.includes(subject.vesselUuid) ||
+        principal.kind === "seafarer" && principal.crewUuid === subject.crewUuid),
+    searchRuleSubjects: async (principal, search, executor: any) => {
+      const scope = principal.kind === "office" ? sql`true` : principal.kind === "vessel"
+        ? sql`a.vessel_uuid IN (${sql.join(principal.vesselUuids.map(id => sql`${id}`), sql`,`)})`
+        : sql`a.crew_uuid=${principal.crewUuid}`;
+      const rows = await executor.execute(sql`SELECT a.assign_uuid,
+        concat_ws(' ',c.first_name,c.family_name) AS name,v.vessel,
+        a.sign_on_date,a.assignment_type,r.contract_rank_label
+        FROM crew_assignments a JOIN crew_members_v2 c ON c.crew_uuid=a.crew_uuid
+        LEFT JOIN master_vessels v ON v.vessel_uuid=a.vessel_uuid
+        LEFT JOIN crew_assignment_rule_context r ON r.assign_uuid=a.assign_uuid
+        WHERE a.is_deleted=false AND c.is_deleted=false AND ${scope}
+        AND concat_ws(' ',c.first_name,c.family_name,v.vessel) ILIKE ${`%${search}%`}
+        ORDER BY c.first_name,c.family_name,a.sign_on_date DESC NULLS LAST,a.assign_uuid LIMIT 30`);
+      return rows.rows.map((r: any) => ({ subjectRef: r.assign_uuid,
+        label: [r.name, r.vessel ?? "Vessel not recorded", r.contract_rank_label ?? "Contract rank unresolved",
+          r.assignment_type, r.sign_on_date ?? "Joining date not recorded"].join(" · ") }));
+    },
+    subjectType: CREW_ASSIGNMENT_SUBJECT_TYPE,
+    label: "Crew assignment",
+    loadStages: (executor) =>
+      (dependencies.loadStages ?? loadPersistedSubjectStages)(CREW_ASSIGNMENT_SUBJECT_TYPE, executor),
+    lookup: async (subjectRef, executor) => {
+      const context = await (dependencies.lookup ?? lookupCrewAssignment)(subjectRef, executor);
+      return context ? { subjectRef: context.assignUuid, context } : undefined;
+    },
+    lockForStart: async (subjectRef, executor) => {
+      const context = await lookupCrewAssignment(subjectRef, executor, true);
+      return context ? { subjectRef: context.assignUuid, context } : undefined;
+    },
+    loadHomeSubjects: async (homeRef, executor: any = getDb()) => {
+      const crew = await executor.select({ crewUuid: crewMembersV2.crewUuid })
+        .from(crewMembersV2)
+        .where(eq(crewMembersV2.crewUuid, homeRef))
+        .limit(1);
+      if (!crew[0]) return undefined;
+
+      const rows = await executor.select({
+        assignUuid: crewAssignments.assignUuid,
+        crewUuid: crewAssignments.crewUuid,
+        vesselUuid: crewAssignments.vesselUuid,
+        vesselName: masterVessels.vessel,
+        contractRankLabel: sql<string | null>`(SELECT c.contract_rank_label FROM crew_assignment_rule_context c
+          WHERE c.assign_uuid=${crewAssignments.assignUuid})`,
+        vesselType: masterVessels.vesselType,
+        signOnDate: crewAssignments.signOnDate,
+        signOffDate: crewAssignments.signOffDate,
+        assignmentType: crewAssignments.assignmentType,
+        isCurrent: crewAssignments.isCurrent,
+        isDeleted: crewAssignments.isDeleted,
+      }).from(crewAssignments)
+        .leftJoin(masterVessels, eq(masterVessels.vesselUuid, crewAssignments.vesselUuid))
+        .where(eq(crewAssignments.crewUuid, homeRef));
+      // No current/cancelled/deleted filter: home is the durable assignment
+      // history, while outstanding status is computed separately below.
+      return Promise.all(rows.map(async (row: any) => {
+        let vesselTypeUuid: string | null = null;
+        if (row.vesselType) {
+          const types = await executor.select({ vesselTypeUuid: masterVesselTypes.vtUuid })
+            .from(masterVesselTypes)
+            .where(and(
+              eq(masterVesselTypes.vesselType, row.vesselType),
+              eq(masterVesselTypes.isActive, true),
+              eq(masterVesselTypes.isDeleted, false),
+            )).limit(2);
+          if (types.length === 1) vesselTypeUuid = types[0].vesselTypeUuid;
+        }
+        const context = mapAssignmentRow({ ...row, vesselTypeUuid });
+        return { subjectRef: context.assignUuid, context };
+      }));
+    },
+    groupingIdentifier: (subject, subjectRef) => subject.assignUuid || subjectRef,
+    homeGroupDisplay: (subject) => ({
+      label: subject.vesselName || "Vessel name unavailable",
+      status: subject.assignmentType.replace(/^OnBoard$/i, "On board"),
+      historyOnly: subject.isDeleted,
+      fields: [
+        { label: "Sign-on date", value: sailDate(subject.signOnDate) },
+        { label: "Sign-off date", value: sailDate(subject.signOffDate) },
+        // Contract capture/backfill is authority; never substitute today's crew rank.
+        { label: "Contract rank", value: subject.contractRankLabel || "Contract rank unresolved" },
+        ...(subject.isDeleted ? [{ label: "Assignment record", value: "Archived history" }] : []),
+      ],
+    }),
+    homeActions: async (principal, subject) => {
+      const signedOff = !subject.isDeleted && subject.assignmentType === "OnBoard" &&
+        !subject.isCurrent && !!subject.signOffDate;
+      return {
+        startableStages: signedOff && principal.kind === "office" &&
+          await authorizeOffice(principal, "create_submission") ? ["at_sign_off"] : [],
+        unfinishedStageKeys: signedOff ? ["at_sign_off"] : [],
+      };
+    },
+    isOutstanding: (subject) =>
+      !subject.isDeleted && subject.assignmentType.trim().toLocaleLowerCase() !== "cancelled",
+    canStart: (subject) =>
+      !subject.isDeleted && subject.assignmentType.trim().toLocaleLowerCase() !== "cancelled",
+    linkSubmission: async ({ executor, submissionUuid, subject }) => {
+      await (executor as any).insert(frmCompanySubmissionAssignments).values({
+        submissionUuid,
+        assignUuid: subject.context.assignUuid,
+      });
+    },
+    systemFields,
+    resolveSystemField: resolveCrewSystemField,
+    allowedActions,
+    authorizeVersionStart: async ({ principal, subject, stageKey, formVersionUuid, executor }) => {
+      await assertStageReady(subject.assignUuid, stageKey, executor);
+      if (stageKey !== "at_sign_off") return;
+      if (principal.kind === "office") {
+        if (!await authorizeOffice(principal, "read_eligible_forms")) throw new CompanyFormPermissionError();
+        return;
+      }
+      if (principal.kind !== "vessel") return;
+      const sections = await executor.select({ section: frmSections, part: frmFormParts })
+        .from(frmSections).innerJoin(frmFormParts, eq(frmFormParts.formPartUuid, frmSections.formPartUuid))
+        .where(and(eq(frmSections.formVersionUuid, formVersionUuid), eq(frmSections.isDeleted, false),
+          eq(frmFormParts.isDeleted, false)));
+      const candidates = sections.filter((row: any) => !row.part.isOfficeOnly &&
+        row.section.signatureVesselManagementRequired && row.section.vesselSignatureRoleUuids?.includes(principal.roleId));
+      let permitted = false;
+      for (const { section } of candidates) {
+        await authorizeCrewSectionAction({ principal, subject, stageKey, section,
+          action: "create_submission", executor });
+        permitted = true;
+      }
+      if (!permitted) throw new CompanyFormPermissionError("No pinned sign-off section permits this vessel role to start the declaration.");
+    },
+    assertRequestContext: async (subject, query, executor: any = getDb(), locked = false) => {
+      if (query.crewUuid !== undefined && query.crewUuid !== subject.crewUuid) {
+        throw new CompanyFormPermissionError("This declaration does not belong to the requested crew profile.");
+      }
+      if (query.vesselUuid !== undefined && query.vesselUuid !== subject.vesselUuid) {
+        throw new CompanyFormPermissionError("This assignment does not belong to the requested vessel.");
+      }
+      if (query.planUuid !== undefined) {
+        if (typeof query.planUuid !== "string" || !query.crewUuid || !query.vesselUuid) throw new CompanyFormPermissionError();
+        let planningQuery = executor.select().from(vesselPlanningV2).where(eq(vesselPlanningV2.planUuid, query.planUuid)).limit(1);
+        if (locked) planningQuery = planningQuery.for("share");
+        const [planning] = await planningQuery;
+        if (!planning || planning.isDeleted || planning.isArchived ||
+          planning.crewAssignUuid !== subject.assignUuid || planning.crewUuid !== subject.crewUuid ||
+          planning.vesselUuid !== subject.vesselUuid || !subject.isCurrent || subject.signOffDate ||
+          subject.assignmentType !== "OnBoard") {
+          throw new CompanyFormPermissionError("The exact incumbent planning assignment has changed or is unavailable; no assignment will be inferred.");
+        }
+      }
+    },
+    signatureProvenance: (subject) => ({
+      assignmentUuid: subject.assignUuid, crewUuid: subject.crewUuid,
+      vesselUuid: subject.vesselUuid,
+      aboard: subject.isCurrent && subject.assignmentType === "OnBoard" && !subject.signOffDate,
+    }),
+    authorizeStageAction: (principal, action, subject, stageKey) => {
+      if (action.startsWith("read_") || action === "list_submissions" || action === "count_submissions") return true;
+      if (stageKey === "at_sign_off") {
+        if (subject.isDeleted || subject.assignmentType !== "OnBoard") return false;
+        const aboard = subject.isCurrent && !subject.signOffDate;
+        const signedOff = !subject.isCurrent && !!subject.signOffDate;
+        if (principal.kind === "vessel") return aboard || (signedOff && action === "save_signature");
+        return aboard || signedOff;
+      }
+      if (stageKey === "on_board" && (!subject.isCurrent ||
+        subject.assignmentType.replace(/[\s_]/g, "").toLowerCase() !== "onboard")) return false;
+      return principal.kind !== "vessel" || stageKey === "on_board";
+    },
+    authorizeSectionAction: authorizeCrewSectionAction,
+    authorizeSignature: (principal, signatureType, executor) =>
+      assertCompanyFormSignaturePermission(principal, signatureType, dependencies.principalDependencies, executor),
+    authorize: async (principal, action, subject, executor) => {
+      if (!allowedActions[principal.kind].includes(action as never)) return false;
+
+      if (principal.kind === "office") {
+        return dependencies.authorizeOffice ? authorizeOffice(principal, action) :
+          authorizeOfficeAction(principal, action, dependencies.principalDependencies, executor);
+      }
+
+      if (principal.kind === "vessel") {
+        return principal.roleType === "Ship" &&
+          !!subject.vesselUuid &&
+          principal.vesselUuids.includes(subject.vesselUuid) &&
+          await authorizeCompanyFormAction(principal, action, dependencies.principalDependencies, executor);
+      }
+
+      return principal.kind === "seafarer" &&
+        principal.linkageSource === "trusted_server_resolver" &&
+        principal.crewUuid === subject.crewUuid;
+    },
+    authorizeHome: async (principal, action, homeRef, subjects) => {
+      if (!allowedActions[principal.kind].includes(action as never)) return false;
+      if (principal.kind === "office") return authorizeOffice(principal, action);
+      if (principal.kind === "vessel") {
+        return subjects.some((subject) =>
+          !!subject.context.vesselUuid && principal.vesselUuids.includes(subject.context.vesselUuid)) &&
+          await authorizeCompanyFormAction(principal, action, dependencies.principalDependencies);
+      }
+      return principal.linkageSource === "trusted_server_resolver" &&
+        principal.crewUuid === homeRef;
+    },
+    entryPoints: [
+      { stageKey: "before_joining", location: "Vessel > Planning > reliever popup" },
+      { stageKey: "on_board", location: "Vessel > Crew List" },
+      { stageKey: "at_sign_off", location: "Vessel > Planning > On Board Status popup" },
+    ],
+    entryLists: [{
+      location: "Vessel > Crew List",
+      columns: [{ label: "Forms", mode: "count_and_list" }],
+    }],
+    home: {
+      location: "Crew profile",
+      groupingKey: "assignment_uuid",
+      groupLabel: "Assignment",
+      expandable: true,
+      includesCancelledHistory: true,
+      outstandingExcludesCancelled: true,
+    },
+    signatories: [
+      {
+        signatureType: "officer",
+        displayLabel: "Company Representative",
+        allowedActors: ["office"],
+        methods: ["officer"],
+        methodsByActor: { office: ["officer"] },
+        designationSource: "master_users.designation",
+      },
+      {
+        signatureType: "seafarer",
+        displayLabel: "Seafarer",
+        allowedActors: ["seafarer", "office", "vessel"],
+        methods: ["authenticated", "witnessed"],
+        methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"], vessel: ["witnessed"] },
+        resolveWitnessIdentity: (principal, executor) => principal.kind === "vessel" ? captureVesselSigner(principal, executor) : Promise.resolve(null),
+        resolveIdentity: async ({ subject, executor, submissionUuid }) => {
+          const crewSubject = subject as CrewAssignmentSubject;
+          const context: SystemFieldResolutionContext = {
+            submission: { dateOfDeclaration: null },
+            executor,
+          };
+          // A first signature may already have frozen missing rank before a later
+          // Deploy capture. Keep this form's witnessed identity aligned with it.
+          const missingSnapshot = submissionUuid ? (await (executor as any).execute(sql`
+            SELECT 1 FROM frm_company_submission_system_snapshots
+            WHERE submission_uuid=${submissionUuid} AND field_key='rank'
+              AND value='Not recorded' AND NOT is_deleted LIMIT 1`)).rows.length > 0 : false;
+          const [name, rank] = await Promise.all([
+            resolveCrewSystemField("seafarer_name", crewSubject, context, executor),
+            missingSnapshot ? Promise.resolve("Not recorded") : resolveSigningContractRank(crewSubject, executor),
+          ]);
+          return { name, rank };
+        },
+      },
+      {
+        signatureType: "vessel_management", displayLabel: "Vessel Management",
+        allowedActors: ["vessel"], methods: ["vessel_management"],
+        methodsByActor: { vessel: ["vessel_management"] },
+        resolveIdentity: ({ principal, executor }) => captureVesselSigner(principal, executor),
+      },
+    ],
+    isSectionApplicable: (section, subject) => {
+      if (!section.applicableVesselTypes) return Promise.resolve(true);
+      let allowed: unknown;
+      try {
+        allowed = JSON.parse(section.applicableVesselTypes);
+      } catch {
+        throw new Error("Invalid persisted vessel-type restriction in a Company Form section.");
+      }
+      if (!Array.isArray(allowed) || allowed.some((value) => typeof value !== "string")) {
+        throw new Error("Invalid persisted vessel-type restriction in a Company Form section.");
+      }
+      return Promise.resolve(allowed.length === 0 ||
+        (!!subject.vesselTypeUuid && allowed.includes(subject.vesselTypeUuid)));
+    },
+  };
+}

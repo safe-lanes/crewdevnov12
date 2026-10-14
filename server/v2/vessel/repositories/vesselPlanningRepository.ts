@@ -416,9 +416,8 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertVesselPlanningV2, "planUuid">): Promise<VesselPlanningV2> {
-    const db = getDb();
-    const results = await db
+  async create(data: Omit<InsertVesselPlanningV2, "planUuid">, executor: any = getDb()): Promise<VesselPlanningV2> {
+    const results = await executor
       .insert(vesselPlanningV2)
       .values({
         planUuid: uuidv4(),
@@ -428,9 +427,12 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async update(planUuid: string, data: Partial<InsertVesselPlanningV2>): Promise<VesselPlanningV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async update(
+    planUuid: string,
+    data: Partial<InsertVesselPlanningV2>,
+    executor: any = getDb(),
+  ): Promise<VesselPlanningV2 | undefined> {
+    const results = await executor
       .update(vesselPlanningV2)
       .set({
         ...data,

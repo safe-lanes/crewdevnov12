@@ -1,4 +1,5 @@
-import { boolean, date, index, integer, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { admFormVersionsV2, admFormsV2, admRoleMasterAc } from "../admin/schema";
@@ -15,7 +16,7 @@ const auditColumns = {
 };
 
 export const FORM_PART_TYPES = ["fixed", "configurable"] as const;
-export const RESPONSIBLE_MODES = ["role", "department", "not_applicable"] as const;
+export const RESPONSIBLE_MODES = ["role", "department", "not_applicable", "seafarer"] as const;
 export const QUESTION_RESPONSE_TYPES = [
   "yes_no",
   "yes_no_na",
@@ -26,6 +27,8 @@ export const QUESTION_RESPONSE_TYPES = [
   "number",
   "checkbox",
   "info_only",
+  "content",
+  "system_field",
 ] as const;
 export const SECTION_LAYOUT_PREFERENCES = ["auto", "list", "matrix"] as const;
 
@@ -37,6 +40,9 @@ export const frmFormParts = pgTable(
     formUuid: text("form_uuid")
       .notNull()
       .references(() => admFormsV2.formUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    // NULL denotes the form's template; non-NULL parts belong to one version.
+    formVersionUuid: text("form_version_uuid")
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     partCode: text("part_code").notNull(),
     partTitle: text("part_title").notNull(),
     partType: text("part_type").notNull(),
@@ -45,6 +51,10 @@ export const frmFormParts = pgTable(
   },
   (table) => ({
     formUuidIdx: index("idx_frm_form_parts_form_uuid").on(table.formUuid),
+    formVersionUuidIdx: index("idx_frm_form_parts_form_version_uuid").on(table.formVersionUuid),
+    templateCodeUnique: uniqueIndex("uq_frm_form_parts_template_form_code").on(table.formUuid, table.partCode).where(sql`${table.formVersionUuid} IS NULL`),
+    versionCodeUnique: uniqueIndex("uq_frm_form_parts_version_code").on(table.formVersionUuid, table.partCode).where(sql`${table.formVersionUuid} IS NOT NULL`),
+    versionPartUnique: uniqueIndex("uq_frm_form_parts_version_uuid").on(table.formVersionUuid, table.formPartUuid),
   }),
 );
 
@@ -71,11 +81,18 @@ export const frmSections = pgTable(
     commentBoxRequired: boolean("comment_box_required").notNull().default(false),
     signatureOfficerRequired: boolean("signature_officer_required").notNull().default(false),
     signatureSeafarerRequired: boolean("signature_seafarer_required").notNull().default(false),
+    signatureVesselManagementRequired: boolean("signature_vessel_management_required").notNull().default(false),
+    vesselSignatureRoleUuids: text("vessel_signature_role_uuids").array().notNull().default(sql`'{}'::text[]`),
     defaultOptionSetUuid: text("default_option_set_uuid"),
     layoutPreference: text("layout_preference").notNull().default("auto"),
     ...auditColumns,
   },
   (table) => ({
+    versionPartFk: foreignKey({
+      name: "fk_frm_sections_version_part",
+      columns: [table.formVersionUuid, table.formPartUuid],
+      foreignColumns: [frmFormParts.formVersionUuid, frmFormParts.formPartUuid],
+    }).onUpdate("cascade").onDelete("restrict"),
     formVersionUuidIdx: index("idx_frm_sections_form_version_uuid").on(table.formVersionUuid),
     formPartUuidIdx: index("idx_frm_sections_form_part_uuid").on(table.formPartUuid),
     responsibleRoleUuidIdx: index("idx_frm_sections_responsible_role_uuid").on(table.responsibleRoleUuid),
@@ -128,6 +145,8 @@ export const frmQuestions = pgTable(
       .references(() => frmSections.sectionUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     questionCode: text("question_code").notNull(),
     questionText: text("question_text").notNull(),
+    contentHtml: text("content_html"),
+    systemFieldKey: text("system_field_key"),
     responseType: text("response_type").notNull(),
     isMandatory: boolean("is_mandatory").notNull().default(false),
     commentEnabled: boolean("comment_enabled").notNull().default(true),
@@ -310,6 +329,11 @@ export const frmSectionSignatures = pgTable(
       .references(() => frmSignatureAttachments.sigAttUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     signerName: text("signer_name").notNull(),
     signerRank: text("signer_rank"),
+    witnessName: text("witness_name"),
+    signerRoleUuid: text("signer_role_uuid").references(() => admRoleMasterAc.ruid, { onDelete: "restrict" }),
+    witnessUserId: integer("witness_user_id"),
+    witnessRank: text("witness_rank"),
+    subjectProvenance: jsonb("subject_provenance"),
     signedAt: timestamp("signed_at").notNull(),
     signedByUuid: text("signed_by_uuid").notNull(),
     signatureMethod: text("signature_method").notNull(),
@@ -367,6 +391,8 @@ export const formStructureQuestionInputSchema = z.object({
   question_uuid: rowUuidSchema.optional(),
   question_code: z.string().trim().min(1).max(100),
   question_text: z.string().trim().min(1).max(2000),
+  content_html: z.string().max(250000).nullable().optional(),
+  system_field_key: z.string().trim().min(1).max(100).nullable().optional(),
   response_type: z.enum(QUESTION_RESPONSE_TYPES),
   is_mandatory: z.boolean().default(false),
   comment_enabled: z.boolean().default(true),
@@ -379,6 +405,28 @@ export const formStructureQuestionInputSchema = z.object({
   sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict().superRefine((question, ctx) => {
+  if (question.response_type === "system_field") {
+    if (!question.system_field_key) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "System field key is required" });
+    }
+    if (question.is_mandatory || question.comment_enabled) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["is_mandatory"], message: "System fields cannot require an answer or comment" });
+    }
+    if (question.option_set_uuid || question.options.length > 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["options"], message: "System fields cannot contain answer options" });
+    }
+  } else if (question.system_field_key) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "Only System fields may contain a field key" });
+  }
+  if (question.response_type === "content" && !question.content_html?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Content point HTML is required" });
+  }
+  if (question.response_type === "content" && question.question_text.length > 200) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["question_text"], message: "Content label must be at most 200 characters" });
+  }
+  if (question.response_type !== "content" && question.content_html) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Only Content points may contain HTML" });
+  }
   const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
   if (!needsOptions && (question.options.length > 0 || question.option_set_uuid)) {
     ctx.addIssue({
@@ -400,6 +448,8 @@ export const formStructureSectionInputSchema = z.object({
   comment_box_required: z.boolean().default(false),
   signature_officer_required: z.boolean().default(false),
   signature_seafarer_required: z.boolean().default(false),
+  signature_vessel_management_required: z.boolean().default(false),
+  vessel_signature_role_uuids: z.array(z.string().trim().min(1).max(200)).max(100).default([]),
   default_option_set_uuid: rowUuidSchema.nullable().optional(),
   layout_preference: z.enum(SECTION_LAYOUT_PREFERENCES).default("auto"),
   effectiveLayout: z.enum(["list", "matrix"]).optional(),

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = process.env.TEST_API_URL!;
 
 describe("Manning Agents with active crew API", () => {
   let filteredAgents: Array<{ id: string; name: string; isActive: boolean; isDeleted: boolean }>;

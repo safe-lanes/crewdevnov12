@@ -12,14 +12,15 @@ interface ProtectedRouteProps {
    * showing the no-access screen on the default landing page.
    */
   fallbackRoute?: string;
+  companyFormsReports?: boolean;
 }
 
-export function ProtectedRoute({ menuName, children, fallbackRoute }: ProtectedRouteProps) {
-  const { canView, isLoading, permissions } = usePermissions();
+export function ProtectedRoute({ menuName, children, fallbackRoute, companyFormsReports = false }: ProtectedRouteProps) {
+  const { canView, canCompanyFormAction, isLoading, permissions } = usePermissions();
 
   if (isLoading) return null;
 
-  if (permissions.length > 0 && !canView(menuName)) {
+  if (permissions.length > 0 && !canView(menuName) && !(companyFormsReports && canCompanyFormAction("view"))) {
     if (fallbackRoute) {
       return <Redirect to={fallbackRoute} />;
     }

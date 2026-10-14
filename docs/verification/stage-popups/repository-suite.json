@@ -1,0 +1,21 @@
+{
+  "head": "37967ecd1aa30f1e3000ccd4d3a951fcf5079130",
+  "startedAt": "2026-10-05T04:26:31.382Z",
+  "finishedAt": "2026-10-05T04:29:36.345Z",
+  "command": "npx vitest run --no-file-parallelism",
+  "baselineHead": "37967ecd1aa30f1e3000ccd4d3a951fcf5079130",
+  "ceiling": {
+    "failed": 162,
+    "pending": 67
+  },
+  "files": 116,
+  "total": 1259,
+  "passed": 1030,
+  "failed": 162,
+  "pending": 67,
+  "exit": 1,
+  "missingOrEmpty": [],
+  "resultPath": ".local/verification/stage-popups-suite-2026-10-05T04-26-31-382Z/vitest.json",
+  "logPath": ".local/verification/stage-popups-suite-2026-10-05T04-26-31-382Z/run.log",
+  "withinBaseline": true
+}

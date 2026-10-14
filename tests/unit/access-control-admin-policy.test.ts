@@ -5,8 +5,8 @@ const { resolveRequestRoleMock } = vi.hoisted(() => ({
   resolveRequestRoleMock: vi.fn(),
 }));
 
-vi.mock("@server/v2/auth/roleResolutionService", () => ({
-  resolveRequestRole: resolveRequestRoleMock,
+vi.mock("@server/v2/admin/services/accessControlManagement", () => ({
+  accessControlAuthority: resolveRequestRoleMock,
 }));
 
 import { requireTrustedAccessControlAdmin } from "@server/middleware/requireTrustedAccessControlAdmin";
@@ -26,10 +26,10 @@ beforeEach(() => {
 
 describe("trusted Access Control administrator policy", () => {
   it.each(["Admin", "Super Admin", " Sail Admin "])(
-    "allows the parent-assigned trusted role %j",
+    "allows a server-authorized manager or recovery actor %j",
     async (roleName) => {
       resolveRequestRoleMock.mockResolvedValue({
-        ok: true,
+        allowed: true,
         role: { roleId: "trusted-role", roleName, masterUserId: 601 },
       });
       const { response, status } = responseSpy();
@@ -48,7 +48,7 @@ describe("trusted Access Control administrator policy", () => {
 
   it("denies a low-privilege role even if its editable grant rows would say yes", async () => {
     resolveRequestRoleMock.mockResolvedValue({
-      ok: true,
+      allowed: false,
       role: { roleId: "low-role", roleName: "Crewing Manager", masterUserId: 602 },
     });
     const { response, status } = responseSpy();
@@ -62,7 +62,7 @@ describe("trusted Access Control administrator policy", () => {
 
   it("denies unresolved or unauthenticated actors", async () => {
     resolveRequestRoleMock.mockResolvedValue({
-      ok: false,
+      allowed: false,
       reason: "no_authenticated_user",
     });
     const { response, status } = responseSpy();

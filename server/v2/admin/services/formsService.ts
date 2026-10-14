@@ -4,14 +4,118 @@ import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import { getDb } from "../../db";
 import { copyFormVersionStructure } from "./formStructureService";
+import { formStructureRepository } from "../repositories/formStructureRepository";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
-import { and, asc, eq } from "drizzle-orm";
-import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
+import { frmSubjectStages } from "../../../../shared/v2/forms-engine/subjectRegistry";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2, CreateCompanyFormV2Response } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
+import { v4 as uuidv4 } from "uuid";
+import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
+import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
+import { enrichCompanyVersions, recordReleaseChanges } from "./versionChanges";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
 const rankGroupsRepo = new RankGroupsRepository();
+
+export class CompanyFormArchivedError extends Error {
+  readonly statusCode = 409;
+  constructor(name: string) {
+    super(`Company Form "${name}" is archived and is read-only.`);
+    this.name = "CompanyFormArchivedError";
+  }
+}
+
+export class CompanyFormNameConflictError extends Error {
+  readonly statusCode = 409;
+  constructor(name: string) {
+    super(`A Company Form named "${name}" already exists. Rename the existing form or archive it before reusing this name.`);
+    this.name = "CompanyFormNameConflictError";
+  }
+}
+
+export class FormStageValidationError extends Error {
+  readonly statusCode = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = "FormStageValidationError";
+  }
+}
+
+type SubjectStage = {
+  subjectType: string;
+  stageKey: string;
+  label: string;
+  sortOrder: number;
+};
+
+async function getDeclaredStages(subjectType: string | null | undefined, executor: any = getDb()): Promise<SubjectStage[]> {
+  if (!subjectType) return [];
+  return executor
+    .select({
+      subjectType: frmSubjectStages.subjectType,
+      stageKey: frmSubjectStages.stageKey,
+      label: frmSubjectStages.label,
+      sortOrder: frmSubjectStages.sortOrder,
+    })
+    .from(frmSubjectStages)
+    .where(eq(frmSubjectStages.subjectType, subjectType))
+    .orderBy(asc(frmSubjectStages.sortOrder), asc(frmSubjectStages.stageKey));
+}
+
+function assertNoClientStageSubjectType(data: Record<string, unknown>) {
+  if (Object.prototype.hasOwnProperty.call(data, "stageSubjectType")) {
+    throw new FormStageValidationError("Stage subject type is managed by the server and cannot be supplied.");
+  }
+}
+
+function assertImmutableVersionOwnership(data: Record<string, unknown>) {
+  assertNoClientStageSubjectType(data);
+  for (const field of ["formId", "fvUuid", "rankGroupId", "status", "releasedAt",
+    "applicability", "policy", "changeSummary", "effectiveFrom", "contentChanged", "applicabilityChanged"]) {
+    if (Object.prototype.hasOwnProperty.call(data, field)) {
+      throw new FormStageValidationError(`${field} is immutable and cannot be changed through version update.`);
+    }
+  }
+}
+
+async function persistableStageKey(
+  form: AdmFormV2,
+  stageKey: string | null | undefined,
+  executor: any,
+): Promise<{ stageKey: string | null; stageSubjectType: string | null }> {
+  if (form.category !== "dynamic") {
+    if (stageKey != null) throw new FormStageValidationError("Standard forms cannot be assigned a subject stage.");
+    return { stageKey: null, stageSubjectType: null };
+  }
+  const stages = await getDeclaredStages(form.subjectType, executor);
+  if (stageKey == null) return { stageKey: null, stageSubjectType: form.subjectType ?? null };
+  if (stages.length === 0) {
+    throw new FormStageValidationError("This Company Form does not declare subject stages.");
+  }
+  if (!stages.some((stage) => stage.stageKey === stageKey)) {
+    throw new FormStageValidationError("Select a valid stage for this Company Form.");
+  }
+  return { stageKey, stageSubjectType: form.subjectType ?? null };
+}
+
+async function lockWritableForm(tx: any, formId: number) {
+  const form = await formsRepo.lockById(formId, tx);
+  if (!form) throw new Error(`Form not found: ${formId}`);
+  if (form.category === "dynamic" && form.archivedAt) throw new CompanyFormArchivedError(form.name);
+  return form;
+}
+
+async function lockWritableVersion(tx: any, versionId: number) {
+  const initial = await formVersionsRepo.findById(versionId, tx);
+  if (!initial) throw new Error(`Form version not found: ${versionId}`);
+  const form = await lockWritableForm(tx, initial.formId);
+  await tx.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE id = ${versionId} FOR UPDATE`);
+  const version = await formVersionsRepo.findById(versionId, tx);
+  if (!version) throw new Error(`Form version not found: ${versionId}`);
+  return { form, version };
+}
 
 // DD-MMM-YYYY (e.g. 07-May-2026). Reject anything that isn't a real calendar date.
 const VERSION_DATE_RE = /^(\d{2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})$/;
@@ -28,8 +132,8 @@ function isValidVersionDate(value: string | null | undefined): value is string {
 }
 
 export const formsService = {
-  async getAll(): Promise<AdmFormV2[]> {
-    return formsRepo.findAll();
+  async getAll(includeArchivedCompanyForms = true): Promise<AdmFormV2[]> {
+    return formsRepo.findAll(includeArchivedCompanyForms);
   },
 
   async getById(id: number): Promise<AdmFormV2> {
@@ -44,13 +148,25 @@ export const formsService = {
     return form;
   },
 
-  async getPartsByFormId(id: number) {
+  async getSubjectStagesByFormId(id: number): Promise<SubjectStage[]> {
     const form = await formsRepo.findById(id);
     if (!form) throw new Error(`Form not found: ${id}`);
+    if (form.category !== "dynamic") return [];
+    return getDeclaredStages(form.subjectType);
+  },
+
+  async getPartsByFormId(id: number, versionUuid?: string) {
+    const form = await formsRepo.findById(id);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    if (versionUuid) {
+      const version = await formVersionsRepo.findByUuid(versionUuid);
+      if (!version || version.formId !== form.id) throw new Error(`Form version not found for form: ${versionUuid}`);
+    }
     return getDb()
       .select({
         formPartUuid: frmFormParts.formPartUuid,
         formUuid: frmFormParts.formUuid,
+        formVersionUuid: frmFormParts.formVersionUuid,
         partCode: frmFormParts.partCode,
         partTitle: frmFormParts.partTitle,
         partType: frmFormParts.partType,
@@ -59,33 +175,155 @@ export const formsService = {
       .from(frmFormParts)
       .where(and(
         eq(frmFormParts.formUuid, form.formUuid),
+        versionUuid ? eq(frmFormParts.formVersionUuid, versionUuid) : isNull(frmFormParts.formVersionUuid),
         eq(frmFormParts.isDeleted, false),
       ))
       .orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
   },
 
-  async create(data: Omit<InsertAdmFormV2, "formUuid">): Promise<AdmFormV2> {
-    return formsRepo.create(applyAuditUser(data, true));
+  async create(data: { name: string; description?: string | null; auditUserUuid?: string | null }): Promise<CreateCompanyFormV2Response> {
+    const normalizedName = data.name.trim();
+    if (!normalizedName) throw new Error("Company Form name is required");
+    const duplicate = await formsRepo.findActiveDynamicNameConflict(normalizedName);
+    if (duplicate) throw new CompanyFormNameConflictError(duplicate.name);
+
+    const now = new Date();
+    const date = `${String(now.getDate()).padStart(2, "0")}-${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][now.getMonth()]}-${now.getFullYear()}`;
+    try {
+      return await getDb().transaction(async (tx: any) => {
+        const form = await formsRepo.create(applyAuditUser({
+          name: normalizedName,
+          description: data.description ?? null,
+          category: "dynamic",
+          subjectType: "crew_assignment",
+          rankGroup: "",
+          versionNo: "01",
+          versionDate: date,
+          configuration: null,
+          sharedConfig: null,
+          isLockForm: true,
+          auditUserUuid: data.auditUserUuid ?? null,
+        } as Omit<InsertAdmFormV2, "formUuid">, true), tx);
+        const version = await formVersionsRepo.create(applyAuditUser({
+          formId: form.id,
+          rankGroupId: null,
+          versionNo: "01",
+          versionDate: date,
+          status: "draft",
+          configuration: null,
+          sharedConfig: null,
+          releasedAt: null,
+          auditUserUuid: data.auditUserUuid ?? null,
+        }, true), tx);
+        // GenericFormEditor requires a version-owned part before it can load
+        // the initial draft. Keep this in the same transaction as both rows.
+        await tx.insert(frmFormParts).values({
+          formPartUuid: uuidv4(),
+          formUuid: form.formUuid,
+          formVersionUuid: version.fvUuid,
+          partCode: "MAIN",
+          partTitle: "Main Form",
+          partType: "configurable",
+          isOfficeOnly: false,
+          sortOrder: 0,
+          isDeleted: false,
+          isSync: false,
+        });
+        return { form, version };
+      });
+    } catch (error: any) {
+      if (error?.code === "23505" || error?.constraint === "uq_adm_forms_v2_active_dynamic_name") {
+        const collision = await formsRepo.findActiveDynamicNameConflict(normalizedName);
+        throw new CompanyFormNameConflictError(collision?.name ?? normalizedName);
+      }
+      throw error;
+    }
   },
 
   async updateById(id: number, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
-    const form = await formsRepo.updateById(id, applyAuditUser(data));
+    if (data.name !== undefined) data = { ...data, name: data.name.trim() };
+    let form: AdmFormV2 | undefined;
+    try {
+      form = await getDb().transaction(async (tx: any) => {
+        const existing = await lockWritableForm(tx, id);
+        if (data.subjectType !== undefined && data.subjectType !== existing.subjectType) {
+          const error: any = new Error("Form subject cannot be changed");
+          error.statusCode = 409;
+          throw error;
+        }
+        if (existing.category === "dynamic" && data.name !== undefined) {
+          const conflict = await formsRepo.findActiveDynamicNameConflict(data.name, id, tx);
+          if (conflict) throw new CompanyFormNameConflictError(conflict.name);
+        }
+        const updated = await formsRepo.updateById(id, applyAuditUser(data), tx);
+        if (!updated) throw new Error(`Form not found: ${id}`);
+        return updated;
+      });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        const conflict = data.name ? await formsRepo.findActiveDynamicNameConflict(data.name, id) : undefined;
+        if (conflict) throw new CompanyFormNameConflictError(conflict.name);
+      }
+      throw error;
+    }
     if (!form) throw new Error(`Form not found: ${id}`);
     return form;
   },
 
   async update(formUuid: string, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
-    const form = await formsRepo.update(formUuid, applyAuditUser(data));
+    if (data.name !== undefined) data = { ...data, name: data.name.trim() };
+    const existing = await formsRepo.findByUuid(formUuid);
+    if (!existing) throw new Error(`Form not found: ${formUuid}`);
+    let form: AdmFormV2 | undefined;
+    try {
+      form = await getDb().transaction(async (tx: any) => {
+        const locked = await lockWritableForm(tx, existing.id);
+        if (locked.category === "dynamic" && data.name !== undefined) {
+          const conflict = await formsRepo.findActiveDynamicNameConflict(data.name, existing.id, tx);
+          if (conflict) throw new CompanyFormNameConflictError(conflict.name);
+        }
+        const updated = await formsRepo.update(formUuid, applyAuditUser(data), tx);
+        if (!updated) throw new Error(`Form not found: ${formUuid}`);
+        return updated;
+      });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        const conflict = data.name ? await formsRepo.findActiveDynamicNameConflict(data.name, existing.id) : undefined;
+        if (conflict) throw new CompanyFormNameConflictError(conflict.name);
+      }
+      throw error;
+    }
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return form;
   },
 
   async deleteById(id: number): Promise<boolean> {
-    return formsRepo.softDeleteById(id);
+    return getDb().transaction(async (tx: any) => {
+      await lockWritableForm(tx, id);
+      return formsRepo.softDeleteById(id, tx);
+    });
   },
 
   async delete(formUuid: string): Promise<boolean> {
-    return formsRepo.softDelete(formUuid);
+    const form = await formsRepo.findByUuid(formUuid);
+    if (!form) return false;
+    return getDb().transaction(async (tx: any) => {
+      await lockWritableForm(tx, form.id);
+      return formsRepo.softDelete(formUuid, tx);
+    });
+  },
+
+  async archiveById(id: number, auditUserUuid: string | null = null): Promise<void> {
+    const form = await formsRepo.findById(id);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    if (form.category !== "dynamic") throw new Error("Only Company Forms can be archived at the form level.");
+    if (form.archivedAt) return;
+    const archived = await formsRepo.archiveDynamicById(id, auditUserUuid);
+    if (!archived) {
+      const current = await formsRepo.findById(id);
+      if (!current) throw new Error(`Form not found: ${id}`);
+      if (current.category !== "dynamic" || !current.archivedAt) throw new Error("Failed to archive Company Form");
+    }
   },
 
   async getFormForRank(rankLabel: string, category?: string): Promise<any> {
@@ -184,13 +422,9 @@ export const formsService = {
 
     if (!matchedForm) {
       console.log(`ℹ️ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}" across ${candidateForms.length} form(s)`);
-      return {
-        ...candidateForms[0],
-        rankGroupName: null,
-        rankGroupConfig: null,
-        noReleasedVersion: true,
-        noReleasedVersionReason: `No active rank group covers rank "${getBaseRank(rankLabel) || rankLabel}".`,
-      };
+      // An unrelated form in the category is not a resolution for this rank.
+      // The HTTP controller turns null into a clear 404 for API consumers.
+      return null;
     }
 
     if (!rankGroupConfig) {
@@ -273,69 +507,94 @@ export const formsService = {
   async getVersionsByFormId(formId: number, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
     const form = await formsRepo.findById(formId);
     if (!form) throw new Error(`Form not found: ${formId}`);
+    if (form.category === "dynamic") {
+      if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
+      return enrichCompanyVersions(await formVersionsRepo.findByFormId(form.id, null));
+    }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
 
   async getVersions(formUuid: string, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
+    if (form.category === "dynamic") {
+      if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
+      return enrichCompanyVersions(await formVersionsRepo.findByFormId(form.id, null));
+    }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
 
   async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
-    const form = await formsRepo.findById(formId);
-    if (!form) throw new Error(`Form not found: ${formId}`);
-    if (!data.rankGroupId) {
-      throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
-    }
-    const auditUserUuid = (data as any).auditUserUuid ?? null;
-    // Server-controlled metadata: ignore client-supplied versionNo / releasedAt / status.
-    // All new versions are drafts; release happens via releaseVersionById.
-    // versionDate IS honored when supplied (admin-picked date); falls back to today.
-    const today = new Date();
-    const todayStr = today.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/ /g, "-");
-    const pickedVersionDate = isValidVersionDate(data.versionDate) ? data.versionDate! : todayStr;
+    return getDb().transaction(async (tx: any) => {
+      assertNoClientStageSubjectType(data as Record<string, unknown>);
+      const form = await lockWritableForm(tx, formId);
+      const isCompanyForm = form.category === "dynamic";
+      if (isCompanyForm && data.rankGroupId != null) {
+        throw new Error("Company Forms cannot have rank-grouped versions.");
+      }
+      if (!isCompanyForm && !data.rankGroupId) {
+        throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
+      }
+      const rankGroupId = isCompanyForm ? null : data.rankGroupId!;
+      const stageWasSupplied = Object.prototype.hasOwnProperty.call(data, "stageKey");
+      const requestedStage = stageWasSupplied ? (data as any).stageKey as string | null : undefined;
+      const stagePatch = stageWasSupplied
+        ? await persistableStageKey(form, requestedStage, tx)
+        : null;
+      const auditUserUuid = (data as any).auditUserUuid ?? null;
+      const today = new Date();
+      const todayStr = today.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).replace(/ /g, "-");
+      const pickedVersionDate = isValidVersionDate(data.versionDate) ? data.versionDate! : todayStr;
 
-    const existingDraft = await formVersionsRepo.findDraftByRankGroupId(data.rankGroupId);
-    if (existingDraft) {
-      const updated = await formVersionsRepo.updateById(
-        existingDraft.id,
-        applyAuditUser({
-          configuration: data.configuration ?? null,
-          sharedConfig: data.sharedConfig ?? null,
-          versionDate: pickedVersionDate,
-          auditUserUuid,
-        }),
-      );
-      if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
-      return updated;
-    }
-    const rgVersions = await formVersionsRepo.findByFormId(form.id, data.rankGroupId);
-    const maxVersionNo = rgVersions.reduce((max, v) => {
-      const vNo = parseInt(v.versionNo, 10);
-      return isNaN(vNo) ? max : Math.max(max, vNo);
-    }, 0);
-    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
-    const sourceVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(data.rankGroupId);
-    const db = getDb();
-    return db.transaction(async (tx: any) => {
+      const existingDraft = isCompanyForm
+        ? await formVersionsRepo.findDraftByFormId(form.id, tx)
+        : await formVersionsRepo.findDraftByRankGroupId(rankGroupId!, tx);
+      if (existingDraft) {
+        const updated = await formVersionsRepo.updateById(
+          existingDraft.id,
+          applyAuditUser({
+            configuration: data.configuration ?? null,
+            sharedConfig: data.sharedConfig ?? null,
+            versionDate: pickedVersionDate,
+            ...(stagePatch ?? {}),
+            auditUserUuid,
+          }),
+          tx,
+        );
+        if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
+        return updated;
+      }
+      const rgVersions = await formVersionsRepo.findByFormId(form.id, rankGroupId, tx);
+      const maxVersionNo = rgVersions.reduce((max, v) => {
+        const vNo = parseInt(v.versionNo, 10);
+        return isNaN(vNo) ? max : Math.max(max, vNo);
+      }, 0);
+      const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
+      const sourceVersion = isCompanyForm
+        ? await formVersionsRepo.findLatestReleasedByFormId(form.id, tx)
+        : await formVersionsRepo.findLatestReleasedByRankGroupId(rankGroupId!, tx);
       const created = await formVersionsRepo.create(applyAuditUser({
         configuration: data.configuration ?? null,
         sharedConfig: data.sharedConfig ?? null,
-        rankGroupId: data.rankGroupId,
+        rankGroupId,
         formId: form.id,
         versionNo: nextVersionNo,
         versionDate: pickedVersionDate,
         status: "draft",
+        stageKey: stagePatch?.stageKey ?? null,
+        stageSubjectType: stagePatch?.stageSubjectType ?? (isCompanyForm ? form.subjectType ?? null : null),
         releasedAt: null,
         auditUserUuid,
-      }, true), tx);
+      } as any, true), tx);
       if (sourceVersion?.fvUuid) {
         await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+        if (isCompanyForm) await copyApplicability(sourceVersion.fvUuid, created.fvUuid, tx);
+      } else {
+        await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
       }
       return created;
     });
@@ -354,57 +613,84 @@ export const formsService = {
   },
 
   async updateVersionById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2> {
-    const version = await formVersionsRepo.updateById(id, applyAuditUser(data));
-    if (!version) throw new Error(`Form version not found: ${id}`);
-    return version;
+    return getDb().transaction(async (tx: any) => {
+      assertImmutableVersionOwnership(data as Record<string, unknown>);
+      const { form, version: existing } = await lockWritableVersion(tx, id);
+      const update: Record<string, unknown> = { ...data };
+      if (Object.prototype.hasOwnProperty.call(data, "stageKey")) {
+        if (existing.status !== "draft") {
+          throw new FormStageValidationError("A released version's stage is immutable.");
+        }
+        Object.assign(update, await persistableStageKey(form, (data as any).stageKey, tx));
+      }
+      const version = await formVersionsRepo.updateById(id, applyAuditUser(update as Partial<InsertAdmFormVersionV2>), tx);
+      if (!version) throw new Error(`Form version not found: ${id}`);
+      return version;
+    });
   },
 
   async releaseVersionById(id: number, auditUserUuid: string | null = null): Promise<AdmFormVersionV2> {
-    const existing = await formVersionsRepo.findById(id);
-    if (!existing) throw new Error(`Form version not found: ${id}`);
-    if (existing.status !== "draft") {
-      throw new Error("Only draft versions can be released.");
-    }
-    // Preserve the draft's versionDate (admin-picked at Save Draft time).
-    // Fall back to today only if the draft somehow lacks a valid date.
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/ /g, "-");
-    const versionDate = isValidVersionDate(existing.versionDate) ? existing.versionDate! : todayStr;
-    const version = await formVersionsRepo.updateById(id, applyAuditUser({
-      status: "released",
-      versionDate,
-      releasedAt: now,
-      auditUserUuid,
-    }));
-    if (!version) throw new Error(`Form version not found: ${id}`);
-
-    // Parent form metadata MUST stay in sync with the latest released version.
-    // Errors here propagate so the API surfaces a 500 rather than returning success
-    // with a divergent parent record.
-    const allVersions = await formVersionsRepo.findByFormId(version.formId);
-    const released = allVersions.filter(v => v.status === "released");
-    if (released.length > 0) {
-      const latest = released.reduce((max, v) => {
-        const vNo = parseInt(v.versionNo, 10);
-        const maxNo = parseInt(max.versionNo, 10);
-        if (isNaN(vNo)) return max;
-        if (isNaN(maxNo)) return v;
-        return vNo > maxNo ? v : max;
-      }, released[0]);
-      await formsRepo.updateById(version.formId, {
-        versionNo: latest.versionNo,
-        versionDate: latest.versionDate,
-      });
-    }
-
-    return version;
+    return getDb().transaction(async (tx: any) => {
+      const { form, version: existing } = await lockWritableVersion(tx, id);
+      if (existing.status !== "draft") throw new Error("Only draft versions can be released.");
+      if (form.category === "dynamic") await validateApplicabilityRelease(existing.fvUuid, tx);
+      const stages = form.category === "dynamic" ? await getDeclaredStages(form.subjectType, tx) : [];
+      if (stages.length > 0 && (!existing.stageKey || !stages.some((stage) => stage.stageKey === existing.stageKey))) {
+        throw new FormStageValidationError("Select a subject stage before releasing this Company Form version.");
+      }
+      if (stages.length === 0 && existing.stageKey != null) {
+        throw new FormStageValidationError("This form does not declare subject stages; clear the stage before releasing.");
+      }
+      if (form.category === "dynamic") {
+        const lifecycleErrors = await validatePersistedCompanyFormLifecycle(tx, existing.fvUuid);
+        if (lifecycleErrors.length > 0) {
+          throw new FormStageValidationError(lifecycleErrors.join(" "));
+        }
+      }
+      const now = new Date();
+      const todayStr = now.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).replace(/ /g, "-");
+      const versionDate = isValidVersionDate(existing.versionDate) ? existing.versionDate! : todayStr;
+      if (form.category === "dynamic") {
+        const previous = await formVersionsRepo.findLatestReleasedByFormId(form.id, tx);
+        await recordReleaseChanges(existing.fvUuid, previous?.fvUuid ?? null, auditUserUuid, tx);
+      }
+      const version = await formVersionsRepo.updateById(id, applyAuditUser({
+        status: "released",
+        versionDate,
+        releasedAt: now,
+        stageSubjectType: form.category === "dynamic" ? form.subjectType : null,
+        auditUserUuid,
+      }), tx);
+      if (!version) throw new Error(`Form version not found: ${id}`);
+      const allVersions = await formVersionsRepo.findByFormId(
+        version.formId, form.category === "dynamic" ? null : undefined, tx,
+      );
+      const released = allVersions.filter(v => v.status === "released");
+      if (released.length > 0) {
+        const latest = released.reduce((max, v) => {
+          const vNo = parseInt(v.versionNo, 10);
+          const maxNo = parseInt(max.versionNo, 10);
+          if (isNaN(vNo)) return max;
+          if (isNaN(maxNo)) return v;
+          return vNo > maxNo ? v : max;
+        }, released[0]);
+        await formsRepo.updateById(version.formId, {
+          versionNo: latest.versionNo,
+          versionDate: latest.versionDate,
+        }, tx);
+      }
+      return version;
+    });
   },
 
   async deleteVersionById(id: number): Promise<boolean> {
-    return formVersionsRepo.softDeleteById(id);
+    return getDb().transaction(async (tx: any) => {
+      await lockWritableVersion(tx, id);
+      return formVersionsRepo.softDeleteById(id, tx);
+    });
   },
 };

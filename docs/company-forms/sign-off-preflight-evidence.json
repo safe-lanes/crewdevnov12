@@ -1,0 +1,343 @@
+{
+  "startingHead": "222765daf6ab4d0c4c9cacc2819d0bb1fa16fbce",
+  "recordedAt": "2026-10-04T08:15:43.127Z",
+  "scope": "Step 1 only; no implementation or closing certification",
+  "typescript": {
+    "command": "npm run check",
+    "exitCode": 2,
+    "diagnostics": 226
+  },
+  "fullSuite": {
+    "command": "npm test -- --no-file-parallelism --reporter=json --outputFile=/tmp/task358-baseline/full-tests.json",
+    "exitCode": 1,
+    "totalTests": 1231,
+    "passedTests": 1003,
+    "failedTests": 161,
+    "pendingTests": 67,
+    "nonPassingFiles": [
+      "tests/unit/forms-permission-route-inventory.test.ts",
+      "tests/unit/components/formatted-date-input.test.tsx",
+      "tests/unit/modules/crew-pool/crew-pool-validation.test.ts",
+      "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+      "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+      "tests/unit/modules/vessel/vessel-management.test.ts",
+      "tests/integration/api/contract-detail.test.ts",
+      "tests/integration/api/crew-members.test.ts",
+      "tests/integration/api/ctm-carry-forward.test.ts",
+      "tests/integration/api/drug-alcohol.test.ts",
+      "tests/integration/api/forms.test.ts",
+      "tests/integration/api/obsolete-crew-assignment-paths.test.ts",
+      "tests/integration/api/portage-auto-lock.test.ts",
+      "tests/integration/api/promotions.test.ts",
+      "tests/integration/api/recruitment.test.ts",
+      "tests/integration/api/rest-hours.test.ts",
+      "tests/integration/api/rotation.test.ts",
+      "tests/integration/api/ship-reference-reads.test.ts",
+      "tests/integration/api/vessel-initiated-workflow.test.ts",
+      "tests/integration/api/vessel-portage-category-grids.test.ts",
+      "tests/integration/api/vessel-portage.test.ts",
+      "tests/integration/api/wage-engine.test.ts"
+    ]
+  },
+  "companyArea": {
+    "command": "node scripts/verify-company-forms-tests.mjs",
+    "exitCode": 0,
+    "files": [
+      "tests/integration/api/company-form-signing-and-completion.test.ts",
+      "tests/integration/api/company-form-submission-answer-roundtrip.test.ts",
+      "tests/integration/api/company-form-submission-boundary.test.ts",
+      "tests/integration/api/company-form-submission-races.test.ts",
+      "tests/integration/api/company-form-submission-starts.test.ts",
+      "tests/integration/api/company-form-submission-void-races.test.ts",
+      "tests/integration/api/company-form-versions.test.ts",
+      "tests/integration/api/form-category-creation.test.ts",
+      "tests/integration/api/form-part-edit.test.ts",
+      "tests/integration/company-form-signature-constraints.test.ts",
+      "tests/integration/company-form-stage-less-runtime.test.ts",
+      "tests/integration/company-form-stage-persistence.test.ts",
+      "tests/integration/debriefing-submission.acceptance.test.ts",
+      "tests/integration/form-option-set-migration.test.ts",
+      "tests/integration/form-structure-service.test.ts",
+      "tests/integration/form-version-template-init.test.ts",
+      "tests/unit/briefing-creation-resolution.test.ts",
+      "tests/unit/briefing-live-submission-host.test.ts",
+      "tests/unit/company-form-display-formatting.test.ts",
+      "tests/unit/company-form-draft-section-policy.test.ts",
+      "tests/unit/company-form-lifecycle-policy.test.ts",
+      "tests/unit/company-form-profile-home-service.test.ts",
+      "tests/unit/company-form-render-contract.test.tsx",
+      "tests/unit/company-form-subject-contracts.test.ts",
+      "tests/unit/company-form-submission-lifecycle-contracts.test.ts",
+      "tests/unit/company-form-submission-lifecycle.test.ts",
+      "tests/unit/company-form-vessel-policy.test.ts",
+      "tests/unit/company-forms-closing-gate.test.ts",
+      "tests/unit/configured-form-renderer.test.tsx",
+      "tests/unit/content-point-editor.test.tsx",
+      "tests/unit/crew-company-forms-home.test.tsx",
+      "tests/unit/debriefing-live-submission-host.test.ts",
+      "tests/unit/fixed-part-registry.test.tsx",
+      "tests/unit/form-effective-layout.test.ts",
+      "tests/unit/form-structure-contract.test.ts",
+      "tests/unit/forms-rank-consumer-errors.test.ts",
+      "tests/unit/forms-rank-fallback.test.ts",
+      "tests/unit/generic-form-editor-helpers.test.ts",
+      "tests/unit/generic-form-editor-preview-portal.test.tsx",
+      "tests/unit/generic-form-editor-release.test.tsx",
+      "tests/unit/interview-creation-resolution.test.ts",
+      "tests/unit/interview-live-submission-host.test.ts",
+      "tests/unit/joining-company-forms.test.tsx",
+      "tests/unit/onboard-company-form-corrections.test.ts",
+      "tests/unit/onboard-company-forms.test.tsx",
+      "tests/unit/scratch/restrictedPaste.test.ts"
+    ],
+    "totalTests": 333,
+    "passedTests": 333,
+    "skippedTests": 0,
+    "startedAt": "2026-10-04T08:11:25.116Z",
+    "finishedAt": "2026-10-04T08:12:41.640Z"
+  },
+  "limitation": "Initial two Vitest commands ran concurrently against shared DB. Run final gates sequentially.",
+  "navigation": [
+    {
+      "actorId": 100,
+      "status": 200,
+      "path": "/api/v2/admin/access-control/my-permissions",
+      "permissions": [
+        {
+          "menuName": "Forms",
+          "displayName": "Forms",
+          "route": "/admin/forms",
+          "parentMenu": "67dfe8fa-64c2-46df-98d6-0443efc7124e",
+          "canview": false,
+          "cancreate": false,
+          "canedit": false,
+          "candelete": false
+        },
+        {
+          "menuName": "Crew Database",
+          "displayName": "Crew Database",
+          "route": "/crew-pool/crew-database",
+          "parentMenu": "2dcbfb8e-8cf8-499e-ab9d-d21f9b635eb2",
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        },
+        {
+          "menuName": "Vessel Database",
+          "displayName": "Vessel Database",
+          "route": "/vessel/vessel-database",
+          "parentMenu": "4128151d-7d76-43d9-aed5-779db86c0868",
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        },
+        {
+          "menuName": "Crew Pool",
+          "displayName": "Crew Pool",
+          "route": "/crew-pool",
+          "parentMenu": null,
+          "canview": false,
+          "cancreate": false,
+          "canedit": false,
+          "candelete": false
+        },
+        {
+          "menuName": "Vessel",
+          "displayName": "Vessel",
+          "route": "/vessel",
+          "parentMenu": null,
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        },
+        {
+          "menuName": "Officer Matrix",
+          "displayName": "Officer Matrix",
+          "route": "/vessel/officer-matrix",
+          "parentMenu": "4128151d-7d76-43d9-aed5-779db86c0868",
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        }
+      ]
+    },
+    {
+      "actorId": 99,
+      "status": 200,
+      "path": "/api/v2/admin/access-control/my-permissions",
+      "permissions": [
+        {
+          "menuName": "Forms",
+          "displayName": "Forms",
+          "route": "/admin/forms",
+          "parentMenu": "67dfe8fa-64c2-46df-98d6-0443efc7124e",
+          "canview": false,
+          "cancreate": false,
+          "canedit": false,
+          "candelete": false
+        },
+        {
+          "menuName": "Crew Database",
+          "displayName": "Crew Database",
+          "route": "/crew-pool/crew-database",
+          "parentMenu": "2dcbfb8e-8cf8-499e-ab9d-d21f9b635eb2",
+          "canview": true,
+          "cancreate": true,
+          "canedit": true,
+          "candelete": false
+        },
+        {
+          "menuName": "Vessel Database",
+          "displayName": "Vessel Database",
+          "route": "/vessel/vessel-database",
+          "parentMenu": "4128151d-7d76-43d9-aed5-779db86c0868",
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        },
+        {
+          "menuName": "Crew Pool",
+          "displayName": "Crew Pool",
+          "route": "/crew-pool",
+          "parentMenu": null,
+          "canview": true,
+          "cancreate": false,
+          "canedit": false,
+          "candelete": false
+        },
+        {
+          "menuName": "Vessel",
+          "displayName": "Vessel",
+          "route": "/vessel",
+          "parentMenu": null,
+          "canview": true,
+          "cancreate": false,
+          "canedit": false,
+          "candelete": false
+        },
+        {
+          "menuName": "Officer Matrix",
+          "displayName": "Officer Matrix",
+          "route": "/vessel/officer-matrix",
+          "parentMenu": "4128151d-7d76-43d9-aed5-779db86c0868",
+          "canview": true,
+          "cancreate": false,
+          "canedit": true,
+          "candelete": false
+        }
+      ]
+    }
+  ],
+  "api": [
+    {
+      "actorId": 100,
+      "method": "GET",
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/10df4ffb-db61-46a9-ac7a-cc5e290b7376/submissions",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "htmlFallback": false
+    },
+    {
+      "actorId": 100,
+      "method": "GET",
+      "path": "/api/v2/permissions/my-permissions",
+      "status": 404,
+      "contentType": "application/json; charset=utf-8",
+      "htmlFallback": false
+    },
+    {
+      "actorId": 99,
+      "method": "GET",
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/home/424584fc-dc59-4f85-aa14-30781eb8477e/submissions",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "htmlFallback": false
+    },
+    {
+      "actorId": 99,
+      "method": "GET",
+      "path": "/api/v2/admin/forms",
+      "status": 403,
+      "contentType": "application/json; charset=utf-8",
+      "htmlFallback": false
+    }
+  ],
+  "positions": {
+    "vesselUuid": "743feb08-841a-11ed-aa7c-7003bca91a86",
+    "latestRevision": "R2",
+    "positions": [
+      {
+        "rankId": "R001",
+        "rank": "Master",
+        "role": null,
+        "occupied": true
+      },
+      {
+        "rankId": "R005",
+        "rank": "Chief Engineer",
+        "role": null,
+        "occupied": true
+      },
+      {
+        "rankId": "R017",
+        "rank": "Pumpman",
+        "role": null,
+        "occupied": true
+      }
+    ],
+    "planning": [
+      {
+        "plan_uuid": "d2d7b8ef-f3a6-4dd1-8e85-ab5b2fc1f713",
+        "rank_id": "R002",
+        "rank": "Chief Officer",
+        "crew_uuid": null,
+        "crew_assign_uuid": null,
+        "reliever_crew_uuid": "6261366d-01a3-4081-a681-4c161a8ba19c",
+        "reliever_assign_uuid": "7b7347f1-9ebd-4593-aa24-ac369374ccf4"
+      },
+      {
+        "plan_uuid": "d4fdf99b-490e-45f5-bb2e-28bc6255077c",
+        "rank_id": "R001",
+        "rank": "Master",
+        "crew_uuid": "6261366d-01a3-4081-a681-4c161a8ba19c",
+        "crew_assign_uuid": "2a355da2-523e-4e65-841e-6e2ae9e9cce9",
+        "reliever_crew_uuid": null,
+        "reliever_assign_uuid": null
+      },
+      {
+        "plan_uuid": "accc9d51-ea2a-4a8c-8371-91902e377d5c",
+        "rank_id": "R017",
+        "rank": "Pumpman",
+        "crew_uuid": "424584fc-dc59-4f85-aa14-30781eb8477e",
+        "crew_assign_uuid": "10df4ffb-db61-46a9-ac7a-cc5e290b7376",
+        "reliever_crew_uuid": null,
+        "reliever_assign_uuid": null
+      },
+      {
+        "plan_uuid": "6421164a-6af2-4d9d-9f72-27006f414878",
+        "rank_id": "R005",
+        "rank": "Chief Engineer",
+        "crew_uuid": "3f004bf8-c98a-4abb-b2cd-925db13bcc2b",
+        "crew_assign_uuid": "405df2a0-1b28-40db-b9e3-1cc1a6be077b",
+        "reliever_crew_uuid": null,
+        "reliever_assign_uuid": null
+      }
+    ]
+  },
+  "retainedEvidence": ".local/verification/task358-preflight",
+  "sha256": {
+    "api-preflight.json": "9803f3a435f2628bb51c6f5832d0de5adee5f6a3313c08716da1bbc951219dd6",
+    "company-tests.log": "d8bc913138369314a72e770e4bb0588950c9c070ca5d53abfaf3f213b8a62d09",
+    "full-tests.json": "4d179d03b306e37754beeb08178d127ddd2c1efe613136e29a536009d2d395a5",
+    "full-tests.log": "0e67854ced1d090da3efb05db10af29419c1c745607154ba03a53c7f743e1112",
+    "navigation-preflight.json": "f57153f185aba7d27b9621a6332edffd0d9ac28f9594224c601c80c3a4e75900",
+    "positions-preflight.json": "dbf5d7c08208a0c13a095beb9bed9d007ef6c51a9698c83dd19f9158a73e4abb",
+    "preflight.json": "3131c52b6e201e32d3637c20564bdf42a4a499639eb50b862e40a9b21b6e3388",
+    "typescript.log": "8676f00539211941ba758a8ff952c79815dc3f2709d52ab27fe0069f38cb4bb8"
+  }
+}

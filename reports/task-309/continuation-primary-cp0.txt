@@ -1,0 +1,32 @@
+CP0 — CONTINUATION PRIMARY BASELINE
+crew_uuid: f3011dfd-ed44-4020-b85f-b2d4216e62af
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+rank: 2nd Officer
+incumbent_plan_uuid: f42844f3-1451-4650-856c-f44af484be57
+incumbent_crew_uuid: ace80e38-7e11-4ef1-8f36-8edd4b22db0e
+
+CREW
+id,crew_uuid,emp_no,employee_id,first_name,middle_name,family_name,gender,dob,nationality_uuid,present_rank,rank_applied_for,status,is_active,uploaded_photo,source_rec_can_uuid,archived_at,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,vessel_type_uuid,availability,next_availability,last_termination_date,last_termination_reason,last_termination_category,termination_initiated_by,not_for_hire,recruitment_date
+82,f3011dfd-ed44-4020-b85f-b2d4216e62af,A100019,A100019,ALEKSANDR,,NOVIKOV,Male,1993-04-09,bb30220b-60b0-11ec-a42e-507b9da1cbd6,3rd Officer,,active,t,,,,2026-04-09T13:22:04.185Z,2026-04-09T13:22:04.185Z,ed36eb5e-3a93-4c62-8ddc-9b2ab6e6ea52,ed36eb5e-3a93-4c62-8ddc-9b2ab6e6ea52,f,f,,,,,,,,f,
+
+
+S1
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+
+
+S2
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+
+
+S3
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+
+
+S4
+count
+63
+count
+81
+count
+472
+

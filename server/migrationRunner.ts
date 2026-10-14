@@ -1,3 +1,4 @@
+import { deferFailedStageActivation } from "./v2/company-forms/stageUpgradeFailure";
 import { Pool } from "pg";
 import { readdir, readFile } from "fs/promises";
 import { join, dirname } from "path";
@@ -27,6 +28,13 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
     "SELECT filename FROM schema_migrations ORDER BY filename"
   );
   const appliedMigrations = new Set(appliedResult.rows.map(row => row.filename));
+  // Capture bootstrap versus upgrade BEFORE this run installs any migration.
+  // Seeded roles or earlier migrations installed in this same run are not
+  // evidence that a new tenant previously had operational access.
+  const existingDatabase = appliedMigrations.size > 0;
+  const inferredLinkMigrationWasAlreadyApplied = appliedMigrations.has(
+    "0219_assignment_identity_and_type_constraint.sql",
+  );
 
   const migrationsDir = join(__dirname, "../migrations");
   let files: string[];
@@ -52,6 +60,17 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
       skippedCount++;
       continue;
     }
+    if (filename === "0220_remove_inferred_incumbent_links.sql" &&
+        inferredLinkMigrationWasAlreadyApplied) {
+      // 0219 and 0220 are safe together before the app starts serving. If
+      // deployed separately, newer verified links may exist alongside links
+      // inferred by 0219. They cannot be distinguished retrospectively, so
+      // never erase them without an explicit review of that database.
+      throw new Error(
+        `[${label}] Migration 0220 cannot automatically follow a previously applied 0219. ` +
+        "Review incumbent links on this database before marking 0220 applied.",
+      );
+    }
 
     console.log(`🔧 [${label}] Applying migration: ${filename}`);
 
@@ -62,6 +81,7 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
 
       try {
         await client.query("BEGIN");
+        await client.query("SELECT set_config('sail.permission_upgrade', $1, true)", [String(existingDatabase)]);
         await client.query(migrationSQL);
         await client.query("COMMIT");
       } catch (sqlError: any) {
@@ -95,6 +115,10 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
       } catch {
       }
       console.error(`❌ [${label}] Failed to apply migration ${filename}:`, error);
+      if (await deferFailedStageActivation(filename, client, error)) {
+        console.warn(`[${label}] Form-stage activation deferred; enforcement remains off and manual starting remains available.`);
+        continue;
+      }
       throw new Error(`Migration failed: ${filename}. ${error}`);
     } finally {
       client.release();

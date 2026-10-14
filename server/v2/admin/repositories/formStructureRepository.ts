@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -15,6 +15,8 @@ import {
   type FormStructureInput,
 } from "../../../../shared/v2/forms-engine/schema";
 import { masterVesselTypes } from "../../../../shared/schema";
+import { sanitizeComparisonHtml } from "../../../../shared/v2/forms-engine/contentSanitizer";
+import { getSystemField } from "../../../../shared/v2/forms-engine/systemFields";
 
 type Executor = any;
 type ReplaceTreeValidator = (
@@ -30,10 +32,54 @@ export type FormStructureContext = {
     status: string;
   };
   formUuid: string;
+  category: string;
+  subjectType: string | null;
+  formName: string;
+  archivedAt: Date | null;
   part: typeof frmFormParts.$inferSelect;
 };
 
 export class FormStructureRepository {
+  // The caller supplies the version-creation transaction. Form-level parts are
+  // permanent templates; only newly inserted, version-owned parts are writable.
+  async initializePartsFromTemplates(formUuid: string, versionUuid: string, tx: Executor): Promise<void> {
+    const versions = await tx.select({
+      formUuid: admFormsV2.formUuid,
+      status: admFormVersionsV2.status,
+    }).from(admFormVersionsV2)
+      .innerJoin(admFormsV2, eq(admFormsV2.id, admFormVersionsV2.formId))
+      .where(and(
+        eq(admFormVersionsV2.fvUuid, versionUuid),
+        eq(admFormVersionsV2.isDeleted, false),
+        eq(admFormsV2.isDeleted, false),
+      ));
+    if (versions[0]?.formUuid !== formUuid || versions[0]?.status !== "draft") {
+      throw new Error("Template initialization requires a draft version of the same form");
+    }
+    const existingParts = await tx.select({ id: frmFormParts.id }).from(frmFormParts)
+      .where(eq(frmFormParts.formVersionUuid, versionUuid)).limit(1);
+    if (existingParts.length) throw new Error("Version already has parts");
+
+    const templates = await tx.select().from(frmFormParts).where(and(
+      eq(frmFormParts.formUuid, formUuid),
+      isNull(frmFormParts.formVersionUuid),
+      eq(frmFormParts.isDeleted, false),
+    )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
+    if (!templates.length) return;
+    await tx.insert(frmFormParts).values(templates.map((part: typeof frmFormParts.$inferSelect) => ({
+      formPartUuid: uuidv4(),
+      formUuid,
+      formVersionUuid: versionUuid,
+      partCode: part.partCode,
+      partTitle: part.partTitle,
+      partType: part.partType,
+      isOfficeOnly: part.isOfficeOnly,
+      sortOrder: part.sortOrder,
+      isDeleted: false,
+      isSync: false,
+    })));
+  }
+
   private async findContextWithExecutor(
     executor: Executor,
     fvUuid: string,
@@ -46,6 +92,10 @@ export class FormStructureRepository {
         formId: admFormVersionsV2.formId,
         status: admFormVersionsV2.status,
         formUuid: admFormsV2.formUuid,
+        category: admFormsV2.category,
+        subjectType: admFormsV2.subjectType,
+        formName: admFormsV2.name,
+        archivedAt: admFormsV2.archivedAt,
       })
       .from(admFormVersionsV2)
       .innerJoin(admFormsV2, eq(admFormsV2.id, admFormVersionsV2.formId))
@@ -61,6 +111,7 @@ export class FormStructureRepository {
       .from(frmFormParts)
       .where(and(
         eq(frmFormParts.formPartUuid, partUuid),
+        eq(frmFormParts.formVersionUuid, fvUuid),
         eq(frmFormParts.isDeleted, false),
       ));
     if (parts.length === 0) return undefined;
@@ -68,6 +119,10 @@ export class FormStructureRepository {
     return {
       version: versions[0],
       formUuid: versions[0].formUuid,
+      category: versions[0].category,
+      subjectType: versions[0].subjectType,
+      formName: versions[0].formName,
+      archivedAt: versions[0].archivedAt,
       part: parts[0],
     };
   }
@@ -143,14 +198,72 @@ export class FormStructureRepository {
   ) {
     const db = getDb();
     const replaceWithExecutor = async (tx: Executor) => {
+      const [identity] = await tx.select({ formId: admFormVersionsV2.formId })
+        .from(admFormVersionsV2)
+        .where(eq(admFormVersionsV2.fvUuid, fvUuid));
+      if (!identity) throw new Error("Form version or form part not found");
+      // Match archive's lock order (form, then version) to close the
+      // check/archive/write race while avoiding lock-order deadlocks.
+      await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${identity.formId} FOR UPDATE`);
+      await tx.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE fv_uuid = ${fvUuid} FOR UPDATE`);
       const context = await this.findContextWithExecutor(tx, fvUuid, partUuid);
       if (!context) throw new Error("Form version or form part not found");
+      if (context.category === "dynamic" && context.archivedAt) {
+        throw new Error(`Company Form "${context.formName}" is archived and is read-only`);
+      }
       if (context.version.status !== "draft") {
         throw new Error(`Cannot modify form structure for version ${fvUuid}: only draft versions are editable (current status: ${context.version.status})`);
       }
       if (context.formUuid !== context.part.formUuid) {
         throw new Error(`Form part ${partUuid} does not belong to the same form as version ${fvUuid}`);
       }
+
+       if (input.sections.some((section) => section.questions.some((question) => question.response_type === "content")) &&
+           context.category !== "dynamic") {
+         throw new Error("Content points are available only on Company Forms");
+       }
+       for (const section of input.sections) {
+         if (section.signature_vessel_management_required || section.vessel_signature_role_uuids.length) {
+           if (context.category !== "dynamic") {
+             const error: any = new Error("Vessel signatures are available only on Company Forms");
+             error.statusCode = 400; throw error;
+           }
+           for (const id of section.vessel_signature_role_uuids) {
+             const roles = await tx.select().from(admRoleMasterAc).where(and(
+               eq(admRoleMasterAc.ruid, id), eq(admRoleMasterAc.roletype, "Ship"),
+               eq(admRoleMasterAc.isActive, true), eq(admRoleMasterAc.isDeleted, false),
+             )).limit(1);
+             if (roles.length !== 1) {
+               const error: any = new Error("Unknown permitted vessel role identifier");
+               error.statusCode = 400; throw error;
+             }
+           }
+         }
+         for (const question of section.questions) {
+           if (question.response_type !== "system_field") continue;
+           const field = context.category === "dynamic"
+             ? getSystemField(context.subjectType, question.system_field_key)
+             : undefined;
+           if (!field) {
+             const error: any = new Error(context.category !== "dynamic"
+               ? "System fields are available only on Company Forms"
+               : "Unknown System field key for this Company Form subject");
+             error.statusCode = 400;
+             throw error;
+           }
+         }
+       }
+       const sanitizedContent = new Map<object, string>();
+       for (const section of input.sections) {
+         for (const question of section.questions) {
+           if (question.response_type !== "content") continue;
+           const html = sanitizeComparisonHtml(question.content_html || "");
+           if (!html.replace(/<[^>]*>/g, "").trim()) {
+             throw new Error("Content point body is required after sanitization");
+           }
+           sanitizedContent.set(question, html);
+         }
+       }
 
       const current = await this.readTreeWithExecutor(tx, fvUuid, partUuid, true);
       await validate?.(current, tx);
@@ -235,7 +348,7 @@ export class FormStructureRepository {
               options: question.options,
             });
           }
-          if (!setUuid) setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
+           if (!setUuid && question.response_type !== "content" && question.response_type !== "system_field") setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
           questionSetUuid.set(questionUuid, setUuid);
         }
       }
@@ -312,6 +425,8 @@ export class FormStructureRepository {
           commentBoxRequired: section.comment_box_required,
           signatureOfficerRequired: section.signature_officer_required,
           signatureSeafarerRequired: section.signature_seafarer_required,
+          signatureVesselManagementRequired: section.signature_vessel_management_required,
+          vesselSignatureRoleUuids: [...new Set(section.vessel_signature_role_uuids)],
           defaultOptionSetUuid: section.default_option_set_uuid ?? null,
           layoutPreference: section.layout_preference,
           sortOrder: sectionIndex,
@@ -334,7 +449,11 @@ export class FormStructureRepository {
           const existing = questionByUuid.get(questionUuid);
           const values = {
             questionCode: question.question_code,
-            questionText: question.question_text,
+            questionText: question.response_type === "system_field"
+              ? getSystemField(context.subjectType, question.system_field_key)!.label
+              : question.question_text,
+             contentHtml: question.response_type === "content" ? sanitizedContent.get(question)! : null,
+            systemFieldKey: question.response_type === "system_field" ? question.system_field_key! : null,
             responseType: question.response_type,
             isMandatory: question.is_mandatory,
             commentEnabled: question.comment_enabled,
@@ -370,6 +489,24 @@ export class FormStructureRepository {
     executor?: Executor,
   ): Promise<{ sections: number; questions: number; options: number }> {
     const copyWithExecutor = async (db: Executor) => {
+      const targetIdentity = (await db.select({ formId: admFormVersionsV2.formId })
+        .from(admFormVersionsV2)
+        .where(eq(admFormVersionsV2.fvUuid, destinationFvUuid)))[0];
+      if (!targetIdentity) throw new Error("Source or target form version not found");
+      await db.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${targetIdentity.formId} FOR UPDATE`);
+      const targetForm = (await db.select({
+        category: admFormsV2.category,
+        name: admFormsV2.name,
+        archivedAt: admFormsV2.archivedAt,
+        isDeleted: admFormsV2.isDeleted,
+      }).from(admFormsV2).where(eq(admFormsV2.id, targetIdentity.formId)))[0];
+      if (!targetForm || targetForm.isDeleted) throw new Error("Target form not found");
+      if (targetForm.category === "dynamic" && targetForm.archivedAt) {
+        const error: any = new Error(`Company Form "${targetForm.name}" is archived and is read-only`);
+        error.statusCode = 409;
+        throw error;
+      }
+      await db.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE fv_uuid = ${destinationFvUuid} FOR UPDATE`);
       const sourceRows = await db.select({
         fvUuid: admFormVersionsV2.fvUuid,
         formId: admFormVersionsV2.formId,
@@ -398,6 +535,15 @@ export class FormStructureRepository {
       if (source.formId !== target.formId) {
         throw new Error("Cannot copy structure between versions belonging to different forms");
       }
+      if (sourceFvUuid === destinationFvUuid) throw new Error("Cannot copy a version into itself");
+
+      const sourceParts = await db.select().from(frmFormParts).where(and(
+        eq(frmFormParts.formVersionUuid, sourceFvUuid),
+        eq(frmFormParts.isDeleted, false),
+      )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
+      if (!sourceParts.length) {
+        throw new Error(`Cannot copy version ${sourceFvUuid}: it has no version-owned parts`);
+      }
 
       // The target guard above deliberately runs before the first insert.
       const sourceSets = await db.select().from(frmOptionSets).where(and(
@@ -418,6 +564,40 @@ export class FormStructureRepository {
         inArray(frmQuestions.sectionUuid, sourceSectionUuids),
         eq(frmQuestions.isDeleted, false),
       )).orderBy(asc(frmQuestions.sortOrder), asc(frmQuestions.id));
+
+      const sourcePartUuids = new Set(sourceParts.map((part: any) => part.formPartUuid));
+      for (const section of sourceSections) {
+        if (!sourcePartUuids.has(section.formPartUuid)) {
+          throw new Error(`Cannot copy section ${section.sectionUuid}: source part ${section.formPartUuid} does not belong to source version ${sourceFvUuid}`);
+        }
+      }
+      const targetSections = await db.select({ sectionUuid: frmSections.sectionUuid })
+        .from(frmSections).where(eq(frmSections.formVersionUuid, destinationFvUuid)).limit(1);
+      if (targetSections.length) {
+        throw new Error(`Cannot replace version ${destinationFvUuid} parts while sections still reference them; clear the target structure first`);
+      }
+      // The caller may replace an existing draft. Its sections are removed
+      // first; deleting only destination parts prevents mixing two inventories.
+      await db.delete(frmFormParts).where(eq(frmFormParts.formVersionUuid, destinationFvUuid));
+      const partUuidMap = new Map<string, string>();
+      for (const part of sourceParts) {
+        const formPartUuid = uuidv4();
+        partUuidMap.set(part.formPartUuid, formPartUuid);
+        await db.insert(frmFormParts).values({
+          formPartUuid,
+          formUuid: part.formUuid,
+          formVersionUuid: destinationFvUuid,
+          partCode: part.partCode,
+          partTitle: part.partTitle,
+          partType: part.partType,
+          isOfficeOnly: part.isOfficeOnly,
+          sortOrder: part.sortOrder,
+          createdByUuid: null,
+          updatedByUuid: null,
+          isDeleted: false,
+          isSync: false,
+        });
+      }
 
       const setUuidMap = new Map<string, string>();
       for (const row of sourceSets) {
@@ -459,7 +639,7 @@ export class FormStructureRepository {
         await db.insert(frmSections).values({
           sectionUuid,
           formVersionUuid: destinationFvUuid,
-          formPartUuid: row.formPartUuid,
+          formPartUuid: partUuidMap.get(row.formPartUuid)!,
           sectionCode: row.sectionCode,
           sectionTitle: row.sectionTitle,
           applicableVesselTypes: row.applicableVesselTypes,
@@ -469,6 +649,8 @@ export class FormStructureRepository {
           commentBoxRequired: row.commentBoxRequired,
           signatureOfficerRequired: row.signatureOfficerRequired,
           signatureSeafarerRequired: row.signatureSeafarerRequired,
+          signatureVesselManagementRequired: row.signatureVesselManagementRequired,
+          vesselSignatureRoleUuids: row.vesselSignatureRoleUuids,
           defaultOptionSetUuid: row.defaultOptionSetUuid ? setUuidMap.get(row.defaultOptionSetUuid) ?? null : null,
           layoutPreference: row.layoutPreference,
           sortOrder: row.sortOrder,
@@ -486,6 +668,8 @@ export class FormStructureRepository {
           sectionUuid,
           questionCode: row.questionCode,
           questionText: row.questionText,
+          contentHtml: row.contentHtml,
+          systemFieldKey: row.systemFieldKey,
           responseType: row.responseType,
           isMandatory: row.isMandatory,
           commentEnabled: row.commentEnabled,
@@ -583,6 +767,7 @@ export class FormStructureRepository {
       .innerJoin(frmFormParts, eq(frmFormParts.formPartUuid, frmSections.formPartUuid))
       .where(and(
         eq(frmFormParts.formUuid, formUuid),
+         eq(frmFormParts.formVersionUuid, frmSections.formVersionUuid),
         eq(frmFormParts.isDeleted, false),
         eq(frmSections.isDeleted, false),
       ))

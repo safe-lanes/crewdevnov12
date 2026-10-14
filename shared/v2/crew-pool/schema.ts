@@ -89,7 +89,7 @@ export const crewAssignments = pgTable("crew_assignments", {
   reason: text("reason"),
   portOfJoiningUuid: text("port_of_joining_uuid"),
   portOfLeavingUuid: text("port_of_leaving_uuid"),
-  assignmentType: text("assignment_type"),
+  assignmentType: text("assignment_type").notNull(),
   ...auditColumns,
 });
 

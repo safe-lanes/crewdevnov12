@@ -73,7 +73,6 @@ router.get("/crew/:crewUuid/assignments", crewAssignmentsController.getAll);
 router.get("/crew/:crewUuid/assignments/current", crewAssignmentsController.getCurrent);
 router.get("/crew/:crewUuid/assignments/history", crewAssignmentsController.getHistory);
 router.post("/crew/:crewUuid/assignments", crewAssignmentsController.create);
-router.post("/crew/:crewUuid/assign", crewAssignmentsController.assignToVessel);
 router.post("/crew/:crewUuid/sign-off", crewAssignmentsController.signOff);
 router.patch("/crew/:crewUuid/assignments/:assignUuid", crewAssignmentsController.update);
 router.delete("/crew/:crewUuid/assignments/:assignUuid", crewAssignmentsController.delete);

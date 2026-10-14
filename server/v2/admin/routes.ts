@@ -20,15 +20,30 @@ import {
 } from "./controllers";
 import { requirePermission } from "../../middleware/requirePermission";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
+import { formPartController } from "./controllers/formPartController";
+import { actionPermissionsController } from "./controllers/actionPermissionsController";
+import { applicabilityController } from "./controllers/applicabilityController";
 
 const router = Router();
 
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
+router.get("/forms/:id/rule-dimensions", requirePermission("Forms", "view"), formsController.getRuleDimensions);
+// Retired in favor of the relationship-scoped Company Form submission API.
+// Keep this exact route ahead of /forms/:id so the old path cannot resolve as
+// a form ID or fall through to the SPA.
+router.get("/forms/eligible-submissions", (_req, res) => {
+  res.status(410).json({
+    error: "endpoint_retired",
+    message: "Use the relationship-scoped Company Form submission endpoints.",
+  });
+});
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
 router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
+router.get("/forms/:id/subject-stages", requirePermission("Forms", "view"), formsController.getSubjectStages);
 router.get("/forms/:id/parts", requirePermission("Forms", "view"), formsController.getParts);
 router.get("/forms/:id", requirePermission("Forms", "view"), formsController.getById);
 router.post("/forms", requirePermission("Forms", "create"), formsController.create);
+router.post("/forms/:id/archive", requirePermission("Forms", "delete"), formsController.archive);
 router.put("/forms/:id", requirePermission("Forms", "edit"), formsController.update);
 router.patch("/forms/:id", requirePermission("Forms", "edit"), formsController.updateLockFlag);
 router.delete("/forms/:id", requirePermission("Forms", "delete"), formsController.delete);
@@ -37,6 +52,10 @@ router.get("/forms/:id/versions", requirePermission("Forms", "view"), formsContr
 router.post("/forms/:id/versions", requirePermission("Forms", "create"), formsController.createVersion);
 
 router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
+router.post("/form-versions/:fvUuid/parts", requirePermission("Forms", "edit"), formPartController.create);
+router.put("/form-versions/:fvUuid/parts/reorder", requirePermission("Forms", "edit"), formPartController.reorder);
+router.patch("/form-versions/:fvUuid/parts/:partUuid", requirePermission("Forms", "edit"), formPartController.rename);
+router.delete("/form-versions/:fvUuid/parts/:partUuid", requirePermission("Forms", "edit"), formPartController.remove);
 router.get(
   "/form-versions/:fvUuid/parts/:partUuid/structure",
   requirePermission("Forms", "view"),
@@ -52,6 +71,10 @@ router.put(
   requirePermission("Forms", "edit"),
   formStructureController.replaceStructures,
 );
+router.get("/form-versions/:id/applicability", requirePermission("Forms", "view"), applicabilityController.read);
+router.get("/form-versions/:id/applicability/assignments", requirePermission("Forms", "view"), applicabilityController.assignments);
+router.post("/form-versions/:id/applicability/preview", requirePermission("Forms", "view"), applicabilityController.preview);
+router.put("/form-versions/:id/applicability", requirePermission("Forms", "edit"), applicabilityController.write);
 router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
 router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);
 router.post("/form-versions/:id/release", requirePermission("Forms", "edit"), formsController.releaseVersion);
@@ -159,8 +182,14 @@ router.put("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), ac
 router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.deleteRole);
 
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
+router.get("/access-control/state", requireTrustedAccessControlAdmin(), accessControlController.state);
+router.get("/access-control/audit", requireTrustedAccessControlAdmin(), accessControlController.audit);
+router.get("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.getManagement);
+router.put("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.saveManagement);
 router.get("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.getPermissions);
 router.put("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.savePermissions);
+router.get("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.get);
+router.put("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.save);
 
 router.get("/vessel-org-chart", vesselOrgChartController.getAll);
 router.get("/vessel-org-chart/rank-scope", vesselOrgChartController.getRankScope);

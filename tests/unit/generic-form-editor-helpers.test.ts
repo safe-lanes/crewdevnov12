@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { genericFormEditorTestUtils } from "../../client/src/components/GenericFormEditor";
 
 describe("generic configurable-form editor helpers", () => {
+  it("clears role and department targets for the seafarer responsibility mode", () => {
+    const payload = genericFormEditorTestUtils.toPayload([{
+      clientKey: "section",
+      section_code: "B1",
+      section_title: "Crew assignment",
+      applicable_vessel_types: [],
+      responsible_mode: "seafarer",
+      responsible_role_uuid: "stale-role",
+      responsible_department: "stale-department",
+      comment_box_required: false,
+      signature_required: false,
+      default_option_set_uuid: null,
+      layout_preference: "auto",
+      questions: [],
+    }]);
+
+    expect(payload.sections[0]).toMatchObject({
+      responsible_mode: "seafarer",
+      responsible_role_uuid: null,
+      responsible_department: null,
+    });
+  });
+
   it("generates hidden option values only when adding new options and suffixes same-question collisions", () => {
     const first = genericFormEditorTestUtils.createOption("Ready to sail");
     const second = genericFormEditorTestUtils.createOption("Ready to sail", [first]);
@@ -150,6 +173,45 @@ describe("generic configurable-form editor helpers", () => {
     expect(defaults[0].questions[1].option_set_uuid).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
     expect(genericFormEditorTestUtils.isNamedOptionSet({ option_set_name: "" })).toBe(true);
     expect(genericFormEditorTestUtils.isNamedOptionSet({ option_set_name: null })).toBe(false);
+  });
+
+  it("round-trips System field keys and keeps them non-mandatory with no options", () => {
+    const normalized = genericFormEditorTestUtils.normalizeTree({
+      sections: [{
+        section_code: "P1",
+        section_title: "Crew",
+        responsible_mode: "not_applicable",
+        questions: [{
+          question_code: "P1.1",
+          question_text: "Vessel to join",
+          system_field_key: "vessel_to_join",
+          response_type: "system_field",
+          is_mandatory: true,
+          comment_enabled: true,
+          options: [{ option_label: "Do not keep", option_value: "unused" }],
+        }],
+      }],
+    }, "P", [], true);
+
+    const [section] = normalized;
+    const [question] = section.questions;
+    expect(question).toMatchObject({
+      system_field_key: "vessel_to_join",
+      response_type: "system_field",
+      is_mandatory: false,
+      comment_enabled: false,
+      options: [],
+    });
+
+    const [saved] = genericFormEditorTestUtils.toPayload(normalized).sections;
+    expect(saved.questions[0]).toMatchObject({
+      system_field_key: "vessel_to_join",
+      response_type: "system_field",
+      is_mandatory: false,
+      comment_enabled: false,
+      option_set_uuid: null,
+      options: [],
+    });
   });
 
   it("persists an inherited option edit through the section default instead of a discarded point-local array", () => {

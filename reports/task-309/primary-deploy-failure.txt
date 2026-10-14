@@ -1,0 +1,55 @@
+DEPLOY FAILURE — UI returned 400 Secondary crew already exists
+crew_uuid: 2e33607d-3b2b-422e-943e-d25e86037d5f
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+draft_uuid: 04f87102-da3f-4e16-8be2-f669f0c878d9
+
+S1
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+
+
+S2
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+
+
+S3
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+419,c1746749-a886-4796-a335-9162cd023ed6,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 01,0f5e2ee3-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"52,800","MAN B&W 13,500 kW",Emerald Gas Shipping Ltd.,Chief Officer,2025-05-01,2025-12-31,8.0,,7,2026-06-04T09:22:24.292Z,2026-06-04T11:53:24.907Z,,,f,f,,,,
+420,b25c50e4-b482-4b54-a94f-37ab61d76b3b,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 02,0f5e739e-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"48,600","Wärtsilä 12,800 kW",Horizon Marine Services,Chief Officer,2024-09-01,2025-04-30,8.0,,6,2026-06-04T09:23:37.801Z,2026-06-04T11:53:24.899Z,,,f,f,,,,
+421,7cd82ba3-33d7-4bf9-8699-dcc60aa07ce9,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 03,0f5eb6d5-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"56,200","MAN B&W 14,200 kW",Oceanic Gas Carriers,Chief Officer,2024-01-01,2024-08-31,8.0,,5,2026-06-04T09:56:46.306Z,2026-06-04T11:53:24.775Z,,,f,f,,,,
+422,94632c5f-1c20-4fae-9263-f99187b2d6db,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 03,0f5eb6d5-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"50,400","Mitsubishi 12,300 kW",Neptune Shipping Pvt. Ltd.,Chief Officer,2023-05-01,2023-12-31,8.0,,4,2026-06-04T09:57:41.370Z,2026-06-04T11:53:24.771Z,,,f,f,,,,
+423,8b63e993-1335-499b-aad1-80dbe2354e6a,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 04,744535d0-841a-11ed-aa7c-7003bca91a86,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"47,900","Hyundai 11,900 kW",Pioneer Tankers Ltd.,Chief Officer,2022-09-01,2023-04-30,8.0,,3,2026-06-04T10:02:22.218Z,2026-06-04T11:53:24.768Z,,,f,f,,,,
+424,4ab6f92e-f1a9-428e-8772-1521dfd154c3,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 05,0f5f2558-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"54,100","MAN B&W 13,800 kW",Crystal Marine Management,2nd Officer,2022-01-01,2022-08-31,8.0,,2,2026-06-04T10:04:36.179Z,2026-06-04T11:53:24.667Z,,,f,f,,,,
+425,047c4912-c90c-4016-baa4-257227081fd8,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 06,0f5f5592-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"51,700","Wärtsilä 13,100 kW",Aurora Shipping Co,2nd Officer,2021-05-01,2021-12-31,8.0,,1,2026-06-04T10:05:33.852Z,2026-06-04T11:53:24.662Z,,,f,f,,,,
+426,2852df66-8f0d-4753-8900-31541caaba50,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 07,0f5f8850-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"49,500","Sulzer 12,500 kW",Venture Marine Ltd,2nd Officer,2020-09-01,2021-04-30,8.0,,0,2026-06-04T10:06:35.961Z,2026-06-04T11:53:24.646Z,,,f,f,,,,
+
+
+S4
+count
+63
+count
+81
+count
+472
+
+
+CREATED/MODIFIED ROTATION ROWS
+
+rotation_drafts_v2
+id,draft_uuid,draft_id,last_edited,plan_from_date,plan_to_date,created_by_uuid,plan_status,proposed_by_uuid,proposed_date,created_at,updated_at,updated_by_uuid,is_deleted,is_sync,previous_plan_status
+79,04f87102-da3f-4e16-8be2-f669f0c878d9,DRAFT-1790136589400,2026-09-23T04:09:50.048Z,2026-09-24,2027-01-24,,Proposed,,2026-09-23,2026-09-23T04:09:49.401Z,2026-09-23T04:09:50.049Z,,f,f,
+
+
+rotation_entries_v2
+id,entry_uuid,draft_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,sign_on_date,joining_port_uuid,contract_period,sign_off_date,proposal_status,proposed_by_uuid,proposed_date,deployed_date,deployed_by_uuid,rejection_reason,deployed_to_plan_uuid,current_crew_uuid,current_crew_sign_on_date,current_crew_contract_end,current_crew_range_start,current_crew_range_end,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync
+145,8e8af3ba-26bc-4fe4-987c-89fac05d5b63,04f87102-da3f-4e16-8be2-f669f0c878d9,744535d0-841a-11ed-aa7c-7003bca91a86,,R002,Chief Officer,2e33607d-3b2b-422e-943e-d25e86037d5f,2026-09-24T00:00:00.000Z,,4,,Pending,,,,,,,,,,,,2026-09-23T04:09:49.900Z,2026-09-23T04:09:49.900Z,,,f,f
+
+
+rotation_draft_vessels_v2
+id,rv_uuid,draft_uuid,vessel_uuid,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync
+88,c3ab8ad4-23b2-43d8-80c1-f7e24b2238fe,04f87102-da3f-4e16-8be2-f669f0c878d9,744535d0-841a-11ed-aa7c-7003bca91a86,0,2026-09-23T04:09:49.886Z,2026-09-23T04:09:49.886Z,,,f,f
+
+
+rotation_draft_ranks_v2
+id,rr_uuid,draft_uuid,rank_name,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync
+180,07b6680d-abc0-4a88-b75c-fefe63f9cb85,04f87102-da3f-4e16-8be2-f669f0c878d9,Chief Officer,0,2026-09-23T04:09:49.893Z,2026-09-23T04:09:49.893Z,,,f,f
+

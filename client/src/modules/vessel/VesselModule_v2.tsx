@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ColDef, GridApi } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OnboardCompanyForms, useOnboardFormCounts } from "./components/OnboardCompanyForms";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -40,6 +41,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { z } from "zod";
 import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
+import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -588,6 +590,8 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         handOverDate: planning.handOverDate,
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
+        relieverAssignUuid: planning.relieverAssignUuid,
+        crewAssignUuid: planning.crewAssignUuid,
         relieverCrewName: planning.relieverCrewName,
         relieverFirstName: (planning.relieverFirstName ?? '').trim(),
         relieverMiddleName: (planning.relieverMiddleName ?? '').trim(),
@@ -760,6 +764,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
 
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
+    const [companyFormsTarget, setCompanyFormsTarget] = useState<{ assignmentUuid: string; crewName: string; readOnly: boolean } | null>(null);
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
     const { canView, canCreate, canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
     const allowedPages = useMemo(() => {
@@ -944,6 +949,7 @@ export function VesselModule_v2(): JSX.Element {
     }, [vesselRanksRaw, baseRankOrderMap]);
     
     const { data: vesselPlanningV2Raw = [], isLoading: planningLoading } = useVesselPlanningV2(selectedVessel?.vesselId || null);
+    const companyFormCounts = useOnboardFormCounts(vesselPlanningV2Raw.map(row => row.crewAssignUuid));
     
     const vesselPlanning = useMemo(() => {
         return vesselPlanningV2Raw.map(mapV2PlanningToLegacy);
@@ -1185,6 +1191,8 @@ export function VesselModule_v2(): JSX.Element {
             rankId: rankId,
             planningData: crew ? {
                 planUuid: crew.planUuid || crew.id,
+                crewUuid: crew.crewUuid,
+                crewAssignUuid: crew.crewAssignUuid ?? null,
                 onBoardCrewName: crew.crewName,
                 crewName: crew.crewName,
                 nationality: crew.nationality,
@@ -1217,6 +1225,9 @@ export function VesselModule_v2(): JSX.Element {
             planningData: crew ? {
                 planUuid: crew.planUuid || crew.id,
                 relieverCrewId: crew.relieverCrewId || crew.crewUuid,
+                relieverCrewUuid: crew.relieverCrewUuid || crew.relieverCrewId || crew.crewUuid,
+                relieverAssigned: Boolean(crew.relieverCrewId || crew.relieverCrewUuid || crew._isSynthesizedReliever),
+                relieverAssignUuid: crew.relieverAssignUuid ?? null,
                 relieverCrewName: crew.relieverCrewName || crew.crewName,
                 relieverHasPriorJoiningPromotion: crew.relieverHasPriorJoiningPromotion,
                 relieverPromotionToRank: crew.relieverPromotionToRank,
@@ -1813,6 +1824,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableHead className="text-white text-xs font-normal w-36 sticky top-0 z-30 bg-[#52baf3]">Travel End Date</TableHead>
                                                             {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
+                                                            <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1822,6 +1834,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
                                                             {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
+                                                            <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
                                                         </>
                                                     )}
@@ -1861,6 +1874,17 @@ export function VesselModule_v2(): JSX.Element {
                                                     const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
                                                     const statusBadge = (!showArchived && hasBothCrewTypes) ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
                                                     const displayRank = rankBase + statusBadge;
+                                                    const formsCell = (
+                                                        <TableCell className="text-xs" data-testid={`cell-forms-${planning.crewAssignUuid || index}`}>
+                                                          {!planning.crewAssignUuid ? <span title="No recorded assignment is linked">Not linked</span>
+                                                            : companyFormCounts.error ? <span role="alert" title={companyFormErrorMessage(companyFormCounts.error, "loadHistory")}>Unavailable</span>
+                                                            : companyFormCounts.data?.[planning.crewAssignUuid] === undefined ? <span>Loading…</span>
+                                                            : <Button variant="link" className="p-0 h-auto text-blue-600" data-testid={`button-crew-forms-${planning.crewAssignUuid}`}
+                                                              onClick={() => setCompanyFormsTarget({ assignmentUuid: planning.crewAssignUuid, crewName: planning.crewName || planning.crewMemberName || "Crew member", readOnly: showArchived || !!planning.isArchived })}>
+                                                              {companyFormCounts.data[planning.crewAssignUuid]}
+                                                            </Button>}
+                                                        </TableCell>
+                                                    );
                                                     
                                                     return (
                                                         <TableRow key={planning.id || planning.planUuid || index} className="hover:bg-gray-50 border-b border-gray-100">
@@ -1985,6 +2009,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                             })()}
                                                                         </TableCell>
                                                                     )}
+                                                                    {formsCell}
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -2194,6 +2219,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                             })()}
                                                                         </TableCell>
                                                                     )}
+                                                                    {formsCell}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
                                                                         {!isShipUser && (
                                                                             <Button 
@@ -2580,6 +2606,7 @@ export function VesselModule_v2(): JSX.Element {
                                                         if (!secondaryCrew && primaryCrew?.relieverCrewId) {
                                                             secondaryCrew = {
                                                                 planUuid: primaryCrew.planUuid,
+                                                                relieverAssignUuid: primaryCrew.relieverAssignUuid ?? null,
                                                                 crewUuid: primaryCrew.relieverCrewId,
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
@@ -2728,6 +2755,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                         className="h-6 w-6 p-0"
                                                                         onClick={() => handleOpenReliefEdit(row.relieverData, row.rankName, row.rank.id || row.rank.rankId || '')}
                                                                         data-testid={`button-edit-reliever-${index}`}
+                                                                        data-plan-uuid={row.relieverData?.planUuid}
                                                                     >
                                                                         <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
                                                                     </Button>
@@ -2851,6 +2879,16 @@ export function VesselModule_v2(): JSX.Element {
                             <p className="text-sm text-muted-foreground">No document expiry issues found.</p>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={companyFormsTarget !== null} onOpenChange={open => {
+                if (!open) { setCompanyFormsTarget(null); void queryClient.invalidateQueries({ queryKey: ["onboard-company-form-counts"] }); }
+            }}>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" data-testid="onboard-company-forms-dialog">
+                    <DialogHeader><DialogTitle>On-board Forms · {companyFormsTarget?.crewName}</DialogTitle></DialogHeader>
+                    {companyFormsTarget && <OnboardCompanyForms key={companyFormsTarget.assignmentUuid}
+                        assignmentUuid={companyFormsTarget.assignmentUuid} readOnly={companyFormsTarget.readOnly} />}
                 </DialogContent>
             </Dialog>
 

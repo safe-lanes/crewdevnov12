@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, bigserial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -19,6 +19,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   rankId: text("rank_id").notNull(),
   rank: text("rank").notNull(),
   crewUuid: text("crew_uuid"),
+  crewAssignUuid: text("crew_assign_uuid"),
   crewStatus: text("crew_status").default("primary"),
   signOnDate: text("sign_on_date"),
   reliefDue: text("relief_due"),
@@ -30,6 +31,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   takeOverConfirmation: boolean("take_over_confirmation").default(false),
   handOverDate: text("hand_over_date"),
   relieverCrewUuid: text("reliever_crew_uuid"),
+  relieverAssignUuid: text("reliever_assign_uuid"),
   relieverSignOnDate: text("reliever_sign_on_date"),
   joiningPortUuid: text("joining_port_uuid"),
   joiningStatus: text("joining_status"),
@@ -49,6 +51,15 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   isRelieverArchived: boolean("is_reliever_archived").default(false),
   archivedDate: text("archived_date"),
   ...auditColumns,
+});
+
+export const vesselPlanningRelieverClearAudit = pgTable("vessel_planning_reliever_clear_audit", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  planUuid: text("plan_uuid").notNull(),
+  relieverCrewUuid: text("reliever_crew_uuid").notNull(),
+  clearedBy: text("cleared_by").notNull(),
+  reason: text("reason").notNull(),
+  clearedAt: timestamp("cleared_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const vesselPlanningAttachmentsV2 = pgTable("vessel_planning_attachments_v2", {

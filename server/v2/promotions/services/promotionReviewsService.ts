@@ -816,6 +816,11 @@ export class PromotionReviewsService {
     }
     try {
       const formForRank = await formsService.getFormForRank(normalizedRank, "promotion");
+      if (!formForRank) {
+        throw new PromotionGuardError(
+          `No promotion form configured for rank "${normalizedRank}". Assign the rank to an active promotion rank group before submitting this review.`,
+        );
+      }
       const formVersionId = formForRank?.formVersionId;
       const formVersionUuid = formForRank?.formVersionUuid;
       if (

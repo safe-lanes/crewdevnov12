@@ -1,0 +1,29 @@
+UNASSIGN CP0 — BASELINE
+crew_uuid: 91bc2291-7d55-4b3f-b535-f0a4f678adef
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+rank: 2nd Officer
+
+S1
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+
+
+S2
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+
+
+S3
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+501,5aec7679-8e09-40ec-87b2-12b6b53e9ede,91bc2291-7d55-4b3f-b535-f0a4f678adef,company,vessel 01,0f5e2ee3-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"58,500","MAN B&W 15,200 kW",Sovereign Gas Shipping Ltd.,2nd Officer,2026-01-01,2026-05-31,5.0,,3,2026-06-05T08:37:30.646Z,2026-06-05T08:40:15.881Z,,,f,f,,,,
+502,d2d20f8f-c539-4b65-9bd2-215f9696dbc7,91bc2291-7d55-4b3f-b535-f0a4f678adef,company,vessel 01,0f5e2ee3-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"58,500","MAN B&W 15,200 kW",Sovereign Gas Shipping Ltd.,2nd Officer,2025-01-01,2025-11-30,11.0,,2,2026-06-05T08:38:18.759Z,2026-06-05T08:40:15.626Z,,,f,f,,,,
+503,c4860ce8-4647-4a6f-aa2d-d01d1250a0be,91bc2291-7d55-4b3f-b535-f0a4f678adef,company,vessel 02,0f5e739e-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"56,800","Wärtsilä 14,900 kW",Excellence Marine Services,2nd Officer,2024-01-01,2024-11-30,11.0,,1,2026-06-05T08:38:57.781Z,2026-06-05T08:40:15.629Z,,,f,f,,,,
+504,ed858ed3-d887-45d6-9d82-9fdfc2d2d9d9,91bc2291-7d55-4b3f-b535-f0a4f678adef,company,vessel 08,0f5fbbcd-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"60,200","MAN B&W 16,000 kW",Oceanic Gas Carriers,3rd Officer,2022-01-01,2022-08-31,8.0,,0,2026-06-05T08:40:15.766Z,2026-06-05T08:40:15.766Z,,,f,f,,,,
+
+
+S4
+count
+64
+count
+82
+count
+473
+

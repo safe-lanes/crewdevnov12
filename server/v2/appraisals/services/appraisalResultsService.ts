@@ -214,6 +214,11 @@ export class AppraisalResultsService {
 
     try {
       const formForRank = await formsService.getFormForRank(normalizedRank, "appraisal");
+      if (!formForRank) {
+        throw new FormVersionPinError(
+          `No appraisal form configured for rank "${normalizedRank}". Assign the rank to an active appraisal rank group before saving this appraisal.`,
+        );
+      }
       const formVersionId = formForRank?.formVersionId;
       const formVersionUuid = formForRank?.formVersionUuid;
       if (
@@ -628,9 +633,15 @@ export class AppraisalResultsService {
         const rank = (appraisal as any).seafarersRank as string | null | undefined;
         if (rank) {
           const formForRank = await formsService.getFormForRank(rank, "appraisal");
-          stageUpdate.isLockForm = !!(formForRank as any)?.isLockForm;
+          if (!formForRank) {
+            throw new FormVersionPinError(
+              `No appraisal form configured for rank "${rank}". Assign the rank to an active appraisal rank group before submitting Stage 2.`,
+            );
+          }
+          stageUpdate.isLockForm = !!formForRank.isLockForm;
         }
       } catch (e) {
+        if (e instanceof FormVersionPinError) throw e;
         console.warn("[Appraisals V2] Failed to resolve isLockForm for stage2 snapshot:", e);
       }
     } else if (stage === "stage3") {

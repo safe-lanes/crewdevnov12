@@ -15,8 +15,15 @@ const routeKey = (method: string, path: string) =>
   `${method.toUpperCase()} ${path}`;
 
 const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
+  { key: "POST /forms/:id/archive", menuName: "Forms", action: "delete" },
+  { key: "POST /form-versions/:fvUuid/parts", menuName: "Forms", action: "edit" },
+  { key: "PUT /form-versions/:fvUuid/parts/reorder", menuName: "Forms", action: "edit" },
+  { key: "PATCH /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
+  { key: "DELETE /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
   { key: "GET /forms", menuName: "Forms", action: "view" },
+  { key: "GET /forms/:id/rule-dimensions", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id", menuName: "Forms", action: "view" },
+  { key: "GET /forms/:id/subject-stages", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id/parts", menuName: "Forms", action: "view" },
   { key: "POST /forms", menuName: "Forms", action: "create" },
   { key: "PUT /forms/:id", menuName: "Forms", action: "edit" },
@@ -49,6 +56,8 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     action: "edit",
   },
   { key: "GET /form-versions/:id", menuName: "Forms", action: "view" },
+  { key: "GET /form-versions/:id/applicability", menuName: "Forms", action: "view" },
+  { key: "PUT /form-versions/:id/applicability", menuName: "Forms", action: "edit" },
   { key: "PUT /form-versions/:id", menuName: "Forms", action: "edit" },
   {
     key: "DELETE /form-versions/:id",
@@ -60,6 +69,8 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     menuName: "Forms",
     action: "edit",
   },
+  { key: "GET /form-versions/:id/applicability/assignments", menuName: "Forms", action: "view" },
+  { key: "POST /form-versions/:id/applicability/preview", menuName: "Forms", action: "view" },
   { key: "GET /rank-groups", menuName: "Forms", action: "view" },
   {
     key: "GET /rank-groups/check-assignment",

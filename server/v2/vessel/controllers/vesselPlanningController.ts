@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { sendChecklistGateError } from "../../company-forms/checklistGate";
 import { vesselPlanningService, getAllForConflictDetection } from "../services";
 import { insertVesselPlanningV2Schema } from "../../../../shared/v2/vessel/schema";
 import { z } from "zod";
@@ -11,6 +12,11 @@ import {
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
 import { resolveVesselFolderFromPlanUuid } from "../../shared/attachmentScope.js";
+import { getAuditUserUuid } from "../../accounts/controllers/_auth";
+import { getDb } from "../../db";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { and, eq } from "drizzle-orm";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -59,6 +65,90 @@ async function persistIncoming(
 }
 
 export const vesselPlanningController = {
+  async deferRelief(req: Request, res: Response) {
+    const parsed = z.object({ reason: z.string().trim().min(1).max(5000) }).strict().safeParse(req.body);
+    const actor = getAuditUserUuid(req);
+    if (!parsed.success) { res.status(400).json({ message: "Provide only a written reason for deferring relief." }); return; }
+    if (!actor) { res.status(401).json({ message: "Authenticated identity required." }); return; }
+    try { res.json(await vesselPlanningService.deferRelief(req.params.planUuid, parsed.data.reason, actor)); }
+    catch (error: any) { res.status(409).json({ message: error.message }); }
+  },
+  async getUnlinkedRelieverClearAudit(req: Request, res: Response) {
+    if (req.resolvedRole?.ok !== true || req.resolvedRole.role.roleName.trim().toLowerCase() !== "admin"
+      || !getAuditUserUuid(req)) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    try {
+      res.json(await vesselPlanningService.getUnlinkedRelieverClearAudit(req.params.planUuid));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      console.error("Error reading reliever-clear audit:", error);
+      res.status(500).json({ error: "Failed to read reliever-clear audit" });
+    }
+  },
+
+  async clearUnlinkedReliever(req: Request, res: Response) {
+    if (req.resolvedRole?.ok !== true || req.resolvedRole.role.roleName.trim().toLowerCase() !== "admin"
+      || !getAuditUserUuid(req)) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    const parsed = z.object({
+      expectedCrewUuid: z.string().uuid(),
+      reason: z.string().trim().min(1).max(2000),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "A written reason and reliever crew ID are required" });
+    try {
+      res.json(await vesselPlanningService.clearUnlinkedReliever(
+        req.params.planUuid, parsed.data.expectedCrewUuid, parsed.data.reason, getAuditUserUuid(req)!,
+      ));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      if (error.message?.includes("cannot be cleared") || error.message?.includes("Reliever changed")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error clearing unlinked reliever:", error);
+      res.status(500).json({ error: "Failed to clear unlinked reliever" });
+    }
+  },
+
+  async getIncumbentReconciliation(req: Request, res: Response) {
+    if (req.user?.userType?.toLowerCase() !== "admin" || !getAuditUserUuid(req)) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    try {
+      res.json(await vesselPlanningService.getIncumbentReconciliation(req.params.planUuid));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      console.error("Error loading incumbent reconciliation:", error);
+      res.status(500).json({ error: "Failed to load incumbent reconciliation" });
+    }
+  },
+
+  async reconcileIncumbentAssignment(req: Request, res: Response) {
+    const reviewedBy = getAuditUserUuid(req);
+    if (req.user?.userType?.toLowerCase() !== "admin" || !reviewedBy) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    const parsed = z.object({
+      assignUuid: z.string().uuid(),
+      evidenceNote: z.string().trim().min(20).max(2000),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Select an assignment and provide at least 20 characters explaining the evidence" });
+    }
+    try {
+      res.json(await vesselPlanningService.reconcileIncumbentAssignment(
+        req.params.planUuid, parsed.data.assignUuid, parsed.data.evidenceNote, reviewedBy,
+      ));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      if (error.message?.includes("assignment") || error.message?.includes("planning")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error reconciling incumbent assignment:", error);
+      res.status(500).json({ error: "Failed to reconcile incumbent assignment" });
+    }
+  },
   /**
    * Get all planning records for conflict detection in rotation planning
    * Returns minimal fields: crewMemberId, relieverCrewId, vesselUuid, signOnDate, reliefDue, relieverSignOnDate, contractPeriodMonths
@@ -112,19 +202,55 @@ export const vesselPlanningController = {
     }
   },
 
+  async getRelieverAssignment(req: Request, res: Response) {
+    try {
+      const { planUuid, assignUuid } = req.params;
+      const db = getDb();
+      const [row] = await db.select({
+        assignUuid: crewAssignments.assignUuid,
+        crewUuid: crewAssignments.crewUuid,
+        vesselUuid: crewAssignments.vesselUuid,
+        assignmentType: crewAssignments.assignmentType,
+        signOnDate: crewAssignments.signOnDate,
+        contractPeriod: crewAssignments.contractPeriod,
+        portOfJoiningUuid: crewAssignments.portOfJoiningUuid,
+      }).from(vesselPlanningV2)
+        .innerJoin(crewAssignments, and(
+          eq(crewAssignments.assignUuid, vesselPlanningV2.relieverAssignUuid),
+          eq(crewAssignments.crewUuid, vesselPlanningV2.relieverCrewUuid),
+          eq(crewAssignments.vesselUuid, vesselPlanningV2.vesselUuid),
+          eq(crewAssignments.isDeleted, false),
+        ))
+        .where(and(
+          eq(vesselPlanningV2.planUuid, planUuid),
+          eq(vesselPlanningV2.relieverAssignUuid, assignUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+        ));
+      if (!row) return res.status(404).json({ error: "Linked reliever assignment unavailable" });
+      res.json(row);
+    } catch (error) {
+      console.error("Error opening linked reliever assignment:", error);
+      res.status(500).json({ error: "Failed to open linked reliever assignment" });
+    }
+  },
+
   async create(req: Request, res: Response) {
     try {
       const validatedData = insertVesselPlanningV2Schema
-        .omit({ planUuid: true })
+        .omit({ planUuid: true, relieverAssignUuid: true })
         .parse(req.body);
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
+      const auditUserUuid = getAuditUserUuid(req);
+      const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid }, req);
       res.status(201).json(planning);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
       console.error("Error creating planning:", error);
+      if (sendChecklistGateError(error, res)) return;
+      if (error.message?.includes("Linked incumbent assignment is inconsistent")) {
+        return res.status(409).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to create planning record" });
     }
   },
@@ -132,14 +258,29 @@ export const vesselPlanningController = {
   async update(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const planning = await vesselPlanningService.update(planUuid, req.body);
+      const { relieverAssignUuid: _ignored, crewAssignUuid: _ignoredCrew, ...updateBody } = req.body || {};
+      const planning = await vesselPlanningService.update(planUuid, {
+        ...updateBody,
+        // Audit identity is server-derived and cannot be spoofed by the client.
+        auditUserUuid: getAuditUserUuid(req),
+      }, req);
       res.json(planning);
     } catch (error: any) {
+      if (sendChecklistGateError(error, res)) return;
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
-      if (error.message?.includes("Travel End date cannot be filled before Sign Off")) {
+      if (error.message?.includes("Travel End date cannot be filled before Sign Off") || error.message?.includes("Use Defer relief")) {
         return res.status(400).json({ error: error.message });
+      }
+      if (error.message?.includes("assignment is unlinked") ||
+          error.message?.includes("assignment is no longer Planned") ||
+          error.message?.includes("Deploy the reliever") ||
+          error.message?.includes("Incumbent assignment link is missing") ||
+          error.message?.includes("Linked incumbent assignment is inconsistent") ||
+          error.message?.includes("Planning assignment links changed") ||
+          error.message?.includes("Planning crew changed")) {
+        return res.status(409).json({ error: error.message });
       }
       console.error("Error updating planning:", error);
       res.status(500).json({ error: "Failed to update planning record" });
@@ -273,7 +414,7 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths, plannedConfirmedDate, travelStartDate } = req.body;
-      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
+      const auditUserUuid = getAuditUserUuid(req);
       
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
         signOnDate,
@@ -291,6 +432,12 @@ export const vesselPlanningController = {
       if (error.code === "SIGN_ON_CONFLICT") {
         return res.status(409).json({ error: error.message, conflict: error.conflict });
       }
+      if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Planning assignment links changed") ||
+          error.message?.includes("Linked reliever assignment") ||
+          error.message?.includes("Reliever planning changed")) {
+        return res.status(409).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -307,10 +454,12 @@ export const vesselPlanningController = {
    * For status changes: Planned -> Confirmed -> In Transit
    */
   async updateRelieverStatus(req: Request, res: Response) {
+    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}))
+      return res.status(400).json({ message: "Complete the deployment checklist through the linked Planning screen, not a status shortcut." });
     try {
       const { planUuid } = req.params;
       const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
-      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
+      const auditUserUuid = getAuditUserUuid(req);
       
       if (!joiningStatus) {
         return res.status(400).json({ error: "joiningStatus is required" });
@@ -340,6 +489,11 @@ export const vesselPlanningController = {
       if (error.code === "SIGN_ON_CONFLICT") {
         return res.status(409).json({ error: error.message, conflict: error.conflict });
       }
+      if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Linked reliever assignment") ||
+          error.message?.includes("Reliever planning changed")) {
+        return res.status(409).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -365,10 +519,16 @@ export const vesselPlanningController = {
         signOffReason,
         signOffPortUuid,
         travelEndDate,
+        auditUserUuid: getAuditUserUuid(req),
       });
       
       res.json(planning);
     } catch (error: any) {
+      if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Planning assignment links changed") ||
+          error.message?.includes("Linked incumbent assignment")) {
+        return res.status(409).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }

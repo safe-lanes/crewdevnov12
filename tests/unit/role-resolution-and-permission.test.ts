@@ -65,7 +65,7 @@ describe("server-trusted role resolution", () => {
   it("resolves a normalized master_users role once from the JWT actor", async () => {
     const select = configureDb(
       [{ id: 301, userType: " Office ", role: " Forms Manager " }],
-      [{ roleId: "forms-manager-ruid", roleName: "Forms Manager" }],
+      [{ roleId: "forms-manager-ruid", roleName: "Forms Manager", roleType: "Office" }],
     );
     const req = requestFor({ id: 301, userType: "office" });
 
@@ -75,6 +75,8 @@ describe("server-trusted role resolution", () => {
         roleId: "forms-manager-ruid",
         roleName: "Forms Manager",
         masterUserId: 301,
+        masterUserType: " Office ",
+        roleType: "Office",
       },
     });
     await expect(resolveRequestRole(req)).resolves.toMatchObject({ ok: true });
@@ -138,8 +140,8 @@ describe("server-trusted role resolution", () => {
     configureDb(
       [{ id: 304, userType: "Office", role: "Forms Manager" }],
       [
-        { roleId: "role-a", roleName: "Forms Manager" },
-        { roleId: "role-b", roleName: " forms manager " },
+        { roleId: "role-a", roleName: "Forms Manager", roleType: "Office" },
+        { roleId: "role-b", roleName: " forms manager ", roleType: "Office" },
       ],
     );
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -171,14 +173,14 @@ describe("server-trusted role resolution", () => {
         queryFor([{ id: 305, userType: "Office", role: "Tenant A Forms" }]),
       )
       .mockReturnValueOnce(
-        queryFor([{ roleId: "tenant-a-role", roleName: "Tenant A Forms" }]),
+        queryFor([{ roleId: "tenant-a-role", roleName: "Tenant A Forms", roleType: "Office" }]),
       );
     const tenantBSelect = vi.fn()
       .mockReturnValueOnce(
         queryFor([{ id: 305, userType: "Office", role: "Tenant B Forms" }]),
       )
       .mockReturnValueOnce(
-        queryFor([{ roleId: "tenant-b-role", roleName: "Tenant B Forms" }]),
+        queryFor([{ roleId: "tenant-b-role", roleName: "Tenant B Forms", roleType: "Office" }]),
       );
 
     getDbMock
@@ -204,7 +206,7 @@ describe("requirePermission", () => {
   it("denies a role without the explicitly required action", async () => {
     configureDb(
       [{ id: 401, userType: "Office", role: "Forms Manager" }],
-      [{ roleId: "forms-manager-ruid", roleName: "Forms Manager" }],
+      [{ roleId: "forms-manager-ruid", roleName: "Forms Manager", roleType: "Office" }],
       [{ menuId: "forms-menu-uuid" }],
       [{ canview: true, cancreate: true, canedit: false, candelete: false }],
     );

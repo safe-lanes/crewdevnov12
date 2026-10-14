@@ -16,6 +16,13 @@ import { initializeCrewFileSecurity } from "./v2/crew-app/files/fileSecurityBoot
 import { flushCrewSiem, initializeCrewSiem } from "./v2/crew-app/monitoring/siemSink";
 
 const app = express();
+if (process.env.TEST_BACKEND === "true") {
+  if (process.env.TEST_DATABASE_VERIFIED !== "true" || process.env.PORT === "5000")
+    throw new Error("Dedicated test backend requires verified database isolation.");
+  app.get("/api/test-database-identity", (_req, res) => {
+    res.json({ ...JSON.parse(process.env.TEST_DATABASE_IDENTITY!), instance: process.env.TEST_BACKEND_INSTANCE });
+  });
+}
 validateProductionConfigAtStartup();
 initializeCrewFileSecurity();
 initializeCrewSiem();
@@ -88,7 +95,7 @@ app.use((req, res, next) => {
 
   // Apply JWT auth middleware after tenant resolution
   app.use(authMiddleware);
-  
+
   const server = await registerRoutes(app);
 
   // Unmatched /api paths must fail loudly with 404 JSON instead of falling
@@ -103,7 +110,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message: status >= 500 ? "Internal Server Error" : message, requestId: _req.requestId });
-    
+
     // Log error but don't throw - prevents unnecessary server shutdowns
     log(`API Error ${status}: ${message}`);
     if (status >= 500) {
@@ -144,7 +151,7 @@ app.use((req, res, next) => {
   const gracefulShutdown = (signal: string) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    
+
     log(`${signal} received. Shutting down gracefully...`);
     crewingAlertEngine.stop();
     crewNotificationScanner.stop();

@@ -8,8 +8,10 @@ import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselRevisionsService } from "../../admin/services/vesselRevisionsService";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
+import { recordImportedCompanyService, type ImportSeaServiceOutcome } from "./crewImportSeaService";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { parseDateString } from "../utils/dateUtils";
+import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 
 // ── Module-level concurrency guard for Stage 1 ───────────────────────────────
 // Prevents two simultaneous requests from both running Phase 2 writes for the
@@ -29,6 +31,9 @@ export interface HierarchyImportResult {
 }
 
 export interface AssignmentsImportResult {
+  importedAssignmentUuids: string[];
+  assignmentLabels: Record<string, string>;
+  seaService: ImportSeaServiceOutcome[];
   totalRowsProcessed: number;
   primaryAssignedCount: number;
   secondaryAssignedCount: number;
@@ -636,6 +641,9 @@ export async function importCrewAssignments(
   auditUserUuid?: string,
 ): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
+    importedAssignmentUuids: [],
+    assignmentLabels: {},
+    seaService: [],
     totalRowsProcessed: 0,
     primaryAssignedCount: 0,
     secondaryAssignedCount: 0,
@@ -1038,6 +1046,9 @@ export async function importCrewAssignments(
       // — which is impossible for any two different well-formed UUIDs.  Locks are
       // released automatically on transaction commit or rollback.
       for (const vesselUuid of uniqueVesselUuids) {
+        // The spreadsheet resolves names to master rows, but a retired or
+        // malformed master UUID must still fail before any import writes.
+        await resolveAssignmentVesselUuid(vesselUuid, tx);
         const lockResult = await tx.execute(
           sql`SELECT pg_try_advisory_xact_lock(
             ('x' || substr(replace(${vesselUuid}, '-', ''), 1,  8))::bit(32)::integer,
@@ -1078,6 +1089,7 @@ export async function importCrewAssignments(
                 eq(vesselPlanningV2.isDeleted, false),
               ),
             )
+            .for("update")
         : [];
 
       // Build the in-transaction planning map — this is the authoritative source
@@ -1100,6 +1112,8 @@ export async function importCrewAssignments(
                 crewUuid: crewAssignments.crewUuid,
                 vesselUuid: crewAssignments.vesselUuid,
                 assignmentType: crewAssignments.assignmentType,
+                  isCurrent: crewAssignments.isCurrent,
+                  signOffDate: crewAssignments.signOffDate,
                 signOnDate: crewAssignments.signOnDate,
                 reliefDue: crewAssignments.reliefDue,
                 contractPeriod: crewAssignments.contractPeriod,
@@ -1120,13 +1134,18 @@ export async function importCrewAssignments(
       for (const a of existingAssignmentsRaw) {
         if (!a.crewUuid || !a.vesselUuid) continue;
         const key = `${a.crewUuid}|${a.vesselUuid}|${a.assignmentType ?? ""}|${a.signOnDate ?? ""}`;
+        if (existingAssignmentMap.has(key)) {
+          throw new Error(
+            `Multiple assignments match imported crew ${a.crewUuid} on vessel ${a.vesselUuid}; reconcile duplicates before import.`,
+          );
+        }
         existingAssignmentMap.set(key, a);
       }
 
       for (const item of rowsToProcess) {
         const crew = item.crew;
         const vessel = item.vessel;
-        const isPrimary = item.assignmentType === "OnBoard" || item.assignmentType === "primary";
+        const isPrimary = item.assignmentType === "OnBoard";
         const targetPos = item.targetPos;
 
         let finalReliefDue = item.reliefDue;
@@ -1144,12 +1163,29 @@ export async function importCrewAssignments(
         // added to the map immediately so subsequent rows for the same vessel
         // find them without additional DB round-trips.
         const planningRecords: any[] = txPlanningByVessel.get(vessel.vesselUuid) || [];
-        let matchedSlot: any = planningRecords.find(
+        const matchingSlots = planningRecords.filter(
           (p: any) =>
-            (p.role && norm(p.role) === norm(targetPos)) ||
-            norm(p.rank) === norm(targetPos) ||
-            norm(p.rank) === norm(item.rank),
+            !p.isArchived &&
+            ((p.role && norm(p.role) === norm(targetPos)) ||
+              norm(p.rank) === norm(targetPos) ||
+              norm(p.rank) === norm(item.rank)),
         );
+        // A signed-on reliever creates a legitimate second active slot at
+        // this rank. Prefer the exact onboard/reliever crew; for a new crew,
+        // only the primary slot can receive an import. Never guess if more
+        // than one slot survives either check.
+        const byCrew = matchingSlots.filter((p: any) =>
+          isPrimary ? p.crewUuid === crew.crewUuid : p.relieverCrewUuid === crew.crewUuid,
+        );
+        const eligibleSlots = matchingSlots.length === 1
+          ? matchingSlots
+          : byCrew.length > 0
+            ? byCrew
+            : matchingSlots.filter((p: any) => p.crewStatus === "primary");
+        if (eligibleSlots.length > 1 || (matchingSlots.length > 0 && eligibleSlots.length === 0)) {
+          throw new Error(`Multiple or ambiguous active planning slots match ${targetPos} on vessel ${vessel.vesselUuid}; reconcile before import.`);
+        }
+        let matchedSlot: any = eligibleSlots[0];
 
         if (!matchedSlot) {
           // item.resolvedRankId is guaranteed non-null here (pre-flight validated)
@@ -1174,45 +1210,64 @@ export async function importCrewAssignments(
           txPlanningByVessel.get(vessel.vesselUuid)!.push(newSlot);
         }
 
-        // ── Update planning slot with crew assignment details ──────────────────
-        if (matchedSlot) {
-          if (isPrimary) {
-            await tx
-              .update(vesselPlanningV2)
-              .set({
-                crewUuid: crew.crewUuid,
-                crewStatus: "primary",
-                signOnDate: item.signOnDate ?? null,
-                reliefDue: finalReliefDue ?? null,
-                joiningPortUuid: item.joiningPortUuid ?? null,
-                joiningStatus: item.joiningStatus ?? null,
-                contractPeriodMonths: item.contractPeriod ?? null,
-                updatedAt: new Date(),
-                updatedByUuid: auditUserUuid ?? null,
-              })
-              .where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
-          } else {
-            await tx
-              .update(vesselPlanningV2)
-              .set({
-                relieverCrewUuid: crew.crewUuid,
-                relieverSignOnDate: item.signOnDate ?? null,
-                reliefDue: finalReliefDue ?? null,
-                joiningPortUuid: item.joiningPortUuid ?? null,
-                joiningStatus: item.joiningStatus ?? null,
-                relieverContractPeriodMonths: item.contractPeriod ?? null,
-                updatedAt: new Date(),
-                updatedByUuid: auditUserUuid ?? null,
-              })
-              .where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
-          }
-        }
-
         // ── Upsert crew_assignment row ─────────────────────────────────────────
         // If the same assignment already exists (same crew+vessel+type+signOn),
         // update mutable fields in-place rather than inserting a duplicate entry.
         const assignKey = `${crew.crewUuid}|${vessel.vesselUuid}|${item.assignmentType}|${item.signOnDate ?? ""}`;
         const existingAssignment = existingAssignmentMap.get(assignKey);
+        if (isPrimary) {
+          if (matchedSlot.crewUuid && matchedSlot.crewUuid !== crew.crewUuid) {
+            throw new Error(`Sign off the incumbent on planning ${matchedSlot.planUuid} before importing another crew member.`);
+          }
+          if (matchedSlot.crewUuid && !matchedSlot.crewAssignUuid) {
+            throw new Error(`Incumbent assignment link is missing on planning ${matchedSlot.planUuid}; reconcile before import.`);
+          }
+          if (matchedSlot.crewAssignUuid !== (existingAssignment?.assignUuid ?? null)) {
+            if (matchedSlot.crewAssignUuid || existingAssignment) {
+              throw new Error(`Imported incumbent has no matching verified assignment link on planning ${matchedSlot.planUuid}; reconcile before import.`);
+            }
+          }
+          if (existingAssignment && (!existingAssignment.isCurrent || existingAssignment.signOffDate)) {
+            throw new Error(`Linked incumbent assignment is no longer current on planning ${matchedSlot.planUuid}; reconcile before import.`);
+          }
+          const anotherCurrent = existingAssignmentsRaw.find((a: (typeof existingAssignmentsRaw)[number]) =>
+            a.crewUuid === crew.crewUuid && a.assignmentType === "OnBoard" &&
+            a.isCurrent && a.assignUuid !== existingAssignment?.assignUuid
+          );
+          if (anotherCurrent) {
+            throw new Error(`Crew already has a current OnBoard assignment; sign off or reconcile before import.`);
+          }
+        } else if (existingAssignment && matchedSlot.relieverAssignUuid !== existingAssignment.assignUuid) {
+          throw new Error(`Imported reliever has no matching verified assignment link on planning ${matchedSlot.planUuid}; reconcile before import.`);
+        }
+        const assignmentUuid = existingAssignment?.assignUuid ?? uuidv4();
+        if (isPrimary && existingAssignment) {
+          const [otherOwner] = await tx.select({ planUuid: vesselPlanningV2.planUuid })
+            .from(vesselPlanningV2)
+            .where(and(
+              eq(vesselPlanningV2.crewAssignUuid, assignmentUuid),
+              eq(vesselPlanningV2.isDeleted, false),
+              eq(vesselPlanningV2.isArchived, false),
+            ))
+            .limit(1);
+          if (otherOwner && otherOwner.planUuid !== matchedSlot.planUuid) {
+            throw new Error(`Assignment ${assignmentUuid} already belongs to active planning ${otherOwner.planUuid}; reconcile before import.`);
+          }
+        }
+        if (!isPrimary && existingAssignment) {
+          const [otherOwner] = await tx.select({ planUuid: vesselPlanningV2.planUuid })
+            .from(vesselPlanningV2)
+            .where(and(
+              eq(vesselPlanningV2.relieverAssignUuid, assignmentUuid),
+              eq(vesselPlanningV2.isDeleted, false),
+            ))
+            .limit(1);
+          if (otherOwner && otherOwner.planUuid !== matchedSlot.planUuid) {
+            throw new Error(
+              `Assignment ${assignmentUuid} is already linked to planning ${otherOwner.planUuid}; reconcile before importing another reliever.`,
+            );
+          }
+        }
 
         if (existingAssignment) {
           // Already imported — update mutable fields only
@@ -1229,27 +1284,8 @@ export async function importCrewAssignments(
             .where(eq(crewAssignments.assignUuid, existingAssignment.assignUuid));
           result.alreadyImportedCount++;
         } else {
-          if (isPrimary) {
-            // Mark the crew member's current primary assignment as no longer current
-            // (mirrors the logic in crewAssignmentsService.assignToVessel)
-            await tx
-              .update(crewAssignments)
-              .set({
-                isCurrent: false,
-                updatedAt: new Date(),
-                updatedByUuid: auditUserUuid ?? null,
-              })
-              .where(
-                and(
-                  eq(crewAssignments.crewUuid, crew.crewUuid),
-                  inArray(crewAssignments.assignmentType, ["OnBoard", "primary"]),
-                  eq(crewAssignments.isCurrent, true),
-                ),
-              );
-          }
-
           await tx.insert(crewAssignments).values({
-            assignUuid: uuidv4(),
+            assignUuid: assignmentUuid,
             crewUuid: crew.crewUuid,
             vesselUuid: vessel.vesselUuid,
             isCurrent: isPrimary, // true for primary, false for secondary
@@ -1266,6 +1302,74 @@ export async function importCrewAssignments(
           if (isPrimary) result.primaryAssignedCount++;
           else result.secondaryAssignedCount++;
         }
+
+        // ── Update the slot after the assignment exists (FK is immediate). ───
+        // Keep import's assignment identity exact, even when it reuses a row.
+        if (isPrimary) {
+          await tx.update(vesselPlanningV2).set({
+            crewUuid: crew.crewUuid,
+            crewAssignUuid: assignmentUuid,
+            crewStatus: matchedSlot.crewStatus === "secondary" ? "secondary" : "primary",
+            signOnDate: item.signOnDate ?? null,
+            reliefDue: finalReliefDue ?? null,
+            joiningPortUuid: item.joiningPortUuid ?? null,
+            joiningStatus: item.joiningStatus ?? null,
+            contractPeriodMonths: item.contractPeriod ?? null,
+            updatedAt: new Date(),
+            updatedByUuid: auditUserUuid ?? null,
+          }).where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
+          matchedSlot.crewUuid = crew.crewUuid;
+          matchedSlot.crewAssignUuid = assignmentUuid;
+        } else {
+          if (matchedSlot.relieverCrewUuid && !matchedSlot.relieverAssignUuid) {
+            throw new Error(
+              `Existing reliever on planning ${matchedSlot.planUuid} has no verified assignment link; reconcile before importing, even for the same crew.`,
+            );
+          }
+          if (matchedSlot.relieverAssignUuid && !matchedSlot.relieverCrewUuid) {
+            throw new Error(`Planning ${matchedSlot.planUuid} has an invalid reliever link; reconcile before import.`);
+          }
+          if (matchedSlot.relieverAssignUuid && matchedSlot.relieverAssignUuid !== assignmentUuid) {
+            // Preserve the previous reliever's history; never overwrite its
+            // assignment or cancel another crew's matching Planned row.
+            const [cancelled] = await tx.update(crewAssignments).set({
+              assignmentType: "Cancelled",
+              isCurrent: false,
+              reason: "Replaced by crew list import",
+              updatedAt: new Date(),
+              updatedByUuid: auditUserUuid ?? null,
+            }).where(and(
+              eq(crewAssignments.assignUuid, matchedSlot.relieverAssignUuid),
+              eq(crewAssignments.crewUuid, matchedSlot.relieverCrewUuid),
+              eq(crewAssignments.vesselUuid, vessel.vesselUuid),
+              eq(crewAssignments.assignmentType, "Planned"),
+              eq(crewAssignments.isDeleted, false),
+            )).returning({ assignUuid: crewAssignments.assignUuid });
+            if (!cancelled) {
+              throw new Error(`Linked reliever assignment for planning ${matchedSlot.planUuid} is no longer Planned; reconcile before import.`);
+            }
+          }
+          await tx.update(vesselPlanningV2).set({
+            relieverCrewUuid: crew.crewUuid,
+            relieverAssignUuid: assignmentUuid,
+            relieverSignOnDate: item.signOnDate ?? null,
+            reliefDue: finalReliefDue ?? null,
+            joiningPortUuid: item.joiningPortUuid ?? null,
+            joiningStatus: item.joiningStatus ?? null,
+            relieverContractPeriodMonths: item.contractPeriod ?? null,
+            updatedAt: new Date(),
+            updatedByUuid: auditUserUuid ?? null,
+          }).where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
+          matchedSlot.relieverCrewUuid = crew.crewUuid;
+          matchedSlot.relieverAssignUuid = assignmentUuid;
+        }
+        result.importedAssignmentUuids.push(assignmentUuid);
+        result.assignmentLabels[assignmentUuid] = `${[crew.firstName, crew.familyName].filter(Boolean).join(" ")} (${item.employeeId})`;
+        if (isPrimary) {
+          const service = await recordImportedCompanyService(tx, assignmentUuid, matchedSlot.planUuid, auditUserUuid);
+          result.seaService.push(service);
+          if (service.reason) result.warnings.push(`Row ${item.rowNumber}, ${item.employeeId}: ${service.reason}`);
+        }
       }
     });
 
@@ -1276,6 +1380,9 @@ export async function importCrewAssignments(
     result.primaryAssignedCount = 0;
     result.secondaryAssignedCount = 0;
     result.alreadyImportedCount = 0;
+    result.importedAssignmentUuids = [];
+    result.assignmentLabels = {};
+    result.seaService = [];
 
     const rawMsg = err.message || String(err);
     let userFriendlyMsg = rawMsg;

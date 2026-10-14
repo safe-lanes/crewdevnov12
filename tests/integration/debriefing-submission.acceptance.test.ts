@@ -69,9 +69,9 @@ describe.sequential("debriefing submission acceptance", () => {
         [ids.version, formId, groupId],
       );
       await client.query(
-        `INSERT INTO frm_form_parts(form_part_uuid, form_uuid, part_code, part_title, part_type)
-         VALUES ($1, $2, 'B', 'Questions', 'configurable')`,
-        [ids.part, ids.form],
+        `INSERT INTO frm_form_parts(form_part_uuid, form_uuid, form_version_uuid, part_code, part_title, part_type)
+         VALUES ($1, $2, $3, 'B', 'Questions', 'configurable')`,
+        [ids.part, ids.form, ids.version],
       );
       await client.query(
         `INSERT INTO frm_sections(section_uuid, form_version_uuid, form_part_uuid, section_code, section_title, applicable_vessel_types, responsible_mode, responsible_department, signature_officer_required, signature_seafarer_required)

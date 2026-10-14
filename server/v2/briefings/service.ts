@@ -242,8 +242,9 @@ export const briefingService = {
       briefingRepository.structure(submission.formVersionUuid),
       briefingRepository.readData(submissionUuid),
       submission.briefingUuid ? briefingRepository.g1(submission.briefingUuid) : Promise.resolve(null),
-      briefingRepository.formParts(submission.formUuid),
+       briefingRepository.formParts(submission.formVersionUuid),
     ]);
+    if (!formParts.length) throw new BriefingError(`Briefing version ${submission.formVersionUuid} has no parts; submission cannot be displayed`, 409);
     const responsibleRoleUuids = Array.from(new Set<string>(
       structure.sections.flatMap((section: any) =>
         section.responsibleMode === "role" && section.responsibleRoleUuid

@@ -1,0 +1,301 @@
+{
+  "head": "5817fd94fad9938bc0586502990e76c4a3e2db4f",
+  "commitTime": "2026-10-05T04:31:35Z",
+  "startedAt": "2026-10-05T04:31:59.807Z",
+  "backend": {
+    "pid": 3003,
+    "startedAt": "2026-10-05T04:31:43.000Z"
+  },
+  "preview": "https://d9870061-88d9-4866-b16a-044f088649e0-00-1x3aoxb6wixmc-ttdyl2q6.sisko.replit.dev",
+  "authentication": "Retained synthetic development personas, not production authentication",
+  "network": [
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:11.895Z",
+      "method": "GET",
+      "path": "/api/v2/alerts/events/for-current-user?roleName=TEST%20ONLY%20SIGNOFF%20MASTER",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:11.906Z",
+      "method": "GET",
+      "path": "/api/v2/admin/access-control/my-permissions",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.557Z",
+      "method": "GET",
+      "path": "/api/v2/admin/company-trainings",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.559Z",
+      "method": "GET",
+      "path": "/api/v2/admin/available-ranks?companyOnly=true",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.562Z",
+      "method": "GET",
+      "path": "/api/v2/masters/crew-pools",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.572Z",
+      "method": "GET",
+      "path": "/api/v2/admin/company-ranks",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.572Z",
+      "method": "GET",
+      "path": "/api/v2/masters/vessels/all",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.618Z",
+      "method": "GET",
+      "path": "/api/v2/crew-pool/crew/details?limit=5000",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.618Z",
+      "method": "GET",
+      "path": "/api/v2/masters/vessel-types",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.619Z",
+      "method": "GET",
+      "path": "/api/v2/masters/vessels",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.619Z",
+      "method": "GET",
+      "path": "/api/v2/masters/manning-agents",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.620Z",
+      "method": "GET",
+      "path": "/api/v2/masters/nationalities",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.620Z",
+      "method": "GET",
+      "path": "/api/v2/masters/languages",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.620Z",
+      "method": "GET",
+      "path": "/api/v2/masters/countries",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.621Z",
+      "method": "GET",
+      "path": "/api/v2/vessel/list",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.622Z",
+      "method": "GET",
+      "path": "/api/v2/masters/ports",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.643Z",
+      "method": "GET",
+      "path": "/api/v2/vessel/crew-counts",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.664Z",
+      "method": "GET",
+      "path": "/api/v2/admin/available-ranks",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.665Z",
+      "method": "GET",
+      "path": "/api/v2/admin/company-training-groups",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.665Z",
+      "method": "GET",
+      "path": "/api/v2/admin/company-training-requirements",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.729Z",
+      "method": "GET",
+      "path": "/api/v2/appraisals",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.730Z",
+      "method": "GET",
+      "path": "/api/v2/admin/training-matrix-vessel-revisions/by-vessel/7440571a-841a-11ed-aa7c-7003bca91a86",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.730Z",
+      "method": "GET",
+      "path": "/api/v2/admin/vessel-revisions/ranks/7440571a-841a-11ed-aa7c-7003bca91a86",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.755Z",
+      "method": "GET",
+      "path": "/api/v2/admin/training-matrix-vessel-drafts/by-vessel/7440571a-841a-11ed-aa7c-7003bca91a86",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.799Z",
+      "method": "GET",
+      "path": "/api/v2/vessel/training/7440571a-841a-11ed-aa7c-7003bca91a86",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.812Z",
+      "method": "GET",
+      "path": "/api/v2/vessel/7440571a-841a-11ed-aa7c-7003bca91a86/planning",
+      "status": 200,
+      "formPhase": false
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:12.913Z",
+      "method": "POST",
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/submission-counts",
+      "status": 200,
+      "formPhase": false,
+      "savedResponse": "{\"23d48149-5cd4-4f56-9324-22441962d215\":0,\"337781b3-c623-4d1b-b4d1-cf2c54f36e7d\":0,\"34c6c6ba-5daf-4ea2-afc3-9d2855402735\":0,\"508e268c-74fb-413b-a393-5c137590acc5\":0,\"5e4ba81b-81bb-4c3d-bbee-5633acd84d8e\":0,\"78f0db50-3045-486d-bdd3-6903d6b455f0\":0,\"79edce12-9fcd-47f9-aca4-e527d7e46226\":1,\"8d529a30-8a45-4b5f-89fd-d923796a3cb1\":0,\"9cae0acc-2fc0-442a-aa31-6d5501890281\":0,\"bb2cd2d6-08cd-4ae0-8a72-6eaddcd0bd10\":0,\"de9e4a71-4263-4630-a406-03feb0175c28\":0,\"e3ef921e-69d3-45b6-a098-208f160b3b3a\":0}"
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:13.646Z",
+      "method": "GET",
+      "path": "/api/v2/vessel/planning/ade8413f-3cd3-4146-a6b3-f8677f266cfe",
+      "status": 200,
+      "formPhase": true
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:13.703Z",
+      "method": "GET",
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/79edce12-9fcd-47f9-aca4-e527d7e46226/submissions?crewUuid=a867b6f9-c252-4a11-a722-1b678293a164&planUuid=ade8413f-3cd3-4146-a6b3-f8677f266cfe&vesselUuid=7440571a-841a-11ed-aa7c-7003bca91a86",
+      "status": 200,
+      "formPhase": true,
+      "savedResponse": "{\"subjectType\":\"crew_assignment\",\"subjectRef\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"groupId\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"submissions\":[{\"submissionUuid\":\"01ef546b-8138-46cf-9e07-90e94632fd8e\",\"subjectType\":\"crew_assignment\",\"subjectRef\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"formUuid\":\"e3165578-865a-444f-8399-ccc665bc585c\",\"formVersionUuid\":\"0d58e4bb-d12e-4d7d-aa11-eb37ac74960c\",\"stageKey\":\"at_sign_off\",\"versionNo\":\"01\",\"releasedAt\":\"2026-10-04T09:05:58.269Z\",\"formName\":\"TEST ONLY SIGNOFF ABOARD 2026-10-04T09:03:11.071Z\",\"formArchivedAt\":null,\"voidedAt\":null,\"voidedByName\":null,\"voidedByUuid\":null,\"voidedByDesignation\":null,\"voidReason\":null,\"voidedPreviousStatus\":null,\"systemSnapshotAt\":null,\"systemSnapshotEvent\":null,\"stageLabel\":\"At sign-off\",\"status\":\"in_progress\",\"completedAt\":null,\"replacesSubmissionUuid\":null,\"replacedBySubmissionUuid\":null,\"createdAt\":\"2026-10-04T10:17:46.464Z\",\"updatedAt\":\"2026-10-04T10:17:46.464Z\",\"groupId\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"isOutstanding\":true,\"canEdit\":true,\"replacementHistory\":[]},{\"submissionUuid\":\"cd29cf82-9f44-45d9-bf96-bd99aaec80e4\",\"subjectType\":\"crew_assignment\",\"subjectRef\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"formUuid\":\"88d2f57b-47e1-4319-925c-f3028102346a\",\"formVersionUuid\":\"d0675224-a7dc-4ded-bb2b-d293a2bc7c70\",\"stageKey\":\"on_board\",\"versionNo\":\"01\",\"releasedAt\":\"2026-10-04T09:05:58.813Z\",\"formName\":\"TEST ONLY SIGNOFF ONBOARD 2026-10-04T09:03:11.071Z\",\"formArchivedAt\":null,\"voidedAt\":null,\"voidedByName\":null,\"voidedByUuid\":null,\"voidedByDesignation\":null,\"voidReason\":null,\"voidedPreviousStatus\":null,\"systemSnapshotAt\":null,\"systemSnapshotEvent\":null,\"stageLabel\":\"On board\",\"status\":\"in_progress\",\"completedAt\":null,\"replacesSubmissionUuid\":null,\"replacedBySubmissionUuid\":null,\"createdAt\":\"2026-10-04T10:17:44.090Z\",\"updatedAt\":\"2026-10-04T10:17:44.090Z\",\"groupId\":\"79edce12-9fcd-47f9-aca4-e527d7e46226\",\"isOutstanding\":true,\"canEdit\":true,\"replacementHistory\":[]}],\"totalCount\":2,\"outstandingCount\":2,\"historyCount\":0}"
+    },
+    {
+      "actorId": 291,
+      "actorRole": "TEST ONLY SIGNOFF MASTER",
+      "at": "2026-10-05T04:32:13.704Z",
+      "method": "GET",
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/79edce12-9fcd-47f9-aca4-e527d7e46226/eligible-forms?crewUuid=a867b6f9-c252-4a11-a722-1b678293a164&planUuid=ade8413f-3cd3-4146-a6b3-f8677f266cfe&vesselUuid=7440571a-841a-11ed-aa7c-7003bca91a86&stageKey=at_sign_off",
+      "status": 200,
+      "formPhase": true,
+      "savedResponse": "[{\"formUuid\":\"e3165578-865a-444f-8399-ccc665bc585c\",\"formName\":\"TEST ONLY SIGNOFF ABOARD 2026-10-04T09:03:11.071Z\",\"description\":null,\"formVersionUuid\":\"0d58e4bb-d12e-4d7d-aa11-eb37ac74960c\",\"versionNo\":\"01\",\"stageKey\":\"at_sign_off\",\"releasedAt\":\"2026-10-04T09:05:58.269Z\"},{\"formUuid\":\"ae69f2e2-b7d9-48ee-b2b4-18cfd060aa93\",\"formName\":\"TEST ONLY SIGNOFF ASHORE 2026-10-04T09:03:11.071Z\",\"description\":null,\"formVersionUuid\":\"7c1dac2c-5704-4127-9b90-42d0aae5de72\",\"versionNo\":\"01\",\"stageKey\":\"at_sign_off\",\"releasedAt\":\"2026-10-04T09:05:58.409Z\"},{\"formUuid\":\"65687d4f-634d-43c3-ade4-a0fdac84067a\",\"formName\":\"TEST ONLY SIGNOFF DUAL 2026-10-04T09:03:11.071Z\",\"description\":null,\"formVersionUuid\":\"4d2faafb-108d-4d42-9b0d-99d049ef1092\",\"versionNo\":\"01\",\"stageKey\":\"at_sign_off\",\"releasedAt\":\"2026-10-04T09:05:58.539Z\"}]"
+    }
+  ],
+  "checks": [
+    {
+      "name": "TEST ONLY READABLE DECLARATION REGRESSION",
+      "planUuid": "a7358272-29df-4274-ac28-9259824e2f5c",
+      "assignmentUuid": "7521f648-7125-4855-a51c-22660a20bc0f",
+      "crewUuid": "426f7335-4882-4984-859f-2c1013d2b3af"
+    }
+  ],
+  "screenshots": [
+    ".local/verification/stage-popups-browser-2026-10-05T04-31-59-792Z/01-onboard-status-top-button.png",
+    ".local/verification/stage-popups-browser-2026-10-05T04-31-59-792Z/failed-attempt.png"
+  ],
+  "passed": false,
+  "failure": "ReferenceError: Cannot access 'other' before initialization\n    at file:///home/runner/workspace/scripts/verify-stage-company-form-popups.mjs:102:93\n    at Array.some (<anonymous>)\n    at file:///home/runner/workspace/scripts/verify-stage-company-form-popups.mjs:102:68\n    at Array.filter (<anonymous>)\n    at checkStage (file:///home/runner/workspace/scripts/verify-stage-company-form-popups.mjs:102:27)\n    at async file:///home/runner/workspace/scripts/verify-stage-company-form-popups.mjs:129:3",
+  "finishedAt": "2026-10-05T04:32:13.856Z"
+}

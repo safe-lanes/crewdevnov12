@@ -741,7 +741,7 @@ export function useAccessControlPermissionsV2(ruid: string | null, options?: { e
 export function useCreateAccessControlMenuV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createAccessControlMenu(withAuditUser(data)),
+    mutationFn: (data: any) => adminApiV2.createAccessControlMenu(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'menus'] });
     },
@@ -751,7 +751,7 @@ export function useCreateAccessControlMenuV2() {
 export function useUpdateAccessControlMenuV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ muid, data }: { muid: string; data: any }) => adminApiV2.updateAccessControlMenu(muid, withAuditUser(data)),
+    mutationFn: ({ muid, data }: { muid: string; data: any }) => adminApiV2.updateAccessControlMenu(muid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'menus'] });
     },
@@ -771,7 +771,7 @@ export function useDeleteAccessControlMenuV2() {
 export function useCreateAccessControlRoleV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createAccessControlRole(withAuditUser(data)),
+    mutationFn: (data: any) => adminApiV2.createAccessControlRole(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'roles'] });
     },
@@ -781,7 +781,7 @@ export function useCreateAccessControlRoleV2() {
 export function useUpdateAccessControlRoleV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ ruid, data }: { ruid: string; data: any }) => adminApiV2.updateAccessControlRole(ruid, withAuditUser(data)),
+    mutationFn: ({ ruid, data }: { ruid: string; data: any }) => adminApiV2.updateAccessControlRole(ruid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'roles'] });
     },
@@ -804,6 +804,9 @@ export function useSaveAccessControlPermissionsV2() {
     mutationFn: ({ ruid, permissions }: { ruid: string; permissions: any[] }) => adminApiV2.saveAccessControlPermissions(ruid, permissions),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'permissions', variables.ruid] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/state'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/audit'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/my-permissions'] });
     },
   });
 }

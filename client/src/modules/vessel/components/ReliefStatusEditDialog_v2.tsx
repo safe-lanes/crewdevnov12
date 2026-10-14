@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
     FormattedDateInput,
@@ -31,6 +32,10 @@ import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { apiRequest } from "@/lib/queryClient";
+import { usePermissions } from "@/contexts/PermissionsContext";
+import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDetails";
+import { JoiningCompanyForms } from "./JoiningCompanyForms";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -48,6 +53,22 @@ const reliefStatusFormSchema = z.object({
 });
 
 type ReliefStatusFormData = z.infer<typeof reliefStatusFormSchema>;
+type ChecklistBlocker = { kind: "requirement" | "check"; status: string; formName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
+type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean };
+
+function parseChecklistConflict(error: unknown): ChecklistConflict | null {
+    if (!(error instanceof Error)) return null;
+    const body = error.message.replace(/^\d{3}:\s*/, "");
+    try {
+        const value = JSON.parse(body);
+        if (value?.error !== "company_forms_checklist_blocked" || typeof value.message !== "string" || !Array.isArray(value.blockers) || typeof value.canOverride !== "boolean") return null;
+        const blockers = value.blockers.filter((item: any) =>
+            item && (item.kind === "requirement" || item.kind === "check") && typeof item.status === "string"
+        ) as ChecklistBlocker[];
+        if (blockers.length !== value.blockers.length) return null;
+        return { message: value.message, blockers, canOverride: value.canOverride };
+    } catch { return null; }
+}
 
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
@@ -104,15 +125,37 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
+    const [blockerForm, setBlockerForm] = useState<{ subjectRef: string; requirementUuid: string; name: string } | null>(null);
+    const { permissions, roleName, userType, canCompanyFormAction } = usePermissions();
+    const canOverrideChecklist = canCompanyFormAction("override_checklist");
+    const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
+    const [overrideReason, setOverrideReason] = useState("");
+    const [pendingChecklistPayload, setPendingChecklistPayload] = useState<Record<string, unknown> | null>(null);
+    const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
+        && userType?.trim().toLowerCase() !== 'ship'
+        && permissions.some(p => p.menuName.toLowerCase() === 'vessel' && p.candelete);
+    const isUnlinkedReliever = !!planningData?.relieverCrewUuid && !planningData?.relieverAssignUuid;
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
+    const [clearReason, setClearReason] = useState('');
+    const [isClearingUnlinked, setIsClearingUnlinked] = useState(false);
+    const [clearUnlinkedSelected, setClearUnlinkedSelected] = useState(false);
     const [showSignOnConflict, setShowSignOnConflict] = useState(false);
     const [conflictVesselName, setConflictVesselName] = useState('');
     const [isCheckingConflict, setIsCheckingConflict] = useState(false);
-    
+    const [assignmentDetails, setAssignmentDetails] = useState<{
+        assignUuid: string;
+        assignmentType: string | null;
+        signOnDate: string | null;
+        contractPeriod: string | null;
+    } | null>(null);
+    const [assignmentLoading, setAssignmentLoading] = useState(false);
+    const [assignmentError, setAssignmentError] = useState<string | null>(null);
+
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
-    
+
     const form = useForm<ReliefStatusFormData>({
         resolver: zodResolver(reliefStatusFormSchema),
         defaultValues: {
@@ -132,6 +175,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     });
 
     React.useEffect(() => {
+        setAssignmentDetails(null);
+        setAssignmentError(null);
+        setClearReason('');
+        setClearUnlinkedSelected(false);
         if (open && planningData) {
             form.reset({
                 relieverCrewName: planningData.relieverCrewName || '',
@@ -166,6 +213,23 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             setUnassignChecked(false);
         }
     }, [open, planningData, form]);
+
+    const openLinkedAssignment = async () => {
+        if (!planningData?.planUuid || !planningData?.relieverAssignUuid) return;
+        setAssignmentLoading(true);
+        setAssignmentError(null);
+        try {
+            const response = await apiRequest(
+                "GET",
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/reliever-assignment/${encodeURIComponent(planningData.relieverAssignUuid)}`
+            );
+            setAssignmentDetails(await response.json());
+        } catch (error) {
+            setAssignmentError(error instanceof Error ? error.message : "Assignment unavailable");
+        } finally {
+            setAssignmentLoading(false);
+        }
+    };
 
     const normalizeToIsoDate = (dateStr: string | undefined): string | undefined => {
         if (!dateStr) return undefined;
@@ -214,14 +278,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
-            
+
             if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
                 // and moves reliever to on-board crew
                 const signOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
                 const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
                 const contractPeriodMonths = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
-                
+
                 await vesselApiV2.signOnReliever(planningData.planUuid, {
                     signOnDate,
                     signOnPort,
@@ -244,7 +308,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 };
-                
+
                 if (planningData?.planUuid) {
                     await updatePlanningV2.mutateAsync({
                         planUuid: planningData.planUuid,
@@ -259,10 +323,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     });
                 }
             }
-            
+
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
-            
+
             toast({
                 title: "Success",
                 description: "Relief status saved successfully",
@@ -270,15 +334,61 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             onOpenChange(false);
         } catch (error: any) {
             console.error('Relief status save error:', error);
-            const errorMessage = error instanceof Error ? error.message : 
-                                 typeof error === 'string' ? error :
-                                 error?.message || "Failed to save relief status";
+            const conflict = parseChecklistConflict(error);
+            const eligibleBlockers = conflict?.blockers.length
+                ? conflict.blockers.every((blocker) =>
+                    (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                    (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                )
+                : false;
+            if (conflict && data.deploymentChecklistCompleted === true && planningData?.planUuid) {
+                setChecklistConflict(conflict);
+                setPendingChecklistPayload({
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    deploymentChecklistCompleted: data.deploymentChecklistCompleted,
+                    applicableDocsChecked: data.applicableDocsChecked,
+                    joiningStatus: data.signOnStatus,
+                    relieverSignOnDate: data.relieverSignOnDate || null,
+                    joiningPortUuid: data.relieverSignOnPort,
+                    plannedConfirmedDate: data.plannedConfirmedDate || null,
+                    travelStartDate: data.travelStartDate || null,
+                });
+                if (!eligibleBlockers || !conflict.canOverride || !canOverrideChecklist) {
+                    toast({ title: "Forms must be completed", description: conflict.message, variant: "destructive", duration: 7000 });
+                }
+                return;
+            }
             toast({
                 title: "Error",
-                description: errorMessage,
+                description: "Unable to save relief status. Please review the information and try again.",
                 variant: "destructive",
                 duration: 5000,
             });
+        }
+    };
+
+    const confirmChecklistOverride = async () => {
+        if (!planningData?.planUuid || !pendingChecklistPayload || !overrideReason.trim() ||
+            !checklistConflict?.canOverride || !canOverrideChecklist) return;
+        try {
+            await updatePlanningV2.mutateAsync({
+                planUuid: planningData.planUuid,
+                data: { ...pendingChecklistPayload, checklistOverride: { reason: overrideReason.trim() } } as any,
+            });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            ]);
+            setChecklistConflict(null);
+            setPendingChecklistPayload(null);
+            setOverrideReason("");
+            toast({ title: "Success", description: "Relief status saved with the recorded checklist override." });
+            onOpenChange(false);
+        } catch (error) {
+            const conflict = parseChecklistConflict(error);
+            toast({ title: "Unable to override checklist", description: conflict?.message ?? "The checklist override was not accepted. Review the forms and try again.", variant: "destructive" });
         }
     };
 
@@ -287,7 +397,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             if (!planningData?.planUuid) {
                 throw new Error('No planning record ID');
             }
-            
+
             await updatePlanningV2.mutateAsync({
                 planUuid: planningData.planUuid,
                 data: {
@@ -304,10 +414,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     applicableDocsChecked: null,
                 }
             });
-            
+
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
-            
+
             toast({
                 title: "Reliever Unassigned",
                 description: "The reliever has been removed from this vessel assignment.",
@@ -324,17 +434,39 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     };
 
+    const handleClearUnlinked = async () => {
+        if (!canClearUnlinked || !planningData?.planUuid || !planningData?.relieverCrewUuid || !clearReason.trim()) return;
+        setIsClearingUnlinked(true);
+        try {
+            await apiRequest("POST",
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/clear-unlinked-reliever`,
+                { expectedCrewUuid: planningData.relieverCrewUuid, reason: clearReason.trim() });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            ]);
+            toast({ title: "Unlinked reliever cleared", description: "The reason was recorded in the planning audit." });
+            setShowUnassignConfirm(false);
+            setClearUnlinkedSelected(false);
+            onOpenChange(false);
+        } catch (error: any) {
+            toast({ title: "Unable to clear reliever", description: error.message || "Reload and try again", variant: "destructive" });
+        } finally {
+            setIsClearingUnlinked(false);
+        }
+    };
+
     const handleSave = () => {
         const data = form.getValues();
-        
+
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
-        
+
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
-            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
-                               data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths || 
-                               data.relieverContractEndRangeEndMonths;
+            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate ||
+                data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths ||
+                data.relieverContractEndRangeEndMonths;
             if (hasOtherData) {
                 toast({
                     title: "Name Required",
@@ -343,7 +475,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 });
                 return;
             }
-            
+
             const clearedData: ReliefStatusFormData = {
                 relieverCrewName: '',
                 relieverNationality: '',
@@ -356,7 +488,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 deploymentChecklistCompleted: undefined,
                 applicableDocsChecked: undefined,
             };
-            
+
             handleSaveV2(clearedData);
         } else {
             handleSaveV2(data);
@@ -368,7 +500,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             setShowUnassignConfirm(true);
             return;
         }
-        
+
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
@@ -396,11 +528,11 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 return;
             }
         }
-        
+
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
-            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
-                               data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths || 
-                               data.relieverContractEndRangeEndMonths;
+            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate ||
+                data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths ||
+                data.relieverContractEndRangeEndMonths;
             if (hasOtherData) {
                 toast({
                     title: "Name Required",
@@ -409,7 +541,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 });
                 return;
             }
-            
+
             const clearedData: ReliefStatusFormData = {
                 relieverCrewName: '',
                 relieverNationality: '',
@@ -422,23 +554,24 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 deploymentChecklistCompleted: undefined,
                 applicableDocsChecked: undefined,
             };
-            
+
             handleSaveV2(clearedData);
         } else {
             const requiresConflictCheck = data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On";
             const relieverCrewUuid = planningData?.relieverCrewUuid || planningData?.relieverCrewId;
-            
+
             if (requiresConflictCheck && relieverCrewUuid) {
                 const hasConflict = await checkSignOnConflict(relieverCrewUuid);
                 if (hasConflict) return;
             }
-            
+
             handleSaveV2(data);
         }
     });
-    
+
     const handleUnassignConfirm = () => {
-        handleUnassignV2();
+        if (clearUnlinkedSelected) void handleClearUnlinked();
+        else void handleUnassignV2();
     };
 
     const relieverName = form.watch('relieverCrewName');
@@ -524,385 +657,508 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     return (
         <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
+            <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
+                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); }
+            }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Company Forms checklist is incomplete</AlertDialogTitle>
+                        <AlertDialogDescription>{checklistConflict?.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {checklistConflict?.blockers.map((blocker, index) => (
+                        <div key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
+                            data-testid={`checklist-blocker-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
+                            className="text-sm text-amber-900">
+                            {blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")} · {blocker.status}
+                            {blocker.reason ? ` — ${blocker.reason}` : ""}
+                            {blocker.requirementUuid && planningData?.relieverAssignUuid && canCompanyFormAction("view") &&
+                                <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => {
+                                    setBlockerForm({ subjectRef: planningData.relieverAssignUuid!, requirementUuid: blocker.requirementUuid!, name: blocker.formName || "Required form" });
+                                    setChecklistConflict(null);
+                                }}>Open form</Button>}
+                        </div>
+                    ))}
+                    {checklistConflict?.canOverride && canOverrideChecklist &&
+                        checklistConflict.blockers.length > 0 &&
+                        checklistConflict.blockers.every((blocker) =>
+                            (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                            (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                        ) ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="checklist-override-reason">Reason for override</Label>
+                            <Textarea id="checklist-override-reason" value={overrideReason}
+                                onChange={(event) => setOverrideReason(event.target.value)}
+                                placeholder="Record why deployment is proceeding before the checklist is clear." />
+                            <AlertDialogDescription>This reason will be recorded with the planning change. The override does not complete any form.</AlertDialogDescription>
+                        </div>
+                    ) : null}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Return to forms</AlertDialogCancel>
+                        {checklistConflict?.canOverride && canOverrideChecklist &&
+                            checklistConflict.blockers.length > 0 &&
+                            checklistConflict.blockers.every((blocker) =>
+                                (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                            ) && (
+                                <AlertDialogAction disabled={!overrideReason.trim() || updatePlanningV2.isPending}
+                                    onClick={(event) => { event.preventDefault(); void confirmChecklistOverride(); }}>
+                                    {updatePlanningV2.isPending ? "Saving…" : "Confirm override"}
+                                </AlertDialogAction>
+                            )}
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
-                        Rank: {rank}
-                    </DialogTitle>
-                </DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
+                            Rank: {rank}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <Button type="button" variant="outline" data-testid="button-open-joining-forms"
+                        onClick={() => setJoiningFormsOpen(true)}>
+                        Joining forms
+                    </Button>
 
-                <Form {...form}>
-                    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                        <FormField
-                            control={form.control}
-                            name="relieverCrewName"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Name:</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-name" />
-                                        </FormControl>
+                    {planningData?.relieverAssigned && (
+                        <div className="rounded-md border bg-slate-50 p-3 text-sm" data-testid="reliever-assignment-link">
+                            {planningData.relieverAssignUuid ? (
+                                <>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Linked assignment</span>
+                                        <Button type="button" variant="outline" size="sm" onClick={openLinkedAssignment} disabled={assignmentLoading}>
+                                            {assignmentLoading ? "Opening…" : "Open assignment"}
+                                        </Button>
                                     </div>
-                                    {!isRelieverAssigned && (
-                                        <p className="text-xs text-amber-600 mt-1 col-span-3">Assign a crew member in the Rotation module first to enable reliever fields.</p>
+                                    {assignmentDetails && (
+                                        <div className="mt-2 space-y-1" data-testid="reliever-assignment-details">
+                                            <div className="font-mono text-xs break-all">{assignmentDetails.assignUuid}</div>
+                                            <div>Status: {assignmentDetails.assignmentType ?? "Unknown"}</div>
+                                            <div>Joining date: {formatDateOnly(assignmentDetails.signOnDate) || "Not set"}</div>
+                                            <div>Contract: {assignmentDetails.contractPeriod ? `${assignmentDetails.contractPeriod} months` : "Not set"}</div>
+                                        </div>
                                     )}
-                                </FormItem>
+                                    {assignmentError && <p className="mt-2 text-red-700" role="alert">{assignmentError}</p>}
+                                </>
+                            ) : (
+                                <p className="text-amber-800" role="status">
+                                    Assignment unavailable: this legacy reliever has no verified assignment link.
+                                    Normal unassign is unavailable without a verified assignment link.
+                                    {canClearUnlinked ? " Administrators may clear the planning reliever with a written reason; no assignment will be changed." : " Ask an administrator to review this legacy reliever."}
+                                </p>
                             )}
-                        />
+                        </div>
+                    )}
 
-                        {planningData?.relieverHasPriorJoiningPromotion && (
-                            <div className="grid grid-cols-3 items-center gap-4">
-                                <span className="text-sm text-gray-700">Target Rank:</span>
-                                <span
-                                    className="col-span-2 text-sm font-medium text-[#52baf3]"
-                                    title="This crew member has an approved prior-joining promotion that takes effect on sign-on."
-                                    data-testid="text-reliever-target-rank-pr"
-                                >
-                                    {(planningData?.relieverPromotionToRank || planningData?.rankName || planningData?.rank)} (PR)
-                                </span>
-                            </div>
-                        )}
-
-                        <FormField
-                            control={form.control}
-                            name="relieverNationality"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Nationality:</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-nationality" />
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="signOnStatus"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="grid grid-cols-3 items-center gap-4">
-                                                <FormLabel className="text-sm text-gray-700">Sign On Status:</FormLabel>
-                                                <FormControl>
-                                                    <Select 
-                                                        onValueChange={field.onChange} 
-                                                        value={field.value} 
-                                                        data-testid="select-joining-status"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                                                            <SelectValue placeholder="Select Status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="Planned">Planned</SelectItem>
-                                                            <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                                            <SelectItem value="In Transit">In Transit</SelectItem>
-                                                            <SelectItem value="Signed On">Signed On</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormControl>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="right" align="start" className="max-w-xs">
-                                            <ol className="list-decimal space-y-1 pl-4 text-xs">
-                                                <li>Selecting 'Signed On' status will move the crew member from 'Reliever Status' section to 'On Board Status' section of the table.</li>
-                                                <li>The reliever is added as a Secondary (S) and the one currently on board becomes Primary (P) e.g. You will see Chief Officer (P) and Chief Officer (S).</li>
-                                            </ol>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="relieverContractPeriodMonths"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                {...field}
-                                                type="number" 
-                                                min={1}
-                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-reliever-contract-period"
-                                                value={field.value ?? ''}
-                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                disabled={!isRelieverAssigned}
-                                            />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="relieverContractEndRangeStartMonths"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                {...field}
-                                                type="number" 
-                                                min={1}
-                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-reliever-contract-range-start"
-                                                value={field.value ?? ''}
-                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                disabled={!isRelieverAssigned}
-                                            />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="relieverContractEndRangeEndMonths"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                {...field}
-                                                type="number" 
-                                                min={1}
-                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-reliever-contract-range-end"
-                                                value={field.value ?? ''}
-                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                disabled={!isRelieverAssigned}
-                                            />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="plannedConfirmedDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Planned / Confirmed Date:</FormLabel>
-                                        {renderDateSelector(field)}
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="travelStartDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Travel Start Date:</FormLabel>
-                                        {renderDateSelector(field)}
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="relieverSignOnDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
-                                        {renderDateSelector(
-                                            field,
-                                            undefined,
-                                            watchedSignOnStatus === "Signed On"
-                                                ? format(new Date(), "yyyy-MM-dd")
-                                                : undefined,
+                    <Form {...form}>
+                        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                            <FormField
+                                control={form.control}
+                                name="relieverCrewName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Name:</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-name" />
+                                            </FormControl>
+                                        </div>
+                                        {!isRelieverAssigned && (
+                                            <p className="text-xs text-amber-600 mt-1 col-span-3">Assign a crew member in the Rotation module first to enable reliever fields.</p>
                                         )}
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={form.control}
-                            name="relieverSignOnPort"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
-                                        <FormControl>
-                                            <SearchablePortCombobox
-                                                value={field.value as string}
-                                                onValueChange={field.onChange}
-                                                placeholder="Search port..."
-                                                disabled={!isRelieverAssigned}
-                                                className="col-span-2"
-                                                data-testid="select-joining-port"
-                                            />
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
+                            {planningData?.relieverHasPriorJoiningPromotion && (
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <span className="text-sm text-gray-700">Target Rank:</span>
+                                    <span
+                                        className="col-span-2 text-sm font-medium text-[#52baf3]"
+                                        title="This crew member has an approved prior-joining promotion that takes effect on sign-on."
+                                        data-testid="text-reliever-target-rank-pr"
+                                    >
+                                        {(planningData?.relieverPromotionToRank || planningData?.rankName || planningData?.rank)} (PR)
+                                    </span>
+                                </div>
                             )}
-                        />
 
-                        <FormField
-                            control={form.control}
-                            name="deploymentChecklistCompleted"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Deployment Checklist Completed ?</FormLabel>
-                                        <FormControl>
-                                            <RadioGroup 
-                                                onValueChange={(value) => field.onChange(value === 'true')} 
-                                                value={field.value ? 'true' : 'false'}
-                                                className={`col-span-2 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
-                                                data-testid="radio-deployment-checklist"
-                                                disabled={!isRelieverAssigned}
-                                            >
-                                                <div className="flex items-center space-x-4">
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="true" id="deployment-yes" disabled={!isRelieverAssigned} />
-                                                        <Label htmlFor="deployment-yes">Yes</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="false" id="deployment-no" disabled={!isRelieverAssigned} />
-                                                        <Label htmlFor="deployment-no">No</Label>
-                                                    </div>
+                            <FormField
+                                control={form.control}
+                                name="relieverNationality"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Nationality:</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-nationality" />
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="signOnStatus"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="grid grid-cols-3 items-center gap-4">
+                                                    <FormLabel className="text-sm text-gray-700">Sign On Status:</FormLabel>
+                                                    <FormControl>
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            value={field.value}
+                                                            data-testid="select-joining-status"
+                                                            disabled={!isRelieverAssigned}
+                                                        >
+                                                            <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                                                                <SelectValue placeholder="Select Status" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Planned">Planned</SelectItem>
+                                                                <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                                <SelectItem value="In Transit">In Transit</SelectItem>
+                                                                <SelectItem value="Signed On">Signed On</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
                                                 </div>
-                                            </RadioGroup>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" align="start" className="max-w-xs">
+                                                <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                    <li>Selecting 'Signed On' status will move the crew member from 'Reliever Status' section to 'On Board Status' section of the table.</li>
+                                                    <li>The reliever is added as a Secondary (S) and the one currently on board becomes Primary (P) e.g. You will see Chief Officer (P) and Chief Officer (S).</li>
+                                                </ol>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={form.control}
-                            name="applicableDocsChecked"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Applicable Docs checked:</FormLabel>
-                                        <FormControl>
-                                            <div className="col-span-2 flex items-center gap-4">
-                                                <RadioGroup 
-                                                    onValueChange={(value) => field.onChange(value === 'true')} 
+                            <FormField
+                                control={form.control}
+                                name="relieverContractPeriodMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    type="number"
+                                                    min={1}
+                                                    className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    data-testid="input-reliever-contract-period"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isRelieverAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="relieverContractEndRangeStartMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    type="number"
+                                                    min={1}
+                                                    className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    data-testid="input-reliever-contract-range-start"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isRelieverAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="relieverContractEndRangeEndMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    type="number"
+                                                    min={1}
+                                                    className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    data-testid="input-reliever-contract-range-end"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isRelieverAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="plannedConfirmedDate"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Planned / Confirmed Date:</FormLabel>
+                                            {renderDateSelector(field)}
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="travelStartDate"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Travel Start Date:</FormLabel>
+                                            {renderDateSelector(field)}
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="relieverSignOnDate"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
+                                            {renderDateSelector(
+                                                field,
+                                                undefined,
+                                                watchedSignOnStatus === "Signed On"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="relieverSignOnPort"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
+                                            <FormControl>
+                                                <SearchablePortCombobox
+                                                    value={field.value as string}
+                                                    onValueChange={field.onChange}
+                                                    placeholder="Search port..."
+                                                    disabled={!isRelieverAssigned}
+                                                    className="col-span-2"
+                                                    data-testid="select-joining-port"
+                                                />
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="deploymentChecklistCompleted"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Deployment Checklist Completed ?</FormLabel>
+                                            <FormControl>
+                                                <RadioGroup
+                                                    onValueChange={(value) => field.onChange(value === 'true')}
                                                     value={field.value ? 'true' : 'false'}
-                                                    className={`flex items-center space-x-4 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
-                                                    data-testid="radio-applicable-docs"
+                                                    className={`col-span-2 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
+                                                    data-testid="radio-deployment-checklist"
                                                     disabled={!isRelieverAssigned}
                                                 >
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="true" id="docs-yes" disabled={!isRelieverAssigned} />
-                                                        <Label htmlFor="docs-yes">Yes</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="false" id="docs-no" disabled={!isRelieverAssigned} />
-                                                        <Label htmlFor="docs-no">No</Label>
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="true" id="deployment-yes" disabled={!isRelieverAssigned} />
+                                                            <Label htmlFor="deployment-yes">Yes</Label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="false" id="deployment-no" disabled={!isRelieverAssigned} />
+                                                            <Label htmlFor="deployment-no">No</Label>
+                                                        </div>
                                                     </div>
                                                 </RadioGroup>
-                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned}>
-                                                    See Checklist
-                                                </Button>
-                                            </div>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="applicableDocsChecked"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Applicable Docs checked:</FormLabel>
+                                            <FormControl>
+                                                <div className="col-span-2 flex items-center gap-4">
+                                                    <RadioGroup
+                                                        onValueChange={(value) => field.onChange(value === 'true')}
+                                                        value={field.value ? 'true' : 'false'}
+                                                        className={`flex items-center space-x-4 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
+                                                        data-testid="radio-applicable-docs"
+                                                        disabled={!isRelieverAssigned}
+                                                    >
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="true" id="docs-yes" disabled={!isRelieverAssigned} />
+                                                            <Label htmlFor="docs-yes">Yes</Label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="false" id="docs-no" disabled={!isRelieverAssigned} />
+                                                            <Label htmlFor="docs-no">No</Label>
+                                                        </div>
+                                                    </RadioGroup>
+                                                    <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned}>
+                                                        See Checklist
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            {isRelieverAssigned && !isUnlinkedReliever && (
+                                <div className="flex items-center gap-2 pt-2 border-t">
+                                    <Checkbox
+                                        id="unassign-reliever-checkbox"
+                                        checked={unassignChecked}
+                                        onCheckedChange={(checked) => setUnassignChecked(checked as boolean)}
+                                        data-testid="checkbox-unassign-reliever"
+                                    />
+                                    <label
+                                        htmlFor="unassign-reliever-checkbox"
+                                        className="text-sm font-medium text-red-600 cursor-pointer"
+                                    >
+                                        Unassign from vessel
+                                    </label>
+                                </div>
                             )}
-                        />
 
-                        {isRelieverAssigned && (
-                            <div className="flex items-center gap-2 pt-2 border-t">
-                                <Checkbox
-                                    id="unassign-reliever-checkbox"
-                                    checked={unassignChecked}
-                                    onCheckedChange={(checked) => setUnassignChecked(checked as boolean)}
-                                    data-testid="checkbox-unassign-reliever"
-                                />
-                                <label
-                                    htmlFor="unassign-reliever-checkbox"
-                                    className="text-sm font-medium text-red-600 cursor-pointer"
+                            {isUnlinkedReliever && canClearUnlinked && (
+                                <div className="space-y-2 border-t pt-3">
+                                    <Label htmlFor="unlinked-clear-reason">Reason for clearing this unlinked reliever</Label>
+                                    <Textarea id="unlinked-clear-reason" value={clearReason}
+                                        onChange={event => setClearReason(event.target.value)}
+                                        maxLength={2000} placeholder="Explain why this planning reliever should be cleared"
+                                        data-testid="unlinked-clear-reason" />
+                                    <Button type="button" variant="destructive"
+                                        disabled={!clearReason.trim() || isClearingUnlinked}
+                                        onClick={() => { setClearUnlinkedSelected(true); setShowUnassignConfirm(true); }}
+                                        data-testid="button-clear-unlinked-reliever">
+                                        Clear unlinked reliever
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button
+                                    type="submit"
+                                    className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                                    disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
+                                    data-testid="button-submit-relief"
                                 >
-                                    Unassign from vessel
-                                </label>
+                                    {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}
+                                </Button>
                             </div>
-                        )}
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
 
-                        <div className="flex justify-end gap-2 pt-4">
-                            <Button 
-                                type="submit"
-                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
-                                data-testid="button-submit-relief"
-                            >
-                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-        
-        <AlertDialog open={showUnassignConfirm} onOpenChange={setShowUnassignConfirm}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Unassign Reliever from Vessel?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This will remove {form.watch('relieverCrewName')} from the planned vessel assignment.
-                        The crew member will be returned to the crew pool and their status will remain "On Leave".
-                        This action cannot be undone.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel data-testid="button-cancel-unassign">Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                        onClick={handleUnassignConfirm}
-                        className="bg-red-600 hover:bg-red-700"
-                        data-testid="button-confirm-unassign"
-                    >
-                        Confirm Unassign
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog open={showUnassignConfirm} onOpenChange={setShowUnassignConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{clearUnlinkedSelected ? "Clear unlinked planning reliever?" : "Unassign Reliever from Vessel?"}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {clearUnlinkedSelected
+                                ? `This will clear ${form.watch('relieverCrewName')} from this planning row and record your reason. No crew assignment will be changed.`
+                                : `This will remove ${form.watch('relieverCrewName')} from the planned vessel assignment. The crew member will be returned to the crew pool and their status will remain "On Leave". This action cannot be undone.`}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="button-cancel-unassign">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleUnassignConfirm}
+                            disabled={isClearingUnlinked || (clearUnlinkedSelected && !clearReason.trim())}
+                            className="bg-red-600 hover:bg-red-700"
+                            data-testid="button-confirm-unassign"
+                        >
+                            Confirm Unassign
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-        <AlertDialog open={showSignOnConflict} onOpenChange={setShowSignOnConflict}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Sign-On Conflict Detected</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This crew member currently has an active sign-on record on vessel <strong>{conflictVesselName}</strong>. 
-                        Please sign off the crew member from the previous vessel before proceeding with this assignment.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogAction 
-                        onClick={() => setShowSignOnConflict(false)}
-                        data-testid="button-close-conflict-alert"
-                    >
-                        OK
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    </>
+            <Dialog open={Boolean(blockerForm)} onOpenChange={value => { if (!value) setBlockerForm(null); }}>
+                <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+                    <DialogHeader><DialogTitle>{blockerForm?.name}</DialogTitle></DialogHeader>
+                    {blockerForm && <RequiredFormDetails subjectRef={blockerForm.subjectRef}
+                        requirementUuid={blockerForm.requirementUuid} onBack={() => setBlockerForm(null)} />}
+                </DialogContent>
+            </Dialog>
+            <Dialog open={open && joiningFormsOpen} onOpenChange={(value) => {
+                if (!value) setJoiningFormsOpen(false);
+            }}>
+                <DialogContent className="w-[1200px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader><DialogTitle>Before-joining Company Forms</DialogTitle></DialogHeader>
+                    {joiningFormsOpen && open && <JoiningCompanyForms
+                        planUuid={planningData?.planUuid || ""}
+                        assignmentUuid={planningData?.relieverAssignUuid || ""}
+                        crewUuid={planningData?.relieverCrewUuid || planningData?.relieverCrewId || ""}
+                        vesselUuid={vesselUuid}
+                    />}
+                    <Button type="button" variant="outline" onClick={() => setJoiningFormsOpen(false)}>Back to reliever</Button>
+                </DialogContent>
+            </Dialog>
+            <AlertDialog open={showSignOnConflict} onOpenChange={setShowSignOnConflict}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Sign-On Conflict Detected</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This crew member currently has an active sign-on record on vessel <strong>{conflictVesselName}</strong>.
+                            Please sign off the crew member from the previous vessel before proceeding with this assignment.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={() => setShowSignOnConflict(false)}
+                            data-testid="button-close-conflict-alert"
+                        >
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 };

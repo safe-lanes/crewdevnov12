@@ -5321,6 +5321,11 @@ import * as path from 'path';
 
 // Get DATABASE_URL with proper priority
 function constructDatabaseUrl(): string | null {
+  if (process.env.NODE_ENV === "test" || process.env.TEST_DATABASE_VERIFIED === "true") {
+    if (process.env.TEST_DATABASE_VERIFIED !== "true" || !process.env.TEST_DATABASE_URL)
+      throw new Error("Automated storage requires verified TEST_DATABASE_URL; no fallback is allowed.");
+    return process.env.TEST_DATABASE_URL;
+  }
   // PRIORITY 1: Use DATABASE_URL if set directly (Replit PostgreSQL)
   if (process.env.DATABASE_URL) {
     console.log("🔗 Using DATABASE_URL from environment (Replit PostgreSQL)");
@@ -5383,6 +5388,7 @@ if (databaseUrlForceDisabled) {
       }
     })();
   } catch (error) {
+    if (process.env.TEST_DATABASE_VERIFIED === "true") throw error;
     isConnected = false;
     connectionError = error as Error;
     console.error("❌ ERROR: Failed to initialize PostgreSQL database:", error);

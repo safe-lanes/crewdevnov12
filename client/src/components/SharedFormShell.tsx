@@ -19,6 +19,7 @@ export interface SharedFormShellProps {
   footer?: React.ReactNode;
   activeSection?: string;
   onActiveSectionChange?: (sectionId: string) => void;
+  hideSectionLetters?: boolean;
   dialogRef?: React.Ref<HTMLDivElement>;
   contentRef?: React.Ref<HTMLElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
@@ -35,6 +36,7 @@ export function SharedFormShell({
   footer,
   activeSection,
   onActiveSectionChange,
+  hideSectionLetters = false,
   dialogRef,
   contentRef,
   onKeyDown,
@@ -90,9 +92,9 @@ export function SharedFormShell({
                         className="flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
                         data-testid={`button-step-mobile-${section.id}`}
                       >
-                        <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${isActive ? "bg-blue-600 text-white" : "bg-gray-600 text-white"}`}>
-                          {sectionLetter}
-                        </span>
+                        {hideSectionLetters
+                          ? <span className={`rounded-full px-3 py-1.5 text-sm ${isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>{section.title}</span>
+                          : <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${isActive ? "bg-blue-600 text-white" : "bg-gray-600 text-white"}`}>{sectionLetter}</span>}
                       </button>
                       {index < sections.length - 1 && <div className="w-8 h-0.5 bg-gray-300 mx-2" />}
                     </div>
@@ -119,10 +121,8 @@ export function SharedFormShell({
                           aria-current={isActive ? "step" : undefined}
                           data-testid={`button-step-${section.id}`}
                         >
-                          <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${isActive ? "bg-blue-600 text-white" : "bg-gray-600 text-white"}`}>
-                            {sectionLetter}
-                          </span>
-                          <span className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1" data-testid={`text-step-title-${section.id}`} title={section.title} style={{ wordBreak: "break-word", lineHeight: "1.2", maxWidth: "8rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {!hideSectionLetters && <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${isActive ? "bg-blue-600 text-white" : "bg-gray-600 text-white"}`}>{sectionLetter}</span>}
+                          <span className={`${hideSectionLetters ? "block" : "hidden xl:block ml-3"} text-left text-sm leading-tight flex-1`} data-testid={`text-step-title-${section.id}`} title={section.title} style={{ wordBreak: "break-word", lineHeight: "1.2", maxWidth: "8rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                             {section.title.replace(/^Part [A-Z]: /, "")}
                           </span>
                         </button>

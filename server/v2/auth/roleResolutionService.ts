@@ -16,6 +16,10 @@ export type ResolvedRole = {
   roleId: string;
   roleName: string;
   masterUserId: number;
+  /** Authenticated master-user userType that was checked against the JWT. */
+  masterUserType: string;
+  /** Access Control role category, used to distinguish Office from Ship. */
+  roleType: string;
 };
 
 export type RoleResolution =
@@ -44,8 +48,8 @@ function rememberResolution(req: Request, resolution: RoleResolution): RoleResol
  * role. The JWT-to-master_users ID mapping is intentionally guarded by a
  * userType assertion, so an incorrect cross-application mapping fails closed.
  */
-export async function resolveRequestRole(req: Request): Promise<RoleResolution> {
-  if (req.resolvedRole) {
+export async function resolveRequestRole(req: Request, executor?: any): Promise<RoleResolution> {
+  if (!executor && req.resolvedRole) {
     return req.resolvedRole;
   }
 
@@ -54,7 +58,7 @@ export async function resolveRequestRole(req: Request): Promise<RoleResolution> 
   }
 
   try {
-    const db = getDb();
+    const db = executor ?? getDb();
     const users = await db
       .select({
         id: masterUsers.id,
@@ -92,6 +96,7 @@ export async function resolveRequestRole(req: Request): Promise<RoleResolution> 
       .select({
         roleId: admRoleMasterAc.ruid,
         roleName: admRoleMasterAc.assignedRole,
+        roleType: admRoleMasterAc.roletype,
       })
       .from(admRoleMasterAc)
       .where(
@@ -121,6 +126,8 @@ export async function resolveRequestRole(req: Request): Promise<RoleResolution> 
         roleId: roles[0].roleId,
         roleName: roles[0].roleName,
         masterUserId: user.id,
+        masterUserType: user.userType!,
+        roleType: roles[0].roleType,
       },
     });
   } catch (error: unknown) {

@@ -10,6 +10,7 @@ export interface VesselPlanningV2 {
   rankId: string;
   rank: string;
   crewUuid: string | null;
+  crewAssignUuid?: string | null;
   crewName?: string;
   crewMemberName?: string | null;
   crewFirstName?: string | null;
@@ -30,6 +31,7 @@ export interface VesselPlanningV2 {
   takeOverConfirmation: boolean;
   handOverDate: string | null;
   relieverCrewUuid: string | null;
+  relieverAssignUuid?: string | null;
   relieverCrewName?: string;
   relieverSignOnDate: string | null;
   joiningPortUuid: string | null;
@@ -81,6 +83,8 @@ export interface CreatePlanningInput {
   rankId: string;
   rank: string;
   crewUuid?: string;
+  /** Exact incumbent reference; the server locks and verifies it before linking a new planning row. */
+  crewAssignUuid?: string;
   crewStatus?: string;
   signOnDate?: string;
   reliefDue?: string;

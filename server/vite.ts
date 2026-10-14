@@ -40,6 +40,10 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // The retired comparison page and sanitizer must not fall through to the SPA.
+  app.use("/scratch/editor-comparison", (_req, res) => {
+    res.status(404).type("text/plain").send("Not found");
+  });
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -75,6 +79,11 @@ export function serveStatic(app: Express) {
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+
+  // The development-only scratch page must not be served by the SPA fallback.
+  app.use("/scratch/editor-comparison", (_req, res) => {
+    res.status(404).type("text/plain").send("Not found");
+  });
 
   app.use(express.static(distPath));
 

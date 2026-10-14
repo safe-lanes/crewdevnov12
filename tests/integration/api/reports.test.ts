@@ -5,7 +5,7 @@ import { crewMembersV2 } from '../../../shared/v2/crew-pool/schema';
 import { vesselPlanningV2 } from '../../../shared/v2/vessel/schema';
 import { masterVessels } from '../../../shared/schema';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = process.env.TEST_API_URL!;
 
 function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);

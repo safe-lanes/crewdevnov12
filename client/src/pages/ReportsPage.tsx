@@ -40,6 +40,8 @@ import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useNationalitiesV2, useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
+import { CompanyFormsOutstandingReport } from "@/components/reports/CompanyFormsOutstandingReport";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface ReportLeaf {
   id: string;
@@ -55,6 +57,12 @@ interface ReportCategory {
 }
 
 const REPORT_TREE: ReportCategory[] = [
+  {
+    id: "company-forms",
+    label: "Company Forms",
+    icon: ClipboardList,
+    children: [{ id: "forms-outstanding", label: "Outstanding forms" }],
+  },
   {
     id: "recruitment",
     label: "Recruitment",
@@ -729,6 +737,9 @@ function buildFiltersPayload(
 
 function ReportsContent(): JSX.Element {
   const { toast } = useToast();
+  const { canView, canCompanyFormAction } = usePermissions();
+  const canLegacyReports = canView("Reports");
+  const canFormsReport = canCompanyFormAction("view");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -834,7 +845,9 @@ function ReportsContent(): JSX.Element {
     }
   }, [filter, selectedReportId]);
 
-  const selected = selectedReportId ? findReport(selectedReportId) : null;
+  const requestedReport = selectedReportId ? findReport(selectedReportId) : null;
+  const selected = requestedReport && (requestedReport.category.id === "company-forms" ? canFormsReport : canLegacyReports)
+    ? requestedReport : null;
   const selectedFilters = selected
     ? REPORT_FILTERS[selected.leaf.id] ?? DEFAULT_FILTERS
     : [];
@@ -1003,6 +1016,7 @@ function ReportsContent(): JSX.Element {
           {/* Tree body */}
           <div className="py-1 max-h-[70vh] overflow-y-auto">
             {REPORT_TREE.map((cat) => {
+              if (cat.id === "company-forms" ? !canFormsReport : !canLegacyReports) return null;
               if (!isVisible(cat.id)) return null;
               const expanded = isExpanded(cat.id);
               const Icon = cat.icon;
@@ -1097,6 +1111,8 @@ function ReportsContent(): JSX.Element {
                 Select a report from the tree on the left to view its filters.
               </div>
             </div>
+          ) : selected.leaf.id === "forms-outstanding" ? (
+            <CompanyFormsOutstandingReport />
           ) : selected.leaf.comingSoon ? (
             <div
               className="flex flex-col items-center text-center justify-center flex-1"

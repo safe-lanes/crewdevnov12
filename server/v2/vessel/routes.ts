@@ -9,6 +9,7 @@ import {
   vesselImportController,
 } from "./controllers";
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
+import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
 
@@ -23,6 +24,8 @@ router.post("/import/generate-workbook",      importUploadMiddleware, tenantCont
 router.post("/import/generate-workbook-from-db",                      tenantContextGuard, vesselImportController.generateWorkbookFromDb);
 router.post("/import/hierarchy",              importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
 router.post("/import/assignments",            importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
+router.post("/import/first-service-backfill", tenantContextGuard,
+  requirePermission("Vessel", "edit"), vesselImportController.rerunFirstService);
 
 // Get all planning records for conflict detection (used by Rotation V2)
 router.get("/planning", vesselPlanningController.getAll);
@@ -46,8 +49,16 @@ router.get("/:vesselUuid/crew-list-export", vesselPlanningController.getCrewList
 router.get("/planning/check-sign-on-conflict/:crewUuid", vesselPlanningController.checkSignOnConflict);
 
 router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
+router.get("/planning/:planUuid/unlinked-reliever-clear-audit",
+  requirePermission("Vessel", "delete"), vesselPlanningController.getUnlinkedRelieverClearAudit);
+router.post("/planning/:planUuid/clear-unlinked-reliever",
+  requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
+router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
+router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
+router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);
 router.patch("/planning/:planUuid", vesselPlanningController.update);
+router.post("/planning/:planUuid/defer-relief", requirePermission("Vessel", "edit"), vesselPlanningController.deferRelief);
 router.post("/planning/:planUuid/archive", vesselPlanningController.archive);
 router.get("/planning/attachments/:attUuid/raw", vesselPlanningController.serveAttachment);
 router.get("/planning/:planUuid/attachments", vesselPlanningController.getAttachments);

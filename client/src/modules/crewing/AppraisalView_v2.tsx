@@ -277,7 +277,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
     enabled: !!formVersionId,
   });
 
-  const { data: latestFormConfig } = useQuery<LatestFormConfigResponse>({
+  const { data: latestFormConfig, error: latestFormError } = useQuery<LatestFormConfigResponse>({
     queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(rank || "")}?category=appraisal`],
     enabled: !!rank && !formVersionId && existingAppraisal !== undefined,
   });
@@ -476,6 +476,11 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             </Button>
           </div>
         </div>
+        {!formVersionId && latestFormError?.message.startsWith("404:") && (
+          <div role="alert" className="px-6 py-3 bg-amber-50 text-amber-900 text-sm">
+            No appraisal form configured for rank "{rank}". Ask an administrator to assign this rank to an active appraisal rank group.
+          </div>
+        )}
 
         <div className="px-10 pt-8 pb-10">
         {isLoading ? (

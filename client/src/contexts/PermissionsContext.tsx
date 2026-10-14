@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString, safeExtractFields } from '@/lib/encryptionService';
 import type { ExtractedUserProfile } from '@/lib/encryptionService';
 import { adminApiV2 } from '@/modules/admin/api/adminApiV2';
+import { hasCompanyFormPermission, type CompanyFormPermission } from "@shared/v2/admin/companyFormPermissions";
 
 interface MenuPermission {
   menuName: string;
@@ -30,11 +31,13 @@ interface PermissionsContextType {
   userType: string | null;
   manningAgent: string | null;
   isLoading: boolean;
+  accessControlManagement: boolean;
   canView: (menuName: string) => boolean;
   canCreate: (menuName: string) => boolean;
   canEdit: (menuName: string) => boolean;
   canDelete: (menuName: string) => boolean;
   canViewRoute: (route: string) => boolean;
+  canCompanyFormAction: (action: CompanyFormPermission) => boolean;
   getVesselIds: () => string[];
 }
 
@@ -96,12 +99,17 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     // They are deliberately not included in the API request.
     queryKey: ['/api/v2/admin/access-control/my-permissions', roleId, roleName],
     queryFn: () => adminApiV2.getMyPermissions(),
-    enabled: !!(roleId || roleName),
+    // Navigation permissions are server-derived; do not suppress the request
+    // based on browser-side name/profile fields.
+    enabled: true,
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
 
   const permissions: MenuPermission[] = data?.permissions || [];
+  const accessControlManagement = data?.accessControlManagement === true;
+  const canCompanyFormAction = useCallback((action: CompanyFormPermission) =>
+    hasCompanyFormPermission(data?.companyFormGrants, data?.roleCategory, action), [data]);
 
   const permMap = useMemo(() => {
     const map = new Map<string, MenuPermission>();
@@ -120,11 +128,14 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
 
   const canView = useCallback((menuName: string) => {
     if (!menuName) return true;
+    if (menuName.trim().toLowerCase() === 'access control') return accessControlManagement;
     warnUnknownMenu(menuName, 'canView');
     const perm = permMap.get(menuName.toLowerCase());
+    if (menuName.trim().toLowerCase() === 'admin' && !perm) return accessControlManagement;
+    if (menuName.trim().toLowerCase() === 'admin' && accessControlManagement) return true;
     if (!perm) return true;
     return perm.canview;
-  }, [permMap, warnUnknownMenu]);
+  }, [accessControlManagement, permMap, warnUnknownMenu]);
 
   const canCreate = useCallback((menuName: string) => {
     if (!menuName) return true;
@@ -176,13 +187,15 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     userType,
     manningAgent,
     isLoading,
+    accessControlManagement,
     canView,
     canCreate,
     canEdit,
     canDelete,
     canViewRoute,
+    canCompanyFormAction,
     getVesselIds,
-  }), [permissions, myVessels, roleName, roleId, userId, userType, manningAgent, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
+  }), [permissions, myVessels, roleName, roleId, userId, userType, manningAgent, isLoading, accessControlManagement, canView, canCreate, canEdit, canDelete, canViewRoute, canCompanyFormAction, getVesselIds]);
 
   return (
     <PermissionsContext.Provider value={value}>

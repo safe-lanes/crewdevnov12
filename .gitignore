@@ -10,6 +10,7 @@ prompt/
 
 # Database backups
 backups/
+/generated-artifacts/
 
 # Test output directories
 test-results/

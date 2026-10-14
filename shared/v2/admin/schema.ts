@@ -1,4 +1,6 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { foreignKey, pgTable, serial, text, boolean, timestamp, integer, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { frmSubjectStages, frmSubjectTypes } from "../forms-engine/subjectRegistry";
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
@@ -13,7 +15,13 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   id: serial("id").primaryKey(),
   formUuid: text("form_uuid").notNull().unique(),
   name: text("name").notNull(),
-  category: text("category").notNull().default("appraisal"),
+  description: text("description"),
+  archivedAt: timestamp("archived_at"),
+  category: text("category").notNull(),
+  subjectType: text("subject_type").references(() => frmSubjectTypes.subjectType, {
+    onDelete: "restrict",
+    onUpdate: "restrict",
+  }),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
@@ -21,20 +29,76 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   sharedConfig: text("shared_config"),
   isLockForm: boolean("is_lock_form").notNull().default(true),
   ...auditColumns,
-});
+}, (table) => ({
+  activeDynamicNameUnique: uniqueIndex("uq_adm_forms_v2_active_dynamic_name")
+    .on(sql`lower(trim(${table.name}))`)
+    .where(sql`${table.category} = 'dynamic' AND ${table.archivedAt} IS NULL`),
+  formIdSubjectTypeUnique: uniqueIndex("uq_adm_forms_v2_id_subject_type")
+    .on(table.id, table.subjectType),
+  formUuidSubjectTypeUnique: uniqueIndex("uq_adm_forms_v2_form_uuid_subject_type")
+    .on(table.formUuid, table.subjectType),
+}));
 
 export const admFormVersionsV2 = pgTable("adm_form_versions_v2", {
   id: serial("id").primaryKey(),
   fvUuid: text("fv_uuid").notNull().unique(),
-  formId: integer("form_id").notNull(),
+  formId: integer("form_id").notNull().references(() => admFormsV2.id, {
+    onDelete: "restrict",
+    onUpdate: "restrict",
+  }),
   rankGroupId: integer("rank_group_id"),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
   status: text("status").notNull().default("draft"),
+  stageKey: text("stage_key"),
+  stageSubjectType: text("stage_subject_type"),
   configuration: text("configuration"),
   sharedConfig: text("shared_config"),
   releasedAt: timestamp("released_at"),
   ...auditColumns,
+}, (table) => ({
+  stageMembershipFk: foreignKey({
+    name: "fk_adm_form_versions_v2_stage",
+    columns: [table.stageSubjectType, table.stageKey],
+    foreignColumns: [frmSubjectStages.subjectType, frmSubjectStages.stageKey],
+  }).onDelete("restrict").onUpdate("restrict"),
+  formSubjectFk: foreignKey({
+    name: "fk_adm_form_versions_v2_form_subject",
+    columns: [table.formId, table.stageSubjectType],
+    foreignColumns: [admFormsV2.id, admFormsV2.subjectType],
+  }).onDelete("restrict").onUpdate("restrict"),
+}));
+
+export const frmVersionApplicability = pgTable("frm_version_applicability", {
+  versionUuid: text("version_uuid").primaryKey().references(() => admFormVersionsV2.fvUuid, { onDelete: "cascade" }),
+  mode: text("mode").notNull().default("manual_only"),
+  obligation: text("obligation"),
+  effectiveKind: text("effective_kind"),
+  specificDate: date("specific_date"),
+  effectiveFrom: date("effective_from"),
+  copiedFromVersionUuid: text("copied_from_version_uuid"),
+});
+export const frmApplicabilitySets = pgTable("frm_applicability_sets", {
+  setUuid: text("set_uuid").primaryKey(),
+  versionUuid: text("version_uuid").notNull().references(() => frmVersionApplicability.versionUuid, { onDelete: "cascade" }),
+});
+export const frmApplicabilityConditions = pgTable("frm_applicability_conditions", {
+  conditionUuid: text("condition_uuid").primaryKey(),
+  setUuid: text("set_uuid").notNull().references(() => frmApplicabilitySets.setUuid, { onDelete: "cascade" }),
+  dimensionKey: text("dimension_key").notNull(),
+  operator: text("operator").notNull(),
+  value: jsonb("value").notNull().$type<string[] | boolean>(),
+});
+export const frmVersionReleaseChanges = pgTable("frm_version_release_changes", {
+  versionUuid: text("version_uuid").primaryKey().references(() => admFormVersionsV2.fvUuid, { onDelete: "cascade" }),
+  previousVersionUuid: text("previous_version_uuid"),
+  contentChanged: boolean("content_changed").notNull(),
+  applicabilityChanged: boolean("applicability_changed").notNull(),
+  details: jsonb("details").notNull().$type<string[]>(),
+  contentSnapshot: jsonb("content_snapshot").notNull(),
+  policySnapshot: jsonb("policy_snapshot").notNull(),
+  releasedBy: text("released_by"),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
 });
 
 export const admRankGroupsV2 = pgTable("adm_rank_groups_v2", {
@@ -206,6 +270,7 @@ export const admRoleMasterAc = pgTable("adm_rolemaster_ac", {
   ruid: text("ruid").notNull().unique(),
   assignedRole: text("assigned_role").notNull(),
   roletype: text("roletype").notNull(),
+  parentOwned: boolean("parent_owned").notNull().default(false),
   orderby: integer("orderby"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").default(0),

@@ -1,160 +1,62 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
+import { sql } from "drizzle-orm";
+import { z } from "zod";
+import { getDb } from "../../db";
 import { accessControlService } from "../services";
 import { resolveRequestRole } from "../../auth/roleResolutionService";
+import { accessControlAuthority, saveActionDecisions } from "../services/accessControlManagement";
+import { writeCatalogue, writeMenuGrants } from "../services/accessControlWrites";
 
+export function accessControlHandler(fn: (req: Request) => Promise<unknown>) {
+  return async (req: Request, res: Response) => {
+    try { res.json(await fn(req)); }
+    catch (error: any) {
+      console.error("[AccessControl]", error);
+      res.status(error.status ?? 500).json({ message: error.status ? error.message : "Access Control operation failed." });
+    }
+  };
+}
 export const accessControlController = {
-  async getAllMenus(req: Request, res: Response) {
-    try {
-      const records = await accessControlService.getAllMenus();
-      res.json(records);
-    } catch (error: any) {
-      console.error("Error fetching menus:", error);
-      res.status(500).json({ error: "Failed to fetch menus" });
-    }
-  },
-
-  async createMenu(req: Request, res: Response) {
-    try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await accessControlService.createMenu({ ...req.body, auditUserUuid });
-      res.json(record);
-    } catch (error: any) {
-      console.error("Error creating menu:", error);
-      res.status(500).json({ error: "Failed to create menu" });
-    }
-  },
-
-  async updateMenu(req: Request, res: Response) {
-    try {
-      const { muid } = req.params;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await accessControlService.updateMenuByUuid(muid, { ...req.body, auditUserUuid });
-      res.json(record);
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error updating menu:", error);
-      res.status(500).json({ error: "Failed to update menu" });
-    }
-  },
-
-  async deleteMenu(req: Request, res: Response) {
-    try {
-      const { muid } = req.params;
-      const deleted = await accessControlService.deleteMenuByUuid(muid);
-      res.json({ success: deleted });
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error deleting menu:", error);
-      res.status(500).json({ error: "Failed to delete menu" });
-    }
-  },
-
-  async getAllRoles(req: Request, res: Response) {
-    try {
-      const includeInactive = req.query.includeInactive === "true";
-      const records = await accessControlService.getAllRoles(includeInactive);
-      res.json(records);
-    } catch (error: any) {
-      console.error("Error fetching roles:", error);
-      res.status(500).json({ error: "Failed to fetch roles" });
-    }
-  },
-
-  async createRole(req: Request, res: Response) {
-    try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await accessControlService.createRole({ ...req.body, auditUserUuid });
-      res.json(record);
-    } catch (error: any) {
-      console.error("Error creating role:", error);
-      res.status(500).json({ error: "Failed to create role" });
-    }
-  },
-
-  async updateRole(req: Request, res: Response) {
-    try {
-      const { ruid } = req.params;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await accessControlService.updateRoleByUuid(ruid, { ...req.body, auditUserUuid });
-      res.json(record);
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error updating role:", error);
-      res.status(500).json({ error: "Failed to update role" });
-    }
-  },
-
-  async deleteRole(req: Request, res: Response) {
-    try {
-      const { ruid } = req.params;
-      const deleted = await accessControlService.deleteRoleByUuid(ruid);
-      res.json({ success: deleted });
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error deleting role:", error);
-      res.status(500).json({ error: "Failed to delete role" });
-    }
-  },
-
+  getAllMenus: accessControlHandler(() => accessControlService.getAllMenus()),
+  createMenu: accessControlHandler(req => writeCatalogue(req, "menu", "create")),
+  updateMenu: accessControlHandler(req => writeCatalogue(req, "menu", "update", req.params.muid)),
+  deleteMenu: accessControlHandler(async req => ({ success: await writeCatalogue(req, "menu", "delete", req.params.muid) })),
+  getAllRoles: accessControlHandler(req => accessControlService.getAllRoles(req.query.includeInactive === "true")),
+  createRole: accessControlHandler(req => writeCatalogue(req, "role", "create")),
+  updateRole: accessControlHandler(req => writeCatalogue(req, "role", "update", req.params.ruid)),
+  deleteRole: accessControlHandler(async req => ({ success: await writeCatalogue(req, "role", "delete", req.params.ruid) })),
   async getMyPermissions(req: Request, res: Response) {
     try {
-      const roleResolution = await resolveRequestRole(req);
-      if (!roleResolution.ok) {
-        console.error("Unable to resolve permissions for authenticated user:", {
-          reason: roleResolution.reason,
-        });
-        return res.status(403).json({
-          error: "forbidden",
-          message: "Unable to resolve permissions for this user.",
-        });
-      }
-
-      const result = await accessControlService.getMyPermissions(
-        roleResolution.role.roleId,
-        roleResolution.role.roleName,
-      );
-      res.json(result);
-    } catch (error: any) {
-      console.error("Error fetching my permissions:", error);
+      const resolution = await resolveRequestRole(req);
+      if (!resolution.ok) return res.status(403).json({ error: "forbidden", message: "Unable to resolve permissions for this user." });
+      const result = await accessControlService.getMyPermissions(resolution.role.roleId, resolution.role.roleName, resolution.role.roleType);
+      res.json({ ...result, accessControlManagement: (await accessControlAuthority(req)).allowed });
+    } catch (error) {
+      console.error("[AccessControl] permissions lookup failed", error);
       res.status(500).json({ error: "Failed to fetch permissions" });
     }
   },
-
-  async getPermissions(req: Request, res: Response) {
-    try {
-      const { ruid } = req.params;
-      const records = await accessControlService.getPermissionsByRoleUuid(ruid);
-      res.json(records);
-    } catch (error: any) {
-      console.error("Error fetching permissions:", error);
-      res.status(500).json({ error: "Failed to fetch permissions" });
-    }
-  },
-
-  async savePermissions(req: Request, res: Response) {
-    try {
-      const { ruid } = req.params;
-      const { permissions } = req.body;
-      if (!Array.isArray(permissions)) {
-        return res.status(400).json({ error: "permissions must be an array" });
-      }
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const records = await accessControlService.savePermissions(ruid, permissions, auditUserUuid);
-      res.json(records);
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error saving permissions:", error);
-      res.status(500).json({ error: "Failed to save permissions" });
-    }
-  },
+  getPermissions: accessControlHandler(req => accessControlService.getPermissionsByRoleUuid(req.params.ruid)),
+  savePermissions: accessControlHandler(req => writeMenuGrants(req, req.params.ruid)),
+  state: accessControlHandler(req => accessControlAuthority(req)),
+  getManagement: accessControlHandler(async req => {
+    const row = (await getDb().execute(sql`SELECT allowed FROM adm_resource_action_grants
+      WHERE role_id=${req.params.ruid} AND resource='access_control' AND action='manage'`)).rows[0];
+    return { allowed: row?.allowed === true };
+  }),
+  saveManagement: accessControlHandler(async req => {
+    const parsed = z.object({ allowed: z.boolean() }).strict().safeParse(req.body);
+    if (!parsed.success) throw Object.assign(new Error("Supply only the allowed management flag."), { status: 400 });
+    return saveActionDecisions(req, req.params.ruid, "access_control", { manage: parsed.data.allowed })
+      .then(d => ({ allowed: d.manage }));
+  }),
+  audit: accessControlHandler(async req => {
+    const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
+    const condition = filter === "management" ? sql`resource='access_control' AND action='manage'` :
+      filter === "void_completed" ? sql`resource='company_forms' AND action='void_completed'` :
+      filter === "parent_sync" ? sql`event LIKE 'parent_sync%'` : sql`true`;
+    const role = typeof req.query.roleId === "string" ? sql`AND role_id=${req.query.roleId}` : sql``;
+    return (await getDb().execute(sql`SELECT * FROM adm_access_control_audit WHERE ${condition} ${role}
+      ORDER BY id DESC LIMIT 500`)).rows;
+  }),
 };

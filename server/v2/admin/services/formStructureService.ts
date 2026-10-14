@@ -95,6 +95,8 @@ function treeResponse(
       comment_box_required: section.commentBoxRequired,
       signature_officer_required: section.signatureOfficerRequired,
       signature_seafarer_required: section.signatureSeafarerRequired,
+      signature_vessel_management_required: section.signatureVesselManagementRequired,
+      vessel_signature_role_uuids: section.vesselSignatureRoleUuids,
       default_option_set_uuid: section.defaultOptionSetUuid,
       layout_preference: section.layoutPreference,
       effectiveLayout: resolveEffectiveLayout(
@@ -107,7 +109,8 @@ function treeResponse(
       sort_order: section.sortOrder,
       questions: (questionsBySection.get(section.sectionUuid) ?? []).map((question) => ({
         ...(() => {
-          const optionSet = setsByUuid.get(question.optionSetUuid ?? section.defaultOptionSetUuid);
+          const optionSet = question.responseType === "system_field"
+            ? undefined : setsByUuid.get(question.optionSetUuid ?? section.defaultOptionSetUuid);
           return {
             low_end_label: optionSet?.lowEndLabel ?? null,
             high_end_label: optionSet?.highEndLabel ?? null,
@@ -116,12 +119,15 @@ function treeResponse(
         question_uuid: question.questionUuid,
         question_code: question.questionCode,
         question_text: question.questionText,
+        content_html: question.contentHtml,
+        system_field_key: question.systemFieldKey,
         response_type: question.responseType,
         is_mandatory: question.isMandatory,
         comment_enabled: question.commentEnabled,
         option_set_uuid: question.optionSetUuid,
         sort_order: question.sortOrder,
-        options: mapOptions(question.optionSetUuid ?? section.defaultOptionSetUuid),
+        options: question.responseType === "system_field"
+          ? [] : mapOptions(question.optionSetUuid ?? section.defaultOptionSetUuid),
       })),
     })),
   };
@@ -315,6 +321,15 @@ function validateReplacement(input: FormStructureInput, fvUuid: string) {
 }
 
 function mapReplacementError(error: any): never {
+  if (error?.message === "Content points are available only on Company Forms") {
+    throw new FormStructureServiceError(error.message, 400);
+  }
+  if (error?.message === "Content point body is required after sanitization") {
+    throw new FormStructureServiceError(error.message, 400);
+  }
+  if (error?.message?.includes("is archived and is read-only")) {
+    throw new FormStructureServiceError(error.message, 409);
+  }
   if (error?.message?.includes("only draft versions are editable")) {
     throw new FormStructureServiceError(error.message, 409);
   }
