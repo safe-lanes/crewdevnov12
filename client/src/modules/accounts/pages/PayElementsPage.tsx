@@ -481,7 +481,7 @@ export default function PayElementsPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3">
+      <div className="mb-3 flex flex-wrap items-end gap-3">
         <FilterSelect
           label="Type"
           value={typeFilter}

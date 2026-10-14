@@ -479,7 +479,7 @@ export default function SettlementsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
             <Label htmlFor="select-filter-vessel" className="text-xs text-gray-600">
               Vessel
