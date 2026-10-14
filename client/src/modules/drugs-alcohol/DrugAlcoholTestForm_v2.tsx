@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { DaDateInput } from './DaDateInput';
 import { DaExternalResultsDateTimeInput } from './DaExternalResultsDateTimeInput';
+import { DaDateTimeHint } from './DaDateTimeHint';
 import {
   FormattedDateInput,
   parseManualDate,
@@ -1252,6 +1253,7 @@ export function DrugAlcoholTestForm_v2({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
+                              <DaDateTimeHint value={field.value}>
                               <FormControl>
                                 <FormattedDateInput
                                   mode="datetime"
@@ -1264,6 +1266,7 @@ export function DrugAlcoholTestForm_v2({
                                   data-testid="input-dateTimeTestCompleted"
                                 />
                               </FormControl>
+                              </DaDateTimeHint>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1323,6 +1326,7 @@ export function DrugAlcoholTestForm_v2({
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Incident Date & Time</FormLabel>
+                                <DaDateTimeHint value={field.value}>
                                 <FormControl>
                                   <FormattedDateInput
                                     mode="datetime"
@@ -1335,6 +1339,7 @@ export function DrugAlcoholTestForm_v2({
                                     data-testid="input-incidentDateTime"
                                   />
                                 </FormControl>
+                                </DaDateTimeHint>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1346,6 +1351,7 @@ export function DrugAlcoholTestForm_v2({
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol Test - Date & Time Completed</FormLabel>
+                                <DaDateTimeHint value={field.value}>
                                 <FormControl>
                                   <FormattedDateInput
                                     mode="datetime"
@@ -1359,6 +1365,7 @@ export function DrugAlcoholTestForm_v2({
                                     data-testid="input-alcoholTestDateTime"
                                   />
                                 </FormControl>
+                                </DaDateTimeHint>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1370,6 +1377,7 @@ export function DrugAlcoholTestForm_v2({
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Drug Test - Date & Time Completed</FormLabel>
+                                <DaDateTimeHint value={field.value}>
                                 <FormControl>
                                   <FormattedDateInput
                                     mode="datetime"
@@ -1383,6 +1391,7 @@ export function DrugAlcoholTestForm_v2({
                                     data-testid="input-drugTestDateTime"
                                   />
                                 </FormControl>
+                                </DaDateTimeHint>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1451,6 +1460,7 @@ export function DrugAlcoholTestForm_v2({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date External Test Results received</FormLabel>
+                              <DaDateTimeHint value={field.value}>
                               <FormControl>
                                 <DaExternalResultsDateTimeInput
                                   {...field}
@@ -1463,6 +1473,7 @@ export function DrugAlcoholTestForm_v2({
                                   data-testid="input-externalTestResultsDate"
                                 />
                               </FormControl>
+                              </DaDateTimeHint>
                               <FormMessage />
                             </FormItem>
                           )}
