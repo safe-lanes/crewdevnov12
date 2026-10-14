@@ -649,6 +649,7 @@ function FilterControl({
         <PeriodFilter
           value={current}
           onChange={(v) => onChange(v)}
+          className={reportId === "rh-violations" ? "min-w-max" : undefined}
           rangeMode={filter.kind === "periodMonth" ? "month" : "date"}
           useSharedMonthSelector={reportId === "rh-compliance-summary" && filter.kind === "periodMonth"}
           placeholder={filter.kind === "periodMonth" ? "MMM-YYYY or MM-YYYY" : "DD-MMM-YYYY or DD-MM-YYYY"}
