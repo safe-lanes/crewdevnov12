@@ -51,17 +51,17 @@ const ACTION_LABELS: Record<string, string> = { create: "New entry", update: "Up
 
 /** Requirement 1, crew-facing visibility: what happened to entries this crew member submitted, including why one was turned back. */
 function RecentSubmissions({ submissions }: { submissions?: any[] }) {
-  const notable = (submissions || []).filter((s) => s.status !== "approved" || s.action !== "update");
+  const notable = submissions || [];
   if (!notable.length) return null;
   return <View style={styles.card}>
     <Text style={styles.cardTitle}>Recent submissions</Text>
     {notable.slice(0, 8).map((item) => {
-      const color = item.status === "rejected" ? palette.red : item.status === "pending" ? palette.amber : palette.teal;
-      const label = item.status === "rejected" ? "Not approved" : item.status === "pending" ? "Awaiting review" : "Published";
+      const color = item.status === "REJECTED" || item.status === "NEEDS_OFFICE_REVIEW" ? palette.red : item.status === "COMPLETED" ? palette.teal : palette.amber;
+      const label = item.status === "REJECTED" ? "Not approved" : item.status === "UNDER_REVIEW" ? "Awaiting review" : item.status === "NEEDS_OFFICE_REVIEW" ? "Needs office review" : item.status === "COMPLETED" ? "Published" : "Publishing";
       return <View key={item.pendingUuid} style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 10 }}>
         <Text style={styles.cardMeta}>{ACTION_LABELS[item.action] || item.action} · {SECTION_LABELS[item.section] || item.section}</Text>
         <Text style={{ color, fontWeight: "800", marginTop: 2 }}>{label}</Text>
-        {item.status === "rejected" && item.rejectionReason ? <Text style={styles.cardMeta}>{item.rejectionReason}</Text> : null}
+        {item.status === "REJECTED" && item.rejectionReason ? <Text style={styles.cardMeta}>{item.rejectionReason}</Text> : null}
       </View>;
     })}
   </View>;

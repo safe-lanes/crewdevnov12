@@ -17,12 +17,12 @@ export default function SubmissionsSyncScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Recent submissions</Text>
         {!submissions.length ? <Text style={styles.cardMeta}>No submissions yet.</Text> : submissions.slice(0, 20).map((item) => {
-          const color = item.status === "rejected" ? palette.red : item.status === "pending" ? palette.amber : palette.teal;
-          const label = item.status === "rejected" ? "Not approved" : item.status === "pending" ? "Awaiting review" : "Published";
+          const color = item.status === "REJECTED" || item.status === "NEEDS_OFFICE_REVIEW" ? palette.red : item.status === "COMPLETED" ? palette.teal : palette.amber;
+          const label = item.status === "REJECTED" ? "Not approved" : item.status === "UNDER_REVIEW" ? "Awaiting review" : item.status === "NEEDS_OFFICE_REVIEW" ? "Needs office review" : item.status === "COMPLETED" ? "Published" : "Publishing";
           return <View key={item.pendingUuid} style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 10 }}>
             <Text style={styles.cardMeta}>{ACTIONS[item.action] || item.action} · {SECTIONS[item.section] || item.section}</Text>
             <Text style={{ color, fontWeight: "800", marginTop: 2 }}>{label}</Text>
-            {item.status === "rejected" && item.rejectionReason ? <Text style={styles.cardMeta}>{item.rejectionReason}</Text> : null}
+            {item.status === "REJECTED" && item.rejectionReason ? <Text style={styles.cardMeta}>{item.rejectionReason}</Text> : null}
           </View>;
         })}
       </View>

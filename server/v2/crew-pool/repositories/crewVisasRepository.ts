@@ -78,12 +78,19 @@ export class CrewVisasRepository {
   }
 
   async create(data: Omit<InsertCrewVisa, "visaUuid">): Promise<CrewVisa> {
+    return this.createWithUuid(uuidv4(), data);
+  }
+
+  async createWithUuid(
+    visaUuid: string,
+    data: Omit<InsertCrewVisa, "visaUuid">
+  ): Promise<CrewVisa> {
     const db = getDb();
     const results = await db
       .insert(crewVisas)
       .values({
         ...data,
-        visaUuid: uuidv4(),
+        visaUuid,
       })
       .returning();
     return results[0];
@@ -160,12 +167,19 @@ export class CrewVisasRepository {
   async addAttachment(
     data: Omit<InsertCrewVisaAttachment, "attUuid">
   ): Promise<CrewVisaAttachment> {
+    return this.addAttachmentWithUuid(uuidv4(), data);
+  }
+
+  async addAttachmentWithUuid(
+    attUuid: string,
+    data: Omit<InsertCrewVisaAttachment, "attUuid">
+  ): Promise<CrewVisaAttachment> {
     const db = getDb();
     const results = await db
       .insert(crewVisasAttachments)
       .values({
         ...data,
-        attUuid: uuidv4(),
+        attUuid,
       })
       .returning();
     return results[0];

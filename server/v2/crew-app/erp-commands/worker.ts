@@ -44,7 +44,7 @@ async function reconcile(command: ErpCommandRow, pending: PendingRow, payload: R
     incrementErpMetric("erp_command_applied_total", { commandType: command.commandType, result: "APPLIED", reasonCode: "AUTHORITATIVE_STATE_MATCHED" });
     emitCrewSecurityEvent({ event: command.errorCode ? "command_reconciled" : "command_applied", correlationId: command.operationUuid, tenantId: command.domain, resourceType: "erp_command", result: "success", reasonCode: "AUTHORITATIVE_STATE_MATCHED", commandType: command.commandType, attemptCount: command.attemptCount });
     return erpCommandRepository.transition(command, "applied", {
-      authoritativeRecordUuid: pending.targetUuid ?? pending.crewUuid,
+      authoritativeRecordUuid: command.commandType === "CREATE_VISAS" ? pending.operationUuid : (pending.targetUuid ?? pending.crewUuid),
       authoritativeResultHash: canonicalHash(handler.canonicalizeAuthoritativeState(authoritative, payload)),
       reconciledAt: new Date(), errorCode: null, lastErrorSummary: null,
     });

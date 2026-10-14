@@ -72,6 +72,14 @@ export const crewVisasService = {
     crewUuid: string,
     data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string | null; auditUserUuid?: string | null }
   ): Promise<CrewVisa> {
+    return this.createWithUuid(uuidv4(), crewUuid, data);
+  },
+
+  async createWithUuid(
+    visaUuid: string,
+    crewUuid: string,
+    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string | null; auditUserUuid?: string | null }
+  ): Promise<CrewVisa> {
     await crewMembersService.getByUuid(crewUuid);
 
     if (!data.visaType) {
@@ -87,7 +95,7 @@ export const crewVisasService = {
     }
 
     const dataWithAudit = applyAuditUser(cleanData, true);
-    return crewVisasRepository.create({ ...dataWithAudit, crewUuid });
+    return crewVisasRepository.createWithUuid(visaUuid, { ...dataWithAudit, crewUuid });
   },
 
   async update(
@@ -128,13 +136,21 @@ export const crewVisasService = {
     visaUuid: string,
     file: Omit<InsertCrewVisaAttachment, "attUuid" | "visaUuid">
   ): Promise<CrewVisaAttachment> {
+    return this.addAttachmentWithUuid(uuidv4(), visaUuid, file);
+  },
+
+  async addAttachmentWithUuid(
+    attUuid: string,
+    visaUuid: string,
+    file: Omit<InsertCrewVisaAttachment, "attUuid" | "visaUuid">
+  ): Promise<CrewVisaAttachment> {
     await this.getByUuid(visaUuid);
 
     if (!file.fileName || !file.filePath) {
       throw new Error("File name and path are required");
     }
 
-    return crewVisasRepository.addAttachment({ ...file, visaUuid });
+    return crewVisasRepository.addAttachmentWithUuid(attUuid, { ...file, visaUuid });
   },
 
   async removeAttachment(attUuid: string): Promise<void> {

@@ -143,7 +143,7 @@ export interface CollectionAdapter {
   primaryKey: string;
   list: (crewUuid: string) => Promise<any[]>;
   get: (recordUuid: string, crewUuid: string) => Promise<any>;
-  create: (crewUuid: string, data: any) => Promise<any>;
+  create: (crewUuid: string, data: any, recordUuid?: string) => Promise<any>;
   update: (recordUuid: string, data: any) => Promise<any>;
   remove: (recordUuid: string) => Promise<any>;
 }
@@ -173,7 +173,9 @@ export const collections: Record<CollectionName, CollectionAdapter> = {
     primaryKey: "visaUuid",
     list: crewUuid => crewVisasService.getAll(crewUuid),
     get: recordUuid => crewVisasService.getByUuid(recordUuid),
-    create: (crewUuid, data) => crewVisasService.create(crewUuid, data),
+    create: (crewUuid, data, recordUuid) => recordUuid
+      ? crewVisasService.createWithUuid(recordUuid, crewUuid, data)
+      : crewVisasService.create(crewUuid, data),
     update: (recordUuid, data) => crewVisasService.update(recordUuid, data),
     remove: recordUuid => crewVisasService.delete(recordUuid),
   },
@@ -216,11 +218,13 @@ export const collections: Record<CollectionName, CollectionAdapter> = {
 // an already-canonical parent) and the office-review apply step (linking a
 // pending create's staged_attachments once the canonical record exists).
 export const attachmentAdapters: Partial<Record<CollectionName, {
-  add: (parentUuid: string, file: any) => Promise<any>;
+  add: (parentUuid: string, file: any, attachmentUuid?: string) => Promise<any>;
   remove: (attUuid: string) => Promise<void>;
 }>> = {
   documents: { add: crewDocumentsService.addAttachment.bind(crewDocumentsService), remove: crewDocumentsService.removeAttachment.bind(crewDocumentsService) },
-  visas: { add: crewVisasService.addAttachment.bind(crewVisasService), remove: crewVisasService.removeAttachment.bind(crewVisasService) },
+  visas: { add: (parentUuid, file, attachmentUuid) => attachmentUuid
+    ? crewVisasService.addAttachmentWithUuid(attachmentUuid, parentUuid, file)
+    : crewVisasService.addAttachment(parentUuid, file), remove: crewVisasService.removeAttachment.bind(crewVisasService) },
   education: { add: crewEducationService.addAttachment.bind(crewEducationService), remove: crewEducationService.removeAttachment.bind(crewEducationService) },
   licenses: { add: crewCertificatesService.addLicenseAttachment.bind(crewCertificatesService), remove: crewCertificatesService.removeLicenseAttachment.bind(crewCertificatesService) },
   training: { add: crewCertificatesService.addTrainingAttachment.bind(crewCertificatesService), remove: crewCertificatesService.removeTrainingAttachment.bind(crewCertificatesService) },
@@ -244,6 +248,10 @@ const listAttachments: Partial<Record<CollectionName, (recordUuid: string) => Pr
   training: recordUuid => trainingRepository.findAttachmentsByTrainUuid(recordUuid),
   "sea-service": recordUuid => crewSeaServiceService.getAttachments(recordUuid),
 };
+
+export async function listCollectionAttachments(name: CollectionName, recordUuid: string): Promise<any[]> {
+  return listAttachments[name]?.(recordUuid) ?? [];
+}
 
 /** Deletes a collection record and its stored attachment files — same cleanup collectionHandler's DELETE branch used to do inline. */
 export async function removeRecordAndAttachments(name: CollectionName, recordUuid: string): Promise<void> {

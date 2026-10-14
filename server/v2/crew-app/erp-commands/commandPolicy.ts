@@ -28,6 +28,7 @@ export interface CommandPolicy {
 const safeUpdateTypes = new Set<ErpCommandType>([
   "UPDATE_CREW_PARTICULARS", "UPDATE_CHILDREN", "UPDATE_DOCUMENTS", "UPDATE_VISAS",
   "UPDATE_EDUCATION", "UPDATE_LICENSES", "UPDATE_TRAINING", "UPDATE_SEA_SERVICE",
+  "CREATE_VISAS",
 ]);
 
 export function deriveCommandType(section: string, action: string): ErpCommandType {

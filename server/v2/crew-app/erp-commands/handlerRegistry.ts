@@ -1,4 +1,4 @@
-import { collections, collectionSchemas, getCurrentValues, particularsSchema, applySingletonSection, type CollectionName } from "../crew-information/adapters";
+import { attachmentAdapters, collections, collectionSchemas, getCurrentValues, listCollectionAttachments, particularsSchema, applySingletonSection, type CollectionName } from "../crew-information/adapters";
 import type { PendingRow } from "./commandRepository";
 import { canonicalApproved, canonicalAuthoritative, canonicalMatches } from "./canonical";
 import { commandPolicy, type CommandClassification } from "./commandPolicy";
@@ -69,6 +69,57 @@ handlers.UPDATE_CREW_PARTICULARS = {
   },
 };
 
+// A create is retry-safe only when every attempt addresses the same canonical
+// primary key. Reuse the durable operation UUID as the visa UUID.
+handlers.CREATE_VISAS = {
+  classification: "SAFE_WITH_RECONCILIATION",
+  async validateTarget(pending) {
+    const existing = await collections.visas.get(pending.operationUuid, pending.crewUuid).catch(() => undefined);
+    if (existing && existing.crewUuid !== pending.crewUuid) {
+      throw Object.assign(new Error("Target ownership mismatch"), { code: "OWNERSHIP_MISMATCH" });
+    }
+  },
+  async loadAuthoritativeState(pending) {
+    return collections.visas.get(pending.operationUuid, pending.crewUuid).catch(() => ({}));
+  },
+  canonicalizeApprovedPayload: canonicalApproved,
+  canonicalizeAuthoritativeState: canonicalAuthoritative,
+  // Always run the idempotent ensure step so recovery can finish attachments
+  // after a crash that occurred after the parent visa insert.
+  compare: () => false,
+  async execute(pending, payload) {
+    const current = await collections.visas.get(pending.operationUuid, pending.crewUuid).catch(() => undefined);
+    if (!current) await collections.visas.create(pending.crewUuid, payload, pending.operationUuid);
+    else if (current.crewUuid !== pending.crewUuid || !canonicalMatches(payload, current)) {
+      throw Object.assign(new Error("Deterministic visa UUID conflicts with authoritative state"), { code: "AUTHORITATIVE_CONFLICT" });
+    }
+
+    const staged: any[] = JSON.parse(pending.stagedAttachments || "[]");
+    const existing = await listCollectionAttachments("visas", pending.operationUuid);
+    const existingIds = new Set(existing.map(file => file.attUuid));
+    for (const file of staged) {
+      if (!file.attUuid || existingIds.has(file.attUuid)) continue;
+      await attachmentAdapters.visas!.add(pending.operationUuid, {
+        fileName: file.fileName, filePath: file.filePath, fileData: null,
+        fileType: file.fileType, fileSize: file.fileSize, uploadedByUuid: pending.crewUuid,
+      }, file.attUuid);
+    }
+  },
+  async reconcile(pending, payload) {
+    try {
+      const current = await collections.visas.get(pending.operationUuid, pending.crewUuid);
+      if (current.crewUuid !== pending.crewUuid) return "conflicts";
+      if (!canonicalMatches(payload, current)) return "conflicts";
+      const staged: any[] = JSON.parse(pending.stagedAttachments || "[]");
+      const existing = await listCollectionAttachments("visas", pending.operationUuid);
+      const existingIds = new Set(existing.map(file => file.attUuid));
+      return staged.every(file => file.attUuid && existingIds.has(file.attUuid)) ? "matches" : "missing";
+    } catch (error: any) {
+      return /not found/i.test(error?.message ?? "") ? "missing" : "conflicts";
+    }
+  },
+};
+
 export function getCommandHandler(commandType: string): CommandHandler | undefined {
   const policy = commandPolicy(commandType);
   if (!policy.automated) return undefined;
@@ -77,6 +128,7 @@ export function getCommandHandler(commandType: string): CommandHandler | undefin
 
 export function validateApprovedPayload(commandType: string, payload: unknown): Record<string, unknown> {
   if (commandType === "UPDATE_CREW_PARTICULARS") return particularsSchema.parse(payload) as Record<string, unknown>;
+  if (commandType === "CREATE_VISAS") return collectionSchemas.visas.parse(payload) as Record<string, unknown>;
   const section = collectionByCommand[commandType];
   if (!section) throw Object.assign(new Error("No approved payload schema"), { code: "COMMAND_BLOCKED" });
   return collectionSchemas[section].parse(payload) as Record<string, unknown>;

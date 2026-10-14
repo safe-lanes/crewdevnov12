@@ -21,7 +21,7 @@ import {
   CrewBriefingRepository,
 } from "../../crew-pool/repositories";
 import { MastersRepository } from "../../masters/repositories/mastersRepository";
-import { pendingChangesRepository } from "./pendingChangesRepository";
+import { mapMobileOperationStatus, pendingChangesRepository } from "./pendingChangesRepository";
 import { stageChange } from "./pendingChangesService";
 import type { AppCrewPendingChange } from "../../../../shared/v2/crew-app/types";
 import { validate as isUuid } from "uuid";
@@ -221,7 +221,7 @@ export async function getInformation(req: Request, res: Response): Promise<void>
         pendingUuid: change.pendingUuid,
         section: change.section,
         action: change.action,
-        status: change.status,
+        status: mapMobileOperationStatus(change.status, change.commandStatus),
         rejectionReason: change.rejectionReason,
         submittedAt: change.createdAt,
         reviewedAt: change.reviewedAt,

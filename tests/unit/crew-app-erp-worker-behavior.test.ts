@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  loadPending: vi.fn(), transition: vi.fn(), execute: vi.fn(), load: vi.fn(), validate: vi.fn(), reconcile: vi.fn(),
+  loadPending: vi.fn(), transition: vi.fn(), execute: vi.fn(), load: vi.fn(), validate: vi.fn(), reconcile: vi.fn(), getHandler: vi.fn(),
 }));
 
 vi.mock("../../server/v2/crew-app/erp-commands/commandRepository", () => ({
@@ -11,12 +11,12 @@ vi.mock("../../server/v2/crew-app/erp-commands/commandRepository", () => ({
     leaseNext: vi.fn(),
   },
 }));
-vi.mock("../../server/v2/crew-app/erp-commands/handlerRegistry", async importOriginal => {
-  const actual = await importOriginal<any>();
-  return {
-    ...actual,
+vi.mock("../../server/v2/crew-app/erp-commands/handlerRegistry", () => ({
     validateApprovedPayload: (_type: string, payload: any) => payload,
-    getCommandHandler: (type: string) => type === "UPDATE_DOCUMENTS" ? {
+    getCommandHandler: mocks.getHandler,
+  }));
+
+const updateHandler = () => ({
       classification: "SAFE_WITH_RECONCILIATION",
       validateTarget: mocks.validate,
       loadAuthoritativeState: mocks.load,
@@ -25,9 +25,7 @@ vi.mock("../../server/v2/crew-app/erp-commands/handlerRegistry", async importOri
       compare: (payload: any, state: any) => payload.value === state.value,
       execute: mocks.execute,
       reconcile: mocks.reconcile,
-    } : undefined,
-  };
-});
+    });
 vi.mock("../../server/v2/crew-app/monitoring/securityEvents", () => ({ emitCrewSecurityEvent: vi.fn() }));
 vi.mock("../../server/utils/tenantConnectionManager", () => ({
   tenantConnectionManager: { isMultiTenantEnabled: false },
@@ -54,6 +52,7 @@ describe("ERP command worker behavior", () => {
     mocks.load.mockResolvedValue({ value: "old", crewUuid: "crew1" });
     mocks.execute.mockResolvedValue(undefined);
     mocks.reconcile.mockResolvedValue("matches");
+    mocks.getHandler.mockImplementation((type: string) => type === "UPDATE_DOCUMENTS" ? updateHandler() : undefined);
     mocks.transition.mockImplementation(async (row: any, status: string, values: any = {}) => ({ ...row, ...values, status }));
   });
 
@@ -76,6 +75,24 @@ describe("ERP command worker behavior", () => {
     expect(mocks.execute).toHaveBeenCalledTimes(1);
     expect(mocks.reconcile).toHaveBeenCalledTimes(1);
     expect(result.status).toBe("applied");
+  });
+
+  it("executes an idempotent visa create and records its deterministic UUID", async () => {
+    mocks.loadPending.mockResolvedValue({ ...pending, section: "visas", action: "create", targetUuid: null });
+    const createHandler = {
+      classification: "SAFE_WITH_RECONCILIATION",
+      validateTarget: mocks.validate,
+      loadAuthoritativeState: mocks.load,
+      canonicalizeApprovedPayload: (x: any) => x,
+      canonicalizeAuthoritativeState: (x: any) => x,
+      compare: () => false,
+      execute: mocks.execute,
+      reconcile: mocks.reconcile,
+    };
+    mocks.getHandler.mockReturnValue(createHandler);
+    const result = await processLeasedCommand(command("CREATE_VISAS"));
+    expect(mocks.execute).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ status: "applied", authoritativeRecordUuid: "o1" });
   });
 
   it("reconciles rather than blindly retrying when mutation throws", async () => {

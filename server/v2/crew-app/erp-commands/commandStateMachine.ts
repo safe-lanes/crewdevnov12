@@ -11,7 +11,7 @@ const transitions: Record<CommandStatus, readonly CommandStatus[]> = {
   verifying: ["applied", "retryable", "reconciliation_required", "dead_letter"],
   retryable: ["queued", "leased", "dead_letter"],
   reconciliation_required: ["verifying", "retryable", "applied", "dead_letter"],
-  manual_reconciliation_required: ["applied", "dead_letter"],
+  manual_reconciliation_required: ["retryable", "applied", "dead_letter"],
   applied: [], blocked: [], dead_letter: [],
 };
 

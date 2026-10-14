@@ -7,8 +7,9 @@ describe("crew ERP command safety policy", () => {
   it.each([
     ["particulars", "update", "UPDATE_CREW_PARTICULARS"],
     ["documents", "update", "UPDATE_DOCUMENTS"],
+    ["visas", "create", "CREATE_VISAS"],
     ["sea-service", "update", "UPDATE_SEA_SERVICE"],
-  ])("allowlists stable update %s", (section, action, type) => {
+  ])("allowlists idempotent operation %s/%s", (section, action, type) => {
     expect(deriveCommandType(section, action)).toBe(type);
     expect(commandPolicy(type)).toMatchObject({ automated: true, classification: "SAFE_WITH_RECONCILIATION" });
   });
@@ -24,6 +25,7 @@ describe("crew ERP command safety policy", () => {
 
   it("rejects arbitrary state transitions and terminal reprocessing", () => {
     expect(canTransition("queued", "leased")).toBe(true);
+    expect(canTransition("manual_reconciliation_required", "retryable")).toBe(true);
     expect(canTransition("applied", "leased")).toBe(false);
     expect(() => assertTransition("queued", "applied")).toThrow(/Invalid ERP command transition/);
   });

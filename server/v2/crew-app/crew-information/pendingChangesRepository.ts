@@ -126,9 +126,13 @@ export class PendingChangesRepository {
   }
 
   /** Recent submissions (any status) for one crew member — for a "my submissions" view on the mobile app. */
-  async listRecentForCrew(crewUuid: string, domain: string, limit = 20): Promise<AppCrewPendingChange[]> {
+  async listRecentForCrew(crewUuid: string, domain: string, limit = 20): Promise<Array<AppCrewPendingChange & { commandStatus: string | null }>> {
     const db = getDb();
-    return db.select().from(appCrewPendingChanges)
+    const rows = await db.select({
+      change: appCrewPendingChanges,
+      commandStatus: appCrewErpCommands.status,
+    }).from(appCrewPendingChanges)
+      .leftJoin(appCrewErpCommands, eq(appCrewErpCommands.pendingUuid, appCrewPendingChanges.pendingUuid))
       .where(and(
         eq(appCrewPendingChanges.crewUuid, crewUuid),
         eq(appCrewPendingChanges.domain, domain),
@@ -136,6 +140,7 @@ export class PendingChangesRepository {
       ))
       .orderBy(desc(appCrewPendingChanges.createdAt))
       .limit(limit);
+    return rows.map(({ change, commandStatus }) => ({ ...change, commandStatus }));
   }
 
   async listForOffice(filters: { status?: string; section?: string; crewUuid?: string }): Promise<AppCrewPendingChange[]> {
