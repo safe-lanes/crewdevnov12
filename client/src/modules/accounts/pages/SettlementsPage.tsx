@@ -462,6 +462,7 @@ export default function SettlementsPage() {
               size="sm"
               variant="outline"
               onClick={exportExcel}
+              disabled={filteredRows.length === 0}
               data-testid="button-export-settlements"
             >
               <Download size={14} className="mr-1" /> Export
