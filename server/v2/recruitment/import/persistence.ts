@@ -3,6 +3,7 @@ import { v4, v5 } from "uuid";
 import * as tables from "../../../../shared/v2/recruitment/schema";
 import { BLOCKS, type Parsed } from "./contract";
 import { getDb } from "../../db";
+import { lockRecruitmentNumbering, nextRecruitmentFileNumber, recruitmentSubmissionDate } from "../services/candidateNumbering";
 
 const bindings = {
   candidate: tables.recruitmentCandidatesV2, personal: tables.candPersonalDetails,
@@ -52,12 +53,19 @@ export async function writeCandidate(tx: any, parsed: Parsed, auditUuid: string 
       .where(and(eq(tables.candDocuments.isDeleted, false), eq(tables.recruitmentCandidatesV2.isDeleted, false), sql`lower(trim(${tables.candDocuments.number})) = ${doc.number.toLowerCase()}`, sql`${tables.candDocuments.documentName} ilike '%passport%'`)).limit(1);
     if (matches.length) throw new DuplicateImportError("An application with this passport number already exists. Review it before importing.");
   }
-  const audits = { createdByUuid: auditUuid, updatedByUuid: auditUuid, createdAt: new Date(), updatedAt: new Date() };
+  await lockRecruitmentNumbering(tx);
+  const now = new Date();
+  const fileNo = await nextRecruitmentFileNumber(tx, now);
+  const audits = { createdByUuid: auditUuid, updatedByUuid: auditUuid, createdAt: now, updatedAt: now };
   for (const block of BLOCKS) {
     for (const record of parsed.data[block.entity] || []) {
       const values: Record<string, unknown> = { ...cleanRecord(record), recCanUuid, ...audits, [block.uuid]: block.entity === "candidate" ? recCanUuid : v4() };
       if (block.rows) values.sortOrder = Number(record.__row);
-      if (block.entity === "candidate") values.status = "Applied";
+      if (block.entity === "candidate") {
+        values.status = "Applied";
+        values.fileNo = fileNo;
+        values.screeningDate = recruitmentSubmissionDate(now);
+      }
       if (block.entity === "personal" && core.dob) {
         const dob = new Date(core.dob), now = new Date();
         values.ageInYears = String(now.getUTCFullYear() - dob.getUTCFullYear() - (now.getUTCMonth() < dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() < dob.getUTCDate()) ? 1 : 0));

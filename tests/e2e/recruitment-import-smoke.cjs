@@ -11,6 +11,7 @@ async function main() {
   const base = `https://${process.env.REPLIT_DEV_DOMAIN}`;
   let uuid;
   try {
+    const nextBefore = await (await page.request.get(`${base}/api/v2/recruitment/candidates/next-file-number`)).json();
     await page.goto(`${base}/recruitment`);
     await page.getByTestId("button-import-candidate-excel").click();
     const downloadPromise = page.waitForEvent("download");
@@ -69,6 +70,12 @@ async function main() {
     });
     await page.locator('[data-testid="text-first-name"]').waitFor();
     assert.equal(await page.locator('[data-testid="text-first-name"]').textContent(), name);
+    const imported = await (await page.request.get(`${base}/api/v2/recruitment/candidates/${uuid}`)).json();
+    assert.equal(imported.fileNo, nextBefore.fileNo);
+    assert.equal(imported.status, "Applied");
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(imported.screeningDate));
+    await page.getByText(imported.fileNo, { exact: true }).last().waitFor();
+    assert((await page.getByTestId("text-a5-screening-date").textContent()).includes("Submitted for screening on"));
     assert.equal(await page.getByTestId("text-nationality").textContent(), nationality);
     assert.equal(await page.getByTestId("text-pob-country").textContent(), country);
     assert.equal(await page.getByTestId("text-native-language").textContent(), language);
@@ -140,10 +147,24 @@ async function main() {
     assert.equal(duplicate.status(), 409);
     const candidate = await (await page.request.get(`${base}/api/v2/recruitment/candidates/${uuid}`)).json();
     assert.equal(candidate.status, "Applied");
-    assert(!candidate.fileNo);
-    assert(!candidate.screeningDate);
+    assert.equal(candidate.fileNo, nextBefore.fileNo, "Import must continue the existing annual sequence");
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(candidate.screeningDate), "Import must set the submitted date");
+    // Edits/reopen above and a later submission must never renumber or redate.
+    const submitted = await page.request.patch(`${base}/api/v2/recruitment/candidates/${uuid}`, {
+      data: { status: "Applied", fileNo: `R-${new Date().getFullYear()}-9999`, screeningDate: "2099-01-01" },
+    });
+    assert(submitted.ok(), "Later submission must save");
+    const preserved = await submitted.json();
+    assert.equal(preserved.fileNo, candidate.fileNo);
+    assert.equal(preserved.screeningDate, candidate.screeningDate);
+    await page.getByTestId("button-submit-for-screening").click();
+    await page.getByText("Application submitted for screening", { exact: true }).waitFor();
+    const afterSubmit = await (await page.request.get(`${base}/api/v2/recruitment/candidates/${uuid}`)).json();
+    assert.equal(afterSubmit.fileNo, imported.fileNo);
+    assert.equal(afterSubmit.screeningDate, imported.screeningDate);
+    assert.equal(afterSubmit.status, "Applied");
     await page.screenshot({ path: "/tmp/recruitment-import-form.png" });
-    console.log(JSON.stringify({ success: true, uuid, status: candidate.status, duplicateStatus: duplicate.status() }));
+    console.log(JSON.stringify({ success: true, uuid, status: candidate.status, fileNo: candidate.fileNo, submittedDate: candidate.screeningDate, duplicateStatus: duplicate.status(), normalSubmissionPreserved: true }));
   } finally {
     await browser.close();
   }

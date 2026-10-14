@@ -43,7 +43,7 @@ function fakeTransaction(failTable?: string, matches: any[] = []) {
   const tx: any = {
     execute: vi.fn(async () => {}),
     select: vi.fn(() => {
-      const chain: any = { from: () => chain, where: () => chain, innerJoin: () => chain, limit: async () => matches };
+      const chain: any = { from: () => chain, where: () => chain, innerJoin: () => chain, limit: async () => matches, then: (resolve: any) => resolve([{ maxNum: 17 }]) };
       return chain;
     }),
     insert: (table: any) => ({ values: async (values: any) => {
@@ -75,8 +75,8 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(fake.saved).toHaveLength(1);
     expect(fake.saved[0].values).toMatchObject({ firstName: "Import", status: "Applied", createdByUuid: "actor-uuid", updatedByUuid: "actor-uuid" });
     expect(fake.saved[0].values).not.toHaveProperty("email");
-    expect(fake.saved[0].values).not.toHaveProperty("fileNo");
-    expect(fake.saved[0].values).not.toHaveProperty("screeningDate");
+    expect(fake.saved[0].values.fileNo).toBe(`R-${new Date().getFullYear()}-0018`);
+    expect(fake.saved[0].values.screeningDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
   it("retains meaningful zero and false, not whitespace", async () => {
     const parsed = await parse({ candidate: [core], family: [{ numDependentChildren: 0 }], additional: [{ information: "Consent", response: false }] });

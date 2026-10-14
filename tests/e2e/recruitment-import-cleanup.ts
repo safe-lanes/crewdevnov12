@@ -17,6 +17,7 @@ async function main() {
     const [candidate] = await tx.select().from(tables.recruitmentCandidatesV2).where(eq(tables.recruitmentCandidatesV2.recCanUuid, uuid));
     if (!candidate?.firstName?.startsWith("ExcelImport") || candidate.familyName !== "Test") throw new Error("Refusing to clean a non-smoke-test candidate.");
     for (const table of [
+      tables.recCandidateScreening, tables.screeningB1Initial,
       tables.candAdditionalInfo, tables.candSeaService, tables.candTrainingCourses, tables.candLicenses, tables.candEducation,
       tables.candVisas, tables.candDocuments, tables.candNextOfKin, tables.candChildren, tables.candFamilyInfo,
       tables.candAddresses, tables.candPersonalDetails, tables.candVesselTypesApplied, tables.recruitmentCandidatesV2,

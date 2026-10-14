@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { eq, or, inArray, asc, and, sql } from "drizzle-orm";
 import { getDb } from "../../db";
+import { nextRecruitmentFileNumber } from "./candidateNumbering";
 import {
   candidateRepository,
   vesselTypesAppliedRepository,
@@ -544,15 +545,8 @@ export class CandidateService {
       delete (data as any).nationality;
     }
 
-    // Screening date is set once (on first submission for screening) and is
-    // immutable thereafter, so it reliably reflects when recruitment was
-    // initiated. Drop any incoming value if the candidate already has one.
-    if ((data as any).screeningDate) {
-      const existing = await candidateRepository.findByUuid(recCanUuid);
-      if (existing?.screeningDate) {
-        delete (data as any).screeningDate;
-      }
-    }
+    // The repository preserves the original submission date and File No under
+    // a row lock, including updates that attempt to clear those fields.
 
     return candidateRepository.updateByUuid(recCanUuid, {
       ...data,
@@ -1119,34 +1113,8 @@ export class CandidateService {
   // ============================================================================
 
   async getNextFileNumber(): Promise<string> {
-    const db = getDb();
-    const currentYear = new Date().getFullYear();
-    const yearPrefix = `R-${currentYear}-`;
-
-    // Use SQL MAX() with LIKE pattern - efficient single query instead of loading all rows
-    // Uses Drizzle's sql template for schema safety (Postgres-specific SUBSTRING regex)
-    // Note: sql.raw() used for regex pattern to ensure Postgres receives a regex literal
-    const yearPattern = `R-${currentYear}-%`;
-    
-    const result = await db
-      .select({
-        maxNum: sql<number>`MAX(CAST(SUBSTRING(${recruitmentCandidatesV2.fileNo} FROM ${sql.raw(`'R-${currentYear}-([0-9]+)'`)}) AS INTEGER))`,
-      })
-      .from(recruitmentCandidatesV2)
-      .where(sql`${recruitmentCandidatesV2.fileNo} LIKE ${yearPattern}`);
-
-    // Extract max number from result, default to 0 if no matches
-    const maxNumber = result[0]?.maxNum ?? 0;
-    const nextNumber = (isNaN(maxNumber) ? 0 : maxNumber) + 1;
-
-    // Format as R-YYYY-0001 (4-digit padded number)
-    const nextFileNo = `${yearPrefix}${String(nextNumber).padStart(4, "0")}`;
-
-    console.log(
-      `📋 V2 Generated File No: ${nextFileNo} (max was ${maxNumber})`
-    );
-
-    return nextFileNo;
+    // Compatibility preview only; actual allocation happens in the save transaction.
+    return nextRecruitmentFileNumber(getDb());
   }
 }
 

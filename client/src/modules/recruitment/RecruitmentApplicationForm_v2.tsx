@@ -3365,21 +3365,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentUuid = recCanUuid;
       
       if (currentUuid) {
-        // Generate file number for candidates who don't have one yet
-        // File No format: R-YYYY-0001 (sequential, resets each year)
-        let fileNo = candidate?.fileNo || formData.fileNo;
-        
-        // Only generate new file number if candidate doesn't have one (first time submitting for screening)
-        const needsNewFileNo = !fileNo || !fileNo.startsWith('R-');
-        if (needsNewFileNo) {
-          const fileNoResponse = await fetch('/api/v2/recruitment/candidates/next-file-number');
-          if (!fileNoResponse.ok) {
-            throw new Error('Failed to generate file number');
-          }
-          const fileNoData = await fileNoResponse.json();
-          fileNo = fileNoData.fileNo;
-          console.log('📋 V2 Generated File No:', fileNo);
-        }
+        // The server allocates File No in the save transaction and preserves an
+        // existing imported/submitted number, avoiding browser-side sequence races.
         
         const newStatus = getStatusForSection('A5', true);
 
@@ -3388,11 +3375,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         const existingScreeningDate = (candidate as any)?.screeningDate || formData.screeningDate;
         const screeningDate = existingScreeningDate || formatDate(new Date());
 
-        await updateCandidateMutation.mutateAsync({
+        const submittedCandidate = await updateCandidateMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
             status: newStatus,
-            fileNo: fileNo,
             screeningDate: screeningDate,
           },
         });
@@ -3413,8 +3399,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         // Update local formData with the generated file number and screening date
         setFormData(prev => ({
           ...prev,
-          ...(needsNewFileNo && fileNo ? { fileNo } : {}),
-          screeningDate,
+          fileNo: submittedCandidate.fileNo,
+          screeningDate: submittedCandidate.screeningDate ?? screeningDate,
         }));
         
         toast({
