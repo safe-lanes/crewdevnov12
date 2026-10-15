@@ -5,7 +5,7 @@ import { ExcelImportCandidateDialog } from "../../client/src/modules/recruitment
 import { importRequest } from "../../client/src/modules/recruitment/importRequest";
 
 vi.mock("../../client/src/modules/recruitment/importRequest", () => ({ importRequest: vi.fn() }));
-vi.mock("@/lib/crewUser", () => ({ getCrewUserId: () => null }));
+vi.mock("@/lib/crewUser", () => ({ getCrewUserId: () => { throw new Error("Import must not read browser audit identity"); } }));
 const good = { isValid: true, candidateName: "Test", status: "Applied", summary: { A1: 1 }, errors: [] };
 const props = () => ({ open: true, onOpenChange: vi.fn(), onImportSuccess: vi.fn(), onOpenCandidate: vi.fn() });
 const select = () => fireEvent.change(document.getElementById("candidate-excel-file")!, { target: { files: [new File(["fixture"], "candidate.xlsx")] } });
@@ -14,6 +14,17 @@ beforeEach(() => { vi.mocked(importRequest).mockReset(); });
 afterEach(cleanup);
 
 describe("Candidate upload confirmation safety", () => {
+  it("sends only workbook inputs for validation and execution, not browser audit identity", async () => {
+    vi.mocked(importRequest).mockResolvedValueOnce(response(good)).mockResolvedValueOnce(response({ success: true, status: "Applied", recCanUuid: "created" }));
+    render(<ExcelImportCandidateDialog {...props()} />);
+    select();
+    fireEvent.click(screen.getByRole("button", { name: "Validate workbook" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm & import candidate/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & import candidate/ }));
+    await screen.findByText("Candidate imported");
+    expect(vi.mocked(importRequest).mock.calls.map(([action, body]) => [action, Object.keys(body!).sort()]))
+      .toEqual([["validate", ["fileData", "fileName"]], ["execute", ["fileData", "fileName"]]]);
+  });
   it("invalidates a successful preview after an execution rejection and requires validation again", async () => {
     vi.mocked(importRequest).mockResolvedValueOnce(response(good)).mockResolvedValueOnce(response({ code: "CELL_VALIDATION", message: "Correct the workbook errors before importing.", errors: [{ section: "A1", sheet: "APPLICATION FORM", cell: "V7", field: "Date of birth", message: "Enter a valid date." }] }, 422));
     render(<ExcelImportCandidateDialog {...props()} />);

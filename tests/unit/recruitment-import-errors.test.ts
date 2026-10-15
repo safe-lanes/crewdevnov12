@@ -39,7 +39,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   vi.mocked(loadCatalogs).mockResolvedValue(catalogs);
-  vi.mocked(authorizeImport).mockResolvedValue({ auditUuid: null, manningAgent: null });
+  vi.mocked(authorizeImport).mockResolvedValue({ auditUuid: null });
   vi.mocked(persistCandidate).mockResolvedValue("synthetic-candidate");
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -110,7 +110,7 @@ describe("Import API separates file, access and server failures", () => {
     expect(persistCandidate).not.toHaveBeenCalled();
   });
   it("retains access-denied and authorization-unavailable distinctions", async () => {
-    vi.mocked(authorizeImport).mockRejectedValueOnce(new ImportAccessError("Recruitment create access is required."));
+    vi.mocked(authorizeImport).mockRejectedValueOnce(new ImportAccessError("Your authenticated account is not present in the user master."));
     expect((await request(app).post("/validate").send(upload(valid))).body.code).toBe("ACCESS_DENIED");
     vi.mocked(authorizeImport).mockRejectedValueOnce(new Error("PRIVATE_USER_MAPPING"));
     const response = await request(app).post("/validate").send(upload(valid));

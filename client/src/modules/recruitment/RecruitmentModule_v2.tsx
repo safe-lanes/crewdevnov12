@@ -1061,9 +1061,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
               <FilterIcon className="h-4 w-4" />
               {!isPhone && 'Filters'}
             </Button>
-            {selectedRecruitmentPage === "in-progress" &&
-              !permissionsLoading &&
-              (permissions.length === 0 || canCreate(currentMenuName)) && (
+            {selectedRecruitmentPage === "in-progress" && (
               <Button
                 variant="outline"
                 size="sm"

@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getCrewUserId } from "@/lib/crewUser";
 import { importRequest } from "./importRequest";
 import { ImportUiError, isCellError, readImportFailure, workbookRecovery } from "./importErrors";
 
@@ -159,7 +158,7 @@ export function ExcelImportCandidateDialog({
     setFailureStage("validate");
     try {
       const fileData = await fileToBase64(file);
-      const response = await importRequest("validate", { fileData, fileName: file.name, auditUserUuid: getCrewUserId() });
+      const response = await importRequest("validate", { fileData, fileName: file.name });
       const result = response.ok
         ? await response.json() as ValidationResult
         : await readImportFailure(response);
@@ -194,7 +193,7 @@ export function ExcelImportCandidateDialog({
     setFailureStage("execute");
     try {
       const fileData = await fileToBase64(file);
-      const response = await importRequest("execute", { fileData, fileName: file.name, auditUserUuid: getCrewUserId() });
+      const response = await importRequest("execute", { fileData, fileName: file.name });
       if (!response.ok) {
         const body = await readImportFailure(response);
         setValidationErrors(body.errors ?? []);

@@ -15,7 +15,23 @@ import { generateTemplate } from "../../server/v2/recruitment/import/workbook";
 import { MastersRepository } from "../../server/v2/masters/repositories/mastersRepository";
 import { tenantConnectionManager } from "../../server/utils/tenantConnectionManager";
 
-const fixtures = vi.hoisted(() => ({ databases: new Map<string, any>() }));
+const fixtures = vi.hoisted(() => ({
+  databases: new Map<string, any>(), productionApp: null as express.Express | null, listening: false,
+}));
+vi.mock("../../server/migrationRunner", () => ({ runMigrations: vi.fn(async () => {}) }));
+vi.mock("../../server/routes", () => ({
+  registerRoutes: vi.fn(async (productionApp: express.Express) => {
+    fixtures.productionApp = productionApp;
+    productionApp.use("/api/v2/recruitment/import", candidateImportRouter);
+    return {
+      listen: (_options: unknown, ready: () => void) => {
+        ready();
+        fixtures.listening = true;
+        return { on: vi.fn(), close: vi.fn() };
+      },
+    };
+  }),
+}));
 vi.mock("../../server/utils/tenantConnectionManager", async () => {
   const { AsyncLocalStorage } = await import("node:async_hooks");
   const context = new AsyncLocalStorage<any>();
@@ -27,6 +43,7 @@ vi.mock("../../server/utils/tenantConnectionManager", async () => {
     getCurrentTenantDb: () => context.getStore(),
     tenantConnectionManager: {
       isMultiTenantEnabled: true,
+      init: vi.fn(async () => {}),
       validateTuid: vi.fn(async (id: string) => {
         if (!fixtures.databases.has(id)) throw new TenantNotFoundError();
         return { domain: id === "tenant-one" ? "company-one" : "company-two" };
@@ -53,7 +70,10 @@ vi.mock("../../server/v2/recruitment/import/persistence", () => ({
 }));
 
 const signingKey = "synthetic-parent-id-test-key-not-a-real-credential";
-const catalogs = { ranks: [], countries: [], nationalities: [], languages: [], vesselTypes: [], agents: [] };
+const catalogs = {
+  ranks: [], countries: [], nationalities: [], languages: [], vesselTypes: [],
+  agents: [{ label: "Agency One", value: "Agency One" }, { label: "Agency Two", value: "Agency Two" }],
+};
 const dialect = new PgDialect();
 const user = { id: 9999, userUuid: "actor-one", role: "Recruiter", userType: "Office" };
 let app: express.Express, valid: Buffer;
@@ -100,11 +120,15 @@ beforeAll(async () => {
   vi.stubEnv("JWT_SECRET", signingKey);
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("AUTH_BYPASS", "true"); // Must not bypass auth in production.
-  const { tenantMiddleware } = await import("../../server/middleware/tenantMiddleware");
-  const { authMiddleware } = await import("../../server/middleware/authMiddleware");
-  app = express();
-  app.use(express.json({ limit: "2mb" }), tenantMiddleware, authMiddleware);
-  app.use("/api/v2/recruitment/import", candidateImportRouter);
+  // Exercise production.ts itself, not a reconstructed middleware stack. Only
+  // startup migrations, DB connections, route registration and socket binding
+  // are substituted; production auth/tenant/rate-limit wiring stays real.
+  const signals = vi.spyOn(process, "on").mockReturnValue(process);
+  try {
+    await import("../../server/production");
+    await vi.waitFor(() => expect(fixtures.listening).toBe(true));
+    app = fixtures.productionApp!;
+  } finally { signals.mockRestore(); }
   const book = new ExcelJS.Workbook();
   await book.xlsx.load(await generateTemplate(catalogs) as any);
   book.worksheets[0].getCell("F8").value = "Synthetic";
@@ -124,6 +148,19 @@ beforeEach(() => {
 afterAll(() => vi.unstubAllEnvs());
 
 describe("Existing signed parent IDs reach actual Recruitment import routes", () => {
+  it.each(["template", "validate", "execute"] as const)("production %s authenticates a bearer JWT even when x-tenant-id already resolved the tenant", async action => {
+    const res = await call(action, token(), "tenant-one");
+    expect(res.status).toBe(action === "execute" ? 201 : 200);
+    expect(tenantOne.queries[0].params).toEqual([9999]);
+    expect(tenantTwo.select).not.toHaveBeenCalled();
+    if (action === "execute") expect(persistCandidate).toHaveBeenCalledWith(expect.anything(), "actor-one");
+  });
+  it.each(["template", "validate", "execute"] as const)("production %s rejects an invalid signature even after x-tenant-id resolves the tenant", async action => {
+    const forged = token({}, "synthetic-wrong-signing-key");
+    expect((await call(action, forged, "tenant-one")).status).toBe(401);
+    expect(tenantOne.select).not.toHaveBeenCalled();
+    expect(persistCandidate).not.toHaveBeenCalled();
+  });
   it("downloads a real single-sheet workbook without a userUuid JWT claim", async () => {
     const res = await call("template");
     expect(res.status).toBe(200);
@@ -134,7 +171,7 @@ describe("Existing signed parent IDs reach actual Recruitment import routes", ()
     expect(book.worksheets.map(sheet => sheet.name)).toEqual(["APPLICATION FORM"]);
     expect(tenantOne.queries[0]).toMatchObject({ params: [9999] });
     expect(tenantOne.queries[0].sql).toContain('"master_users"."id"');
-    expect(accessControlService.getMyPermissions).toHaveBeenCalledWith(undefined, "Recruiter");
+    expect(accessControlService.getMyPermissions).not.toHaveBeenCalled();
     expect(persistCandidate).not.toHaveBeenCalled();
   });
   it("validates, then executes with server-derived audit identity", async () => {
@@ -155,34 +192,30 @@ describe("Existing signed parent IDs reach actual Recruitment import routes", ()
     expect((await call("template", token({ userUuid: "actor-one" }))).status).toBe(200);
   });
   for (const action of ["template", "validate", "execute"]) {
-    it(`${action} rejects a mismatched optional signed UUID`, async () => {
+    it(`${action} ignores a mismatched optional signed UUID`, async () => {
       const res = await call(action, token({ userUuid: "different-user" }));
-      expect(res.status).toBe(403);
-      expect(res.body.message).toContain("signed user UUID does not match");
-      expect(loadCatalogs).not.toHaveBeenCalled();
-      expect(persistCandidate).not.toHaveBeenCalled();
+      expect(res.status).toBe(action === "execute" ? 201 : 200);
+      if (action === "execute") expect(persistCandidate).toHaveBeenCalledWith(expect.anything(), "actor-one");
     });
-    it(`${action} still requires the server role's create permission`, async () => {
+    it(`${action} allows a role without create permission`, async () => {
       tenantOne.users[0].role = "Viewer";
       const res = await call(action, token({ role: "Recruiter" }));
-      expect(res.status).toBe(403);
-      expect(res.body.message).toContain("create access");
-      expect(loadCatalogs).not.toHaveBeenCalled();
-      expect(persistCandidate).not.toHaveBeenCalled();
+      expect(res.status).toBe(action === "execute" ? 201 : 200);
+      expect(accessControlService.getMyPermissions).not.toHaveBeenCalled();
     });
   }
   it("cannot override signed identity or audit UUID using the upload body", async () => {
     const res = await call("execute", token(), undefined, { id: 42, userUuid: "actor-two", auditUserUuid: "actor-two", role: "Recruiter" });
-    expect(res.status).toBe(403);
-    expect(res.body.message).toContain("audit user does not match");
-    expect(persistCandidate).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    expect(persistCandidate).toHaveBeenCalledWith(expect.anything(), "actor-one");
+    expect(tenantOne.queries[0].params).toEqual([9999]);
   });
-  it("also requires view permission, not just create permission", async () => {
-    vi.mocked(accessControlService.getMyPermissions).mockResolvedValueOnce({
+  it("does not consult view or create permissions", async () => {
+    vi.mocked(accessControlService.getMyPermissions).mockResolvedValue({
       permissions: [{ menuName: "In Progress", canview: false, cancreate: true }],
     } as any);
-    expect((await call("template")).status).toBe(403);
-    expect(loadCatalogs).not.toHaveBeenCalled();
+    expect((await call("template")).status).toBe(200);
+    expect(accessControlService.getMyPermissions).not.toHaveBeenCalled();
   });
   it.each([undefined, null, true, [], {}, 0, -1, 1.5, "9999x", " 9999", "1e4", "09999", "", 2147483648, Number.MAX_SAFE_INTEGER])(
     "rejects malformed or missing signed id %j before any user query", async id => {
@@ -192,33 +225,60 @@ describe("Existing signed parent IDs reach actual Recruitment import routes", ()
       expect(tenantOne.select).not.toHaveBeenCalled();
     },
   );
-  it.each([
-    [], [{ ...user, userUuid: null }], [{ ...user, userUuid: " " }],
-    [{ ...user, role: null }], [{ ...user, role: " " }],
-  ])("fails closed for unavailable user mappings %j", async (...rows) => {
-    tenantOne.users.splice(0, tenantOne.users.length, ...rows as Record<string, unknown>[]);
+  it("denies a JWT with no matching master user", async () => {
+    tenantOne.users.splice(0);
     const res = await call("template");
     expect(res.status).toBe(403);
-    expect(res.body.message).toContain("user/role mapping is unavailable");
+    expect(res.body.message).toContain("not present in the user master");
     expect(loadCatalogs).not.toHaveBeenCalled();
   });
-  it.each(["Ship", "Vessel", " ship "])("rejects a signed vessel account %s", async userType => {
-    expect((await call("template", token({ userType }))).status).toBe(403);
-    expect(tenantOne.select).not.toHaveBeenCalled();
+  it.each([
+    { userUuid: null, role: null }, { userUuid: " ", role: " " },
+    { userUuid: undefined, role: undefined }, { role: null }, { role: " " },
+  ])("allows a matched user with optional master fields %j", async optional => {
+    Object.assign(tenantOne.users[0], optional);
+    const res = await call("execute", token({ userUuid: "ignored-claim" }), undefined, { auditUserUuid: "ignored-upload" });
+    expect(res.status).toBe(201);
+    const storedUuid = tenantOne.users[0].userUuid;
+    expect(persistCandidate).toHaveBeenCalledWith(expect.anything(), typeof storedUuid === "string" && storedUuid.trim() ? storedUuid : null);
   });
-  it("also rejects a vessel account in the matched master user", async () => {
+  it.each(["Ship", "Vessel", " ship "])("allows a signed vessel account %s", async userType => {
+    expect((await call("template", token({ userType }))).status).toBe(200);
+  });
+  it("allows a vessel account in the matched master user", async () => {
     tenantOne.users[0].userType = "Ship";
-    expect((await call("template")).body.message).toContain("Vessel users");
+    expect((await call("template")).status).toBe(200);
   });
-  it("does not grant Manning Agents unrestricted access without verified agency scope", async () => {
+  it("allows Manning Agents without an agency claim and does not filter catalogs or override workbook agency", async () => {
     tenantOne.users[0].role = "Manning Agent";
-    vi.mocked(accessControlService.getMyPermissions).mockResolvedValueOnce({
-      permissions: [{ menuName: "In Progress", canview: true, cancreate: true }],
-    } as any);
-    const res = await call("execute", token(), undefined, { manningAgent: "Other Agency" });
-    expect(res.status).toBe(403);
-    expect(res.body.message).toContain("authenticated agency assignment");
-    expect(persistCandidate).not.toHaveBeenCalled();
+    const downloaded = await call("template", token({ userType: "Manning Agent", manningAgent: "Agency One" }));
+    expect(downloaded.status).toBe(200);
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(downloaded.body);
+    const texts: string[] = [];
+    book.worksheets[0].eachRow(row => row.eachCell(cell => {
+      if (typeof cell.value === "string") texts.push(cell.value);
+    }));
+    expect(texts).toContain("Agency One");
+    expect(texts).toContain("Agency Two");
+    // Both bodies and optional signed agency claims must not assign blank cells.
+    expect((await call("execute", token({ userType: "Manning Agent" }), undefined, { manningAgent: "Agency One" })).status).toBe(201);
+    expect(vi.mocked(persistCandidate).mock.calls[0][0].data.personal).toEqual([]);
+    const filled = new ExcelJS.Workbook();
+    await filled.xlsx.load(valid as any);
+    filled.worksheets[0].getCell("F8").value = "Synthetic Agency";
+    const { BLOCKS, cellLocation } = await import("../../server/v2/recruitment/import/contract");
+    const personal = BLOCKS.find(block => block.entity === "personal")!;
+    const index = personal.fields.findIndex(field => field.key === "manningAgent");
+    filled.worksheets[0].getCell(cellLocation(personal, index, 0)).value = "Agency Two";
+    const fileData = Buffer.from(await filled.xlsx.writeBuffer()).toString("base64");
+    const res = await call("execute", token({ manningAgent: "Agency One" }), undefined, { fileData });
+    expect(res.status).toBe(201);
+    expect(vi.mocked(persistCandidate).mock.calls[1][0].data.personal[0].manningAgent).toBe("Agency Two");
+    expect((await call("validate", token({ userType: "Manning Agent" }), undefined, { fileData })).body.isValid).toBe(true);
+    filled.worksheets[0].getCell(cellLocation(personal, index, 0)).value = "Unknown Agency";
+    const invalid = await call("validate", token(), undefined, { fileData: Buffer.from(await filled.xlsx.writeBuffer()).toString("base64") });
+    expect(invalid.body.isValid).toBe(false);
   });
 });
 
