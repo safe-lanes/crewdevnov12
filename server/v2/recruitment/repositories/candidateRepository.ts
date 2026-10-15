@@ -1,5 +1,6 @@
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, type SQL } from "drizzle-orm";
 import { getDb } from "../../db";
+import { lockRecruitmentNumbering, nextRecruitmentFileNumber } from "../services/candidateNumbering";
 import {
   recruitmentCandidatesV2,
   candVesselTypesApplied,
@@ -50,6 +51,14 @@ export class CandidateRepository {
 
   async create(data: InsertCandidate): Promise<RecruitmentCandidate> {
     const db = getDb();
+    if (data.fileNo || data.screeningDate) {
+      return db.transaction(async (tx: any) => {
+        await lockRecruitmentNumbering(tx);
+        const fileNo = await nextRecruitmentFileNumber(tx);
+        const [candidate] = await tx.insert(recruitmentCandidatesV2).values({ ...data, fileNo }).returning();
+        return candidate;
+      });
+    }
     const results = await db
       .insert(recruitmentCandidatesV2)
       .values(data)
@@ -61,26 +70,40 @@ export class CandidateRepository {
     id: number,
     data: Partial<InsertCandidate>
   ): Promise<RecruitmentCandidate | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(recruitmentCandidatesV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(recruitmentCandidatesV2.id, id))
-      .returning();
-    return results[0];
+    return this.updateWithSubmissionFields(eq(recruitmentCandidatesV2.id, id), data);
   }
 
   async updateByUuid(
     recCanUuid: string,
     data: Partial<InsertCandidate>
   ): Promise<RecruitmentCandidate | undefined> {
+    return this.updateWithSubmissionFields(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid), data);
+  }
+
+  private async updateWithSubmissionFields(
+    condition: SQL,
+    data: Partial<InsertCandidate>
+  ): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
-    const results = await db
-      .update(recruitmentCandidatesV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
-      .returning();
-    return results[0];
+    return db.transaction(async (tx: any) => {
+      const requestsNumber = Boolean(data.fileNo || data.screeningDate);
+      // Acquire in the same order for every writer: numbering lock, then row lock.
+      if (requestsNumber) await lockRecruitmentNumbering(tx);
+      const [existing] = await tx.select().from(recruitmentCandidatesV2).where(condition).for("update");
+      if (!existing) return undefined;
+      const changes = { ...data, updatedAt: new Date() };
+      if (existing.fileNo?.startsWith("R-")) {
+        changes.fileNo = existing.fileNo;
+      } else if (requestsNumber) {
+        // Ignore stale/proposed browser numbers and allocate at the write boundary.
+        changes.fileNo = await nextRecruitmentFileNumber(tx);
+      } else {
+        delete changes.fileNo;
+      }
+      if (existing.screeningDate) changes.screeningDate = existing.screeningDate;
+      const [candidate] = await tx.update(recruitmentCandidatesV2).set(changes).where(condition).returning();
+      return candidate;
+    });
   }
 
   async softDelete(id: number): Promise<boolean> {

@@ -20,8 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
     formatIsoDate,
+    parseManualDate,
 } from "@/components/ui/formatted-date-input";
 import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -104,6 +106,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
     const [showSignOnConflict, setShowSignOnConflict] = useState(false);
@@ -212,6 +218,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
             
@@ -369,6 +376,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return;
         }
         
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
+
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
@@ -509,6 +518,16 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             ? "bg-gray-100 cursor-not-allowed"
                             : undefined
                     }
+                    retainInvalidDraftOnBlur={field.name === "relieverSignOnDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "relieverSignOnDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
                     data-testid={`input-${field.name}`}
                     onChange={(event) => {
                         const value = event.target.value;
@@ -728,13 +747,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
-                                        {renderDateSelector(
-                                            field,
-                                            undefined,
-                                            watchedSignOnStatus === "Signed On"
-                                                ? format(new Date(), "yyyy-MM-dd")
-                                                : undefined,
-                                        )}
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign On date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                undefined,
+                                                watchedSignOnStatus === "Signed On"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                 </FormItem>
                             )}
@@ -850,7 +874,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
+                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict || (!unassignChecked && watchedSignOnStatus === "Signed On" && futureDateDraft.blocked)}
                                 data-testid="button-submit-relief"
                             >
                                 {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}

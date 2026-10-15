@@ -64,6 +64,7 @@ import type {
   InsertAdditionalInfoAttachment,
 } from "../../../../shared/v2/recruitment/types";
 import { fileStorageService } from "../../shared/fileStorageService.js";
+import { masterCountries, masterVesselTypes } from "../../../../shared/schema";
 
 /**
  * Delete a stored attachment binary from disk. Skips base64 data: values
@@ -160,15 +161,17 @@ export class DocumentsService {
   }
 
   // Optimized: Single JOIN query instead of N+1
-  async getVisas(recCanUuid: string): Promise<(CandVisa & { attachments: CandVisaAttachment[] })[]> {
+  async getVisas(recCanUuid: string): Promise<(CandVisa & { countryName?: string; attachments: CandVisaAttachment[] })[]> {
     const db = getDb();
     
     const rows = await db
       .select({
         visa: candVisas,
         att: candVisasAttachments,
+        countryName: masterCountries.countryName,
       })
       .from(candVisas)
+      .leftJoin(masterCountries, and(eq(candVisas.countryUuid, masterCountries.countryUuid), eq(masterCountries.isDeleted, false)))
       .leftJoin(
         candVisasAttachments,
         and(
@@ -184,10 +187,10 @@ export class DocumentsService {
       )
       .orderBy(asc(candVisas.sortOrder), asc(candVisas.createdAt), asc(candVisasAttachments.sortOrder), asc(candVisasAttachments.createdAt));
 
-    const visaMap = new Map<string, CandVisa & { attachments: CandVisaAttachment[] }>();
+    const visaMap = new Map<string, CandVisa & { countryName?: string; attachments: CandVisaAttachment[] }>();
     for (const row of rows) {
       if (!visaMap.has(row.visa.visaUuid)) {
-        visaMap.set(row.visa.visaUuid, { ...row.visa, attachments: [] });
+        visaMap.set(row.visa.visaUuid, { ...row.visa, countryName: row.countryName || undefined, attachments: [] });
       }
       if (row.att?.attUuid) {
         visaMap.get(row.visa.visaUuid)!.attachments.push(row.att);
@@ -492,15 +495,17 @@ export class DocumentsService {
   }
 
   // Optimized: Single JOIN query instead of N+1
-  async getSeaService(recCanUuid: string): Promise<(CandSeaService & { attachments: CandSeaServiceAttachment[] })[]> {
+  async getSeaService(recCanUuid: string): Promise<(CandSeaService & { vesselTypeName?: string; attachments: CandSeaServiceAttachment[] })[]> {
     const db = getDb();
     
     const rows = await db
       .select({
         sea: candSeaService,
         att: candSeaServiceAttachments,
+        vesselTypeName: masterVesselTypes.vesselType,
       })
       .from(candSeaService)
+      .leftJoin(masterVesselTypes, and(eq(candSeaService.vesselTypeUuid, masterVesselTypes.vtUuid), eq(masterVesselTypes.isDeleted, false)))
       .leftJoin(
         candSeaServiceAttachments,
         and(
@@ -516,10 +521,10 @@ export class DocumentsService {
       )
       .orderBy(asc(candSeaService.sortOrder), asc(candSeaService.createdAt), asc(candSeaServiceAttachments.sortOrder), asc(candSeaServiceAttachments.createdAt));
 
-    const seaMap = new Map<string, CandSeaService & { attachments: CandSeaServiceAttachment[] }>();
+    const seaMap = new Map<string, CandSeaService & { vesselTypeName?: string; attachments: CandSeaServiceAttachment[] }>();
     for (const row of rows) {
       if (!seaMap.has(row.sea.seaUuid)) {
-        seaMap.set(row.sea.seaUuid, { ...row.sea, attachments: [] });
+        seaMap.set(row.sea.seaUuid, { ...row.sea, vesselTypeName: row.vesselTypeName || undefined, attachments: [] });
       }
       if (row.att?.attUuid) {
         seaMap.get(row.sea.seaUuid)!.attachments.push(row.att);

@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
-import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon, Search as SearchIcon } from 'lucide-react';
+import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon, Search as SearchIcon, FileSpreadsheet } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '../../components/main/MainLayout';
@@ -30,6 +30,7 @@ import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate, useV2ScreeningStagesSummary } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 import { STATUS_MAPPING } from './statusBuckets';
+import { ExcelImportCandidateDialog } from './ExcelImportCandidateDialog';
 
 export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
 
@@ -134,6 +135,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
   const [showFilters, setShowFilters] = useState(true);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showExcelImport, setShowExcelImport] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<V2CandidateListItem | null>(null);
   // When true, the open form is reflected in the URL as /recruitment/<recCanUuid>
   // (opened via Edit/Attachment click or a path deep-link). Query-param deep-links
@@ -1059,6 +1061,21 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
               <FilterIcon className="h-4 w-4" />
               {!isPhone && 'Filters'}
             </Button>
+            {selectedRecruitmentPage === "in-progress" &&
+              !permissionsLoading &&
+              (permissions.length === 0 || canCreate(currentMenuName)) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 gap-2 border-[#cbdce3] bg-[#f8fbfc] text-[#315668] hover:bg-[#edf5f7] ${isPhone ? 'w-auto px-3' : ''}`}
+                onClick={() => setShowExcelImport(true)}
+                data-testid="button-import-candidate-excel"
+                aria-label="Import Candidate"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                {!isPhone && 'Import Candidate'}
+              </Button>
+            )}
             {(permissions.length === 0 || canCreate(currentMenuName)) && (
             <Button
               className={`h-8 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white ${isPhone ? 'w-auto px-3' : 'w-32'}`}
@@ -1076,6 +1093,18 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         </SectionTitleComponents>
         {renderContent()}
       </MainLayout>
+
+      <ExcelImportCandidateDialog
+        open={showExcelImport}
+        onOpenChange={setShowExcelImport}
+        onImportSuccess={async () => {
+          await queryClient.invalidateQueries({ queryKey: ["v2", "candidates"] });
+        }}
+        onOpenCandidate={(recCanUuid) => {
+          setShowExcelImport(false);
+          navigate(`/recruitment/${encodeURIComponent(recCanUuid)}`);
+        }}
+      />
 
       {showApplicationForm && (
         <RecruitmentApplicationFormV2

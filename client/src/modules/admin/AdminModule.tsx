@@ -5003,7 +5003,7 @@ const AdminModuleInner = (): JSX.Element => {
                       initialDraft={formatIsoDate(flexDate) || flexDate}
                       onChange={(e) => setFlexDate(e.target.value)}
                       onDraftValidityChange={(valid) => { flexDateDraftValidRef.current = valid; }}
-                      placeholder="DD-MMM-YYYY"
+                      placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                       className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
                       disabled={!revisionMode}
                       data-testid="flex-date-input"
@@ -6650,7 +6650,7 @@ const AdminModuleInner = (): JSX.Element => {
                       initialDraft={formatIsoDate(tmFlexDate) || tmFlexDate}
                       onChange={(e) => setTmFlexDate(e.target.value)}
                       onDraftValidityChange={(valid) => { tmFlexDateDraftValidRef.current = valid; }}
-                      placeholder="DD-MMM-YYYY"
+                      placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                       className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
                       disabled={!tmRevisionMode}
                       data-testid="tm-flex-date-input"

@@ -331,7 +331,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     }}
                     initialMonthDraft={monthDrafts.current.from}
                     onMonthDraftChange={(draft) => { monthDrafts.current.from = draft; }}
-                    placeholder="MMM-YYYY"
+                    placeholder="MMM-YYYY or MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="month-from-trigger"
                   />
@@ -347,7 +347,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     }}
                     initialMonthDraft={monthDrafts.current.to}
                     onMonthDraftChange={(draft) => { monthDrafts.current.to = draft; }}
-                    placeholder="MMM-YYYY"
+                    placeholder="MMM-YYYY or MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="month-to-trigger"
                   />
@@ -437,7 +437,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                    placeholder="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="date-from-trigger"
                   />
@@ -450,7 +450,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
                     acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                    placeholder="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="date-to-trigger"
                   />

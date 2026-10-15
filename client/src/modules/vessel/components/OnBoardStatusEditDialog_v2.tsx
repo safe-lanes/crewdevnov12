@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
     formatIsoDate,
+    parseManualDate,
 } from "@/components/ui/formatted-date-input";
 import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -83,6 +85,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const { getVesselName } = useVesselLookup();
     
     const updatePlanningV2 = useUpdatePlanningV2();
@@ -243,6 +249,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     };
 
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
+        if (data.reliefStatus === "Signed Off" && futureDateDraft.blocked) return;
         try {
             // Safety guard: a post-handover ex-primary (secondary + handOverDate)
             // must never re-trigger a takeover swap, even if form state carries
@@ -566,6 +573,16 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     disabled={!isOnboardCrewAssigned}
                     min={min}
                     max={max}
+                    retainInvalidDraftOnBlur={field.name === "signOffDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "signOffDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
                     data-testid={`input-${field.name}`}
                     onChange={(event) => {
                         const value = event.target.value;
@@ -866,13 +883,18 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 <FormItem>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
-                                        {renderDateSelector(
-                                            field,
-                                            getPickerDay(parseDate(form.getValues("signOnDate") || "")),
-                                            watchedReliefStatus === "Signed Off"
-                                                ? format(new Date(), "yyyy-MM-dd")
-                                                : undefined,
-                                        )}
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign Off date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                getPickerDay(parseDate(form.getValues("signOnDate") || "")),
+                                                watchedReliefStatus === "Signed Off"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                     <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
                                 </FormItem>
@@ -920,7 +942,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             <Button 
                                 type="submit"
                                 className="bg-green-600 hover:bg-green-700"
-                                disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || (watchedReliefStatus === "Signed Off" && futureDateDraft.blocked)}
                                 data-testid="button-submit-onboard"
                             >
                                 Submit

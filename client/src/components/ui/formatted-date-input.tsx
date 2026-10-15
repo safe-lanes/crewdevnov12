@@ -82,6 +82,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
   ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
+    const manualInputRef = React.useRef<HTMLInputElement>(null);
     const [draft, setDraft] = React.useState(
       () => initialDraft ?? formatIsoDate(value),
     );
@@ -130,7 +131,9 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         setIsInvalid(isDraftInvalid(draft));
         return;
       }
-      setDraft(formatIsoDate(value));
+      if (!isOwnChange || document.activeElement !== manualInputRef.current) {
+        setDraft(formatIsoDate(value));
+      }
       setIsInvalid((wasInvalid) =>
         isOwnChange && wasInvalid && isDraftInvalid(formatIsoDate(value)),
       );
@@ -143,9 +146,16 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       lastCanonicalValueRef.current = canonicalValue;
       const input = sourceEvent.currentTarget;
       const displayValue = input.value;
+      const { selectionStart, selectionEnd, selectionDirection } = input;
       input.value = canonicalValue;
-      onChange(sourceEvent);
-      input.value = displayValue;
+      try {
+        onChange(sourceEvent);
+      } finally {
+        input.value = displayValue;
+        if (document.activeElement === input && selectionStart !== null && selectionEnd !== null) {
+          input.setSelectionRange(selectionStart, selectionEnd, selectionDirection ?? undefined);
+        }
+      }
     };
 
     const handleManualChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +171,6 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       const canonicalValue = parseManualDate(nextDraft);
       if (!canonicalValue) return;
 
-      setDraft(formatIsoDate(canonicalValue));
       emitCanonicalChange(canonicalValue, event);
     };
 
@@ -279,6 +288,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         )}
       >
         <input
+          ref={manualInputRef}
           type="text"
           value={draft}
           onChange={handleManualChange}
