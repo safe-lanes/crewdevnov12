@@ -17,8 +17,6 @@ candidateImportRouter.use(async (req, res, next) => {
 candidateImportRouter.get("/template", async (_req, res) => {
   try {
     const catalogs = await loadCatalogs();
-    const own = res.locals.importActor.manningAgent;
-    if (own) catalogs.agents = catalogs.agents.filter(a => a.value === own);
     const buffer = await generateTemplate(catalogs);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="Recruitment_Candidate_A1-A5.xlsx"');
@@ -35,14 +33,8 @@ for (const action of ["validate", "execute"] as const) candidateImportRouter.pos
     const file = decodeFile(req.body?.fileData, req.body?.fileName);
     stage = "catalogs";
     const catalogs = await loadCatalogs();
-    const own = res.locals.importActor.manningAgent;
-    if (own) catalogs.agents = catalogs.agents.filter(a => a.value === own);
     stage = "parse";
     const parsed = await parseWorkbook(file, catalogs);
-    if (own && parsed.isValid) {
-      if (!parsed.data.personal.length) parsed.data.personal.push({});
-      parsed.data.personal[0].manningAgent = own;
-    }
     if (action === "validate") {
       const { data, ...preview } = parsed; // Do not send all personal data back into UI/logs.
       res.json(preview);

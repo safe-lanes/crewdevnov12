@@ -288,37 +288,48 @@ describe("Recruitment import authorization", () => {
   it("uses the signed parent ID and derives audit UUID without an additional JWT claim", async () => {
     const chain: any = { from: () => chain, where: vi.fn(() => chain), limit: async () => [{ id: 9999, userUuid: "verified-user", role: "Administrator" }] };
     dbMock.db = { select: () => chain };
-    await expect(authorizeImport({ user: { id: 9999, domain: "company-one", userType: "Office" }, body: {} } as any)).resolves.toEqual({ auditUuid: "verified-user", manningAgent: null });
-    expect(accessControlService.getMyPermissions).toHaveBeenCalledWith(undefined, "Administrator");
+    await expect(authorizeImport({ user: { id: 9999, domain: "company-one", userType: "Office" }, body: {} } as any)).resolves.toEqual({ auditUuid: "verified-user" });
+    expect(accessControlService.getMyPermissions).not.toHaveBeenCalled();
   });
-  it("rejects forged audit identity", async () => {
+  it("ignores a forged audit identity without rejecting the matched user", async () => {
     const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Administrator" }] };
     dbMock.db = { select: () => chain };
-    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "verified-user" }, body: { auditUserUuid: "someone-else" } } as any)).rejects.toThrow("does not match");
+    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "verified-user" }, body: { auditUserUuid: "someone-else" } } as any)).resolves.toEqual({ auditUuid: "verified-user" });
   });
-  it("rejects a role without In Progress create permission", async () => {
+  it("allows a matched user without In Progress create permission", async () => {
     const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Viewer" }] };
     dbMock.db = { select: () => chain };
-    vi.mocked(accessControlService.getMyPermissions).mockResolvedValueOnce({ permissions: [{ menuName: "In Progress", canview: true, cancreate: false }] } as any);
-    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "verified-user" }, body: {} } as any)).rejects.toThrow("create access");
+    await expect(authorizeImport({ user: { id: 1, userType: "Office" }, body: {} } as any)).resolves.toEqual({ auditUuid: "verified-user" });
+    expect(accessControlService.getMyPermissions).not.toHaveBeenCalled();
   });
-  it("derives the agency from a verified claim and excludes other agencies", async () => {
+  it("does not resolve or restrict agency scope for a matched Manning Agent", async () => {
     const userChain: any = { from: () => userChain, where: () => userChain, limit: async () => [{ userUuid: "agent-user", role: "Manning Agent" }] };
-    const agentChain: any = { from: () => agentChain, where: async () => [{ id: "own-id", name: "Agency One" }, { id: "other-id", name: "Other Agency" }] };
-    dbMock.db = { select: vi.fn().mockReturnValueOnce(userChain).mockReturnValueOnce(agentChain) };
-    await expect(authorizeImport({ user: { id: 1, userType: "Manning Agent", userUuid: "agent-user", manningAgent: "own-id" }, body: { manningAgent: "Other Agency" } } as any)).resolves.toEqual({ auditUuid: "agent-user", manningAgent: "Agency One" });
+    dbMock.db = { select: vi.fn().mockReturnValue(userChain) };
+    await expect(authorizeImport({ user: { id: 1, userType: "Manning Agent", manningAgent: "own-id" }, body: { manningAgent: "Other Agency" } } as any)).resolves.toEqual({ auditUuid: "agent-user" });
+    expect(dbMock.db.select).toHaveBeenCalledTimes(1);
   });
-  it("rejects an optional signed UUID contradicting the parent ID lookup", async () => {
+  it("ignores an optional signed UUID and uses the parent ID lookup", async () => {
     const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Administrator" }] };
     dbMock.db = { select: () => chain };
-    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "another-user" } } as any)).rejects.toThrow("signed user UUID does not match");
+    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "another-user" } } as any)).resolves.toEqual({ auditUuid: "verified-user" });
   });
-  it("rejects vessel users", async () => {
-    await expect(authorizeImport({ user: { id: 1, userType: "Ship" } } as any)).rejects.toThrow("Vessel users");
+  it("allows matched vessel users", async () => {
+    const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", userType: "Ship" }] };
+    dbMock.db = { select: () => chain };
+    await expect(authorizeImport({ user: { id: 1, userType: "Ship" } } as any)).resolves.toEqual({ auditUuid: "verified-user" });
   });
-  it("requires signed agency scope, never editable browser/Excel agency", async () => {
+  it("allows a matched Manning Agent without any signed agency claim", async () => {
     const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "user-uuid", role: "Manning Agent" }] };
     dbMock.db = { select: () => chain };
-    await expect(authorizeImport({ user: { id: 1, userType: "Manning Agent", userUuid: "user-uuid" }, body: { auditUserUuid: "user-uuid", manningAgent: "Agency One" } } as any)).rejects.toThrow("authenticated agency");
+    await expect(authorizeImport({ user: { id: 1, userType: "Manning Agent" }, body: {} } as any)).resolves.toEqual({ auditUuid: "user-uuid" });
+  });
+  it("saves null audit attribution when the matched master user has no UUID", async () => {
+    const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ id: 1, userUuid: null }] };
+    dbMock.db = { select: () => chain };
+    const actor = await authorizeImport({ user: { id: 1 }, body: { auditUserUuid: "forged" } } as any);
+    const parsed = await parse({ candidate: [{ firstName: "Import" }] });
+    const fake = fakeTransaction();
+    await writeCandidate(fake.tx, parsed, actor.auditUuid);
+    expect(fake.saved[0].values).toMatchObject({ createdByUuid: null, updatedByUuid: null, status: "Applied" });
   });
 });

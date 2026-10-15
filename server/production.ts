@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
+import { authMiddleware } from "./middleware/authMiddleware";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -76,6 +77,7 @@ app.use((req, res, next) => {
   await tenantConnectionManager.init();
 
   app.use(tenantMiddleware);
+  app.use(authMiddleware);
 
   const server = await registerRoutes(app);
 
