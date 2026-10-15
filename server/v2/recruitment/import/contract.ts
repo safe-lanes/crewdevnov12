@@ -4,7 +4,7 @@ import { FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./f
 export const LEGACY_VERSION = "Recruitment A1-A5 / 2 — Single sheet";
 export const VERSION = "Recruitment A1-A5 / 3 — Single sheet";
 export type TemplateVersion = typeof VERSION | typeof LEGACY_VERSION;
-export type Field = { key: string; label: string; date?: boolean; catalog?: string; choices?: string[]; max?: number };
+export type Field = { key: string; label: string; date?: boolean; catalog?: string; certificateCatalog?: "licenses" | "training"; choices?: string[]; max?: number };
 export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
 const date = (key: string, label: string) => f(key, label, { date: true });
@@ -37,8 +37,8 @@ const DEFINITIONS: Omit<Block, "placements" | "rowStep">[] = [
   { sheet: "A2 Documents", section: "A2", entity: "documents", uuid: "docUuid", start: 6, rows: 15, fields: [f("documentName", "Document type"), f("number", "Number"), date("issued", "Issued"), date("expiry", "Expiry"), f("issuingAuthority", "Issuing authority"), country("issuingCountryUuid", "Issuing country")] },
   { sheet: "A2 Visas", section: "A2", entity: "visas", uuid: "visaUuid", start: 6, rows: 10, fields: [country("countryUuid", "Issuing country"), f("serialNo", "Serial no."), date("issued", "Issued"), date("expiry", "Expiry"), f("visaType", "Visa type"), f("source", "Source")] },
   { sheet: "A3 Education", section: "A3", entity: "education", uuid: "eduUuid", start: 6, rows: 8, fields: [date("dateOfCompletion", "Completion date"), f("institution", "Institution", { max: 150 }), f("subjectsField", "Subjects / field", { max: 150 }), f("qualifications", "Qualification", { max: 150 })] },
-  { sheet: "A3 Licenses", section: "A3", entity: "licenses", uuid: "licUuid", start: 6, rows: 15, fields: [f("certificateDocument", "Certificate / document"), ...certificateFields] },
-  { sheet: "A3 Training", section: "A3", entity: "training", uuid: "trainUuid", start: 6, rows: 30, fields: [f("trainingCourse", "Training course"), ...certificateFields] },
+  { sheet: "A3 Licenses", section: "A3", entity: "licenses", uuid: "licUuid", start: 6, rows: 15, fields: [f("certificateDocument", "Certificate / document", { certificateCatalog: "licenses" }), ...certificateFields] },
+  { sheet: "A3 Training", section: "A3", entity: "training", uuid: "trainUuid", start: 6, rows: 30, fields: [f("trainingCourse", "Training course", { certificateCatalog: "training" }), ...certificateFields] },
   { sheet: "A4 Sea Service", section: "A4", entity: "sea", uuid: "seaUuid", start: 6, rows: 40, fields: [
     f("vesselName", "Vessel name", { max: 150 }), f("vesselTypeUuid", "Vessel type", { catalog: "vesselTypes" }), f("deadweight", "Deadweight"), f("engineTypePower", "Engine type / power", { max: 100 }), f("ownerOperator", "Owner / operator", { max: 150 }), f("rank", "Rank", { catalog: "ranks" }), date("fromDate", "From"), date("toDate", "To"),
   ] },

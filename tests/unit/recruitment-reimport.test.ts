@@ -51,6 +51,26 @@ function database(initial: any[] = [], failTable?: string) {
 }
 
 describe("Deleted workbook import identity", () => {
+  it("recognizes an older typed certificate import after live IDs/canonical names are derived", async () => {
+    const legacy = parsed();
+    legacy.data.licenses = [{ certificateDocument: "chief engineer", certificateNo: "0007", __row: "0" }];
+    legacy.data.training = [{ trainingCourse: "company induction", __row: "0" }];
+    const current = structuredClone(legacy);
+    current.data.licenses[0] = { certificateDocument: "Chief Engineer", licenseId: "LIC007",
+      __certificateInput: "chief engineer", certificateNo: "0007", __row: "0" };
+    current.data.training[0] = { trainingCourse: "Company Induction", courseId: "SAF029",
+      __certificateInput: "company induction", __row: "0" };
+    const oldUuid = candidateFingerprint(legacy);
+    const fake = database([{ recCanUuid: oldUuid, isDeleted: false }]);
+    await expect(writeCandidate(fake.tx, current, null)).rejects.toBeInstanceOf(DuplicateImportError);
+    expect(fake.details).toEqual([]);
+    fake.rows.get(oldUuid).isDeleted = true;
+    const uuid = await writeCandidate(fake.tx, current, null);
+    expect(uuid).not.toBe(oldUuid);
+    expect(fake.details).toContainEqual(expect.objectContaining({ table: "cand_licenses", licenseId: "LIC007", certificateDocument: "Chief Engineer" }));
+    expect(fake.details).toContainEqual(expect.objectContaining({ table: "cand_training_courses", courseId: "SAF029" }));
+    await expect(writeCandidate(fake.tx, current, null)).rejects.toBeInstanceOf(DuplicateImportError);
+  });
   it("retains legacy fingerprint UUIDs for a first import and rejects its active retry", async () => {
     const data = parsed(), fake = database();
     const uuid = await writeCandidate(fake.tx, data, null);

@@ -58,6 +58,19 @@ async function main() {
     const names = Array.from({ length: Number(lookup[2]) - 1 }, (_, i) => sheet.getCell(`${lookup[1]}${i + 2}`).text);
     assert.ok(names.length >= 2, "Smoke requires at least two current master vessel types");
     sheet.getCell("V5").value = names.slice(0, 2).join("; ");
+    for (const [address, manualAddress, manualName] of [
+      ["A163", "A164", "Custom Port License"], ["A180", "A181", "Custom Company Workshop"],
+    ]) {
+      const validation = sheet.getCell(address).dataValidation;
+      assert.equal(validation.type, "list");
+      assert.equal(Boolean(validation.showErrorMessage), false, "Custom certificate names must not be blocked");
+      const match = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(validation.formulae[0]);
+      assert.ok(match, "Database certificate choices must be present");
+      const option = sheet.getCell(`${match[1]}2`).text;
+      assert.ok(option.includes("[DB:"), "Database options must carry a readable business reference");
+      sheet.getCell(address).value = option;
+      sheet.getCell(manualAddress).value = manualName;
+    }
     await page.locator("#candidate-excel-file").setInputFiles({
       name: "professional-template.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       buffer: Buffer.from(await workbook.xlsx.writeBuffer()),
@@ -68,12 +81,13 @@ async function main() {
     assert.equal(validation.isValid, true);
     assert.deepEqual(validation.errors, []);
     assert.equal(validation.summary.A1, 4, "Candidate + Married family + two separate vessel records");
+    assert.equal(validation.summary.A3, 4, "Two linked certificates plus two custom certificate rows");
     await page.getByText("Ready to import", { exact: true }).waitFor();
     const after = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

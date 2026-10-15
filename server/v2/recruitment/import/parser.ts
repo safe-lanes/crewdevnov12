@@ -7,6 +7,7 @@ import { WorkbookValidationError, unreadableWorkbook } from "./errors";
 import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
 import { fixedText, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
 import { parseVesselTypes } from "./vesselTypes";
+import { resolveCertificate, CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export function decodeFile(fileData: unknown, fileName: unknown): Buffer {
@@ -71,6 +72,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
       : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
+       : cell.address === "A232" ? actual === CERTIFICATE_GUIDE || actual === PREVIOUS_CERTIFICATE_GUIDE
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
@@ -100,7 +102,20 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
         if (raw instanceof Date && Number.isNaN(raw.getTime())) { report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY."); continue; }
         let value = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(raw).trim();
         record[field.key] = value; // Preserve zero and false; don't use truthiness to decide presence.
-        if (value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
+        let linkedCertificate = false;
+        if (field.certificateCatalog) {
+          const resolved = resolveCertificate(value, catalogs[field.certificateCatalog] || []);
+          if (resolved.error) report(field.key, resolved.error);
+          else {
+            record[field.key] = value = resolved.name;
+            if (resolved.id) {
+              linkedCertificate = true;
+              record[field.certificateCatalog === "licenses" ? "licenseId" : "courseId"] = resolved.id;
+              record.__certificateInput = resolved.fingerprintName;
+            }
+          }
+        }
+        if (!linkedCertificate && value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
         if (field.date) {
           const parsed = strictDate(raw instanceof Date ? raw : value);
           if (!parsed) report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY.");

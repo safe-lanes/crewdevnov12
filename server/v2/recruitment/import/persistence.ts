@@ -15,11 +15,21 @@ const bindings = {
 };
 const NAMESPACE = "bf5b954d-4b5a-4c9f-91d6-dc413ed620c1";
 export function cleanRecord(record: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(record).filter(([key, value]) => key !== "__row" && value !== undefined && value !== null && (typeof value !== "string" || value.trim() !== "")));
+  return Object.fromEntries(Object.entries(record).filter(([key, value]) => key !== "__row" && key !== "__certificateInput" && value !== undefined && value !== null && (typeof value !== "string" || value.trim() !== "")));
 }
 export function candidateFingerprint(parsed: Parsed): string {
   // Empty workbook rows and audit actor do not alter retry identity.
-  return v5(JSON.stringify(BLOCKS.map(b => (parsed.data[b.entity] || []).map(cleanRecord))), NAMESPACE);
+  return v5(JSON.stringify(BLOCKS.map(b => (parsed.data[b.entity] || []).map(record => {
+    const values = cleanRecord(record);
+    // Derived associations must not change the historical workbook retry key.
+    // Restore typed spelling when a pre-dropdown workbook matched a live name.
+    if (b.entity === "licenses" || b.entity === "training") {
+      const key = b.entity === "licenses" ? "certificateDocument" : "trainingCourse";
+      delete values[b.entity === "licenses" ? "licenseId" : "courseId"];
+      if (record.__certificateInput !== undefined) values[key] = record.__certificateInput;
+    }
+    return values;
+  }))), NAMESPACE);
 }
 export class DuplicateImportError extends Error {}
 

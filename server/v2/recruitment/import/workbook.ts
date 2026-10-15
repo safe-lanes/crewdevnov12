@@ -3,6 +3,7 @@ import { VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, inputRange, ty
 import { FORM_SHEET, FORM_LAST_ROW, LOOKUP_START_COLUMN, columnLetter } from "./formLayout";
 import { isRequiredLabel } from "./requirements";
 import { styleBox, requiredLabel, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
+import { certificateOption, CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
 
 export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVersion = VERSION): ExcelJS.Workbook {
   const legacy = version === LEGACY_VERSION;
@@ -57,7 +58,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     "Dates: real Excel dates, YYYY-MM-DD or DD-MMM-YYYY. Keep phone, document and certificate numbers as text.",
     legacy ? "Choose current dropdown values. Do not move cells, rename headings, insert rows or add worksheets."
       : "Vessel types: up to 8 names separated by ; (e.g. Bulk Carrier; Oil Tanker). Dropdown shows names; type multiple names manually. Keep the layout unchanged.",
-    "Required in populated rows: document type; visa country/type; qualification; license/course; child first name; information.",
+    legacy ? PREVIOUS_CERTIFICATE_GUIDE : CERTIFICATE_GUIDE,
     "Sea service requires vessel name/type, rank, From and To. Dates cannot overlap; age and period are calculated.",
     "Upload → validate → confirm. Status is Applied. Photos, bank details, clothing sizes and other unsupported reference fields are not imported.",
   ].forEach((text, i) => { box(`A${229 + i}:AF${229 + i}`, text, "note"); sheet.getRow(229 + i).height = 30; });
@@ -68,7 +69,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   Object.entries(catalogs).forEach(([name, entries], index) => {
     const col = LOOKUP_START_COLUMN + index;
     const letter = columnLetter(col);
-    const labels = [...new Set(entries.map(e => e.label))].sort();
+    const labels = [...new Set(entries.map(e => name === "licenses" || name === "training" ? certificateOption(e) : e.label))].sort();
     sheet.getColumn(col).hidden = true;
     sheet.getCell(1, col).value = name;
     labels.forEach((label, i) => { sheet.getCell(i + 2, col).value = label; });
@@ -87,9 +88,14 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
       block.fields.forEach((field, j) => {
         const cell = box(inputRange(block, j, row), null);
         cell.numFmt = field.date ? "dd-mmm-yyyy" : "@";
-        if (field.choices || (field.catalog && ranges[field.catalog])) cell.dataValidation = {
-          type: "list", allowBlank: true, showErrorMessage: legacy || block.entity !== "vesselTypes", errorTitle: "Select a valid value",
-          error: "Choose a value from the dropdown.", formulae: [field.choices ? `"${field.choices.join(",")}"` : ranges[field.catalog!]],
+        const catalog = field.certificateCatalog || field.catalog;
+        if (field.choices || (catalog && ranges[catalog])) cell.dataValidation = {
+          type: "list", allowBlank: true, showErrorMessage: !field.certificateCatalog && (legacy || block.entity !== "vesselTypes"), errorTitle: "Select a valid value",
+          error: "Choose a value from the dropdown.", formulae: [field.choices ? `"${field.choices.join(",")}"` : ranges[catalog!]],
+          ...(field.certificateCatalog ? {
+            showInputMessage: true, promptTitle: "Database or manual entry",
+            prompt: "Select a database option to link this record, or type a custom name. Blank details are not filled automatically.",
+          } : {}),
         };
         // Explicitly anchor validation on the top-left of each merged input box.
         if (cell.address !== cellLocation(block, j, row)) throw new Error("Invalid form input mapping.");
@@ -99,6 +105,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   if (!legacy) {
     sheet.getRow(5).height = 48;
     sheet.getRow(231).height = 44;
+    sheet.getRow(232).height = 44;
   }
   return book;
 }

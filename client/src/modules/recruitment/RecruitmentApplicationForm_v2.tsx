@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { hasCertificateDatabaseId } from './certificateBinding';
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1267,7 +1268,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: lic.issuingAuthority || '',
         issued: lic.issued || '',
         expiry: lic.expiry || '',
-        fromDatabase: !!(lic.licenseId && LICENSE_DCE_TEMPLATES.some(t => t.id === lic.licenseId)) || !!(lic.abbr || lic.requirement),
+        fromDatabase: hasCertificateDatabaseId(lic.licenseId, "license"),
         attachments: mapApiAttachments(lic.attachments, '/api/v2/recruitment/licenses/attachments'),
       }));
       setFormData(prev => ({ ...prev, licenses: mapped }));
@@ -1287,7 +1288,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: course.issuingAuthority || '',
         issued: course.issued || '',
         expiry: course.expiry || '',
-        fromDatabase: !!(course.courseId && adminCompanyTrainings.some(ct => ct.companyId === course.courseId)) || !!(course.abbr || course.requirement),
+        fromDatabase: hasCertificateDatabaseId(course.courseId, "training"),
         sortOrder: undefined as number | undefined,
         attachments: mapApiAttachments(course.attachments, '/api/v2/recruitment/training/attachments'),
       }));
