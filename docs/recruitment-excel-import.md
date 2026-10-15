@@ -20,11 +20,19 @@ Photos and attachments are uploaded separately. The reference `.xls` is not acce
 
 ## Parent login integration dependency
 
-Imports enforce create/view access for In Progress, unlike the older endpoints that only enforce module authentication. **Production imports require the authenticated parent JWT to include `userUuid` matching the synced user master UUID.** Its existing numeric `id` is not usable: master sync rebuilds local serial IDs and does not preserve parent numeric IDs. Never map the numeric JWT ID to that local serial or use an editable browser profile to authorize access.
+Imports enforce create/view access for In Progress, unlike the older endpoints that only enforce module authentication. **The existing signed parent JWT (`id`, `domain`, `userType`) is sufficient for Office accounts with the required permissions.** User synchronization preserves the parent's explicit numeric `id`. Imports look up that ID in the authenticated tenant's `master_users`, then derive the audit UUID and role from the matched row. A missing/invalid ID or missing UUID/role mapping is denied. If an optional signed `userUuid` is supplied, it must match that row. Browser-supplied identity, role and audit fields cannot override the authenticated user.
 
 Manning Agent accounts additionally require a signed `manningAgent` claim containing the active agent ID or exact unique name. Only that agency appears in template dropdowns; workbook edits cannot select another agency. A blank agency is assigned from this authenticated scope on creation.
 
-Missing verified identity, role permission or agency scope returns a clear 403 and saves nothing. The parent application's current minimal token (`id`, `domain`, `userType`) needs these additional identity/scope claims before this feature can be used with that login. Existing development-only bypass remains unchanged; it is not a production workaround.
+Missing verified identity, role permission or agency scope returns a clear 403 and saves nothing. Manning Agents still need the separate signed agency claim; numeric user resolution does not grant unrestricted agency access. Existing development-only bypass remains unchanged; it is not a production workaround.
+
+### UAT rollout and checks
+
+Deploy the updated backend through the existing UAT deployment process and restart that backend. No parent JWT change, database migration, user synchronization run or candidate backfill is required for this fix. Keep the existing shared-signature verification and tenant configuration; do not enable an authentication bypass.
+
+With an existing Office login whose master-user row has the same numeric ID and an assigned role permitting In Progress view/create, download the template, fill a synthetic candidate, and validate it. Confirm an import only when an authorized UAT test record may be created; verify Applied status, File No, submitted date and the matched user's audit UUID. Verify that a view-only user and a vessel user remain denied, and that cross-tenant requests cannot select another tenant's user with the same ID.
+
+Local automated tests use synthetic signed JWTs, isolated tenant database doubles and simulated persistence. They do not prove the external UAT deployment has been updated; the signed-in UAT checks above must follow its rollout.
 
 ## Verification
 
