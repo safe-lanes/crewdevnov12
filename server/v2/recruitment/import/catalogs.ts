@@ -25,10 +25,10 @@ export async function loadCatalogs(): Promise<Catalogs> {
   // Recruitment stores/display-selects the company label, not the org-chart rank name.
   result.ranks = ranks.map((r: { name: string; label: string | null }) => ({ label: r.label || r.name, value: r.label || r.name }));
   // Exactly the business identifiers used by the web "Add from database" dialogs.
-  const liveLicenses: { name: string; entryId: string }[] = licenses;
+  const liveLicenses: { name: string; entryId: string; shortCode?: string | null; description?: string | null }[] = licenses;
   result.licenses = liveLicenses.filter(row => row.name.trim() && row.entryId.trim())
-    .map(row => ({ label: row.name, value: row.entryId }));
+    .map(row => ({ label: row.name, value: row.entryId, abbr: row.shortCode || "", requirement: row.description || "" }));
   result.training = training.filter(row => row.trainingLabel.trim() && row.companyId.trim())
-    .map(row => ({ label: row.trainingLabel, value: row.companyId }));
+    .map(row => ({ label: row.trainingLabel, value: row.companyId, abbr: row.abr || "", requirement: row.requirement || "" }));
   return result;
 }

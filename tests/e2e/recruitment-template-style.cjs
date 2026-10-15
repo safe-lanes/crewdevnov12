@@ -50,6 +50,10 @@ async function main() {
     assert.equal(sheet.getCell("A4").text.includes("Spouse fields are optional"), true);
     assert.equal(sheet.pageSetup.printArea, "A1:AF234");
     assert.equal(sheet.pageSetup.fitToHeight, 0);
+    for (const address of ["E163", "I163", "E180", "I180"]) {
+      assert.ok(sheet.getCell(address).formula.includes("VLOOKUP("), "Certificate defaults must autofill in Excel, not only on import");
+    }
+    for (let col = 52; col < 58; col++) assert.equal(sheet.getColumn(col).hidden, true);
     // Validate a filled copy in memory, leaving the delivered example blank.
     sheet.getCell("F8").value = "Template Preview";
     sheet.getCell("V15").value = "Married";
@@ -87,7 +91,7 @@ async function main() {
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, dependentAutofillFormulas: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

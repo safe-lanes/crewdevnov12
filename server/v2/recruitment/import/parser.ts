@@ -8,6 +8,7 @@ import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
 import { fixedText, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
 import { parseVesselTypes } from "./vesselTypes";
 import { resolveCertificate, CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
+import { certificateDefaultReader, isAutofillLookup, isCertificateDefault, AUTOFILL_CERTIFICATE_GUIDE } from "./certificateAutofill";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export function decodeFile(fileData: unknown, fileName: unknown): Buffer {
@@ -59,24 +60,25 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   if (JSON.stringify([...(sheet.model.merges || [])].sort()) !== JSON.stringify([...(expected.model.merges || [])].sort())) throw new WorkbookValidationError("MODIFIED_LAYOUT", "Modified form layout. Do not insert rows, move fields or change merged boxes. Download a fresh template.");
   const inputs = new Set<string>();
   for (const block of blocks) for (let row = 0; row < (block.rows || 1); row++) block.fields.forEach((_, j) => inputs.add(cellLocation(block, j, row)));
-  const isLookup = (column: number) => column >= LOOKUP_START_COLUMN && column < LOOKUP_START_COLUMN + Object.keys(catalogs).length;
+  const isLookup = (column: number) => (column >= LOOKUP_START_COLUMN && column < LOOKUP_START_COLUMN + Object.keys(catalogs).length) || (!legacy && isAutofillLookup(column));
   // Verify all fixed text once. Labels and instructions are not input data,
   // and merged aliases must not be counted as extra populated cells.
   const fixed = new Set<string>();
   const labels = new Map(blocks.flatMap(block => block.fields.map((field, j) =>
     [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key, legacy) }] as const)));
   expected.eachRow(row => row.eachCell(cell => {
-    if (cell.type === ExcelJS.ValueType.Merge || isLookup(Number(cell.col)) || cell.value === null) return;
+    if (cell.type === ExcelJS.ValueType.Merge || inputs.has(cell.address) || isLookup(Number(cell.col)) || cell.value === null) return;
     fixed.add(cell.address);
     const actual = fixedText(sheet.getCell(cell.address).value);
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
       : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
-       : cell.address === "A232" ? actual === CERTIFICATE_GUIDE || actual === PREVIOUS_CERTIFICATE_GUIDE
+       : cell.address === "A232" ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE].includes(actual!)
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
   const today = new Date().toISOString().slice(0, 10);
+  const readCertificateDefault = certificateDefaultReader(sheet, catalogs);
   for (const block of blocks) {
     data[block.entity] = [];
     if (!legacy && block.entity === "vesselTypes") {
@@ -96,12 +98,20 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
       };
       for (let j = 0; j < block.fields.length; j++) {
         const field = block.fields[j];
-        const raw = sheet.getCell(cellLocation(block, j, row)).value;
+        let raw = sheet.getCell(cellLocation(block, j, row)).value;
+        let derivedDefault = false;
+        if (!legacy && isCertificateDefault(block.entity, field.key) && typeof raw === "object" && raw !== null && !(raw instanceof Date)) {
+          const derived = readCertificateDefault(block, row, field.key, record);
+          if (derived.error) { report(field.key, derived.error); continue; }
+          raw = derived.value ?? null;
+          derivedDefault = true;
+        }
         if (raw === null || raw === undefined || (typeof raw === "string" && !raw.trim())) continue;
         if (typeof raw === "object" && !(raw instanceof Date)) { report(field.key, "Use a plain value, not a formula, link or formatted object."); continue; }
         if (raw instanceof Date && Number.isNaN(raw.getTime())) { report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY."); continue; }
         let value = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(raw).trim();
         record[field.key] = value; // Preserve zero and false; don't use truthiness to decide presence.
+        if (derivedDefault) record.__certificateDefaults = [record.__certificateDefaults, field.key].filter(Boolean).join(",");
         let linkedCertificate = false;
         if (field.certificateCatalog) {
           const resolved = resolveCertificate(value, catalogs[field.certificateCatalog] || []);
@@ -115,7 +125,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
             }
           }
         }
-        if (!linkedCertificate && value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
+        if (!linkedCertificate && !derivedDefault && value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
         if (field.date) {
           const parsed = strictDate(raw instanceof Date ? raw : value);
           if (!parsed) report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY.");

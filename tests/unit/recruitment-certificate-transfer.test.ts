@@ -44,8 +44,8 @@ vi.mock("../../server/v2/recruitment/repositories/documentsRepository", () => ({
 describe("Imported certificate links through Recruitment → Crew Pool", () => {
   it("transfers parsed business references and manual rows without synthesizing codes or altering entered details", async () => {
     const catalogs = {
-      licenses: [{ label: "Chief Engineer", value: "LIC007" }],
-      training: [{ label: "Company Safety Induction", value: "SAF029" }],
+      licenses: [{ label: "Chief Engineer", value: "LIC007", abbr: "CE", requirement: "License default" }],
+      training: [{ label: "Company Safety Induction", value: "SAF029", abbr: "CSI", requirement: "Company default" }],
     };
     const book = createTemplateWorkbook(catalogs), sheet = book.getWorksheet(FORM_SHEET)!;
     sheet.getCell("F8").value = "Import";
@@ -72,11 +72,11 @@ describe("Imported certificate links through Recruitment → Crew Pool", () => {
     const training = saved.filter(row => row.table === "crew_training_courses").map(row => row.values);
     expect(licenses).toHaveLength(2);
     expect(training).toHaveLength(2);
-    expect(licenses[0]).toMatchObject({ licenseId: "LIC007", certificateDocument: "Chief Engineer", certificateNo: "0007", crewUuid: result.crewUuid });
+    expect(licenses[0]).toMatchObject({ licenseId: "LIC007", certificateDocument: "Chief Engineer", abbr: "CE", requirement: "License default", certificateNo: "0007", crewUuid: result.crewUuid });
     expect(licenses[1]).toMatchObject({ licenseId: null, certificateDocument: "Custom Port License", abbr: "CPL" });
-    expect(training[0]).toMatchObject({ courseId: "SAF029", trainingCourse: "Company Safety Induction", requirement: "User requirement" });
+    expect(training[0]).toMatchObject({ courseId: "SAF029", trainingCourse: "Company Safety Induction", abbr: "CSI", requirement: "User requirement" });
     expect(training[1]).toMatchObject({ courseId: null, trainingCourse: "Custom Workshop" });
-    expect(training[0].abbr).toBeUndefined();
+    expect(training[1].abbr).toBeUndefined();
     expect(training[0].expiry).toBeUndefined();
   });
 });

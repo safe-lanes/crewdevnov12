@@ -3,7 +3,8 @@ import { VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, inputRange, ty
 import { FORM_SHEET, FORM_LAST_ROW, LOOKUP_START_COLUMN, columnLetter } from "./formLayout";
 import { isRequiredLabel } from "./requirements";
 import { styleBox, requiredLabel, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
-import { certificateOption, CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
+import { certificateOption, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
+import { writeCertificateDefaults, certificateDefaultFormula, isCertificateDefault, AUTOFILL_CERTIFICATE_GUIDE } from "./certificateAutofill";
 
 export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVersion = VERSION): ExcelJS.Workbook {
   const legacy = version === LEGACY_VERSION;
@@ -11,6 +12,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   const legendText = legacy ? PREVIOUS_LEGEND : FORM_LEGEND;
   const book = new ExcelJS.Workbook();
   book.creator = "SAIL Recruitment";
+  book.calcProperties.fullCalcOnLoad = true;
   const sheet = book.addWorksheet(FORM_SHEET, {
     views: [{ state: "frozen", ySplit: 4, showGridLines: false }],
     pageSetup: {
@@ -58,7 +60,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     "Dates: real Excel dates, YYYY-MM-DD or DD-MMM-YYYY. Keep phone, document and certificate numbers as text.",
     legacy ? "Choose current dropdown values. Do not move cells, rename headings, insert rows or add worksheets."
       : "Vessel types: up to 8 names separated by ; (e.g. Bulk Carrier; Oil Tanker). Dropdown shows names; type multiple names manually. Keep the layout unchanged.",
-    legacy ? PREVIOUS_CERTIFICATE_GUIDE : CERTIFICATE_GUIDE,
+    legacy ? PREVIOUS_CERTIFICATE_GUIDE : AUTOFILL_CERTIFICATE_GUIDE,
     "Sea service requires vessel name/type, rank, From and To. Dates cannot overlap; age and period are calculated.",
     "Upload → validate → confirm. Status is Applied. Photos, bank details, clothing sizes and other unsupported reference fields are not imported.",
   ].forEach((text, i) => { box(`A${229 + i}:AF${229 + i}`, text, "note"); sheet.getRow(229 + i).height = 30; });
@@ -75,6 +77,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     labels.forEach((label, i) => { sheet.getCell(i + 2, col).value = label; });
     if (labels.length) ranges[name] = `$${letter}$2:$${letter}$${labels.length + 1}`;
   });
+  if (!legacy) writeCertificateDefaults(sheet, catalogs);
   for (const block of blocks) {
     block.fields.forEach((field, j) => {
       box(block.placements[j].label,
@@ -88,13 +91,17 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
       block.fields.forEach((field, j) => {
         const cell = box(inputRange(block, j, row), null);
         cell.numFmt = field.date ? "dd-mmm-yyyy" : "@";
+        if (!legacy && isCertificateDefault(block.entity, field.key)) {
+          cell.value = { formula: certificateDefaultFormula(block, row, field.key), result: "" };
+          cell.numFmt = "General";
+        }
         const catalog = field.certificateCatalog || field.catalog;
         if (field.choices || (catalog && ranges[catalog])) cell.dataValidation = {
           type: "list", allowBlank: true, showErrorMessage: !field.certificateCatalog && (legacy || block.entity !== "vesselTypes"), errorTitle: "Select a valid value",
           error: "Choose a value from the dropdown.", formulae: [field.choices ? `"${field.choices.join(",")}"` : ranges[catalog!]],
           ...(field.certificateCatalog ? {
             showInputMessage: true, promptTitle: "Database or manual entry",
-            prompt: "Select a database option to link this record, or type a custom name. Blank details are not filled automatically.",
+            prompt: "Select a database option to link this record and fill abbreviation/requirement, or type a custom name and details. Defaults can be replaced or cleared.",
           } : {}),
         };
         // Explicitly anchor validation on the top-left of each merged input box.
@@ -105,7 +112,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   if (!legacy) {
     sheet.getRow(5).height = 48;
     sheet.getRow(231).height = 44;
-    sheet.getRow(232).height = 44;
+    sheet.getRow(232).height = 60;
   }
   return book;
 }

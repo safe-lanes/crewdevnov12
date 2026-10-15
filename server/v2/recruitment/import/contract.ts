@@ -60,7 +60,8 @@ export function blocksForVersion(version: TemplateVersion): Block[] {
   return version === LEGACY_VERSION ? LEGACY_BLOCKS : BLOCKS;
 }
 export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
-export type Catalogs = Record<string, { label: string; value: string }[]>;
+export type CatalogEntry = { label: string; value: string; abbr?: string | null; requirement?: string | null };
+export type Catalogs = Record<string, CatalogEntry[]>;
 export type Parsed = { data: Record<string, Record<string, string>[]>; errors: ImportError[]; summary: Record<string, number>; candidateName: string; isValid: boolean; status: "Applied" };
 export function cellLocation(block: Block, field: number, row: number): string {
   return inputRange(block, field, row).split(":")[0];
