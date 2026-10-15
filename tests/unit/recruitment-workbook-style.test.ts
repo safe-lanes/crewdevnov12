@@ -2,8 +2,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { generateTemplate } from "../../server/v2/recruitment/import/workbook";
-import { BLOCKS, cellLocation, labelLocation } from "../../server/v2/recruitment/import/contract";
+import { generateTemplate, createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
+import { BLOCKS, LEGACY_BLOCKS, LEGACY_VERSION, cellLocation, labelLocation } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint } from "../../server/v2/recruitment/import/persistence";
 import { FORM_COLORS, FORM_LEGEND, LEGACY_LEGEND } from "../../server/v2/recruitment/import/workbookStyle";
@@ -55,13 +55,12 @@ describe("Professional application workbook styling", () => {
     expect(sheet.getRow(179).height).toBeGreaterThanOrEqual(40);
     expect(sheet.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0, printArea: "A1:AF234" });
   });
-  it("marks exactly actual required fields and Married-only fields, with only asterisks red", async () => {
+  it("marks actual required fields but leaves spouse and optional vessel box unstarred", async () => {
     const expected: Record<string, string[]> = {
       candidate: ["firstName"], documents: ["documentName"], visas: ["countryUuid", "visaType"],
       education: ["qualifications"], licenses: ["certificateDocument"], training: ["trainingCourse"],
       sea: ["vesselName", "vesselTypeUuid", "rank", "fromDate", "toDate"],
-      children: ["firstName"], vesselTypes: ["vesselTypeUuid"], additional: ["information"],
-      family: ["spouseFirstName", "spouseFamilyName"],
+      children: ["firstName"], additional: ["information"],
     };
     const sheet = (await workbook()).worksheets[0];
     for (const block of BLOCKS) block.fields.forEach((field, j) => {
@@ -75,7 +74,7 @@ describe("Professional application workbook styling", () => {
       } else expect(cell.value).toBe(field.label);
     });
     expect(sheet.getCell("A4").text).toBe(FORM_LEGEND);
-    expect(sheet.getCell("A26").text).toBe("Spouse first name and surname are required if Married.");
+    expect(sheet.getCell("A26").text).toBe("Spouse details are optional, including when Married.");
     expect(sheet.getCell("A229").text).toContain("Only populated cells and rows are saved.");
     expect(sheet.getCell("A230").text).toContain("YYYY-MM-DD or DD-MMM-YYYY");
   });
@@ -97,9 +96,9 @@ describe("Professional application workbook styling", () => {
     }
   });
   it("accepts old plain labels/legend and new rich labels with identical parsed values and fingerprint", async () => {
-    const modern = await workbook(), legacy = await workbook();
+    const modern = await workbook(), legacy = createTemplateWorkbook(catalogs, LEGACY_VERSION);
     const sheet = legacy.worksheets[0];
-    for (const block of BLOCKS) block.fields.forEach((field, j) => { sheet.getCell(labelLocation(block, j)).value = field.label; });
+    for (const block of LEGACY_BLOCKS) block.fields.forEach((field, j) => { sheet.getCell(labelLocation(block, j)).value = field.label; });
     sheet.getCell("A4").value = LEGACY_LEGEND;
     sheet.getCell("A8").note = "Required for every application.";
     sheet.getCell("F8").note = "Blank values are not saved.";
@@ -135,12 +134,13 @@ describe("Professional application workbook styling", () => {
     book.worksheets[0].getCell("A8").value = value;
     await expect(parse(book)).rejects.toMatchObject({ code: "MODIFIED_HEADING" });
   });
-  it("keeps conditional validation unchanged and unused tables empty", async () => {
+  it("accepts Married with blank spouse details and keeps unused tables empty", async () => {
     const book = await workbook();
     book.worksheets[0].getCell("V15").value = "Married";
     const parsed = await parse(book);
-    expect(parsed.errors.filter(error => error.message.includes("Married")).map(error => error.field))
-      .toEqual(["Spouse first name", "Spouse family name"]);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.isValid).toBe(true);
+    expect(parsed.data.family).toEqual([{ maritalStatus: "Married", __row: "0" }]);
     expect(parsed.data.children).toEqual([]);
     expect(parsed.data.sea).toEqual([]);
     expect(parsed.data.documents).toEqual([]);

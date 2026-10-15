@@ -1,7 +1,9 @@
 // Fixed, versioned cell locations are shared by the generator and reader.
 // Uploaded workbooks cannot supply field/table mappings or identity/status values.
-import { FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
-export const VERSION = "Recruitment A1-A5 / 2 — Single sheet";
+import { FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
+export const LEGACY_VERSION = "Recruitment A1-A5 / 2 — Single sheet";
+export const VERSION = "Recruitment A1-A5 / 3 — Single sheet";
+export type TemplateVersion = typeof VERSION | typeof LEGACY_VERSION;
 export type Field = { key: string; label: string; date?: boolean; catalog?: string; choices?: string[]; max?: number };
 export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
@@ -43,10 +45,20 @@ const DEFINITIONS: Omit<Block, "placements" | "rowStep">[] = [
   { sheet: "A5 Additional", section: "A5", entity: "additional", uuid: "infoUuid", start: 6, rows: 15, fields: [f("information", "Information", { max: 1000 }), f("response", "Response", { max: 1000 })] },
 ];
 // Keep entity order stable: it is also used for duplicate-import fingerprints.
+export const LEGACY_BLOCKS: Block[] = DEFINITIONS.map(block => ({
+  ...block, sheet: FORM_SHEET, start: LEGACY_FORM_LAYOUT[block.entity].start,
+  placements: LEGACY_FORM_LAYOUT[block.entity].placements, rowStep: LEGACY_FORM_LAYOUT[block.entity].step || 1,
+}));
 export const BLOCKS: Block[] = DEFINITIONS.map(block => ({
   ...block, sheet: FORM_SHEET, start: FORM_LAYOUT[block.entity].start,
   placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
+  ...(block.entity === "vesselTypes" ? {
+    rows: 1, fields: [{ ...block.fields[0], label: "Vessel types applied for" }],
+  } : {}),
 }));
+export function blocksForVersion(version: TemplateVersion): Block[] {
+  return version === LEGACY_VERSION ? LEGACY_BLOCKS : BLOCKS;
+}
 export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
 export type Catalogs = Record<string, { label: string; value: string }[]>;
 export type Parsed = { data: Record<string, Record<string, string>[]>; errors: ImportError[]; summary: Record<string, number>; candidateName: string; isValid: boolean; status: "Applied" };

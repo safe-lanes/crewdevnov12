@@ -23,7 +23,7 @@ const catalogs: Catalogs = {
   languages: [{ label: "Hindi", value: "lang-uuid" }],
   ranks: [{ label: "Master", value: "Master" }],
   agents: [{ label: "Agency One", value: "Agency One" }],
-  vesselTypes: [{ label: "Bulk Carrier", value: "vt-uuid" }],
+  vesselTypes: [{ label: "Bulk Carrier", value: "vt-uuid" }, { label: "Oil Tanker", value: "oil-uuid" }],
 };
 let template: Buffer;
 beforeEach(async () => { template = await generateTemplate(catalogs); });
@@ -32,6 +32,11 @@ async function parse(entries: Record<string, Record<string, unknown>[]>) {
   await book.xlsx.load(template as any);
   for (const [entity, rows] of Object.entries(entries)) {
     const block = BLOCKS.find(b => b.entity === entity)!;
+    if (entity === "vesselTypes") {
+      book.getWorksheet(block.sheet)!.getCell(cellLocation(block, 0, 0)).value =
+        rows.map(record => record.vesselTypeUuid).filter(value => value !== undefined).join("; ");
+      continue;
+    }
     rows.forEach((record, row) => Object.entries(record).forEach(([key, value]) => {
       const field = block.fields.findIndex(f => f.key === key);
       book.getWorksheet(block.sheet)!.getCell(cellLocation(block, field, row)).value = value as any;
@@ -85,6 +90,24 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(parsed.isValid).toBe(true);
     expect(parsed.data.family[0].numDependentChildren).toBe("0");
     expect(parsed.data.additional[0].response).toBe("false");
+  });
+  it("saves multiple vessel relationships in order and Married without any spouse details", async () => {
+    const parsed = await parse({
+      candidate: [{ firstName: "Import" }], family: [{ maritalStatus: "Married" }],
+      vesselTypes: [{ vesselTypeUuid: "Bulk Carrier" }, { vesselTypeUuid: "Oil Tanker" }],
+    });
+    expect(parsed.errors).toEqual([]);
+    const fake = fakeTransaction();
+    dbMock.db = fake.db;
+    const uuid = await persistCandidate(parsed, "actor-uuid");
+    const family = fake.saved.find(saved => saved.table === "cand_family_info")!;
+    expect(family.values).toMatchObject({ maritalStatus: "Married", recCanUuid: uuid });
+    expect(Object.keys(family.values).filter(key => key.startsWith("spouse"))).toEqual([]);
+    const vessels = fake.saved.filter(saved => saved.table === "cand_vessel_types_applied");
+    expect(vessels.map(saved => [saved.values.vesselTypeUuid, saved.values.sortOrder])).toEqual([["vt-uuid", 0], ["oil-uuid", 1]]);
+    expect(vessels.every(saved => saved.values.recCanUuid === uuid)).toBe(true);
+    expect(fake.saved[0].values).toMatchObject({ status: "Applied", fileNo: `R-${new Date().getFullYear()}-0018` });
+    expect(fake.saved[0].values.screeningDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
   it("reports partially populated rows instead of dropping them", async () => {
     const parsed = await parse({ candidate: [core], documents: [{ number: "00123" }], sea: [{ ownerOperator: "Example" }], education: [{ institution: "School" }] });
@@ -187,7 +210,7 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(parsed.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ sheet: FORM_SHEET, cell: "F8", field: "First name" }),
       expect.objectContaining({ sheet: FORM_SHEET, cell: "I53", field: "From" }),
-      expect.objectContaining({ sheet: FORM_SHEET, cell: "Y40", field: "Vessel type" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "V5", field: "Vessel types applied for" }),
     ]));
   });
   it("rejects data in gaps or beyond any designated table rather than silently ignoring it", async () => {

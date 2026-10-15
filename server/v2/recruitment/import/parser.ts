@@ -1,11 +1,12 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { BLOCKS, VERSION, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
+import { VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
 import { FORM_SHEET, LOOKUP_START_COLUMN } from "./formLayout";
 import { createTemplateWorkbook } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
-import { isRequiredLabel, ROW_REQUIRED, MARRIED_REQUIRED } from "./requirements";
-import { fixedText, FORM_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
+import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
+import { fixedText, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
+import { parseVesselTypes } from "./vesselTypes";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export function decodeFile(fileData: unknown, fileName: unknown): Buffer {
@@ -48,31 +49,42 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   const book = new ExcelJS.Workbook();
   try { await book.xlsx.load(buffer as any); } catch (error) { throw unreadableWorkbook(error); }
   const sheet = book.getWorksheet(FORM_SHEET);
-  if (!sheet || sheet.getCell("A1").value !== VERSION) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
+  const version = sheet?.getCell("A1").value;
+  if (!sheet || (version !== VERSION && version !== LEGACY_VERSION)) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
+  const legacy = version === LEGACY_VERSION;
+  const blocks = blocksForVersion(version);
   if (book.worksheets.length !== 1) throw new WorkbookValidationError("EXTRA_SHEETS", "Workbook has unsupported sheets. Use only the downloaded single-sheet form.");
-  const expected = createTemplateWorkbook(catalogs).getWorksheet(FORM_SHEET)!;
+  const expected = createTemplateWorkbook(catalogs, version).getWorksheet(FORM_SHEET)!;
   if (JSON.stringify([...(sheet.model.merges || [])].sort()) !== JSON.stringify([...(expected.model.merges || [])].sort())) throw new WorkbookValidationError("MODIFIED_LAYOUT", "Modified form layout. Do not insert rows, move fields or change merged boxes. Download a fresh template.");
   const inputs = new Set<string>();
-  for (const block of BLOCKS) for (let row = 0; row < (block.rows || 1); row++) block.fields.forEach((_, j) => inputs.add(cellLocation(block, j, row)));
+  for (const block of blocks) for (let row = 0; row < (block.rows || 1); row++) block.fields.forEach((_, j) => inputs.add(cellLocation(block, j, row)));
   const isLookup = (column: number) => column >= LOOKUP_START_COLUMN && column < LOOKUP_START_COLUMN + Object.keys(catalogs).length;
   // Verify all fixed text once. Labels and instructions are not input data,
   // and merged aliases must not be counted as extra populated cells.
   const fixed = new Set<string>();
-  const labels = new Map(BLOCKS.flatMap(block => block.fields.map((field, j) =>
-    [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key) }] as const)));
+  const labels = new Map(blocks.flatMap(block => block.fields.map((field, j) =>
+    [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key, legacy) }] as const)));
   expected.eachRow(row => row.eachCell(cell => {
     if (cell.type === ExcelJS.ValueType.Merge || isLookup(Number(cell.col)) || cell.value === null) return;
     fixed.add(cell.address);
     const actual = fixedText(sheet.getCell(cell.address).value);
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
-      : cell.address === "A4" ? actual === FORM_LEGEND || actual === LEGACY_LEGEND
+      : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
   const today = new Date().toISOString().slice(0, 10);
-  for (const block of BLOCKS) {
+  for (const block of blocks) {
     data[block.entity] = [];
+    if (!legacy && block.entity === "vesselTypes") {
+      const cell = cellLocation(block, 0, 0);
+      const parsed = parseVesselTypes(sheet.getCell(cell).value, catalogs, { section: block.section, sheet: FORM_SHEET, cell, field: block.fields[0].label });
+      data.vesselTypes = parsed.records;
+      errors.push(...parsed.errors);
+      summary.A1 += parsed.records.length;
+      continue;
+    }
     for (let row = 0; row < (block.rows || 1); row++) {
       const record: Record<string, string> = {};
       const rowErrors: ImportError[] = [];
@@ -120,7 +132,6 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
       const present = Object.keys(record).length > 0 || rowErrors.length > 0;
       if (!present) continue;
       for (const key of ROW_REQUIRED[block.entity] || []) if (!record[key]) report(key, "Required for a populated row.");
-      if (block.entity === "family" && record.maritalStatus === "Married") for (const key of MARRIED_REQUIRED) if (!record[key]) report(key, "Required when marital status is Married.");
       if (record.issued && record.expiry && record.expiry < record.issued) report("expiry", "Expiry cannot be earlier than issued date.");
       if (record.fromDate && record.toDate && record.toDate < record.fromDate) report("toDate", "End date cannot be earlier than start date.");
       // Keep workbook row identity for errors while ignoring empty rows.
@@ -134,15 +145,15 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     if (cell.type === ExcelJS.ValueType.Merge || cell.value === null || String(cell.value).trim() === "" || isLookup(Number(cell.col)) || inputs.has(cell.address) || fixed.has(cell.address)) return;
     errors.push({ sheet: FORM_SHEET, cell: cell.address, field: "Outside input area", message: "Data is outside the designated input boxes and would not be imported. Move it into a supported form field." });
   }));
-  const candidateBlock = BLOCKS.find(b => b.entity === "candidate")!;
+  const candidateBlock = blocks.find(b => b.entity === "candidate")!;
   if (!data.candidate[0]?.firstName) errors.push({ section: "A1", sheet: FORM_SHEET, cell: cellLocation(candidateBlock, 0, 0), field: "First name", message: "First name is required." });
   const sea = data.sea || [];
-  const block = BLOCKS.find(b => b.entity === "sea")!;
+  const block = blocks.find(b => b.entity === "sea")!;
   for (let i = 0; i < sea.length; i++) for (let j = 0; j < i; j++) {
     if (sea[i].fromDate && sea[i].toDate && sea[j].fromDate && sea[j].toDate && sea[i].fromDate < sea[j].toDate && sea[j].fromDate < sea[i].toDate) errors.push({ section: "A4", sheet: FORM_SHEET, cell: cellLocation(block, block.fields.findIndex(f => f.key === "fromDate"), Number(sea[i].__row)), field: "From", message: `Sea-service dates overlap with row ${block.start + Number(sea[j].__row) * block.rowStep}.` });
   }
   const vesselIds = new Set<string>();
-  const vesselBlock = BLOCKS.find(b => b.entity === "vesselTypes")!;
+  const vesselBlock = blocks.find(b => b.entity === "vesselTypes")!;
   for (const row of data.vesselTypes || []) {
     if (vesselIds.has(row.vesselTypeUuid)) errors.push({ section: "A1", sheet: FORM_SHEET, cell: cellLocation(vesselBlock, 0, Number(row.__row)), field: "Vessel type", message: "Duplicate vessel type applied for." });
     vesselIds.add(row.vesselTypeUuid);

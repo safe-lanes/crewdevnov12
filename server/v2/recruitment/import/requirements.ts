@@ -5,8 +5,8 @@ export const ROW_REQUIRED: Record<string, readonly string[]> = {
   sea: ["vesselName", "vesselTypeUuid", "rank", "fromDate", "toDate"],
   children: ["firstName"], vesselTypes: ["vesselTypeUuid"], additional: ["information"],
 };
-export const MARRIED_REQUIRED = ["spouseFirstName", "spouseFamilyName"] as const;
-export function isRequiredLabel(entity: string, key: string): boolean {
-  return (ROW_REQUIRED[entity] || []).includes(key)
-    || (entity === "family" && (MARRIED_REQUIRED as readonly string[]).includes(key));
+export function isRequiredLabel(entity: string, key: string, legacy = false): boolean {
+  if (entity === "family") return legacy && ["spouseFirstName", "spouseFamilyName"].includes(key);
+  if (entity === "vesselTypes" && !legacy) return false;
+  return (ROW_REQUIRED[entity] || []).includes(key);
 }

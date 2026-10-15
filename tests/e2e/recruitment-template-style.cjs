@@ -9,6 +9,7 @@ async function main() {
   const page = await browser.newPage();
   const base = `https://${process.env.REPLIT_DEV_DOMAIN}`;
   let executions = 0;
+  await page.route("**/import/execute", route => route.abort());
   page.on("request", request => { if (request.url().endsWith("/import/execute")) executions++; });
   try {
     const before = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
@@ -37,26 +38,42 @@ async function main() {
     assert.equal(sheet.getCell("A8").text, "First name *");
     assert.equal(sheet.getCell("A8").value.richText[1].font.color.argb, "FFC62828");
     assert.equal(sheet.getCell("A5").text, "Gender");
-    assert.equal(sheet.getCell("A22").text, "Spouse first name *");
+    assert.equal(sheet.getCell("A22").text, "Spouse first name");
+    assert.equal(sheet.getCell("Q5").text, "Vessel types applied for");
+    assert.equal(sheet.getCell("V5").value, null);
+    assert.equal(Boolean(sheet.getCell("V5").dataValidation.showErrorMessage), false);
+    assert.equal(sheet.getCell("Y38").value, null);
+    assert.equal(sheet.getCell("Y39").value, null);
     assert.equal(sheet.getCell("F8").border.bottom.style, "dotted");
     assert.equal(sheet.getCell("F8").value, null);
     assert.equal(sheet.getCell("A212").value, null);
-    assert.equal(sheet.getCell("A4").text.includes("only if Married"), true);
+    assert.equal(sheet.getCell("A4").text.includes("Spouse fields are optional"), true);
     assert.equal(sheet.pageSetup.printArea, "A1:AF234");
     assert.equal(sheet.pageSetup.fitToHeight, 0);
     // Validate a filled copy in memory, leaving the delivered example blank.
     sheet.getCell("F8").value = "Template Preview";
+    sheet.getCell("V15").value = "Married";
+    const lookup = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(sheet.getCell("V5").dataValidation.formulae[0]);
+    assert.ok(lookup, "Vessel names must remain discoverable through the dropdown");
+    const names = Array.from({ length: Number(lookup[2]) - 1 }, (_, i) => sheet.getCell(`${lookup[1]}${i + 2}`).text);
+    assert.ok(names.length >= 2, "Smoke requires at least two current master vessel types");
+    sheet.getCell("V5").value = names.slice(0, 2).join("; ");
     await page.locator("#candidate-excel-file").setInputFiles({
       name: "professional-template.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       buffer: Buffer.from(await workbook.xlsx.writeBuffer()),
     });
+    const validated = page.waitForResponse(response => response.url().endsWith("/import/validate") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Validate workbook", exact: true }).click();
+    const validation = await (await validated).json();
+    assert.equal(validation.isValid, true);
+    assert.deepEqual(validation.errors, []);
+    assert.equal(validation.summary.A1, 4, "Candidate + Married family + two separate vessel records");
     await page.getByText("Ready to import", { exact: true }).waitFor();
     const after = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
