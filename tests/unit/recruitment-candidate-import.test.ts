@@ -285,10 +285,11 @@ describe("Recruitment A1-A5 workbook", () => {
   });
 });
 describe("Recruitment import authorization", () => {
-  it("uses verified UUID rather than numeric ID and stamps the matching actor", async () => {
-    const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Administrator" }] };
+  it("uses the signed parent ID and derives audit UUID without an additional JWT claim", async () => {
+    const chain: any = { from: () => chain, where: vi.fn(() => chain), limit: async () => [{ id: 9999, userUuid: "verified-user", role: "Administrator" }] };
     dbMock.db = { select: () => chain };
-    await expect(authorizeImport({ user: { id: 9999, userType: "Office", userUuid: "verified-user" }, body: { auditUserUuid: "verified-user" } } as any)).resolves.toEqual({ auditUuid: "verified-user", manningAgent: null });
+    await expect(authorizeImport({ user: { id: 9999, domain: "company-one", userType: "Office" }, body: {} } as any)).resolves.toEqual({ auditUuid: "verified-user", manningAgent: null });
+    expect(accessControlService.getMyPermissions).toHaveBeenCalledWith(undefined, "Administrator");
   });
   it("rejects forged audit identity", async () => {
     const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Administrator" }] };
@@ -307,8 +308,10 @@ describe("Recruitment import authorization", () => {
     dbMock.db = { select: vi.fn().mockReturnValueOnce(userChain).mockReturnValueOnce(agentChain) };
     await expect(authorizeImport({ user: { id: 1, userType: "Manning Agent", userUuid: "agent-user", manningAgent: "own-id" }, body: { manningAgent: "Other Agency" } } as any)).resolves.toEqual({ auditUuid: "agent-user", manningAgent: "Agency One" });
   });
-  it("does not equate local serial ids with parent JWT numeric ids", async () => {
-    await expect(authorizeImport({ user: { id: 1, userType: "Office" } } as any)).rejects.toThrow("signed userUuid");
+  it("rejects an optional signed UUID contradicting the parent ID lookup", async () => {
+    const chain: any = { from: () => chain, where: () => chain, limit: async () => [{ userUuid: "verified-user", role: "Administrator" }] };
+    dbMock.db = { select: () => chain };
+    await expect(authorizeImport({ user: { id: 1, userType: "Office", userUuid: "another-user" } } as any)).rejects.toThrow("signed user UUID does not match");
   });
   it("rejects vessel users", async () => {
     await expect(authorizeImport({ user: { id: 1, userType: "Ship" } } as any)).rejects.toThrow("Vessel users");
