@@ -1,8 +1,8 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
+import { VERSION, LEGACY_VERSION, isTemplateVersion, usesAlignedLayout, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
 import { FORM_SHEET, FORM_GUIDELINE_START, LOOKUP_START_COLUMN } from "./formLayout";
-import { createTemplateWorkbook } from "./workbook";
+import { createTemplateWorkbook, DOCUMENT_SELECTION_GUIDE } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
 import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
 import { fixedText, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
@@ -52,7 +52,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   try { await book.xlsx.load(buffer as any); } catch (error) { throw unreadableWorkbook(error); }
   const sheet = book.getWorksheet(FORM_SHEET);
   const version = sheet?.getCell("A1").value;
-  if (!sheet || (version !== VERSION && version !== PREVIOUS_VERSION && version !== LEGACY_VERSION)) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
+  if (!sheet || !isTemplateVersion(version)) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
   const legacy = version === LEGACY_VERSION;
   const blocks = blocksForVersion(version);
   if (book.worksheets.length !== 1) throw new WorkbookValidationError("EXTRA_SHEETS", "Workbook has unsupported sheets. Use only the downloaded single-sheet form.");
@@ -73,7 +73,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
       : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
-        : cell.address === `A${version === VERSION ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE].includes(actual!)
+        : cell.address === `A${usesAlignedLayout(version) ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE, ...(version === VERSION ? [DOCUMENT_SELECTION_GUIDE] : [])].includes(actual!)
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
@@ -112,20 +112,32 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
         let value = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(raw).trim();
         record[field.key] = value; // Preserve zero and false; don't use truthiness to decide presence.
         if (derivedDefault) record.__certificateDefaults = [record.__certificateDefaults, field.key].filter(Boolean).join(",");
-        let linkedCertificate = false;
+        let linkedMaster = false;
+        if (field.documentCatalog) {
+          const resolved = resolveCertificate(value, catalogs[field.documentCatalog] || []);
+          if (resolved.error) report(field.key, resolved.error);
+          else {
+            record[field.key] = value = resolved.name;
+            if (resolved.id) {
+              linkedMaster = true; // Linked master names are not restricted to the manual-entry limit.
+              record.documentId = resolved.id;
+              record.__documentInput = resolved.fingerprintName;
+            }
+          }
+        }
         if (field.certificateCatalog) {
           const resolved = resolveCertificate(value, catalogs[field.certificateCatalog] || []);
           if (resolved.error) report(field.key, resolved.error);
           else {
             record[field.key] = value = resolved.name;
             if (resolved.id) {
-              linkedCertificate = true;
+              linkedMaster = true;
               record[field.certificateCatalog === "licenses" ? "licenseId" : "courseId"] = resolved.id;
               record.__certificateInput = resolved.fingerprintName;
             }
           }
         }
-        if (!linkedCertificate && !derivedDefault && value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
+        if (!linkedMaster && !derivedDefault && value.length > (field.max || 50)) report(field.key, `Maximum ${field.max || 50} characters.`);
         if (field.date) {
           const parsed = strictDate(raw instanceof Date ? raw : value);
           if (!parsed) report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY.");

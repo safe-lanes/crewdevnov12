@@ -15,12 +15,16 @@ const bindings = {
 };
 const NAMESPACE = "bf5b954d-4b5a-4c9f-91d6-dc413ed620c1";
 export function cleanRecord(record: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(record).filter(([key, value]) => !["__row", "__certificateInput", "__certificateDefaults"].includes(key) && value !== undefined && value !== null && (typeof value !== "string" || value.trim() !== "")));
+  return Object.fromEntries(Object.entries(record).filter(([key, value]) => !["__row", "__certificateInput", "__certificateDefaults", "__documentInput"].includes(key) && value !== undefined && value !== null && (typeof value !== "string" || value.trim() !== "")));
 }
 export function candidateFingerprint(parsed: Parsed): string {
   // Empty workbook rows and audit actor do not alter retry identity.
   return v5(JSON.stringify(BLOCKS.map(b => (parsed.data[b.entity] || []).map(record => {
     const values = cleanRecord(record);
+    if (b.entity === "documents") {
+      delete values.documentId;
+      if (record.__documentInput !== undefined) values.documentName = record.__documentInput;
+    }
     // Derived associations must not change the historical workbook retry key.
     // Restore typed spelling when a pre-dropdown workbook matched a live name.
     if (b.entity === "licenses" || b.entity === "training") {

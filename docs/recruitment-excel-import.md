@@ -2,15 +2,23 @@
 
 In Recruitment → In Progress, **Import Candidate** downloads the current single-candidate `.xlsx` form. It contains exactly one **APPLICATION FORM** worksheet, styled like the supplied Crew Bio Data Form with grey section headings, bordered white input boxes and side-by-side details. Fill white boxes, upload, validate, then confirm.
 
-All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 4 follows the web application's section and field order. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
+All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 5 retains revision 4's web-application section and field order, and adds database/manual document choices in A2.1. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
 
-Single-sheet revisions **2 and 3 remain supported with their original field definitions and cell mappings**, including their paired sea-service rows. They do not have an IMO input. Use a newly downloaded revision 4 template to supply IMO Number; do not add it to an old workbook. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
+Single-sheet revisions **2, 3 and 4 remain supported with their original field definitions and cell mappings**. Revisions 2 and 3 retain paired sea-service rows and do not have an IMO input; revision 4 supports IMO but keeps document names as unlinked text. Download a fresh revision 5 template for document dropdowns; do not copy encoded database choices into older templates. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
 
 - A1.1 General Particulars; A1.2 Address & Contact Info; A1.3 Family and NOK (including children).
 - A2.1 Travel & Identification Documents; A2.2 Visas.
 - A3.1 Education; A3.2 License & DCE; A3.3 Training Course.
 - A4.1 Details of Sea Service.
 - A5.1 Details on Additional Information required.
+
+### A2.1 database or manual documents
+
+Every Document Type input has a non-blocking dropdown sourced from the current tenant's active, non-deleted Travel Document Types, matching the web “+ Add from database” selector. Options show `Name [DB:DOCxxx]` with the master business code, not an internal row UUID. A selected option saves the canonical name and its `entryId` as `documentId`; custom typed names remain unlinked and never create masters. A unique plain name also resolves like A3.2; ambiguous names require an explicit code-bearing dropdown choice.
+
+The server rechecks choices against the live catalog during both validation and confirmation, never trusting hidden workbook lookup cells. Renamed, inactive, deleted, forged or ambiguous options get an A2.1 cell error requesting a current selection. No document number, dates or issuing details are inferred. The derived association does not change the historical retry fingerprint of otherwise identical plain-name input.
+
+Foreign Languages is unchanged and remains free text in Excel; no macros or checkbox selectors have been introduced.
 
 Only populated fields and rows are saved. Empty optional sections do not create records. Zero/false values are preserved. Unknown or ambiguous masters, invalid dates and partial rows with missing required values prevent the entire import.
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { getTableName } from "drizzle-orm";
 import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
-import { BLOCKS, VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { BLOCKS, VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, usesAlignedLayout, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 vi.mock("../../server/v2/db", () => ({ getDb: vi.fn() }));
@@ -119,10 +119,10 @@ describe("Application-form-aligned Excel revision", () => {
     set("sea", { imoNumber: "12345678901" });
     expect((await parse(book)).errors).toContainEqual(expect.objectContaining({ cell: "F142", field: "IMO Number", message: "Maximum 10 characters." }));
   });
-  it("keeps semantic values and duplicate fingerprints stable across revisions 2, 3 and 4", async () => {
+  it("keeps semantic values and duplicate fingerprints stable across supported revisions", async () => {
     const results = [];
     let withImoFingerprint: string | undefined;
-    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, VERSION] as const) {
+    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, ALIGNED_VERSION, VERSION] as const) {
       const { book, set } = filled(version);
       set("sea", service, 1);
       set("address", { mobile: "0012345", countryOfResidenceUuid: "India" });
@@ -142,16 +142,17 @@ describe("Application-form-aligned Excel revision", () => {
         set("sea", { imoNumber: "1234567" }, 1);
         withImoFingerprint = candidateFingerprint(await parse(book));
       }
-      if (version !== VERSION) {
+      if (!usesAlignedLayout(version)) {
         expect(book.worksheets[0].getCell("A47").text).toBe("Sea Service — A4");
         expect(book.worksheets[0].getCell("I53").value).toBe("2021-01-01");
         expect(book.worksheets[0].getCell("Q53").value).toBe("Bulk Carrier");
         expect(blocksForVersion(version).find(block => block.entity === "sea")!.fields).toHaveLength(8);
       }
     }
-    expect(results.map(candidateFingerprint)).toEqual(Array(3).fill(candidateFingerprint(results[0])));
+    expect(results.map(candidateFingerprint)).toEqual(Array(4).fill(candidateFingerprint(results[0])));
     expect(results[0].data).toEqual(results[1].data);
     expect(results[1].data).toEqual(results[2].data);
+    expect(results[2].data).toEqual(results[3].data);
     expect(withImoFingerprint).not.toBe(candidateFingerprint(results[2]));
   });
   it("preserves revision 3 certificate dropdown defaults at their original coordinates", async () => {

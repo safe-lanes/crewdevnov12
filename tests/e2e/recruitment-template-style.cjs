@@ -25,6 +25,17 @@ async function main() {
     await workbook.xlsx.load(bytes);
     assert.equal(workbook.worksheets.length, 1);
     const sheet = workbook.getWorksheet("APPLICATION FORM");
+    assert.equal(sheet.getCell("A1").value, "Recruitment A1-A5 / 5 — Single sheet");
+    const documentValidation = sheet.getCell("A48").dataValidation;
+    assert.equal(documentValidation.type, "list");
+    assert.equal(Boolean(documentValidation.showErrorMessage), false);
+    assert.equal(documentValidation.showInputMessage, true);
+    const documentColumn = documentValidation.formulae[0].match(/[A-Z]+/)[0];
+    const documentOption = sheet.getCell(`${documentColumn}2`).value;
+    assert.match(documentOption, / \[DB:[^\]]+\]$/);
+    sheet.getCell("A48").value = documentOption;
+    sheet.getCell("G48").value = "001234";
+    sheet.getCell("A49").value = "Custom Preview Port Pass";
     const notedCells = [];
     sheet.eachRow({ includeEmpty: true }, row => row.eachCell({ includeEmpty: true }, cell => {
       if (cell.note) notedCells.push(cell.address);
@@ -97,6 +108,7 @@ async function main() {
     assert.equal(validation.summary.A1, 4, "Candidate + Married family + two separate vessel records");
     assert.equal(validation.summary.A3, 4, "Two linked certificates plus two custom certificate rows");
     assert.equal(validation.summary.A4, 1, "Sea service with optional IMO Number validates");
+    assert.equal(validation.summary.A2, 2, "Database and manual travel documents validate");
     await page.getByText("Ready to import", { exact: true }).waitFor();
     const after = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
     assert.deepEqual(after, before);
