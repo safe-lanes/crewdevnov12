@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -284,12 +284,25 @@ export default function ContractDetailPage({
 
   // ---- D: pay items dialog ----
   const [itemForm, setItemForm] = useState<PayItemForm | null>(null);
+  const [itemFromValid, setItemFromValid] = useState(true);
+  const [itemToValid, setItemToValid] = useState(true);
+  const [itemMonthSession, setItemMonthSession] = useState(0);
+  const itemFromInputRef = useRef<HTMLInputElement | null>(null);
+  const itemToInputRef = useRef<HTMLInputElement | null>(null);
   const [savingItem, setSavingItem] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const openNewItem = () => setItemForm({ ...EMPTY_FORM });
-  const openEditItem = (o: any) =>
+  const openNewItem = () => {
+    setItemFromValid(true);
+    setItemToValid(true);
+    setItemMonthSession((session) => session + 1);
+    setItemForm({ ...EMPTY_FORM });
+  };
+  const openEditItem = (o: any) => {
+    setItemFromValid(true);
+    setItemToValid(true);
+    setItemMonthSession((session) => session + 1);
     setItemForm({
       epeUuid: o.epeUuid,
       payElementUuid: o.payElementUuid,
@@ -300,9 +313,15 @@ export default function ContractDetailPage({
       toMonth: o.effectiveTo ? o.effectiveTo.slice(0, 7) : "",
       remarks: o.remarks ?? "",
     });
+  };
 
   const saveItem = async () => {
-    if (!itemForm || !itemForm.payElementUuid) return;
+    if (
+      !itemForm ||
+      !itemForm.payElementUuid ||
+      !itemFromValid ||
+      !itemToValid
+    ) return;
     setSavingItem(true);
     try {
       const payload: Record<string, unknown> = {
@@ -1072,25 +1091,57 @@ export default function ContractDetailPage({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="item-from">Effective from (month)</Label>
-                  <Input
-                    id="item-from"
-                    type="month"
+                  <FormattedDateInput
+                    key={itemMonthSession}
+                    mode="month"
+                    ref={(node) => {
+                      const input =
+                        node?.querySelector<HTMLInputElement>(
+                          'input[type="text"]',
+                        ) ?? null;
+                      itemFromInputRef.current = input;
+                      if (input) {
+                        input.id = "item-from";
+                        input.removeAttribute("aria-label");
+                      }
+                    }}
                     value={itemForm.fromMonth}
                     onChange={(e) =>
                       setItemForm({ ...itemForm, fromMonth: e.target.value })
                     }
+                    onMonthDraftChange={() => {
+                      setItemFromValid(
+                        itemFromInputRef.current?.dataset.monthValid === "true",
+                      );
+                    }}
                     data-testid="input-pay-item-from"
                   />
                 </div>
                 <div>
                   <Label htmlFor="item-to">Effective to (month)</Label>
-                  <Input
-                    id="item-to"
-                    type="month"
+                  <FormattedDateInput
+                    key={itemMonthSession}
+                    mode="month"
+                    ref={(node) => {
+                      const input =
+                        node?.querySelector<HTMLInputElement>(
+                          'input[type="text"]',
+                        ) ?? null;
+                      itemToInputRef.current = input;
+                      if (input) {
+                        input.id = "item-to";
+                        input.removeAttribute("aria-label");
+                      }
+                    }}
                     value={itemForm.toMonth}
                     onChange={(e) =>
                       setItemForm({ ...itemForm, toMonth: e.target.value })
                     }
+                    onMonthDraftChange={() => {
+                      setItemToValid(
+                        itemToInputRef.current?.dataset.monthValid === "true",
+                      );
+                    }}
                     data-testid="input-pay-item-to"
                   />
                 </div>
@@ -1120,6 +1171,8 @@ export default function ContractDetailPage({
               onClick={saveItem}
               disabled={
                 savingItem ||
+                !itemFromValid ||
+                !itemToValid ||
                 !itemForm?.payElementUuid ||
                 (itemForm?.overrideMode !== "suppress_element" &&
                   !itemForm?.amount &&
