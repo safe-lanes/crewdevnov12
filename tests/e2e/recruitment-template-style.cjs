@@ -33,37 +33,47 @@ async function main() {
     assert.equal(sheet.getCell("A2").font.name, "Calibri");
     assert.equal(sheet.getCell("A2").font.size, 16);
     assert.equal(sheet.getCell("A2").fill.fgColor.argb, "FF808080");
-    assert.equal(sheet.getCell("A10").fill.fgColor.argb, "FF808080");
-    assert.equal(sheet.getCell("A28").fill.fgColor.argb, "FFE7E7E7");
+    assert.equal(sheet.getCell("A5").fill.fgColor.argb, "FF808080");
+    assert.equal(sheet.getCell("A47").fill.fgColor.argb, "FFE7E7E7");
     assert.equal(sheet.getCell("A8").text, "First name *");
     assert.equal(sheet.getCell("A8").value.richText[1].font.color.argb, "FFC62828");
-    assert.equal(sheet.getCell("A5").text, "Gender");
-    assert.equal(sheet.getCell("A22").text, "Spouse first name");
-    assert.equal(sheet.getCell("Q5").text, "Vessel types applied for");
-    assert.equal(sheet.getCell("V5").value, null);
-    assert.equal(Boolean(sheet.getCell("V5").dataValidation.showErrorMessage), false);
-    assert.equal(sheet.getCell("Y38").value, null);
-    assert.equal(sheet.getCell("Y39").value, null);
+    assert.equal(sheet.getCell("A10").text, "Gender");
+    assert.equal(sheet.getCell("A27").text, "Spouse first name");
+    assert.equal(sheet.getCell("Q10").text, "Vessel types applied for");
+    assert.equal(sheet.getCell("V10").value, null);
+    assert.equal(Boolean(sheet.getCell("V10").dataValidation.showErrorMessage), false);
+    assert.equal(sheet.getCell("A5").text, "A1.1 General Particulars");
+    assert.equal(sheet.getCell("A46").text, "A2.1 Travel & Identification Documents");
+    assert.equal(sheet.getCell("A139").text, "A4.1 Details of Sea Service");
+    assert.equal(sheet.getCell("F141").text, "IMO Number");
     assert.equal(sheet.getCell("F8").border.bottom.style, "dotted");
     assert.equal(sheet.getCell("F8").value, null);
     assert.equal(sheet.getCell("A212").value, null);
     assert.equal(sheet.getCell("A4").text.includes("Spouse fields are optional"), true);
-    assert.equal(sheet.pageSetup.printArea, "A1:AF234");
+    assert.equal(sheet.pageSetup.printArea, "A1:AF207");
     assert.equal(sheet.pageSetup.fitToHeight, 0);
-    for (const address of ["E163", "I163", "E180", "I180"]) {
+    for (const address of ["E90", "I90", "E108", "I108"]) {
       assert.ok(sheet.getCell(address).formula.includes("VLOOKUP("), "Certificate defaults must autofill in Excel, not only on import");
     }
     for (let col = 52; col < 58; col++) assert.equal(sheet.getColumn(col).hidden, true);
     // Validate a filled copy in memory, leaving the delivered example blank.
     sheet.getCell("F8").value = "Template Preview";
-    sheet.getCell("V15").value = "Married";
-    const lookup = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(sheet.getCell("V5").dataValidation.formulae[0]);
+    sheet.getCell("F25").value = "Married";
+    const lookup = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(sheet.getCell("V10").dataValidation.formulae[0]);
     assert.ok(lookup, "Vessel names must remain discoverable through the dropdown");
     const names = Array.from({ length: Number(lookup[2]) - 1 }, (_, i) => sheet.getCell(`${lookup[1]}${i + 2}`).text);
     assert.ok(names.length >= 2, "Smoke requires at least two current master vessel types");
-    sheet.getCell("V5").value = names.slice(0, 2).join("; ");
+    sheet.getCell("V10").value = names.slice(0, 2).join("; ");
+    const rankLookup = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(sheet.getCell("X142").dataValidation.formulae[0]);
+    assert(rankLookup, "Sea-service rank must use a database dropdown");
+    sheet.getCell("A142").value = "Template Preview Ship";
+    sheet.getCell("F142").value = "1234567";
+    sheet.getCell("I142").value = names[0];
+    sheet.getCell("X142").value = sheet.getCell(`${rankLookup[1]}2`).value;
+    sheet.getCell("AA142").value = "2021-01-01";
+    sheet.getCell("AD142").value = "2021-04-01";
     for (const [address, manualAddress, manualName] of [
-      ["A163", "A164", "Custom Port License"], ["A180", "A181", "Custom Company Workshop"],
+      ["A90", "A91", "Custom Port License"], ["A108", "A109", "Custom Company Workshop"],
     ]) {
       const validation = sheet.getCell(address).dataValidation;
       assert.equal(validation.type, "list");
@@ -86,12 +96,13 @@ async function main() {
     assert.deepEqual(validation.errors, []);
     assert.equal(validation.summary.A1, 4, "Candidate + Married family + two separate vessel records");
     assert.equal(validation.summary.A3, 4, "Two linked certificates plus two custom certificate rows");
+    assert.equal(validation.summary.A4, 1, "Sea service with optional IMO Number validates");
     await page.getByText("Ready to import", { exact: true }).waitFor();
     const after = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, dependentAutofillFormulas: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, orderedSubsections: true, seaServiceWithImo: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, dependentAutofillFormulas: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

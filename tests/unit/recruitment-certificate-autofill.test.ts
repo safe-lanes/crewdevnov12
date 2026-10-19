@@ -146,8 +146,8 @@ describe("Recruitment certificate dependent autofill", () => {
     const parsed = await parse(book, source);
     expect(parsed.errors).toEqual([]);
     expect(parsed.data.training[0].requirement).toBe(source.training[0].requirement.trim());
-    book.getWorksheet(FORM_SHEET)!.getCell("I180").value = "x".repeat(51);
-    expect((await parse(book, source)).errors).toContainEqual(expect.objectContaining({ cell: "I180", message: "Maximum 50 characters." }));
+    book.getWorksheet(FORM_SHEET)!.getCell("I108").value = "x".repeat(51);
+    expect((await parse(book, source)).errors).toContainEqual(expect.objectContaining({ cell: "I108", message: "Maximum 50 characters." }));
   });
 
   it.each(entities)("rejects changed or forged %s lookup defaults instead of saving displayed or cached metadata", async entity => {
@@ -169,7 +169,7 @@ describe("Recruitment certificate dependent autofill", () => {
 
   it("does not invalidate a selected row because an unrelated catalog item or overridden default changed", async () => {
     const book = workbook(); select(book, "licenses");
-    book.getWorksheet(FORM_SHEET)!.getCell("I163").value = "Intentional override";
+    book.getWorksheet(FORM_SHEET)!.getCell("I90").value = "Intentional override";
     const live = { ...catalogs, licenses: [
       { ...catalogs.licenses[0], requirement: "Changed but overridden" },
       { ...catalogs.licenses[1], abbr: "Changed unrelated" },
@@ -182,21 +182,21 @@ describe("Recruitment certificate dependent autofill", () => {
 
   it.each(["SUM(1,2)", 'HYPERLINK("https://example.com","Click")', "'[external.xlsx]Sheet1'!A1"])("rejects non-template formulas: %s", async formula => {
     const book = workbook(); select(book, "licenses");
-    book.getWorksheet(FORM_SHEET)!.getCell("E163").value = { formula, result: "CE" };
+    book.getWorksheet(FORM_SHEET)!.getCell("E90").value = { formula, result: "CE" };
     const parsed = await parse(book);
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "E163", message: expect.stringContaining("Only the original template autofill formula") }));
+    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "E90", message: expect.stringContaining("Only the original template autofill formula") }));
   });
 
   it("rejects a legitimate formula moved to the wrong row/column and formulas in unrelated fields", async () => {
     const book = workbook(); select(book, "licenses");
     const sheet = book.getWorksheet(FORM_SHEET)!;
-    sheet.getCell("E163").value = { formula: certificateDefaultFormula(blockFor("licenses"), 1, "abbr") };
-    sheet.getCell("I163").value = { formula: certificateDefaultFormula(blockFor("licenses"), 0, "abbr") };
-    sheet.getCell("M163").value = { formula: '"0007"', result: "0007" };
+    sheet.getCell("E90").value = { formula: certificateDefaultFormula(blockFor("licenses"), 1, "abbr") };
+    sheet.getCell("I90").value = { formula: certificateDefaultFormula(blockFor("licenses"), 0, "abbr") };
+    sheet.getCell("M90").value = { formula: '"0007"', result: "0007" };
     const parsed = await parse(book);
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors.map(error => error.cell)).toEqual(expect.arrayContaining(["E163", "I163", "M163"]));
+    expect(parsed.errors.map(error => error.cell)).toEqual(expect.arrayContaining(["E90", "I90", "M90"]));
   });
 
   it("accepts only the verified FALSE() spreadsheet rewrite, not altered lookup behavior", async () => {
@@ -207,9 +207,9 @@ describe("Recruitment certificate dependent autofill", () => {
       cell.value = { formula: cell.formula!.replace(",FALSE)", ",FALSE())") };
     }
     expect((await parse(book)).errors).toEqual([]);
-    const cell = sheet.getCell("E163");
+    const cell = sheet.getCell("E90");
     cell.value = { formula: cell.formula!.replace(",FALSE())", ",TRUE())") };
-    expect((await parse(book)).errors).toContainEqual(expect.objectContaining({ cell: "E163", message: expect.stringContaining("Only the original template autofill formula") }));
+    expect((await parse(book)).errors).toContainEqual(expect.objectContaining({ cell: "E90", message: expect.stringContaining("Only the original template autofill formula") }));
   });
 
   it("keeps old version 2/3 values and fingerprints unchanged while excluding only inferred defaults", async () => {
@@ -217,7 +217,7 @@ describe("Recruitment certificate dependent autofill", () => {
     const parsed = await parse(current);
     const old = workbook(); select(old, "licenses"); select(old, "training");
     const sheet = old.getWorksheet(FORM_SHEET)!;
-    sheet.getCell("A232").value = CERTIFICATE_GUIDE;
+    sheet.getCell("A205").value = CERTIFICATE_GUIDE;
     for (const entity of entities) for (let row = 0; row < blockFor(entity).rows!; row++) {
       for (const j of [1, 2]) sheet.getCell(cellLocation(blockFor(entity), j, row)).value = null;
     }
@@ -226,7 +226,7 @@ describe("Recruitment certificate dependent autofill", () => {
     expect(oldParsed.errors).toEqual([]);
     expect(candidateFingerprint(parsed)).toBe(candidateFingerprint(oldParsed));
     expect(oldParsed.data.licenses[0]).not.toHaveProperty("abbr");
-    sheet.getCell("E163").value = "Old explicit value";
+    sheet.getCell("E90").value = "Old explicit value";
     const manual = await parse(old);
     expect(manual.data.licenses[0].abbr).toBe("Old explicit value");
     expect(candidateFingerprint(manual)).not.toBe(candidateFingerprint(parsed));
@@ -241,7 +241,7 @@ describe("Recruitment certificate dependent autofill", () => {
 
   it("persists defaults and overrides but not helper metadata; status/numbering and blanks remain unchanged", async () => {
     const book = workbook(); select(book, "licenses"); select(book, "training");
-    book.getWorksheet(FORM_SHEET)!.getCell("I180").value = "Override";
+    book.getWorksheet(FORM_SHEET)!.getCell("I108").value = "Override";
     const parsed = await parse(book);
     const saved: { table: string; values: any }[] = [];
     const tx: any = {

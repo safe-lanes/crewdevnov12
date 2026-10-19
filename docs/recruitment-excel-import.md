@@ -2,21 +2,21 @@
 
 In Recruitment → In Progress, **Import Candidate** downloads the current single-candidate `.xlsx` form. It contains exactly one **APPLICATION FORM** worksheet, styled like the supplied Crew Bio Data Form with grey section headings, bordered white input boxes and side-by-side details. Fill white boxes, upload, validate, then confirm.
 
-All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Sea-service entries use paired rows (From above To), as in the reference. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
+All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 4 follows the web application's section and field order. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
 
-The previous multi-sheet format is no longer accepted. Download a fresh template and transfer values; an older workbook gives an explicit version/redownload error, never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
+Single-sheet revisions **2 and 3 remain supported with their original field definitions and cell mappings**, including their paired sea-service rows. They do not have an IMO input. Use a newly downloaded revision 4 template to supply IMO Number; do not add it to an old workbook. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
 
-- A1: personal, contact, family, children, next of kin and applied vessel types.
-- A2: travel documents and visas.
-- A3: education, licenses/DCE and training.
-- A4: sea service. Period is derived from dates.
-- A5: additional information/response.
+- A1.1 General Particulars; A1.2 Address & Contact Info; A1.3 Family and NOK (including children).
+- A2.1 Travel & Identification Documents; A2.2 Visas.
+- A3.1 Education; A3.2 License & DCE; A3.3 Training Course.
+- A4.1 Details of Sea Service.
+- A5.1 Details on Additional Information required.
 
 Only populated fields and rows are saved. Empty optional sections do not create records. Zero/false values are preserved. Unknown or ambiguous masters, invalid dates and partial rows with missing required values prevent the entire import.
 
-Successful imports create **Applied** candidates. Preview does not write. Confirmation revalidates and writes everything in one tenant database transaction. No screening dates/file numbers, screening jobs, compliance processing, approvals, crew transfers or mobile provisioning are triggered. Reimporting the same populated data is rejected; suspected matches on name/birth date, email or passport number require review rather than overwriting.
+Successful imports create **Applied** candidates with the next existing File No and initial submitted date. Preview does not write. Confirmation revalidates and writes everything in one tenant database transaction. No screening jobs, compliance processing, approvals, crew transfers or mobile provisioning are triggered. Reimporting the same populated data is rejected; suspected matches on name/birth date, email or passport number require review rather than overwriting. Moving fields or leaving the new IMO field blank does not change duplicate identity for otherwise identical input.
 
-Photos and attachments are uploaded separately. The reference `.xls` is not accepted as an application import. Do not rename sheets/headings or add records outside designated rows. Files are limited to 5 MB compressed / 25 MB expanded and may not contain formulas, macros, external workbook links or embedded objects.
+Photos and attachments are uploaded separately. The reference `.xls` is not accepted as an application import. Do not rename sheets/headings or add records outside designated rows. Files are limited to 5 MB compressed / 25 MB expanded. Only the original license/training autofill formulas (and their verified native-editor equivalent) are allowed; arbitrary formulas, macros, external workbook links and embedded objects are rejected.
 
 ## Parent login integration dependency
 

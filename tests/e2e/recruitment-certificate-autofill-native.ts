@@ -46,40 +46,40 @@ async function main() {
     return { fixture, sheet };
   };
   const linked = add("linked");
-  linked.sheet.getCell("A163").value = certificateOption(catalogs.licenses[0]);
-  linked.sheet.getCell("A180").value = certificateOption(catalogs.training[0]);
+  linked.sheet.getCell("A90").value = certificateOption(catalogs.licenses[0]);
+  linked.sheet.getCell("A108").value = certificateOption(catalogs.training[0]);
   linked.fixture.expected = ["CE", "Engineering officers", "CSI", "Company requirement"];
   const changed = add("changed");
-  changed.sheet.getCell("A163").value = certificateOption(catalogs.licenses[1]);
-  changed.sheet.getCell("A180").value = certificateOption(catalogs.training[1]);
-  for (const address of ["E163", "I163", "E180", "I180"]) {
+  changed.sheet.getCell("A90").value = certificateOption(catalogs.licenses[1]);
+  changed.sheet.getCell("A108").value = certificateOption(catalogs.training[1]);
+  for (const address of ["E90", "I90", "E108", "I108"]) {
     const cell = changed.sheet.getCell(address);
     cell.value = { formula: cell.formula!, result: "OLD DEFAULT" };
   }
   changed.fixture.expected = ["DO", "Deck officers", "IND", "Before joining"];
   const cleared = add("cleared");
-  for (const address of ["E163", "I163", "E180", "I180"]) {
+  for (const address of ["E90", "I90", "E108", "I108"]) {
     const cell = cleared.sheet.getCell(address);
     cell.value = { formula: cell.formula!, result: "OLD DEFAULT" };
   }
   const manual = add("manual");
-  manual.sheet.getCell("A163").value = "Custom License";
-  manual.sheet.getCell("A180").value = "Custom Training";
-  ["E163", "I163", "E180", "I180"].forEach((address, i) => { manual.sheet.getCell(address).value = `Manual ${i}`; });
+  manual.sheet.getCell("A90").value = "Custom License";
+  manual.sheet.getCell("A108").value = "Custom Training";
+  ["E90", "I90", "E108", "I108"].forEach((address, i) => { manual.sheet.getCell(address).value = `Manual ${i}`; });
   manual.fixture.expected = ["Manual 0", "Manual 1", "Manual 2", "Manual 3"];
   const wildcard = add("wildcard");
-  wildcard.sheet.getCell("A163").value = "*";
-  wildcard.sheet.getCell("A180").value = "?";
+  wildcard.sheet.getCell("A90").value = "*";
+  wildcard.sheet.getCell("A108").value = "?";
   const missing = add("missing", {
     licenses: [{ ...catalogs.licenses[0], abbr: null, requirement: "" }],
     training: [{ ...catalogs.training[0], abbr: "", requirement: null }],
   });
-  missing.sheet.getCell("A163").value = certificateOption(catalogs.licenses[0]);
-  missing.sheet.getCell("A180").value = certificateOption(catalogs.training[0]);
+  missing.sheet.getCell("A90").value = certificateOption(catalogs.licenses[0]);
+  missing.sheet.getCell("A108").value = certificateOption(catalogs.training[0]);
   const long = add("long", {
     ...catalogs, training: [{ ...catalogs.training[0], requirement: "Company-specific long requirement ".repeat(4).trim() }],
   });
-  long.sheet.getCell("A180").value = certificateOption(catalogs.training[0]);
+  long.sheet.getCell("A108").value = certificateOption(catalogs.training[0]);
   long.fixture.expected = ["", "", "CSI", long.fixture.catalogs.training[0].requirement!];
   try {
     const paths: string[] = [];
@@ -102,15 +102,15 @@ async function main() {
       const book = new ExcelJS.Workbook();
       await book.xlsx.load(bytes as any);
       const sheet = book.getWorksheet(FORM_SHEET)!;
-      const computed = ["E163", "I163", "E180", "I180"].map(address => {
+      const computed = ["E90", "I90", "E108", "I108"].map(address => {
         const cell = sheet.getCell(address);
         return String(cell.type === ExcelJS.ValueType.Formula ? cell.result ?? "" : cell.value ?? "");
       });
       assert.deepEqual(computed, fixture.expected, `${fixture.name}: real spreadsheet calculation`);
       const parsed = await parseWorkbook(bytes, fixture.catalogs);
       if (!parsed.isValid) console.error(JSON.stringify({
-        case: fixture.name, spreadsheetFormula: sheet.getCell("E163").formula,
-        generatedFormula: fixture.book.getWorksheet(FORM_SHEET)!.getCell("E163").formula,
+        case: fixture.name, spreadsheetFormula: sheet.getCell("E90").formula,
+        generatedFormula: fixture.book.getWorksheet(FORM_SHEET)!.getCell("E90").formula,
       }));
       assert.equal(parsed.isValid, true, `${fixture.name}: ${JSON.stringify(parsed.errors.slice(0, 3))}`);
       assert.equal(candidateFingerprint(parsed), before.get(fixture.name), `${fixture.name}: spreadsheet recalculation must not alter retry identity`);

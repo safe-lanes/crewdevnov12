@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
-import { FORM_SHEET, LOOKUP_START_COLUMN } from "./formLayout";
+import { VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
+import { FORM_SHEET, FORM_GUIDELINE_START, LOOKUP_START_COLUMN } from "./formLayout";
 import { createTemplateWorkbook } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
 import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
@@ -52,7 +52,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   try { await book.xlsx.load(buffer as any); } catch (error) { throw unreadableWorkbook(error); }
   const sheet = book.getWorksheet(FORM_SHEET);
   const version = sheet?.getCell("A1").value;
-  if (!sheet || (version !== VERSION && version !== LEGACY_VERSION)) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
+  if (!sheet || (version !== VERSION && version !== PREVIOUS_VERSION && version !== LEGACY_VERSION)) throw new WorkbookValidationError("TEMPLATE_VERSION", "Unsupported template version. Download the current single-sheet Recruitment A1–A5 template and transfer your values.");
   const legacy = version === LEGACY_VERSION;
   const blocks = blocksForVersion(version);
   if (book.worksheets.length !== 1) throw new WorkbookValidationError("EXTRA_SHEETS", "Workbook has unsupported sheets. Use only the downloaded single-sheet form.");
@@ -73,7 +73,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
       : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
-       : cell.address === "A232" ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE].includes(actual!)
+        : cell.address === `A${version === VERSION ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE].includes(actual!)
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));
@@ -162,7 +162,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
       // Keep workbook row identity for errors while ignoring empty rows.
       record.__row = String(row);
       data[block.entity].push(record);
-      summary[block.section]++;
+      summary[block.section.split(".")[0]]++;
       errors.push(...rowErrors);
     }
   }
@@ -171,16 +171,16 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     errors.push({ sheet: FORM_SHEET, cell: cell.address, field: "Outside input area", message: "Data is outside the designated input boxes and would not be imported. Move it into a supported form field." });
   }));
   const candidateBlock = blocks.find(b => b.entity === "candidate")!;
-  if (!data.candidate[0]?.firstName) errors.push({ section: "A1", sheet: FORM_SHEET, cell: cellLocation(candidateBlock, 0, 0), field: "First name", message: "First name is required." });
+  if (!data.candidate[0]?.firstName) errors.push({ section: candidateBlock.section, sheet: FORM_SHEET, cell: cellLocation(candidateBlock, 0, 0), field: "First name", message: "First name is required." });
   const sea = data.sea || [];
   const block = blocks.find(b => b.entity === "sea")!;
   for (let i = 0; i < sea.length; i++) for (let j = 0; j < i; j++) {
-    if (sea[i].fromDate && sea[i].toDate && sea[j].fromDate && sea[j].toDate && sea[i].fromDate < sea[j].toDate && sea[j].fromDate < sea[i].toDate) errors.push({ section: "A4", sheet: FORM_SHEET, cell: cellLocation(block, block.fields.findIndex(f => f.key === "fromDate"), Number(sea[i].__row)), field: "From", message: `Sea-service dates overlap with row ${block.start + Number(sea[j].__row) * block.rowStep}.` });
+    if (sea[i].fromDate && sea[i].toDate && sea[j].fromDate && sea[j].toDate && sea[i].fromDate < sea[j].toDate && sea[j].fromDate < sea[i].toDate) errors.push({ section: block.section, sheet: FORM_SHEET, cell: cellLocation(block, block.fields.findIndex(f => f.key === "fromDate"), Number(sea[i].__row)), field: "From", message: `Sea-service dates overlap with row ${block.start + Number(sea[j].__row) * block.rowStep}.` });
   }
   const vesselIds = new Set<string>();
   const vesselBlock = blocks.find(b => b.entity === "vesselTypes")!;
   for (const row of data.vesselTypes || []) {
-    if (vesselIds.has(row.vesselTypeUuid)) errors.push({ section: "A1", sheet: FORM_SHEET, cell: cellLocation(vesselBlock, 0, Number(row.__row)), field: "Vessel type", message: "Duplicate vessel type applied for." });
+    if (vesselIds.has(row.vesselTypeUuid)) errors.push({ section: vesselBlock.section, sheet: FORM_SHEET, cell: cellLocation(vesselBlock, 0, Number(row.__row)), field: "Vessel type", message: "Duplicate vessel type applied for." });
     vesselIds.add(row.vesselTypeUuid);
   }
   const candidateName = [data.candidate[0]?.firstName, data.candidate[0]?.middleName, data.candidate[0]?.familyName].filter(Boolean).join(" ");

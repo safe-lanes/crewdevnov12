@@ -80,14 +80,14 @@ describe("Safe workbook read failures", () => {
   it("accepts generated and Excel-rewritten templates, with section/cell errors for ordinary data", async () => {
     expect((await parseWorkbook(valid, catalogs)).isValid).toBe(true);
     const blank = await parseWorkbook(template, catalogs);
-    expect(blank.errors).toEqual([expect.objectContaining({ section: "A1", cell: "F8", field: "First name" })]);
+    expect(blank.errors).toEqual([expect.objectContaining({ section: "A1.1", cell: "F8", field: "First name" })]);
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(valid as any);
-    book.worksheets[0].getCell("V7").value = new Date("1990-01-01T00:00:00Z");
+    book.worksheets[0].getCell("F12").value = new Date("1990-01-01T00:00:00Z");
     expect((await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs)).isValid).toBe(true);
-    book.worksheets[0].getCell("V7").value = "2024-02-31";
+    book.worksheets[0].getCell("F12").value = "2024-02-31";
     const badDate = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
-    expect(badDate.errors).toContainEqual(expect.objectContaining({ section: "A1", cell: "V7", field: "Date of birth", message: expect.stringContaining("valid date") }));
+    expect(badDate.errors).toContainEqual(expect.objectContaining({ section: "A1.1", cell: "F12", field: "Date of birth", message: expect.stringContaining("valid date") }));
   });
 });
 
