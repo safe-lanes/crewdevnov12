@@ -1,9 +1,10 @@
 // Fixed, versioned cell locations are shared by the generator and reader.
 // Uploaded workbooks cannot supply field/table mappings or identity/status values.
-import { FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
+import { FORM_LAYOUT, PREVIOUS_FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
 export const LEGACY_VERSION = "Recruitment A1-A5 / 2 — Single sheet";
-export const VERSION = "Recruitment A1-A5 / 3 — Single sheet";
-export type TemplateVersion = typeof VERSION | typeof LEGACY_VERSION;
+export const PREVIOUS_VERSION = "Recruitment A1-A5 / 3 — Single sheet";
+export const VERSION = "Recruitment A1-A5 / 4 — Single sheet";
+export type TemplateVersion = typeof VERSION | typeof PREVIOUS_VERSION | typeof LEGACY_VERSION;
 export type Field = { key: string; label: string; date?: boolean; catalog?: string; certificateCatalog?: "licenses" | "training"; choices?: string[]; max?: number };
 export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
@@ -49,15 +50,25 @@ export const LEGACY_BLOCKS: Block[] = DEFINITIONS.map(block => ({
   ...block, sheet: FORM_SHEET, start: LEGACY_FORM_LAYOUT[block.entity].start,
   placements: LEGACY_FORM_LAYOUT[block.entity].placements, rowStep: LEGACY_FORM_LAYOUT[block.entity].step || 1,
 }));
-export const BLOCKS: Block[] = DEFINITIONS.map(block => ({
-  ...block, sheet: FORM_SHEET, start: FORM_LAYOUT[block.entity].start,
-  placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
+export const PREVIOUS_BLOCKS: Block[] = DEFINITIONS.map(block => ({
+  ...block, sheet: FORM_SHEET, start: PREVIOUS_FORM_LAYOUT[block.entity].start,
+  placements: PREVIOUS_FORM_LAYOUT[block.entity].placements, rowStep: PREVIOUS_FORM_LAYOUT[block.entity].step || 1,
   ...(block.entity === "vesselTypes" ? {
     rows: 1, fields: [{ ...block.fields[0], label: "Vessel types applied for" }],
   } : {}),
 }));
+const SECTIONS: Record<string, string> = {
+  candidate: "A1.1", personal: "A1.1", vesselTypes: "A1.1", address: "A1.2",
+  family: "A1.3", children: "A1.3", nok: "A1.3", documents: "A2.1", visas: "A2.2",
+  education: "A3.1", licenses: "A3.2", training: "A3.3", sea: "A4.1", additional: "A5.1",
+};
+export const BLOCKS: Block[] = PREVIOUS_BLOCKS.map(block => ({
+  ...block, section: SECTIONS[block.entity], start: FORM_LAYOUT[block.entity].start,
+  placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
+  fields: block.entity === "sea" ? [...block.fields, f("imoNumber", "IMO Number", { max: 10 })] : block.fields,
+}));
 export function blocksForVersion(version: TemplateVersion): Block[] {
-  return version === LEGACY_VERSION ? LEGACY_BLOCKS : BLOCKS;
+  return version === LEGACY_VERSION ? LEGACY_BLOCKS : version === PREVIOUS_VERSION ? PREVIOUS_BLOCKS : BLOCKS;
 }
 export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
 export type CatalogEntry = { label: string; value: string; abbr?: string | null; requirement?: string | null };

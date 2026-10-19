@@ -112,8 +112,8 @@ describe("Recruitment A1-A5 workbook", () => {
   it("reports partially populated rows instead of dropping them", async () => {
     const parsed = await parse({ candidate: [core], documents: [{ number: "00123" }], sea: [{ ownerOperator: "Example" }], education: [{ institution: "School" }] });
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors.some(e => e.sheet === FORM_SHEET && e.cell === "A134")).toBe(true);
-    expect(parsed.errors.some(e => e.field === "Qualification" && e.cell === "Y29")).toBe(true);
+    expect(parsed.errors.some(e => e.sheet === FORM_SHEET && e.cell === "A48")).toBe(true);
+    expect(parsed.errors.some(e => e.field === "Qualification" && e.cell === "Y79")).toBe(true);
     expect(parsed.data.documents).toHaveLength(1);
   });
   it("resolves labels to UUIDs and preserves leading-zero text", async () => {
@@ -131,7 +131,7 @@ describe("Recruitment A1-A5 workbook", () => {
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(template as any);
     book.getWorksheet(FORM_SHEET)!.getCell("F8").value = "Import";
-    book.getWorksheet(FORM_SHEET)!.getCell("F15").value = "Indian";
+    book.getWorksheet(FORM_SHEET)!.getCell("F11").value = "Indian";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), { ...catalogs, nationalities: [...catalogs.nationalities, { label: "Indian", value: "another-uuid" }] });
     expect(parsed.errors.some(e => e.message.includes("Ambiguous"))).toBe(true);
   });
@@ -188,14 +188,14 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(sheet.getCell("F8").fill).toMatchObject({ fgColor: { argb: "FFFFFFFF" } });
     expect(sheet.pageSetup.printArea).toBe(`A1:AF${FORM_LAST_ROW}`);
     expect(sheet.getColumn(LOOKUP_START_COLUMN).hidden).toBe(true);
-    expect(sheet.getCell("F15").dataValidation.formulae?.[0]).toMatch(/^\$[A-Z]+\$2:\$[A-Z]+\$\d+$/);
-    expect(sheet.getCell("AC4").value).toContain("Not imported");
+    expect(sheet.getCell("F11").dataValidation.formulae?.[0]).toMatch(/^\$[A-Z]+\$2:\$[A-Z]+\$\d+$/);
+    expect(sheet.getCell("AC6").value).toContain("Not imported");
     for (const block of BLOCKS) block.fields.forEach((field, j) =>
       expect(sheet.getCell(labelLocation(block, j)).text).toBe(field.label + (isRequiredLabel(block.entity, field.key) ? " *" : "")));
     const locations = BLOCKS.flatMap(block => Array.from({ length: block.rows || 1 }, (_, row) => block.fields.map((_, j) => cellLocation(block, j, row))).flat());
     expect(new Set(locations).size).toBe(locations.length);
   });
-  it("parses separated optional tables and stacked From/To sea rows without treating later sections as overflow", async () => {
+  it("parses separated optional tables and horizontal From/To sea rows without treating later sections as overflow", async () => {
     const row = { vesselName: "Ship", vesselTypeUuid: "Bulk Carrier", rank: "Master", fromDate: "2021-01-01", toDate: "2021-02-01" };
     const parsed = await parse({ candidate: [core], children: [{}, {}, { firstName: "Child" }], sea: [{}, row, {}, { ...row, fromDate: "2020-01-01", toDate: "2020-02-01" }], training: [{}, { trainingCourse: "Safety" }], additional: [{}, { information: "Note" }] });
     expect(parsed.errors).toEqual([]);
@@ -209,8 +209,8 @@ describe("Recruitment A1-A5 workbook", () => {
     const parsed = await parse({ sea: [row, { ...row, fromDate: "2021-03-01" }], vesselTypes: [{ vesselTypeUuid: "Bulk Carrier" }, { vesselTypeUuid: "Bulk Carrier" }] });
     expect(parsed.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ sheet: FORM_SHEET, cell: "F8", field: "First name" }),
-      expect.objectContaining({ sheet: FORM_SHEET, cell: "I53", field: "From" }),
-      expect.objectContaining({ sheet: FORM_SHEET, cell: "V5", field: "Vessel types applied for" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "AA143", field: "From" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "V10", field: "Vessel types applied for" }),
     ]));
   });
   it("rejects data in gaps or beyond any designated table rather than silently ignoring it", async () => {
@@ -218,11 +218,11 @@ describe("Recruitment A1-A5 workbook", () => {
     await book.xlsx.load(template as any);
     const sheet = book.getWorksheet(FORM_SHEET)!;
     sheet.getCell("F8").value = "Import";
-    sheet.getCell("A131").value = "Extra sea service";
-    sheet.getCell("A227").value = "Extra additional information";
+    sheet.getCell("A182").value = "Extra sea service";
+    sheet.getCell("A200").value = "Extra additional information";
     sheet.getCell("AG5").value = "Unmapped";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
-    expect(parsed.errors.map(e => e.cell).sort()).toEqual(["A131", "A227", "AG5"]);
+    expect(parsed.errors.map(e => e.cell).sort()).toEqual(["A182", "A200", "AG5"]);
   });
   it("does not trust edited lookup labels for master resolution", async () => {
     const book = new ExcelJS.Workbook();
@@ -230,9 +230,9 @@ describe("Recruitment A1-A5 workbook", () => {
     const sheet = book.getWorksheet(FORM_SHEET)!;
     sheet.getCell("F8").value = "Import";
     sheet.getCell(2, LOOKUP_START_COLUMN + 1).value = "Forged nationality";
-    sheet.getCell("F15").value = "Forged nationality";
+    sheet.getCell("F11").value = "Forged nationality";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
-    expect(parsed.errors.some(e => e.cell === "F15" && e.message.includes("Unknown"))).toBe(true);
+    expect(parsed.errors.some(e => e.cell === "F11" && e.message.includes("Unknown"))).toBe(true);
   });
   it("rejects old multi-sheet templates and structural changes with a redownload instruction", async () => {
     const old = new ExcelJS.Workbook();

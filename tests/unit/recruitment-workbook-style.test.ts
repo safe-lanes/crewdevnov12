@@ -29,7 +29,7 @@ describe("Professional application workbook styling", () => {
     expect(FORM_COLORS.title).toBe(FORM_COLORS.section);
     expect(FORM_COLORS.label).toBe("FFE7E7E7");
     expect(sheet.getCell("A2").font).toMatchObject({ name: "Calibri", size: 16, bold: true });
-    for (const address of ["A10", "A132", "A178", "A210", "A228"]) {
+    for (const address of ["A5", "A46", "A106", "A183", "A201"]) {
       expect(sheet.getCell(address).font).toMatchObject({ name: "Calibri", size: 11, bold: true });
       expect(sheet.getCell(address).fill).toMatchObject({ fgColor: { argb: FORM_COLORS.section } });
       expect(sheet.getCell(address).font.color).toMatchObject({ argb: FORM_COLORS.sectionText });
@@ -45,15 +45,15 @@ describe("Professional application workbook styling", () => {
   });
   it("uses fine dotted entry lines, soft solid boundaries, readable table heights and A4 portrait printing", async () => {
     const sheet = (await workbook()).worksheets[0];
-    for (const cell of ["F8", "A134", "A180", "A212"]) {
+    for (const cell of ["F8", "A48", "A108", "A185"]) {
       expect(sheet.getCell(cell).border.bottom).toMatchObject({ style: "dotted", color: { argb: FORM_COLORS.dotted } });
       expect(sheet.getCell(cell).border.top).toMatchObject({ style: "dotted", color: { argb: FORM_COLORS.dotted } });
       expect(sheet.getCell(cell).border.left).toMatchObject({ style: "thin", color: { argb: FORM_COLORS.line } });
       expect(sheet.getCell(cell).alignment).toMatchObject({ wrapText: true, vertical: "middle" });
     }
-    expect(sheet.getRow(162).height).toBeGreaterThanOrEqual(40);
-    expect(sheet.getRow(179).height).toBeGreaterThanOrEqual(40);
-    expect(sheet.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0, printArea: "A1:AF234" });
+    expect(sheet.getRow(89).height).toBeGreaterThanOrEqual(40);
+    expect(sheet.getRow(107).height).toBeGreaterThanOrEqual(40);
+    expect(sheet.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0, printArea: "A1:AF207" });
   });
   it("marks actual required fields but leaves spouse and optional vessel box unstarred", async () => {
     const expected: Record<string, string[]> = {
@@ -74,9 +74,9 @@ describe("Professional application workbook styling", () => {
       } else expect(cell.value).toBe(field.label);
     });
     expect(sheet.getCell("A4").text).toBe(FORM_LEGEND);
-    expect(sheet.getCell("A26").text).toBe("Spouse details are optional, including when Married.");
-    expect(sheet.getCell("A229").text).toContain("Only populated cells and rows are saved.");
-    expect(sheet.getCell("A230").text).toContain("YYYY-MM-DD or DD-MMM-YYYY");
+    expect(sheet.getCell("A29").text).toBe("Spouse details are optional, including when Married.");
+    expect(sheet.getCell("A202").text).toContain("Only populated cells and rows are saved.");
+    expect(sheet.getCell("A203").text).toContain("YYYY-MM-DD or DD-MMM-YYYY");
   });
   it("has no cell notes or comment XML after downloading and saving again", async () => {
     const book = await workbook();
@@ -123,7 +123,7 @@ describe("Professional application workbook styling", () => {
   });
   it("does not accept an invented mandatory marker on an optional field", async () => {
     const book = await workbook();
-    book.worksheets[0].getCell("A5").value = "Gender *";
+    book.worksheets[0].getCell("A10").value = "Gender *";
     await expect(parse(book)).rejects.toMatchObject({ code: "MODIFIED_HEADING" });
   });
   it.each([
@@ -136,7 +136,7 @@ describe("Professional application workbook styling", () => {
   });
   it("accepts Married with blank spouse details and keeps unused tables empty", async () => {
     const book = await workbook();
-    book.worksheets[0].getCell("V15").value = "Married";
+    book.worksheets[0].getCell("F25").value = "Married";
     const parsed = await parse(book);
     expect(parsed.errors).toEqual([]);
     expect(parsed.isValid).toBe(true);

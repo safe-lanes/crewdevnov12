@@ -24,8 +24,8 @@ async function main() {
     assert.equal(book.worksheets.length, 1, "Downloaded template must have exactly one worksheet");
     const form = book.getWorksheet("APPLICATION FORM");
     form.getCell("F8").value = name;
-    form.getCell("F7").value = "Test";
-    form.getCell("V7").value = "1990-01-01";
+    form.getCell("F9").value = "Test";
+    form.getCell("F12").value = "1990-01-01";
     // Same-sheet hidden master-label columns, outside the A:AF print area.
     const rank = form.getCell("AM2").value;
     const vesselType = form.getCell("AK2").value;
@@ -35,17 +35,17 @@ async function main() {
     const agency = form.getCell("AL2").value;
     assert(rank && vesselType, "Template must include current company master dropdowns");
     form.getCell("F6").value = rank;
-    [["V6", rank], ["F15", nationality], ["V12", country], ["V13", language], ["F17", country],
-      ["V17", agency], ["Y39", vesselType], ["AA134", country], ["A151", country], ["G151", "001234"],
-      ["U151", "Work"], ["A163", "Test License"], ["W163", country], ["A180", "Test Training"],
-      ["W180", country]].forEach(([cell, value]) => { form.getCell(cell).value = value; });
-    form.getCell("V18").value = "0";
-    form.getCell("A134").value = "Passport";
-    form.getCell("G134").value = `SMOKE${Date.now()}`;
-    form.getCell("Y29").value = "Test Qualification";
-    [["A51", "Test Vessel"], ["Q51", vesselType], ["M51", rank], ["I51", "2021-01-01"], ["I52", "2021-04-01"]].forEach(([cell, value]) => { form.getCell(cell).value = value; });
-    form.getCell("A212").value = "Test Information";
-    form.getCell("Q212").value = false;
+    [["V11", rank], ["F11", nationality], ["F13", country], ["V14", language], ["F19", country],
+      ["F16", agency], ["V10", vesselType], ["AA48", country], ["A66", country], ["G66", "001234"],
+      ["U66", "Work"], ["A90", "Test License"], ["W90", country], ["A108", "Test Training"],
+      ["W108", country]].forEach(([cell, value]) => { form.getCell(cell).value = value; });
+    form.getCell("V25").value = "0";
+    form.getCell("A48").value = "Passport";
+    form.getCell("G48").value = `SMOKE${Date.now()}`;
+    form.getCell("Y79").value = "Test Qualification";
+    [["A142", "Test Vessel"], ["F142", "1234567"], ["I142", vesselType], ["X142", rank], ["AA142", "2021-01-01"], ["AD142", "2021-04-01"]].forEach(([cell, value]) => { form.getCell(cell).value = value; });
+    form.getCell("A185").value = "Test Information";
+    form.getCell("Q185").value = false;
     const bytes = Buffer.from(await book.xlsx.writeBuffer());
     await page.locator("#candidate-excel-file").setInputFiles({ name: "filled.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: bytes });
     await page.getByRole("button", { name: "Validate workbook" }).click();

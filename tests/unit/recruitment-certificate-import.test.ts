@@ -7,7 +7,7 @@ import { v5 } from "uuid";
 import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, cleanRecord, writeCandidate } from "../../server/v2/recruitment/import/persistence";
-import { BLOCKS, LEGACY_VERSION, VERSION, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { BLOCKS, LEGACY_VERSION, VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { FORM_SHEET } from "../../server/v2/recruitment/import/formLayout";
 import { certificateOption, resolveCertificate, PREVIOUS_CERTIFICATE_GUIDE } from "../../server/v2/recruitment/import/certificateCatalogs";
 import { hasCertificateDatabaseId } from "../../client/src/modules/recruitment/certificateBinding";
@@ -26,7 +26,7 @@ async function read(rows: Record<string, Record<string, any>[]>, options: {
   const sheet = book.getWorksheet(FORM_SHEET)!;
   sheet.getCell("F8").value = "Import";
   for (const [entity, records] of Object.entries(rows)) {
-    const block = BLOCKS.find(b => b.entity === entity)!;
+    const block = blocksForVersion(options.version || VERSION).find(b => b.entity === entity)!;
     records.forEach((record, row) => Object.entries(record).forEach(([key, value]) => {
       sheet.getCell(cellLocation(block, block.fields.findIndex(f => f.key === key), row)).value = value;
     }));
@@ -58,7 +58,7 @@ describe("Excel database and manual certificates", () => {
     }
     const zip = await JSZip.loadAsync(bytes);
     expect(Object.keys(zip.files).some(path => /comments|vmlDrawing/i.test(path))).toBe(false);
-    expect(sheet.getCell("A232").text).toContain("type a custom name");
+    expect(sheet.getCell("A205").text).toContain("type a custom name");
   });
 
   it("resolves both selections, permits custom rows and skips blanks without filling unrelated details", async () => {
@@ -106,7 +106,7 @@ describe("Excel database and manual certificates", () => {
 
   it.each([VERSION, LEGACY_VERSION])("preserves pre-dropdown typed name fingerprints and supported headings for %s", async version => {
     const parsed = await read({ licenses: [{ certificateDocument: "chief engineer", abbr: "Typed" }], training: [{ trainingCourse: "company safety induction" }] },
-      { version, edit: sheet => { sheet.getCell("A232").value = PREVIOUS_CERTIFICATE_GUIDE; } });
+      { version, edit: sheet => { sheet.getCell(version === VERSION ? "A205" : "A232").value = PREVIOUS_CERTIFICATE_GUIDE; } });
     expect(parsed.errors).toEqual([]);
     expect(parsed.data.licenses[0]).toMatchObject({ licenseId: "LIC007", certificateDocument: "Chief Engineer" });
     // Recreate the exact historical algorithm, before derived association fields.
@@ -134,7 +134,7 @@ describe("Excel database and manual certificates", () => {
     const live = { ...catalogs, [entity]: [{ label: "Same Name", value: "CODE-A" }, { label: "Same Name", value: "CODE-B" }] };
     const ambiguous = await read({ [entity]: [{ [nameKey(entity)]: "Same Name" }] }, { source: live, live });
     expect(ambiguous.isValid).toBe(false);
-    expect(ambiguous.errors).toContainEqual(expect.objectContaining({ message: expect.stringContaining("More than one"), cell: entity === "licenses" ? "A163" : "A180" }));
+    expect(ambiguous.errors).toContainEqual(expect.objectContaining({ message: expect.stringContaining("More than one"), cell: entity === "licenses" ? "A90" : "A108" }));
     const a = await read({ [entity]: [{ [nameKey(entity)]: certificateOption(live[entity][0]) }] }, { source: live, live });
     const b = await read({ [entity]: [{ [nameKey(entity)]: certificateOption(live[entity][1]) }] }, { source: live, live });
     expect(a.errors).toEqual([]);
@@ -153,7 +153,7 @@ describe("Excel database and manual certificates", () => {
     }
     const forged = await read({ [entity]: [{ [nameKey(entity)]: "Forged [DB:made-up]" }] }, {
       edit: sheet => {
-        const original = sheet.getCell(entity === "licenses" ? "A163" : "A180").dataValidation.formulae![0];
+        const original = sheet.getCell(entity === "licenses" ? "A90" : "A108").dataValidation.formulae![0];
         const col = /^\$([A-Z]+)\$/.exec(original)![1];
         sheet.getCell(`${col}2`).value = "Forged [DB:made-up]";
       },
@@ -173,8 +173,8 @@ describe("Excel database and manual certificates", () => {
   it("continues to report names missing from partially populated certificate rows", async () => {
     const parsed = await read({ licenses: [{ certificateNo: "0007" }], training: [{ abbr: "PARTIAL" }] });
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "A163", field: "Certificate / document", message: "Required for a populated row." }));
-    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "A180", field: "Training course", message: "Required for a populated row." }));
+    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "A90", field: "Certificate / document", message: "Required for a populated row." }));
+    expect(parsed.errors).toContainEqual(expect.objectContaining({ cell: "A108", field: "Training course", message: "Required for a populated row." }));
   });
 
   it("does not infer a database reference from a bare business code or a custom abbreviation", () => {
