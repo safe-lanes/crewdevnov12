@@ -2,6 +2,16 @@
 
 Branch `feature/assistant-widget-crewing`, based on `origin/crewing_accounts` @ `ee3f69ad`. Written 19-Oct-2026.
 
+## Status (19-Oct-2026)
+
+| Item | Status |
+|---|---|
+| Stage 1 (knowledge answers) | **Implemented locally** on this branch. Not pushed, merged or deployed. |
+| Access | **Agreed:** Office users with the server-verified **Sail Admin** role only |
+| Shared widget | Pins **widget 1.0.1**. The live assistant serves only 1.0.0 today, so the 1.0.1 assistant release is a **prerequisite** (see Deployment). |
+| Genuine SAILERP login check | **Pending** until dev deployment. All tests so far used signed test tokens or Crewing's mock session. |
+| Stage 2 (live data) | **Planning only**, not implemented |
+
 ## What it does
 
 A "Crewing Assistant" chat button (bottom-right) answers "how do I…" questions from the published Crewing manual and from published Crewing trainer knowledge. It cites its sources and shows Crewing starter questions. **No live data.** The widget is the shared, pinned bundle served by the central assistant; nothing is installed in Crewing.
@@ -46,17 +56,47 @@ A "Crewing Assistant" chat button (bottom-right) answers "how do I…" questions
 
 If either server variable is missing, the endpoint answers 503 `assistant_not_configured`, and the widget shows that it is unavailable.
 
-## Deployment (dev)
+## Build (Nilesh): reproducible, from the committed code
 
-1. Merge the branch into the Crewing release branch (Crewing team review).
-2. Set the two server variables in PM2, set `VITE_ASSISTANT_URL` for the build, then build and restart.
-3. Support registers `crewing-dev` on the assistant.
-4. **Genuine-login acceptance (pending until this step):**
-   - A Sail Admin (Office) signs in to SAILERP and opens Crewing. The button is visible, shows the 5 Crewing starter questions, and answers with Crewing citations.
+**Known issue in the lockfile (pre-existing; not introduced by this branch).** `package-lock.json` contains 110 package download URLs pointing to Replit's internal package proxy (`package-firewall.replit.internal` / `.replit.local`), added by Replit Agent lockfile commits. The latest is `44020378` (16-Sep-2026). Outside Replit, `npm ci` fails on those URLs.
+
+**What was verified:** replacing only the host of those 110 URLs with `https://registry.npmjs.org/` changes **no package version and no integrity hash** (939 packages compared; every one of the 110 has a hash, so npm still checks the exact same files).
+
+**Build steps**, on a server that cannot reach Replit's proxy:
+
+```bash
+git checkout feature/assistant-widget-crewing        # after merge: the release branch
+cp package-lock.json /tmp/package-lock.orig.json
+sed -i -E 's#https?://package-firewall\.replit\.(internal|local)/npm/#https://registry.npmjs.org/#g' package-lock.json
+npm ci --no-audit --no-fund
+cp /tmp/package-lock.orig.json package-lock.json     # restore; never commit the rewritten copy
+NODE_ENV=production VITE_PARENT_LOGIN_URL=<SAILERP login URL> VITE_ASSISTANT_URL=https://assistant.sl-sail.com npx vite build
+npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server/index.js
+```
+
+This was verified locally on 19-Oct-2026: frontend and backend built. The frontend bundle contains the 1.0.1 SRI and the assistant URL, and does **not** contain the dev persona token. The signing-key name appears only in the server bundle.
+
+**Proposed smallest repository fix (not applied; needs approval):** commit the same host replacement in `package-lock.json`. That is 110 changed `"resolved"` lines, with no version, integrity or dependency change and no regeneration. After it, plain `npm ci` works everywhere.
+
+## Deployment order (dev); each step needs approval
+
+1. **Assistant release with widget 1.0.1** (v10, see the assistant release plan §8). Then verify through `https://assistant.sl-sail.com`:
+   - `/widget/1.0.1/sail-assistant-widget.1.0.1.js` has SRI `sha384-e2Q1Mm3OiovWmjX/D8EIXFTxKaNbunU2Y2jH0JuaITO2DdarwsW3BxJQrHte4ZMU` (the value pinned in `client/src/lib/sailAssistant.ts`);
+   - `/widget/1.0.0/…` is still `sha384-Dz8YnW533ZDxdij+nA0olCnp3VYRdi7kPkEpOxhXKilHPneJPVMiQWFwsaVJErWP`, unchanged for existing consumers.
+
+   **Do not enable Crewing before this passes.** With a wrong or missing hash the browser blocks the script and no widget appears (fail-safe).
+2. **Register `crewing-dev`** on the assistant (support): `{"module":"crewing","env":"dev","signingKey":"<key>"}`. It is documentation-only (no URL, no secret). `https://dev.sl-sail.com` is already an allowed origin.
+3. **Crewing (Nilesh):** merge into the Crewing release branch (Crewing team review), then set PM2 env `ASSISTANT_INSTANCE_ID=crewing-dev` and `ASSISTANT_IDENTITY_SIGNING_KEY=<same key>`. Build as above with `VITE_ASSISTANT_URL=https://assistant.sl-sail.com`, deploy, restart.
+4. **Genuine-login acceptance on dev:**
+   - A Sail Admin (Office) user signs in to SAILERP and opens Crewing. The button is visible, shows the 5 Crewing starter questions, and answers with Crewing citations.
    - Another role sees no button, and the token request returns 403.
-   - Sign-out removes it.
+   - A Ship user is refused.
+   - Sign-out removes the button.
 
-**Rollback:** rebuild without `VITE_ASSISTANT_URL`, or deploy the previous build. On the assistant, remove the `crewing-dev` entry. No database change anywhere.
+**Rollback:**
+- Crewing: rebuild without `VITE_ASSISTANT_URL` (no script, no widget) or redeploy the previous build.
+- Assistant: remove the `crewing-dev` entry. The v10 release itself rolls back to v9 by switching nginx.
+- No database change anywhere.
 
 ## Local testing (mock session — not a genuine login)
 
