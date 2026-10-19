@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -1006,13 +1007,14 @@ export default function VesselPortagePage() {
   // ---- date-column management (dated tabs) ---------------------------------
   const [addDateFor, setAddDateFor] = useState<string | null>(null);
   const [newDate, setNewDate] = useState("");
+  const [newDateValid, setNewDateValid] = useState(true);
   const [deleteDateFor, setDeleteDateFor] = useState<{
     tabId: string;
     date: string;
   } | null>(null);
 
   const confirmAddDate = () => {
-    if (!addDateFor || !newDate) return;
+    if (!addDateFor || !newDate || !newDateValid) return;
     setAddedDates((d) => ({
       ...d,
       [addDateFor]: Array.from(new Set([...(d[addDateFor] ?? []), newDate])),
@@ -1099,6 +1101,7 @@ export default function VesselPortagePage() {
   const [lineOpen, setLineOpen] = useState(false);
   const [lineEditing, setLineEditing] = useState<any | null>(null);
   const [lineForm, setLineForm] = useState<CtmLineForm>(emptyLineForm);
+  const [lineDateValid, setLineDateValid] = useState(true);
   const [lineSaving, setLineSaving] = useState(false);
   const [lineDeleteTarget, setLineDeleteTarget] = useState<any | null>(null);
 
@@ -1108,10 +1111,12 @@ export default function VesselPortagePage() {
   const openLineCreate = () => {
     setLineEditing(null);
     setLineForm(emptyLineForm);
+    setLineDateValid(true);
     setLineOpen(true);
   };
   const openLineEdit = (line: any) => {
     setLineEditing(line);
+    setLineDateValid(true);
     setLineForm({
       lineDate: line.lineDate ?? "",
       lineType: line.lineType ?? "expense",
@@ -1131,6 +1136,7 @@ export default function VesselPortagePage() {
       });
       return;
     }
+    if (!lineDateValid) return;
     setLineSaving(true);
     try {
       const body = {
@@ -1395,6 +1401,7 @@ export default function VesselPortagePage() {
             onClick={() => {
               setAddDateFor(tab.id);
               setNewDate("");
+              setNewDateValid(true);
             }}
             data-testid={`button-add-date-${tab.id}`}
           >
@@ -2016,10 +2023,10 @@ export default function VesselPortagePage() {
           </DialogHeader>
           <div className="space-y-1">
             <Label>Date</Label>
-            <Input
-              type="date"
+            <FormattedDateInput
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
+              onDraftValidityChange={setNewDateValid}
               data-testid="input-new-date-column"
             />
           </div>
@@ -2029,7 +2036,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={confirmAddDate}
-              disabled={!newDate}
+              disabled={!newDate || !newDateValid}
               data-testid="button-confirm-add-date"
             >
               Add
@@ -2079,10 +2086,11 @@ export default function VesselPortagePage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Date</Label>
-              <Input
-                type="date"
+              <FormattedDateInput
                 value={lineForm.lineDate}
+                initialDraft={formatIsoDate(lineForm.lineDate) || lineForm.lineDate}
                 onChange={(e) => setLf("lineDate", e.target.value)}
+                onDraftValidityChange={setLineDateValid}
                 data-testid="input-line-date"
               />
             </div>
@@ -2150,7 +2158,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={saveLine}
-              disabled={lineSaving}
+              disabled={lineSaving || !lineDateValid}
               data-testid="button-save-ctm-line"
             >
               {lineSaving ? "Saving…" : "Save"}
