@@ -56,13 +56,25 @@ A "Crewing Assistant" chat button (bottom-right) answers "how do I…" questions
 
 If either server variable is missing, the endpoint answers 503 `assistant_not_configured`, and the widget shows that it is unavailable.
 
-## Build (Nilesh): reproducible, from the committed code
+## Build (Datta, on dev): from the committed code
+
+**This branch changes no dependencies** (`package.json` and `package-lock.json` are untouched). On dev, where the dependency installation already exists, a normal pull and build is enough. No `npm ci` is needed:
+
+```bash
+git pull                                            # the release branch after merge
+NODE_ENV=production VITE_PARENT_LOGIN_URL=<SAILERP login URL> VITE_ASSISTANT_URL=https://assistant.sl-sail.com npx vite build
+npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server/index.js
+```
+
+(Or the usual Crewing build commands, with `VITE_ASSISTANT_URL` added.)
+
+### Only for a fresh install (not needed on dev)
 
 **Known issue in the lockfile (pre-existing; not introduced by this branch).** `package-lock.json` contains 110 package download URLs pointing to Replit's internal package proxy (`package-firewall.replit.internal` / `.replit.local`), added by Replit Agent lockfile commits. The latest is `44020378` (16-Sep-2026). Outside Replit, `npm ci` fails on those URLs.
 
 **What was verified:** replacing only the host of those 110 URLs with `https://registry.npmjs.org/` changes **no package version and no integrity hash** (939 packages compared; every one of the 110 has a hash, so npm still checks the exact same files).
 
-**Build steps**, on a server that cannot reach Replit's proxy:
+**Fresh-install steps** (a new server that cannot reach Replit's proxy):
 
 ```bash
 git checkout feature/assistant-widget-crewing        # after merge: the release branch
@@ -86,7 +98,7 @@ This was verified locally on 19-Oct-2026: frontend and backend built. The fronte
 
    **Do not enable Crewing before this passes.** With a wrong or missing hash the browser blocks the script and no widget appears (fail-safe).
 2. **Register `crewing-dev`** on the assistant (support): `{"module":"crewing","env":"dev","signingKey":"<key>"}`. It is documentation-only (no URL, no secret). `https://dev.sl-sail.com` is already an allowed origin.
-3. **Crewing (Nilesh):** merge into the Crewing release branch (Crewing team review), then set PM2 env `ASSISTANT_INSTANCE_ID=crewing-dev` and `ASSISTANT_IDENTITY_SIGNING_KEY=<same key>`. Build as above with `VITE_ASSISTANT_URL=https://assistant.sl-sail.com`, deploy, restart.
+3. **Crewing (Datta, Crewing PIC):** review and merge into the Crewing release branch, then set PM2 env `ASSISTANT_INSTANCE_ID=crewing-dev` and `ASSISTANT_IDENTITY_SIGNING_KEY=<same key>`. Build as above with `VITE_ASSISTANT_URL=https://assistant.sl-sail.com`, deploy, restart.
 4. **Genuine-login acceptance on dev:**
    - A Sail Admin (Office) user signs in to SAILERP and opens Crewing. The button is visible, shows the 5 Crewing starter questions, and answers with Crewing citations.
    - Another role sees no button, and the token request returns 403.
