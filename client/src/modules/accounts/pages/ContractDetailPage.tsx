@@ -818,7 +818,9 @@ export default function ContractDetailPage({
                       {a.beneficiaryName ?? a.beneficiary ?? "—"}
                     </td>
                     <td className="py-1.5 pr-2 text-right">
-                      {formatMoney(a.amount)}
+                      {a.allotmentType === "percentage"
+                        ? `${a.value}%`
+                        : formatMoney(a.value)}
                     </td>
                     <td className="py-1.5 pr-2">{a.currency ?? ""}</td>
                     <td className="py-1.5 pr-2">
