@@ -6,6 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -161,9 +165,11 @@ export default function ContractDetailPage({
   // ---- A: sign-off editor ----
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [endDateValue, setEndDateValue] = useState("");
+  const [endDateValid, setEndDateValid] = useState(true);
+  const [endDateSession, setEndDateSession] = useState(0);
   const [savingEndDate, setSavingEndDate] = useState(false);
   const saveEndDate = async () => {
-    if (!endDateValue) return;
+    if (!endDateValue || !endDateValid) return;
     setSavingEndDate(true);
     try {
       await accountsApiV2.engagements.update(engagementUuid, {
@@ -187,13 +193,18 @@ export default function ContractDetailPage({
   const [anchorOpen, setAnchorOpen] = useState(false);
   const [anchorYear, setAnchorYear] = useState("");
   const [anchorNextStep, setAnchorNextStep] = useState("");
+  const [anchorNextStepValid, setAnchorNextStepValid] = useState(true);
+  const [anchorSession, setAnchorSession] = useState(0);
   const [savingAnchor, setSavingAnchor] = useState(false);
   const openAnchor = () => {
     setAnchorYear(String(engagement?.scaleYearAtStart ?? 1));
     setAnchorNextStep(engagement?.nextStepDate ?? "");
+    setAnchorNextStepValid(true);
+    setAnchorSession((session) => session + 1);
     setAnchorOpen(true);
   };
   const saveAnchor = async () => {
+    if (!anchorNextStepValid) return;
     setSavingAnchor(true);
     try {
       const payload: Record<string, unknown> = {};
@@ -457,6 +468,8 @@ export default function ContractDetailPage({
                   title="Edit sign-off date"
                   onClick={() => {
                     setEndDateValue(engagement.endDate ?? "");
+                    setEndDateValid(true);
+                    setEndDateSession((session) => session + 1);
                     setEndDateOpen(true);
                   }}
                   data-testid="button-edit-sign-off"
@@ -873,11 +886,22 @@ export default function ContractDetailPage({
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="sign-off-date">Sign-off (end) date</Label>
-            <Input
-              id="sign-off-date"
-              type="date"
+            <FormattedDateInput
+              key={endDateSession}
+              ref={(node) => {
+                const input = node?.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+                if (input) {
+                  input.id = "sign-off-date";
+                  input.removeAttribute("aria-label");
+                }
+              }}
               value={endDateValue}
+              initialDraft={formatIsoDate(endDateValue) || endDateValue}
               onChange={(e) => setEndDateValue(e.target.value)}
+              onDraftValidityChange={setEndDateValid}
+              acceptCalendarInputEvents
               data-testid="input-sign-off-date"
             />
             <p className="text-xs text-muted-foreground">
@@ -891,7 +915,7 @@ export default function ContractDetailPage({
             </Button>
             <Button
               onClick={saveEndDate}
-              disabled={!endDateValue || savingEndDate}
+              disabled={!endDateValue || !endDateValid || savingEndDate}
               data-testid="button-save-sign-off"
             >
               {savingEndDate ? "Saving…" : "Save"}
@@ -919,11 +943,22 @@ export default function ContractDetailPage({
             </div>
             <div>
               <Label htmlFor="anchor-next">Next step date</Label>
-              <Input
-                id="anchor-next"
-                type="date"
+              <FormattedDateInput
+                key={anchorSession}
+                ref={(node) => {
+                  const input = node?.querySelector<HTMLInputElement>(
+                    'input[type="text"]',
+                  );
+                  if (input) {
+                    input.id = "anchor-next";
+                    input.removeAttribute("aria-label");
+                  }
+                }}
                 value={anchorNextStep}
+                initialDraft={formatIsoDate(anchorNextStep) || anchorNextStep}
                 onChange={(e) => setAnchorNextStep(e.target.value)}
+                onDraftValidityChange={setAnchorNextStepValid}
+                acceptCalendarInputEvents
                 data-testid="input-anchor-next-step"
               />
             </div>
@@ -934,7 +969,7 @@ export default function ContractDetailPage({
             </Button>
             <Button
               onClick={saveAnchor}
-              disabled={savingAnchor}
+              disabled={savingAnchor || !anchorNextStepValid}
               data-testid="button-save-anchor"
             >
               {savingAnchor ? "Saving…" : "Save"}

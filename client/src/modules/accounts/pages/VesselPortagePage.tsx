@@ -1218,15 +1218,23 @@ export default function VesselPortagePage() {
   // ---- vessel-editable sign-off date (task #179 part 4) --------------------
   const [signOffTarget, setSignOffTarget] = useState<any | null>(null);
   const [signOffDate, setSignOffDate] = useState("");
+  const [signOffDateValid, setSignOffDateValid] = useState(true);
+  const [signOffSession, setSignOffSession] = useState(0);
   const [signOffSaving, setSignOffSaving] = useState(false);
 
   const openSignOff = (row: any) => {
     setSignOffTarget(row);
     setSignOffDate(row.engagement?.endDate ?? "");
+    setSignOffDateValid(true);
+    setSignOffSession((session) => session + 1);
   };
 
   const saveSignOff = async () => {
-    if (!signOffTarget?.engagement || !signOffDate) return;
+    if (
+      !signOffTarget?.engagement ||
+      !signOffDate ||
+      !signOffDateValid
+    ) return;
     setSignOffSaving(true);
     try {
       await accountsApiV2.engagements.setSignOff(
@@ -2214,11 +2222,22 @@ export default function VesselPortagePage() {
               sign-off date.
             </p>
             <Label htmlFor="signoff-date">Sign-off date</Label>
-            <Input
-              id="signoff-date"
-              type="date"
+            <FormattedDateInput
+              key={signOffSession}
+              ref={(node) => {
+                const input = node?.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+                if (input) {
+                  input.id = "signoff-date";
+                  input.removeAttribute("aria-label");
+                }
+              }}
               value={signOffDate}
+              initialDraft={formatIsoDate(signOffDate) || signOffDate}
               onChange={(e) => setSignOffDate(e.target.value)}
+              onDraftValidityChange={setSignOffDateValid}
+              acceptCalendarInputEvents
               data-testid="input-signoff-date"
             />
           </div>
@@ -2228,7 +2247,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={saveSignOff}
-              disabled={signOffSaving || !signOffDate}
+              disabled={signOffSaving || !signOffDate || !signOffDateValid}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-save-signoff"
             >
