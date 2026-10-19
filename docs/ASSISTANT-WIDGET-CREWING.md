@@ -106,9 +106,9 @@ This was verified locally on 19-Oct-2026: frontend and backend built. The fronte
    - Sign-out removes the button.
 
 **Rollback:**
-- Crewing: rebuild without `VITE_ASSISTANT_URL` (no script, no widget) or redeploy the previous build.
-- Assistant: remove the `crewing-dev` entry. The v10 release itself rolls back to v9 by switching nginx.
-- No database change anywhere.
+- **Crewing only:** rebuild without `VITE_ASSISTANT_URL` (no script, no widget) or redeploy the previous build. No database change.
+- **Assistant rollback (v10 → v9) while Crewing is enabled:** v9 serves neither widget 1.0.1 nor the `crewing-dev` registration. The Crewing chat button then **disappears** (the browser blocks the missing 1.0.1 script). That is fail-safe, and the rest of Crewing is unaffected. Support tells Datta. Either disable the Crewing widget (rebuild without `VITE_ASSISTANT_URL`), or support restores an assistant build that serves 1.0.1 and has the registration.
+- **Removing the `crewing-dev` registration:** Crewing's token still mints, but the assistant refuses it (401), so the widget shows "sign in again". Disable the widget in Crewing at the same time.
 
 ## Local testing (mock session — not a genuine login)
 
