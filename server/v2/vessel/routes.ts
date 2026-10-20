@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { planningAttachmentAccess } from "../shared/operationalAttachmentAccess";
+import { redactAttachmentJson } from "../shared/attachmentJsonAccess";
 import {
   vesselPlanningController,
   vesselCrewCountController,
@@ -14,6 +15,7 @@ import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
 router.use(planningAttachmentAccess);
+router.use(redactAttachmentJson);
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);

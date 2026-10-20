@@ -305,4 +305,14 @@ describe("secondary attachment response paths", () => {
       expect(JSON.stringify(result.body)).not.toContain("filePath");
     }
   });
+  it("planning attachment metadata has the same vessel boundary as raw bytes", async () => {
+    const f = cases.find(c => c.name === "planning")!;
+    const path = `/api/v2/vessel/planning/${f.parent}/attachments`;
+    expect((await call(path, "other")).status).toBe(403);
+    expect((await call(path, "denied")).status).toBe(403);
+    const own = await call(path, "ship");
+    expect(own.status).toBe(200);
+    expect(JSON.stringify(own.body)).not.toContain("fileData");
+    expect(JSON.stringify(own.body)).not.toContain("filePath");
+  });
 });
