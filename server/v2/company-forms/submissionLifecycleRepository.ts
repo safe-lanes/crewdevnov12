@@ -30,7 +30,7 @@ import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured 
 import { sectionRequiresSubmission } from "./lifecyclePolicy";
 import { getDb } from "../db";
 import { ownsCompanyFormSignature } from "./signatureOwnership";
-import { captureDocumentHeader, captureDocumentSignature } from "./documentEvidenceRepository";
+import { captureDocumentHeader, captureDocumentSignature, recordCompletedDocument } from "./documentEvidenceRepository";
 
 type Executor = any;
 type LifecycleAdapter = CompanyFormSubjectAdapter<any>;
@@ -399,6 +399,9 @@ export class CompanyFormSubmissionLifecycleRepository {
           updatedByUuid: String(input.actor.userId),
           updatedAt: now,
         }).where(eq(frmCompanySubmissions.submissionUuid, submission.submissionUuid));
+        await recordCompletedDocument({
+          tx, submissionUuid: submission.submissionUuid, actorUserId: input.actor.userId, at: now,
+        });
       }
       return { completed: complete };
     });
