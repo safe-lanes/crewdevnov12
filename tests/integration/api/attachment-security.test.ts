@@ -7,6 +7,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { randomUUID } from "node:crypto";
 import { bootstrapMissingTestTables } from "../../helpers/private-schema";
 import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/attachmentAccess";
+import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
 
 // Only the connection provider is substituted. Authorization, signed-JWT
 // verification, role/grant lookup, ownership joins and handlers are real.
@@ -30,6 +31,15 @@ const crew = randomUUID(), vessel = randomUUID(), otherVessel = randomUUID();
 const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
 type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string };
 const cases: Case[] = [];
+const specs = [
+  ...Object.entries(crewAttachmentOwners).map(([name, owner]) => ({
+    name: `crew/${name}`, owner, path: `/api/v2/crew-pool/${["briefing", "debriefing"].includes(name)
+      ? `${name}-attachments/:att/raw` : `${name}/attachments/:att/raw`}`,
+  })),
+  ...Object.entries(recruitmentAttachmentOwners).map(([name, owner]) => ({
+    name: `recruitment/${name}`, owner, path: `/api/v2/recruitment/${name}/attachments/:att/raw`,
+  })),
+];
 const ident = (s: string) => {
   if (!/^[a-z][a-z0-9_]*$/.test(s)) throw new Error("Invalid test identifier");
   return `"${s}"`;
@@ -51,7 +61,7 @@ async function insert(table: string, supplied: Record<string, unknown>) {
 }
 async function addCase(name: string, path: string, owner: AttachmentOwner) {
   const parent = randomUUID(), attachment = randomUUID();
-  await insert(owner.parent, { [owner.parentKey]: parent, crew_uuid: crew });
+  await insert(owner.parent, { [owner.parentKey]: parent, [owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid"]: crew });
   await insert(owner.table, { att_uuid: attachment, [owner.key]: parent,
     file_name: "evidence.pdf", file_type: "application/pdf",
     file_data: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0Y=" });
@@ -71,28 +81,31 @@ beforeAll(async () => {
     pools.push(new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}` }));
   }
   await insert("crew_members_v2", { crew_uuid: crew, first_name: "Synthetic", family_name: "Attachment Evidence" });
+  await insert("recruitment_candidates_v2", { rec_can_uuid: crew });
   await insert("master_vessels", { id: 880001, vessel_uuid: vessel, vessel: "TEST ONLY Attachment Own", is_active: true, is_deleted: false });
   await insert("master_vessels", { id: 880002, vessel_uuid: otherVessel, vessel: "TEST ONLY Attachment Other", is_active: true, is_deleted: false });
   await insert("crew_assignments", { assign_uuid: randomUUID(), crew_uuid: crew, vessel_uuid: vessel,
     is_current: true, assignment_type: "OnBoard", sign_on_date: "2026-10-01" });
-  const menu = randomUUID();
-  await insert("adm_menumaster_ac", { muid: menu, name: "Crew Database", is_active: true, is_deleted: false });
+  const menus: string[] = [];
+  for (const name of new Set(specs.map(s => s.owner.menu))) {
+    const menu = randomUUID();
+    await insert("adm_menumaster_ac", { muid: menu, name, is_active: true, is_deleted: false });
+    menus.push(menu);
+  }
   for (const [name, id] of Object.entries(users)) {
     const role = randomUUID(), ship = name === "ship" || name === "other";
     await insert("adm_rolemaster_ac", { ruid: role, assigned_role: `Attachment ${name}`, roletype: ship ? "Ship" : "Office", is_active: true, is_deleted: false });
     await insert("master_users", { id, user_type: ship ? "Ship" : "Office", role: `Attachment ${name}`,
       vessel_ids: ship ? (name === "ship" ? "880001" : "880002") : null });
-    await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: name !== "denied", is_deleted: false });
+    for (const menu of menus) await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: name !== "denied", is_deleted: false });
   }
-  for (const [name, owner] of Object.entries(crewAttachmentOwners)) {
-    await addCase(name, `/api/v2/crew-pool/${["briefing", "debriefing"].includes(name)
-      ? `${name}-attachments/:att/raw` : `${name}/attachments/:att/raw`}`, owner);
-  }
+  for (const spec of specs) await addCase(spec.name, spec.path, spec.owner);
   process.env.JWT_SECRET = secret;
   delete process.env.AUTH_BYPASS;
   const { attachmentTestContext } = await import("@server/v2/db") as any;
   const { authMiddleware } = await import("@server/middleware/authMiddleware");
   const { default: crewRoutes } = await import("@server/v2/crew-pool/routes");
+  const { default: recruitmentRoutes } = await import("@server/routes/v2/recruitment");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -105,6 +118,7 @@ beforeAll(async () => {
   });
   app.use(authMiddleware);
   app.use("/api/v2/crew-pool", crewRoutes);
+  app.use("/api/v2/recruitment", recruitmentRoutes);
 }, 120000);
 
 afterAll(async () => {
@@ -115,15 +129,16 @@ afterAll(async () => {
   if (prior.bypass === undefined) delete process.env.AUTH_BYPASS; else process.env.AUTH_BYPASS = prior.bypass;
 });
 
-describe.each(Object.entries(crewAttachmentOwners))("crew attachment %s", (name, owner) => {
+describe.each(specs)("attachment $name", ({ name, owner }) => {
   const fixture = () => cases.find(c => c.name === name)!;
   it("allows authenticated office and own-vessel users to read actual bytes", async () => {
-    for (const actor of ["office", "ship"] as const) {
+    for (const actor of (owner.subject === "candidate" ? ["office"] : ["office", "ship"]) as ("office" | "ship")[]) {
       const response = await call(fixture().path, actor);
       expect(response.status).toBe(200);
       expect(response.headers["content-type"]).toContain("application/pdf");
       expect(response.body.length).toBeGreaterThan(0);
     }
+    if (owner.subject === "candidate") expect((await call(fixture().path, "ship")).status).toBe(403);
   });
   it("refuses other vessel, other tenant, missing grant, no JWT and forged JWT", async () => {
     expect((await call(fixture().path, "other")).status).toBe(403);
@@ -136,7 +151,9 @@ describe.each(Object.entries(crewAttachmentOwners))("crew attachment %s", (name,
   it("refuses deleted attachment, deleted parent, deleted crew and orphaned parent", async () => {
     const f = fixture();
     for (const [table, key, value] of [[owner.table, "att_uuid", f.attachment],
-      [owner.parent, owner.parentKey, f.parent], ["crew_members_v2", "crew_uuid", crew]]) {
+      [owner.parent, owner.parentKey, f.parent],
+      [owner.subject === "candidate" ? "recruitment_candidates_v2" : "crew_members_v2",
+        owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid", crew]]) {
       await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=true WHERE ${ident(key)}=$1`, [value]);
       try { expect((await call(f.path)).status).toBe(404); }
       finally { await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=false WHERE ${ident(key)}=$1`, [value]); }
