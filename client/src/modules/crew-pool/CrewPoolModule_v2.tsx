@@ -28,6 +28,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2, useManningAgentsWithActiveCrewV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2, useTerminatedCrewListV2 } from './hooks/useCrewPoolV2';
+import { useToast } from '@/hooks/use-toast';
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -74,6 +75,7 @@ const formatContractPeriod = (value: any): string => {
 };
 
 export const CrewPoolModule_v2 = (): JSX.Element => {
+    const { toast } = useToast();
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
@@ -666,6 +668,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 setDeepLinkDoc(new URLSearchParams(window.location.search).get("doc"));
                 setDeepLinkVisa(new URLSearchParams(window.location.search).get("visa"));
             }
+        } else {
+            toast({
+                title: 'Cannot open crew record',
+                description: 'This record is unavailable or outside your permitted vessels. Check the link or ask your administrator to check your access.',
+                variant: 'destructive',
+            });
         }
         setPendingCrewUuid(null);
         if (typeof window !== "undefined") {
@@ -680,7 +688,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 window.history.replaceState({}, "", newUrl);
             }
         }
-    }, [pendingCrewUuid, isCrewLoading, permissionsLoading, rawCrewData]);
+    }, [pendingCrewUuid, isCrewLoading, permissionsLoading, rawCrewData, allowedPages, permissions.length, toast]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {

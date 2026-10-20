@@ -35,6 +35,7 @@ interface FileAttachmentDialogProps {
   title?: string;
   itemName?: string;
   contentClassName?: string;
+  readOnly?: boolean;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -49,6 +50,7 @@ export function FileAttachmentDialog({
   title = 'Manage Attachments',
   itemName,
   contentClassName,
+  readOnly = false,
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +60,7 @@ export function FileAttachmentDialog({
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -127,6 +130,7 @@ export function FileAttachmentDialog({
   };
 
   const handleRemoveAttachment = async (id: string) => {
+    if (readOnly) return;
     const attachment = attachments.find((a) => a.id === id);
     
     if (attachment) {
@@ -374,6 +378,7 @@ export function FileAttachmentDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {!readOnly && <>
           <input
             ref={fileInputRef}
             type="file"
@@ -397,6 +402,7 @@ export function FileAttachmentDialog({
               <span className="text-xs text-gray-400">PDF, JPG, PNG (max 5MB)</span>
             </div>
           </Button>
+          </>}
 
           {attachments.filter(a => !a.isDeleted).length > 0 && (
             <ScrollArea className="h-[200px] border rounded-md p-2">
@@ -468,7 +474,7 @@ export function FileAttachmentDialog({
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button
+                      {!readOnly && <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -477,7 +483,7 @@ export function FileAttachmentDialog({
                         data-testid={`button-remove-${attachment.id}`}
                       >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 ))}

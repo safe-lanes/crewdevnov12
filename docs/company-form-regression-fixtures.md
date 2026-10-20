@@ -74,16 +74,23 @@ is still the only matching master user, including normalised role names.
 | --- | --- | --- | --- | --- |
 | Crew Database View | 8e526cf4-d5ab-4e81-9736-bad10a722108 | 7da25780-a041-4966-aee1-7606a3973793 | 21 | 20-Oct-2026 15:25:44 |
 | Crew Pool View | 2dcbfb8e-8cf8-499e-ab9d-d21f9b635eb2 | 561ad59b-58c6-4c29-af02-54868ece9487 | 25 | 20-Oct-2026 15:49:12 |
+| CP Travel ID Documents View | 82b25615-1f5e-48d8-af49-8028c2a2d440 | af846225-e511-4d9f-9e49-d09fcb163071 | 29 | 20-Oct-2026 15:57:29 |
 
-Both View events record absent (`null`) → `true`, with server-derived actor
-master user 1 / Sail Admin. Create/Edit/Delete remain `false` for both;
-events 26–28 record those values for the new Crew Pool row. No other role,
-membership or permission was changed.
+All three View events record absent (`null`) → `true`, with server-derived
+actor master user 1 / Sail Admin. Create/Edit/Delete remain `false` for all
+three; events 26–28 and 30–32 record those values for the new Crew Pool and
+Travel ID rows. No other role, membership or permission was changed.
 
-The vessel profile now opens through the screen. Its separate **CP Travel ID
-Documents View** permission remains absent, so Part C and the document
-attachment are not shown. This is a grant gap, not a failed file request; no
-additional section permission has been granted without approval.
+The user separately approved Travel ID View, then authorised any further
+**View-only** grant needed for this verification on this fixture-only role;
+no further grants were needed. This is not standing permission to change
+other roles or future verification permissions. Never add Edit, Void,
+Override or management authority under that approval.
+
+The own-vessel document now opens through Part C in a read-only attachment
+dialog: the saved image displays and Preview opens it, with no upload or
+remove controls. The other-vessel fixture crew link is refused in the screen
+with a plain message and exposes no other-vessel profile or file.
 
 # Attachment display verification — 20-Oct-2026
 

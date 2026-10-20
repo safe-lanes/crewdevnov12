@@ -5186,7 +5186,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              {canEditSection('C') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">{canEditSection('C') ? 'Actions' : 'Attachments'}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -5239,7 +5239,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
-                {canEditSection('C') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -5248,6 +5247,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
                       onClick={() => handleAttachmentClick('document', doc.id, doc.document || 'Document')}
                       data-testid={`button-attach-document-${doc.id}`}
+                      aria-label={`Open attachments for ${doc.document || 'document'}`}
                     >
                       <Paperclip className="h-3 w-3" />
                       {(doc.attachments?.length || 0) > 0 && (
@@ -5256,17 +5256,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </span>
                       )}
                     </Button>
-                    <Button 
+                    {canEditSection('C') && <Button
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-red-600"
                       onClick={() => removeDocument(doc.id)}
                     >
                       <Trash2 className="h-3 w-3" />
-                    </Button>
+                    </Button>}
                   </div>
                 </TableCell>
-                )}
               </TableRow>
             ))}
           </TableBody>
@@ -10530,7 +10529,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onOpenChange={(open) => setAttachmentDialog(prev => ({ ...prev, open }))}
         attachments={getAttachmentsForItem()}
         onAttachmentsChange={updateAttachments}
-        title="Manage Attachments"
+        title={attachmentDialog.section === 'document' && !canEditSection('C') ? 'View Attachments' : 'Manage Attachments'}
+        readOnly={attachmentDialog.section === 'document' && !canEditSection('C')}
         itemName={attachmentDialog.itemName}
       />
     </div>
