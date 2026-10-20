@@ -6,6 +6,7 @@ import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
 import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
+import { clearCompanyFormDocumentFixtures } from "../../helpers/companyFormDocumentCleanup";
 import type { Server } from "http";
 import type { CompanyFormSubmissionRenderContract } from "../../../shared/v2/forms-engine/submissionRenderContract";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
@@ -387,6 +388,18 @@ describe("Company Form subject-scoped starts and lists", () => {
       const submissionUuids = [
         primarySubmissionUuid, replacementSubmissionUuid, historySubmissionUuid, writeSubmissionUuid,
       ].filter(Boolean);
+      const owned = (await db.query(
+        "SELECT submission_uuid FROM frm_company_submissions WHERE subject_ref=ANY($1::text[])",
+        [subjectRefs],
+      )).rows.map(row => row.submission_uuid);
+      await db.query("BEGIN");
+      try {
+        await clearCompanyFormDocumentFixtures(db, owned);
+        await db.query("COMMIT");
+      } catch (error) {
+        await db.query("ROLLBACK");
+        throw error;
+      }
       const assetUuids = [historyAssetUuid, foreignAssetUuid].filter(Boolean);
       if (assetUuids.length) {
         await db.query(

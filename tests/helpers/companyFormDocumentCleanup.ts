@@ -14,6 +14,17 @@ export async function clearCompanyFormDocumentFixtures(db: any, submissions: str
   // trigger state; never leave live immutability disabled after failed teardown.
   await db.query("SAVEPOINT document_fixture_cleanup");
   try {
+    // Only the identity-verified isolated test DB may remove immutable fixture
+    // descendants. Preserve normal teardown without weakening application FKs.
+    for (const [table, predicate] of [
+      ["frm_document_void_handovers", "submission_uuid=ANY($1::text[])"],
+      ["frm_document_void_files", "notice_uuid IN (SELECT notice_uuid FROM frm_document_void_notices WHERE submission_uuid=ANY($1::text[]))"],
+      ["frm_document_void_notices", "submission_uuid=ANY($1::text[])"],
+    ]) {
+      await db.query(`ALTER TABLE ${table} DISABLE TRIGGER USER`);
+      await db.query(`DELETE FROM ${table} WHERE ${predicate}`, [submissions]);
+      await db.query(`ALTER TABLE ${table} ENABLE TRIGGER USER`);
+    }
     for (const table of ["frm_document_handovers", "frm_document_preparation_events", "frm_document_files",
       "frm_document_samples", "frm_document_preparation_requests", "frm_document_snapshots", "frm_document_assets", "frm_document_headers",
       "frm_document_references"]) {

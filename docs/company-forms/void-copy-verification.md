@@ -90,6 +90,9 @@ Automated coverage lives in the isolated registered test database:
   and cancel, permission visibility, annotated fingerprint only, cleared
   reminder after current handover.
 * Existing renderer contract and PDF integration assertions remain intact.
+  The identity-guarded isolated-test cleanup removes the new notice descendants
+  before their parent submissions. Application foreign keys and immutable
+  triggers stay enforced; no teardown helper is usable in the main preview.
 
 Gate results are recorded in the final completion report and raw
 `generated-artifacts/company-void-copy/full-suite.json`,
