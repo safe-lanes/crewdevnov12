@@ -7,8 +7,9 @@ import type { FrozenDocumentInput } from "../../../shared/v2/forms-engine/docume
 import { canonicalDocumentJson, sha256 } from "./documentEvidenceRepository";
 import { companyFormNumbers } from "../../../shared/v2/forms-engine/displayNumbering";
 import { sailDate } from "../../../shared/v2/forms-engine/displayFormatting";
+import { documentHeaderFields } from "./documentHeaderDates";
 
-export const PDF_RENDERER_VERSION = "company-form-pdf-2";
+export const PDF_RENDERER_VERSION = "company-form-pdf-3";
 export const PDF_FONT_VERSION = "DejaVu-Sans-2.37";
 const INK = rgb(.12, .18, .24), BLUE = rgb(.09, .27, .40), MUTED = rgb(.35, .40, .45);
 const plain = (html: string) => sanitizeHtml(html
@@ -142,7 +143,7 @@ export async function renderFrozenDocument(input: FrozenDocumentInput, frozenHas
   text(`Seafarer: ${recorded(input.header.subject.subjectLabel)}`);
   for (const label of ["Crew ID", "Nationality"])
     text(`${label}: ${recorded(input.header.subject.fields.find(f => f.label === label)?.value)}`);
-  for (const field of input.header.subject.fields.filter(f => !["Crew ID", "Nationality"].includes(f.label)))
+  for (const field of documentHeaderFields(input))
     text(`${field.label}: ${/date/i.test(field.label) ? calendarDate(field.value) : recorded(field.value)}`);
   text(`Completed: ${date(input.source.completedAt)}`, 9, regular, MUTED);
   const options = definition.options ?? [];

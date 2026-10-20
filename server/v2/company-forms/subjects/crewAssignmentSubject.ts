@@ -346,7 +346,15 @@ export function createCrewAssignmentSubject(
       }));
     },
     groupingIdentifier: (subject, subjectRef) => subject.assignUuid || subjectRef,
-    documentHeader: async (subject, executor) => ({
+    documentHeader: async (subject, executor) => {
+      // Exact persisted assignment link only: never infer by crew/vessel or use
+      // the incumbent's sign-on date as the reliever's planned joining date.
+      const plans = await executor.select({ date: vesselPlanningV2.relieverSignOnDate })
+        .from(vesselPlanningV2).where(and(
+          eq(vesselPlanningV2.relieverAssignUuid, subject.assignUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+        )).limit(2);
+      return {
       subjectLabel: await resolveCrewSystemField("seafarer_name", subject, {
         submission: { dateOfDeclaration: null },
       }, executor),
@@ -359,8 +367,10 @@ export function createCrewAssignmentSubject(
         { label: "Vessel", value: subject.vesselName ?? null },
         { label: "Contract rank", value: await resolveSigningContractRank(subject, executor, false) },
         { label: "Sign-on date", value: subject.signOnDate },
+        { label: "Planned joining date", value: plans.length === 1 ? plans[0].date ?? null : null },
       ],
-    }),
+      };
+    },
     homeGroupDisplay: (subject) => ({
       label: subject.vesselName || "Vessel name unavailable",
       status: subject.assignmentType.replace(/^OnBoard$/i, "On board"),
