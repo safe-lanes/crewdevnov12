@@ -15,13 +15,24 @@ async function authorize(req: Request, tx: any) {
     throw new CompanyFormPermissionError("Access Control management must be granted to manage the company PDF logo.");
   }
 }
-export async function readBranding(tx: any) {
-  return (await tx.execute(sql`SELECT * FROM frm_document_branding ORDER BY id DESC LIMIT 1`)).rows[0] ?? null;
+export async function readBranding(tx: any, submissionUuid?: string) {
+  if (submissionUuid) {
+    const sample = (await tx.execute(sql`SELECT b.* FROM frm_document_samples s
+      JOIN frm_document_branding b ON b.version_uuid=s.registration->>'brandingVersionUuid'
+      WHERE s.submission_uuid=${submissionUuid}`)).rows[0];
+    if (sample && await (await import("./documentArchive")).sampleEligible(tx, submissionUuid)) return sample;
+  }
+  // Deliberate layout-sample branding never becomes this tenant's real branding.
+  return (await tx.execute(sql`SELECT b.* FROM frm_document_branding b WHERE NOT EXISTS
+    (SELECT 1 FROM frm_document_samples s WHERE s.registration->>'brandingVersionUuid'=b.version_uuid)
+    ORDER BY b.id DESC LIMIT 1`)).rows[0] ?? null;
 }
 export async function getBranding(req: Request) {
   return getDb().transaction(async (tx: any) => {
     await authorize(req, tx);
-    const rows = (await tx.execute(sql`SELECT * FROM frm_document_branding ORDER BY id DESC LIMIT 50`)).rows as any[];
+    const rows = (await tx.execute(sql`SELECT b.* FROM frm_document_branding b WHERE NOT EXISTS
+      (SELECT 1 FROM frm_document_samples s WHERE s.registration->>'brandingVersionUuid'=b.version_uuid)
+      ORDER BY b.id DESC LIMIT 50`)).rows as any[];
     const latest = rows[0];
     return {
       companyName: latest?.company_name ?? "", logoVersionUuid: latest?.version_uuid ?? null,

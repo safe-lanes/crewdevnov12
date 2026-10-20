@@ -45,7 +45,8 @@ export async function renderFrozenDocument(input: FrozenDocumentInput, frozenHas
   pdf.setProducer("Frozen Company Form archive");
   pdf.setCreationDate(new Date(input.source.completedAt));
   pdf.setModificationDate(new Date(input.source.completedAt));
-  let page: PDFPage, y = 0;
+  let page!: PDFPage;
+  let y = 0;
   const width = 499;
   const checkText = (text: string) => {
     for (const ch of Array.from(text)) {

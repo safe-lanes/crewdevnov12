@@ -9,7 +9,7 @@ export async function handoversFor(db: any, submissions: string[]) {
   if (!submissions.length) return [];
   return (await db.execute(sql`SELECT submission_uuid AS "submissionUuid",actor_name AS "actorName",
     recorded_at AS "recordedAt",file_sha256 AS "fileSha256"
-    FROM frm_document_handovers WHERE submission_uuid=ANY(${submissions}::text[])
+    FROM frm_document_handovers WHERE submission_uuid IN (${sql.join(submissions.map(id => sql`${id}`), sql`, `)})
     ORDER BY recorded_at,handover_uuid`)).rows as any[];
 }
 export async function recordHandover(req: Request, submissionUuid: string, fingerprint: string) {

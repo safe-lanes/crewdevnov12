@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 import {
-  createRequirementFixture, requirementApi, requirementPool, requirementToken,
+  createRequirementFixture, requirementApi, requirementPool, requirementToken, requirementTokenFor,
 } from "../helpers/company-form-requirement-fixtures";
 import { retainFixtureReferences } from "../helpers/fixture-retention";
 import { grantCompanyFormFixture } from "../helpers/companyFormGrants";
@@ -9,6 +9,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { tenantConnectionManager } from "../../server/utils/tenantConnectionManager";
 import { getDb } from "../../server/v2/db";
 import { readDocumentEvidenceStatus } from "../../server/v2/company-forms/documentEvidenceRepository";
+import { prepareDocument } from "../../server/v2/company-forms/documentArchive";
 
 const prefix = "/api/v2/company-form-submissions";
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=";
@@ -47,6 +48,102 @@ async function read(f: Fixture) {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
   return response.body;
 }
+
+describe("registered sample PDF archive", () => {
+  it("authorizes branding by explicit management grant, versions it, and freezes the selected logo independently", async () => {
+    const role = randomUUID(), name = `TEST ONLY PDF manager ${role.slice(0, 8)}`;
+    await requirementPool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned)
+      VALUES($1,$2,'Office',true)`, [role, name]);
+    const user = (await requirementPool.query(`INSERT INTO master_users(user_uuid,fullname,role,user_type)
+      VALUES($1,'Synthetic PDF manager',$2,'Office') RETURNING id`, [randomUUID(), name])).rows[0];
+    await requirementPool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES($1,'access_control','manage',true)`, [role]);
+    const auth = `Bearer ${requirementTokenFor(user.id)}`;
+    const url = `${prefix}/settings/branding`;
+    try {
+      expect((await requirementApi.post(url).set("Authorization", auth)
+        .send({ companyName: "Sample company", dataUrl: PNG, actor: "Forged" })).status).toBe(400);
+      const first = await requirementApi.post(url).set("Authorization", auth).send({ companyName: "Sample company", dataUrl: PNG });
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      expect(first.body.realGenerationEnabled).toBe(false);
+      expect(first.body.logoDataUrl).toBe(PNG);
+      const version = first.body.logoVersionUuid;
+      const f = await start(true);
+      await sign(f, "officer");
+      const second = await requirementApi.post(url).set("Authorization", auth).send({ companyName: "Sample company", dataUrl: null });
+      expect(second.status).toBe(200);
+      expect(second.body.logoVersionUuid).not.toBe(version);
+      expect(second.body.logoDataUrl).toBeNull();
+      expect(second.body.history[0].actorName).toBe("Synthetic PDF manager");
+      const header = (await requirementPool.query("SELECT evidence FROM frm_document_headers WHERE submission_uuid=$1", [f.submission])).rows[0].evidence;
+      expect(header.branding.logoVersionUuid).toBe(version);
+      expect(header.branding.asset.bytesBase64).toBe(PNG.split(",")[1]);
+      expect(header.branding.mode).toBe("logo");
+      await sign(f, "seafarer");
+      expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
+      const snapshot = (await requirementPool.query("SELECT input FROM frm_document_snapshots WHERE submission_uuid=$1", [f.submission])).rows[0].input;
+      expect(snapshot.header.branding).toEqual(header.branding);
+      await requirementPool.query("UPDATE adm_resource_action_grants SET allowed=false WHERE role_id=$1 AND resource='access_control'", [role]);
+      expect((await requirementApi.get(url).set("Authorization", auth)).status).toBe(403);
+    } finally {
+      // Normal teardown is allowed only in the independently registered test DB.
+      expect(process.env.TEST_DATABASE_VERIFIED).toBe("true");
+      const client = await requirementPool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("ALTER TABLE frm_document_branding DISABLE TRIGGER USER");
+        await client.query("DELETE FROM frm_document_branding WHERE actor->>'masterUserId'=$1", [String(user.id)]);
+        await client.query("ALTER TABLE frm_document_branding ENABLE TRIGGER USER");
+        await client.query("DELETE FROM adm_resource_action_grants WHERE role_id=$1", [role]);
+        await client.query("DELETE FROM master_users WHERE id=$1", [user.id]);
+        await client.query("DELETE FROM adm_rolemaster_ac WHERE ruid=$1", [role]);
+        await client.query("COMMIT");
+      } catch (error) { await client.query("ROLLBACK"); throw error; }
+      finally { client.release(); }
+    }
+  });
+  it("keeps real generation disabled; publishes once, serves identical bytes, and records a server-derived handover", async () => {
+    const f = await start(true);
+    await sign(f, "officer");
+    await sign(f, "seafarer");
+    expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
+    const path = `${prefix}/${f.submission}/pdf`;
+    expect((await requirementApi.get(`${path}/status`).set("Authorization", `Bearer ${requirementToken}`)).body.status).toBe("disabled");
+    expect((await post(`${path}/retry`)).status).toBe(409);
+    const vessel = (await requirementPool.query("SELECT vessel_uuid FROM crew_assignments WHERE assign_uuid=$1", [f.assignUuid])).rows[0];
+    await requirementPool.query(`INSERT INTO frm_document_samples(submission_uuid,registration) VALUES($1,$2)`,
+      [f.submission, JSON.stringify({ assignmentUuid: f.assignUuid, formUuid: f.formUuid, vesselUuid: vessel.vessel_uuid })]);
+    const results = await Promise.all([post(`${path}/retry`), post(`${path}/retry`)]);
+    for (const result of results) expect(result.status, JSON.stringify(result.body)).toBe(200);
+    const file = (await requirementPool.query("SELECT * FROM frm_document_files WHERE submission_uuid=$1", [f.submission])).rows[0];
+    expect(file.file_sha256).toBe(digest(file.pdf_bytes));
+    expect(file.page_count).toBeGreaterThan(0);
+    expect(file.pdf_bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    const before = digest(file.pdf_bytes);
+    await prepareDocument(f.submission);
+    const again = (await requirementPool.query("SELECT * FROM frm_document_files WHERE submission_uuid=$1", [f.submission])).rows;
+    expect(again).toHaveLength(1);
+    expect(digest(again[0].pdf_bytes)).toBe(before);
+    const download = await requirementApi.get(path).set("Authorization", `Bearer ${requirementToken}`)
+      .buffer(true).parse((res, cb) => {
+        const chunks: Buffer[] = []; res.on("data", chunk => chunks.push(chunk));
+        res.on("end", () => cb(null, Buffer.concat(chunks)));
+      });
+    expect(download.status).toBe(200);
+    expect(digest(download.body)).toBe(before);
+    expect((await post(`${path}/handover`, { fileSha256: before, actorName: "Forged", actor_uuid: "999" })).status).toBe(400);
+    expect((await post(`${path}/handover`, { fileSha256: "0".repeat(64) })).status).toBe(409);
+    const handover = await post(`${path}/handover`, { fileSha256: before });
+    expect(handover.status, JSON.stringify(handover.body)).toBe(201);
+    const record = (await requirementPool.query("SELECT * FROM frm_document_handovers WHERE submission_uuid=$1", [f.submission])).rows[0];
+    const user = (await requirementPool.query("SELECT * FROM master_users WHERE id=24")).rows[0];
+    expect(record.actor_uuid).toBe(user.user_uuid ?? "24");
+    expect(record.actor_name).toBe(user.fullname || user.display_name || `${user.firstname} ${user.lastname}`);
+    expect(record.file_sha256).toBe(before);
+    await expect(requirementPool.query("UPDATE frm_document_files SET file_sha256=$1 WHERE submission_uuid=$2", [before, f.submission])).rejects.toMatchObject({ code: "23514" });
+    await expect(requirementPool.query("DELETE FROM frm_document_handovers WHERE submission_uuid=$1", [f.submission])).rejects.toMatchObject({ code: "23514" });
+  });
+});
 
 describe("immutable Company Form document evidence in the registered test database", () => {
   afterAll(async () => { await requirementPool.end(); });

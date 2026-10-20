@@ -1,4 +1,1703 @@
 {
-  "databaseIdentity": null,
-  "forms": []
+  "databaseIdentity": {
+    "clusterid": "7586633721581772821",
+    "databaseoid": "16384"
+  },
+  "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+  "assignmentUuid": "a4120000-0000-4000-8000-000000000005",
+  "crewUuid": "424584fc-dc59-4f85-aa14-30781eb8477e",
+  "vesselRoleUuid": "a4120000-0000-4000-8000-000000000052",
+  "vesselUserId": 412002,
+  "forms": [
+    {
+      "kind": "logo",
+      "formUuid": "a4120000-0000-4000-8000-000000000011",
+      "formId": 5296,
+      "versionUuid": "b10ca93a-a5ee-4cdf-a845-882cd96d0205",
+      "versionId": 7453,
+      "templatePart": "a4120000-0000-4000-8000-000000000081",
+      "partUuid": "69d7d251-fce6-41f9-834c-4750271526f7",
+      "sectionUuid": "ee384db6-20df-4256-b133-bf1f9efab203",
+      "questionUuid": "8532bb70-5a7a-4323-be48-200a5b2701d3",
+      "rankQuestionUuid": "2e2d746f-ad5e-40ef-9c28-2b9d061c06ea",
+      "contentQuestionUuid": "08f4070f-6b14-4351-a94c-9cd47c75a4f2",
+      "assignmentUuid": "a4120000-0000-4000-8000-000000000003",
+      "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+      "priorVersions": [
+        {
+          "versionUuid": "f2c4d1a0-7b89-4371-92d6-2b8a6c095c7b",
+          "versionId": 7451,
+          "sectionUuid": "a4120000-0000-4000-8000-000000000021",
+          "questionUuid": "a4120000-0000-4000-8000-000000000031",
+          "rankQuestionUuid": "a4120000-0000-4000-8000-000000000041",
+          "contentQuestionUuid": "a4120000-0000-4000-8000-000000000091",
+          "partUuid": "77e2add5-479e-4a4d-baec-49d0bc439b98"
+        }
+      ],
+      "stageReady": true,
+      "submissionUuid": "5684154b-5711-48e8-9ada-a873ab0aa563",
+      "brandingVersionUuid": "ae55aecc-1368-4fa2-9451-2658dc3fd595"
+    },
+    {
+      "kind": "company-name",
+      "formUuid": "a4120000-0000-4000-8000-000000000012",
+      "formId": 5297,
+      "versionUuid": "90c98539-16b8-4d0f-a496-ad2ee20f0fab",
+      "versionId": 7452,
+      "templatePart": "a4120000-0000-4000-8000-000000000082",
+      "partUuid": "1cf72fcd-077c-49b8-8047-e68b59ca936d",
+      "sectionUuid": "a4120000-0000-4000-8000-000000000022",
+      "questionUuid": "a4120000-0000-4000-8000-000000000032",
+      "rankQuestionUuid": "a4120000-0000-4000-8000-000000000042",
+      "contentQuestionUuid": "a4120000-0000-4000-8000-000000000092",
+      "assignmentUuid": "a4120000-0000-4000-8000-000000000005",
+      "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+      "stageReady": true,
+      "submissionUuid": "eca087c0-4abc-4916-b1cc-232de7241c34",
+      "brandingVersionUuid": "9bdf80e0-db55-43b0-9c15-d4a2a401391f"
+    }
+  ],
+  "provisionedBy": "approved PDF layout acceptance fixture setup",
+  "joiningAssignmentUuid": "a4120000-0000-4000-8000-000000000003",
+  "retainedPreparationAssignmentUuid": "a4120000-0000-4000-8000-000000000002",
+  "onboardCrewUuid": "a4120000-0000-4000-8000-000000000004",
+  "stageRecords": {
+    "frm_stage_cycles": [
+      {
+        "subject_ref": "a4120000-0000-4000-8000-000000000002",
+        "stage_key": "on_board",
+        "cycle_uuid": "25278861-d312-4aa8-b0fd-6bb5f5ec9a17",
+        "deferred": false
+      },
+      {
+        "subject_ref": "a4120000-0000-4000-8000-000000000003",
+        "stage_key": "before_joining",
+        "cycle_uuid": "e93acbe5-fd27-4118-9f23-6618073043c2",
+        "deferred": false
+      },
+      {
+        "subject_ref": "a4120000-0000-4000-8000-000000000005",
+        "stage_key": "on_board",
+        "cycle_uuid": "1222c833-91ab-49c5-b97f-776647238bcc",
+        "deferred": false
+      }
+    ],
+    "frm_stage_events": [
+      {
+        "event_uuid": "45fea85f-f02a-4dfd-a5c8-3c6ef35e7b0a",
+        "subject_ref": "a4120000-0000-4000-8000-000000000002",
+        "stage_key": "on_board",
+        "cycle_uuid": "25278861-d312-4aa8-b0fd-6bb5f5ec9a17",
+        "source": "sign_on",
+        "source_key": "pdf-layout-review-fixture",
+        "occurred_at": "2026-10-20T03:58:30.154Z",
+        "business_date": "2026-10-01T00:00:00.000Z",
+        "actor_uuid": "24",
+        "snapshot": {
+          "facts": {
+            "dimensions": [
+              {
+                "key": "vessel_type",
+                "kind": "scalar",
+                "label": "Vessel type",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "vessel",
+                "kind": "scalar",
+                "label": "Vessel",
+                "value": "a4120000-0000-4000-8000-000000000001",
+                "labels": [
+                  "TEST ONLY PDF layout review"
+                ],
+                "source": {
+                  "reference": "a4120000-0000-4000-8000-000000000001"
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "fleet_group",
+                "kind": "set",
+                "label": "Fleet group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_fleet_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "additional_group",
+                "kind": "set",
+                "label": "Additional group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_additional_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "nationality",
+                "kind": "scalar",
+                "label": "Nationality",
+                "value": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6",
+                "labels": [
+                  "BRITISH INDIAN OCEAN TERRITORY"
+                ],
+                "source": {
+                  "reference": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6"
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "rank",
+                "kind": "scalar",
+                "label": "Contract rank",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "planning": null,
+                  "reference": null,
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "manning_agent",
+                "kind": "scalar",
+                "label": "Manning agent",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "crew_pool",
+                "kind": "scalar",
+                "label": "Crew pool",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "first_ever",
+                "kind": "boolean",
+                "label": "First-ever with company",
+                "value": null,
+                "labels": [],
+                "reason": "No reliable pre-sign-on joining-history capture",
+                "source": {
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "first_in_rank",
+                "kind": "boolean",
+                "label": "First-in-rank",
+                "value": null,
+                "labels": [],
+                "reason": "No reliable pre-sign-on joining-history capture",
+                "source": {
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "owner",
+                "kind": "scalar",
+                "label": "Vessel owner",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              },
+              {
+                "key": "flag",
+                "kind": "scalar",
+                "label": "Flag",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              }
+            ],
+            "subjectRef": "a4120000-0000-4000-8000-000000000002"
+          },
+          "candidates": []
+        },
+        "recorded_at": "2026-10-20T03:58:29.947Z"
+      },
+      {
+        "event_uuid": "3ee64b2f-c7b3-489e-95d4-06d7c56c620d",
+        "subject_ref": "a4120000-0000-4000-8000-000000000003",
+        "stage_key": "before_joining",
+        "cycle_uuid": "e93acbe5-fd27-4118-9f23-6618073043c2",
+        "source": "deploy",
+        "source_key": "pdf-layout-review-joining-fixture",
+        "occurred_at": "2026-10-20T04:00:51.403Z",
+        "business_date": "2026-10-01T00:00:00.000Z",
+        "actor_uuid": "24",
+        "snapshot": {
+          "facts": {
+            "dimensions": [
+              {
+                "key": "vessel_type",
+                "kind": "scalar",
+                "label": "Vessel type",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "vessel",
+                "kind": "scalar",
+                "label": "Vessel",
+                "value": "a4120000-0000-4000-8000-000000000001",
+                "labels": [
+                  "TEST ONLY PDF layout review"
+                ],
+                "source": {
+                  "reference": "a4120000-0000-4000-8000-000000000001"
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "fleet_group",
+                "kind": "set",
+                "label": "Fleet group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_fleet_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "additional_group",
+                "kind": "set",
+                "label": "Additional group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_additional_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "nationality",
+                "kind": "scalar",
+                "label": "Nationality",
+                "value": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6",
+                "labels": [
+                  "BRITISH INDIAN OCEAN TERRITORY"
+                ],
+                "source": {
+                  "reference": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6"
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "rank",
+                "kind": "scalar",
+                "label": "Contract rank",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "planning": null,
+                  "reference": null,
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "manning_agent",
+                "kind": "scalar",
+                "label": "Manning agent",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "crew_pool",
+                "kind": "scalar",
+                "label": "Crew pool",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "first_ever",
+                "kind": "boolean",
+                "label": "First-ever with company",
+                "value": false,
+                "labels": [],
+                "source": {
+                  "cutoff": "2026-10-20",
+                  "source": "live_planned_history",
+                  "firstEver": false,
+                  "capturedAt": null,
+                  "firstInRank": null,
+                  "firstEverReason": null,
+                  "contractRankUuid": null,
+                  "firstInRankReason": "Contract rank is UNRESOLVED",
+                  "sourceSeaServiceUuids": [
+                    "fd41b3fb-dc25-49b3-b4b6-9e9fd9282f30"
+                  ],
+                  "uncertainServiceUuids": [],
+                  "excludedFutureServiceUuids": [],
+                  "matchingRankSeaServiceUuids": []
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "first_in_rank",
+                "kind": "boolean",
+                "label": "First-in-rank",
+                "value": null,
+                "labels": [],
+                "reason": "Contract rank is UNRESOLVED",
+                "source": {
+                  "cutoff": "2026-10-20",
+                  "source": "live_planned_history",
+                  "firstEver": false,
+                  "capturedAt": null,
+                  "firstInRank": null,
+                  "firstEverReason": null,
+                  "contractRankUuid": null,
+                  "firstInRankReason": "Contract rank is UNRESOLVED",
+                  "sourceSeaServiceUuids": [
+                    "fd41b3fb-dc25-49b3-b4b6-9e9fd9282f30"
+                  ],
+                  "uncertainServiceUuids": [],
+                  "excludedFutureServiceUuids": [],
+                  "matchingRankSeaServiceUuids": []
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "owner",
+                "kind": "scalar",
+                "label": "Vessel owner",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              },
+              {
+                "key": "flag",
+                "kind": "scalar",
+                "label": "Flag",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              }
+            ],
+            "subjectRef": "a4120000-0000-4000-8000-000000000003"
+          },
+          "candidates": []
+        },
+        "recorded_at": "2026-10-20T04:00:51.398Z"
+      },
+      {
+        "event_uuid": "2dbc6dab-83c1-4c7f-bb76-7550bb87f195",
+        "subject_ref": "a4120000-0000-4000-8000-000000000005",
+        "stage_key": "on_board",
+        "cycle_uuid": "1222c833-91ab-49c5-b97f-776647238bcc",
+        "source": "sign_on",
+        "source_key": "pdf-layout-review-fixture",
+        "occurred_at": "2026-10-20T04:03:18.397Z",
+        "business_date": "2026-10-01T00:00:00.000Z",
+        "actor_uuid": "24",
+        "snapshot": {
+          "facts": {
+            "dimensions": [
+              {
+                "key": "vessel_type",
+                "kind": "scalar",
+                "label": "Vessel type",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "vessel",
+                "kind": "scalar",
+                "label": "Vessel",
+                "value": "a4120000-0000-4000-8000-000000000001",
+                "labels": [
+                  "TEST ONLY PDF layout review"
+                ],
+                "source": {
+                  "reference": "a4120000-0000-4000-8000-000000000001"
+                },
+                "status": "resolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "fleet_group",
+                "kind": "set",
+                "label": "Fleet group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_fleet_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "additional_group",
+                "kind": "set",
+                "label": "Additional group",
+                "value": null,
+                "labels": [],
+                "reason": "Vessel stored membership has no unique eligible group master match",
+                "source": {
+                  "master": "master_additional_groups",
+                  "membershipReferences": [
+                    "2387",
+                    "a4120000-0000-4000-8000-000000000001",
+                    "TEST ONLY PDF layout review"
+                  ]
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "contains_any",
+                  "contains_all"
+                ]
+              },
+              {
+                "key": "nationality",
+                "kind": "scalar",
+                "label": "Nationality",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "rank",
+                "kind": "scalar",
+                "label": "Contract rank",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "planning": null,
+                  "reference": null,
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "manning_agent",
+                "kind": "scalar",
+                "label": "Manning agent",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "crew_pool",
+                "kind": "scalar",
+                "label": "Crew pool",
+                "value": null,
+                "labels": [],
+                "reason": "Source value is blank",
+                "source": {
+                  "reference": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "in",
+                  "not_in"
+                ]
+              },
+              {
+                "key": "first_ever",
+                "kind": "boolean",
+                "label": "First-ever with company",
+                "value": null,
+                "labels": [],
+                "reason": "No reliable pre-sign-on joining-history capture",
+                "source": {
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "first_in_rank",
+                "kind": "boolean",
+                "label": "First-in-rank",
+                "value": null,
+                "labels": [],
+                "reason": "No reliable pre-sign-on joining-history capture",
+                "source": {
+                  "capturedAt": null
+                },
+                "status": "unresolved",
+                "available": true,
+                "operators": [
+                  "is"
+                ]
+              },
+              {
+                "key": "owner",
+                "kind": "scalar",
+                "label": "Vessel owner",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              },
+              {
+                "key": "flag",
+                "kind": "scalar",
+                "label": "Flag",
+                "value": null,
+                "labels": [],
+                "reason": "Not yet available: the parent application has not supplied master data",
+                "source": {},
+                "status": "not_yet_available",
+                "available": false,
+                "operators": [
+                  "in",
+                  "not_in"
+                ],
+                "unavailableReason": "Not yet available: the parent application has not supplied master data"
+              }
+            ],
+            "subjectRef": "a4120000-0000-4000-8000-000000000005"
+          },
+          "candidates": [
+            {
+              "policy": {
+                "mode": "conditional",
+                "sets": [
+                  {
+                    "setUuid": "4467ae52-aa1f-4e15-8989-83b7c3ee635a",
+                    "conditions": [
+                      {
+                        "value": [
+                          "a4120000-0000-4000-8000-000000000001"
+                        ],
+                        "operator": "in",
+                        "valueLabels": [
+                          {
+                            "id": "a4120000-0000-4000-8000-000000000001",
+                            "label": "TEST ONLY PDF layout review"
+                          }
+                        ],
+                        "dimensionKey": "vessel",
+                        "conditionUuid": "f7579931-11d6-4c79-bf26-bb3c83beae5c"
+                      }
+                    ]
+                  }
+                ],
+                "obligation": "optional",
+                "versionUuid": "f2c4d1a0-7b89-4371-92d6-2b8a6c095c7b",
+                "specificDate": null,
+                "effectiveFrom": "2026-10-20",
+                "effectiveKind": "on_release",
+                "copiedFromVersionUuid": null
+              },
+              "versionUuid": "f2c4d1a0-7b89-4371-92d6-2b8a6c095c7b"
+            },
+            {
+              "policy": {
+                "mode": "conditional",
+                "sets": [
+                  {
+                    "setUuid": "ffe223b5-4a8d-4ff1-9c4e-8ae9ec084968",
+                    "conditions": [
+                      {
+                        "value": [
+                          "a4120000-0000-4000-8000-000000000001"
+                        ],
+                        "operator": "in",
+                        "valueLabels": [
+                          {
+                            "id": "a4120000-0000-4000-8000-000000000001",
+                            "label": "TEST ONLY PDF layout review"
+                          }
+                        ],
+                        "dimensionKey": "vessel",
+                        "conditionUuid": "f8af78be-9c75-4272-a27c-1eafe6a1f083"
+                      }
+                    ]
+                  }
+                ],
+                "obligation": "optional",
+                "versionUuid": "90c98539-16b8-4d0f-a496-ad2ee20f0fab",
+                "specificDate": null,
+                "effectiveFrom": "2026-10-20",
+                "effectiveKind": "on_release",
+                "copiedFromVersionUuid": null
+              },
+              "versionUuid": "90c98539-16b8-4d0f-a496-ad2ee20f0fab"
+            }
+          ]
+        },
+        "recorded_at": "2026-10-20T04:03:18.385Z"
+      }
+    ],
+    "frm_resolution_runs": [
+      {
+        "run_uuid": "8a4fb46d-1f1c-43d8-a283-939edd92e053",
+        "subject_type": "crew_assignment",
+        "subject_ref": "a4120000-0000-4000-8000-000000000002",
+        "stage_key": "on_board",
+        "cycle_uuid": "25278861-d312-4aa8-b0fd-6bb5f5ec9a17",
+        "event_key": "330c636a-013b-4af6-a1e0-6152e59d3914",
+        "trigger_at": "2026-10-20T03:58:30.154Z",
+        "recorded_at": "2026-10-20T03:58:30.962Z",
+        "outcome": "COMPLETED",
+        "actor_uuid": "24",
+        "source": "sign_on",
+        "evidence": {
+          "captured": {
+            "snapshot": {
+              "facts": {
+                "dimensions": [
+                  {
+                    "key": "vessel_type",
+                    "kind": "scalar",
+                    "label": "Vessel type",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "vessel",
+                    "kind": "scalar",
+                    "label": "Vessel",
+                    "value": "a4120000-0000-4000-8000-000000000001",
+                    "labels": [
+                      "TEST ONLY PDF layout review"
+                    ],
+                    "source": {
+                      "reference": "a4120000-0000-4000-8000-000000000001"
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "fleet_group",
+                    "kind": "set",
+                    "label": "Fleet group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_fleet_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "additional_group",
+                    "kind": "set",
+                    "label": "Additional group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_additional_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "nationality",
+                    "kind": "scalar",
+                    "label": "Nationality",
+                    "value": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6",
+                    "labels": [
+                      "BRITISH INDIAN OCEAN TERRITORY"
+                    ],
+                    "source": {
+                      "reference": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6"
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "rank",
+                    "kind": "scalar",
+                    "label": "Contract rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "planning": null,
+                      "reference": null,
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "manning_agent",
+                    "kind": "scalar",
+                    "label": "Manning agent",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "crew_pool",
+                    "kind": "scalar",
+                    "label": "Crew pool",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "first_ever",
+                    "kind": "boolean",
+                    "label": "First-ever with company",
+                    "value": null,
+                    "labels": [],
+                    "reason": "No reliable pre-sign-on joining-history capture",
+                    "source": {
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "first_in_rank",
+                    "kind": "boolean",
+                    "label": "First-in-rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "No reliable pre-sign-on joining-history capture",
+                    "source": {
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "owner",
+                    "kind": "scalar",
+                    "label": "Vessel owner",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  },
+                  {
+                    "key": "flag",
+                    "kind": "scalar",
+                    "label": "Flag",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  }
+                ],
+                "subjectRef": "a4120000-0000-4000-8000-000000000002"
+              },
+              "candidates": []
+            },
+            "eventUuid": "45fea85f-f02a-4dfd-a5c8-3c6ef35e7b0a"
+          },
+          "candidates": []
+        },
+        "failure_reason": null,
+        "effective_date": "2026-10-01T00:00:00.000Z"
+      },
+      {
+        "run_uuid": "f6610997-77e0-4b04-933a-c6bb58874deb",
+        "subject_type": "crew_assignment",
+        "subject_ref": "a4120000-0000-4000-8000-000000000003",
+        "stage_key": "before_joining",
+        "cycle_uuid": "e93acbe5-fd27-4118-9f23-6618073043c2",
+        "event_key": "a5d6447b-080f-4bbd-afcf-21d226561452",
+        "trigger_at": "2026-10-20T04:00:51.403Z",
+        "recorded_at": "2026-10-20T04:00:51.856Z",
+        "outcome": "COMPLETED",
+        "actor_uuid": "24",
+        "source": "deploy",
+        "evidence": {
+          "captured": {
+            "snapshot": {
+              "facts": {
+                "dimensions": [
+                  {
+                    "key": "vessel_type",
+                    "kind": "scalar",
+                    "label": "Vessel type",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "vessel",
+                    "kind": "scalar",
+                    "label": "Vessel",
+                    "value": "a4120000-0000-4000-8000-000000000001",
+                    "labels": [
+                      "TEST ONLY PDF layout review"
+                    ],
+                    "source": {
+                      "reference": "a4120000-0000-4000-8000-000000000001"
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "fleet_group",
+                    "kind": "set",
+                    "label": "Fleet group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_fleet_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "additional_group",
+                    "kind": "set",
+                    "label": "Additional group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_additional_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "nationality",
+                    "kind": "scalar",
+                    "label": "Nationality",
+                    "value": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6",
+                    "labels": [
+                      "BRITISH INDIAN OCEAN TERRITORY"
+                    ],
+                    "source": {
+                      "reference": "ba9e817d-60b0-11ec-a42e-507b9da1cbd6"
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "rank",
+                    "kind": "scalar",
+                    "label": "Contract rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "planning": null,
+                      "reference": null,
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "manning_agent",
+                    "kind": "scalar",
+                    "label": "Manning agent",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "crew_pool",
+                    "kind": "scalar",
+                    "label": "Crew pool",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "first_ever",
+                    "kind": "boolean",
+                    "label": "First-ever with company",
+                    "value": false,
+                    "labels": [],
+                    "source": {
+                      "cutoff": "2026-10-20",
+                      "source": "live_planned_history",
+                      "firstEver": false,
+                      "capturedAt": null,
+                      "firstInRank": null,
+                      "firstEverReason": null,
+                      "contractRankUuid": null,
+                      "firstInRankReason": "Contract rank is UNRESOLVED",
+                      "sourceSeaServiceUuids": [
+                        "fd41b3fb-dc25-49b3-b4b6-9e9fd9282f30"
+                      ],
+                      "uncertainServiceUuids": [],
+                      "excludedFutureServiceUuids": [],
+                      "matchingRankSeaServiceUuids": []
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "first_in_rank",
+                    "kind": "boolean",
+                    "label": "First-in-rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Contract rank is UNRESOLVED",
+                    "source": {
+                      "cutoff": "2026-10-20",
+                      "source": "live_planned_history",
+                      "firstEver": false,
+                      "capturedAt": null,
+                      "firstInRank": null,
+                      "firstEverReason": null,
+                      "contractRankUuid": null,
+                      "firstInRankReason": "Contract rank is UNRESOLVED",
+                      "sourceSeaServiceUuids": [
+                        "fd41b3fb-dc25-49b3-b4b6-9e9fd9282f30"
+                      ],
+                      "uncertainServiceUuids": [],
+                      "excludedFutureServiceUuids": [],
+                      "matchingRankSeaServiceUuids": []
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "owner",
+                    "kind": "scalar",
+                    "label": "Vessel owner",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  },
+                  {
+                    "key": "flag",
+                    "kind": "scalar",
+                    "label": "Flag",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  }
+                ],
+                "subjectRef": "a4120000-0000-4000-8000-000000000003"
+              },
+              "candidates": []
+            },
+            "eventUuid": "3ee64b2f-c7b3-489e-95d4-06d7c56c620d"
+          },
+          "candidates": []
+        },
+        "failure_reason": null,
+        "effective_date": "2026-10-01T00:00:00.000Z"
+      },
+      {
+        "run_uuid": "e926674b-ab2f-44c0-ae56-1fbdc33bc2bd",
+        "subject_type": "crew_assignment",
+        "subject_ref": "a4120000-0000-4000-8000-000000000005",
+        "stage_key": "on_board",
+        "cycle_uuid": "1222c833-91ab-49c5-b97f-776647238bcc",
+        "event_key": "1a6896bb-ecd4-4e0b-ab45-305e53c3d6c7",
+        "trigger_at": "2026-10-20T04:03:18.397Z",
+        "recorded_at": "2026-10-20T04:03:18.441Z",
+        "outcome": "COMPLETED",
+        "actor_uuid": "24",
+        "source": "sign_on",
+        "evidence": {
+          "captured": {
+            "snapshot": {
+              "facts": {
+                "dimensions": [
+                  {
+                    "key": "vessel_type",
+                    "kind": "scalar",
+                    "label": "Vessel type",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "vessel",
+                    "kind": "scalar",
+                    "label": "Vessel",
+                    "value": "a4120000-0000-4000-8000-000000000001",
+                    "labels": [
+                      "TEST ONLY PDF layout review"
+                    ],
+                    "source": {
+                      "reference": "a4120000-0000-4000-8000-000000000001"
+                    },
+                    "status": "resolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "fleet_group",
+                    "kind": "set",
+                    "label": "Fleet group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_fleet_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "additional_group",
+                    "kind": "set",
+                    "label": "Additional group",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Vessel stored membership has no unique eligible group master match",
+                    "source": {
+                      "master": "master_additional_groups",
+                      "membershipReferences": [
+                        "2387",
+                        "a4120000-0000-4000-8000-000000000001",
+                        "TEST ONLY PDF layout review"
+                      ]
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "contains_any",
+                      "contains_all"
+                    ]
+                  },
+                  {
+                    "key": "nationality",
+                    "kind": "scalar",
+                    "label": "Nationality",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "rank",
+                    "kind": "scalar",
+                    "label": "Contract rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "planning": null,
+                      "reference": null,
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "manning_agent",
+                    "kind": "scalar",
+                    "label": "Manning agent",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "crew_pool",
+                    "kind": "scalar",
+                    "label": "Crew pool",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Source value is blank",
+                    "source": {
+                      "reference": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ]
+                  },
+                  {
+                    "key": "first_ever",
+                    "kind": "boolean",
+                    "label": "First-ever with company",
+                    "value": null,
+                    "labels": [],
+                    "reason": "No reliable pre-sign-on joining-history capture",
+                    "source": {
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "first_in_rank",
+                    "kind": "boolean",
+                    "label": "First-in-rank",
+                    "value": null,
+                    "labels": [],
+                    "reason": "No reliable pre-sign-on joining-history capture",
+                    "source": {
+                      "capturedAt": null
+                    },
+                    "status": "unresolved",
+                    "available": true,
+                    "operators": [
+                      "is"
+                    ]
+                  },
+                  {
+                    "key": "owner",
+                    "kind": "scalar",
+                    "label": "Vessel owner",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  },
+                  {
+                    "key": "flag",
+                    "kind": "scalar",
+                    "label": "Flag",
+                    "value": null,
+                    "labels": [],
+                    "reason": "Not yet available: the parent application has not supplied master data",
+                    "source": {},
+                    "status": "not_yet_available",
+                    "available": false,
+                    "operators": [
+                      "in",
+                      "not_in"
+                    ],
+                    "unavailableReason": "Not yet available: the parent application has not supplied master data"
+                  }
+                ],
+                "subjectRef": "a4120000-0000-4000-8000-000000000005"
+              },
+              "candidates": [
+                {
+                  "policy": {
+                    "mode": "conditional",
+                    "sets": [
+                      {
+                        "setUuid": "4467ae52-aa1f-4e15-8989-83b7c3ee635a",
+                        "conditions": [
+                          {
+                            "value": [
+                              "a4120000-0000-4000-8000-000000000001"
+                            ],
+                            "operator": "in",
+                            "valueLabels": [
+                              {
+                                "id": "a4120000-0000-4000-8000-000000000001",
+                                "label": "TEST ONLY PDF layout review"
+                              }
+                            ],
+                            "dimensionKey": "vessel",
+                            "conditionUuid": "f7579931-11d6-4c79-bf26-bb3c83beae5c"
+                          }
+                        ]
+                      }
+                    ],
+                    "obligation": "optional",
+                    "versionUuid": "f2c4d1a0-7b89-4371-92d6-2b8a6c095c7b",
+                    "specificDate": null,
+                    "effectiveFrom": "2026-10-20",
+                    "effectiveKind": "on_release",
+                    "copiedFromVersionUuid": null
+                  },
+                  "versionUuid": "f2c4d1a0-7b89-4371-92d6-2b8a6c095c7b"
+                },
+                {
+                  "policy": {
+                    "mode": "conditional",
+                    "sets": [
+                      {
+                        "setUuid": "ffe223b5-4a8d-4ff1-9c4e-8ae9ec084968",
+                        "conditions": [
+                          {
+                            "value": [
+                              "a4120000-0000-4000-8000-000000000001"
+                            ],
+                            "operator": "in",
+                            "valueLabels": [
+                              {
+                                "id": "a4120000-0000-4000-8000-000000000001",
+                                "label": "TEST ONLY PDF layout review"
+                              }
+                            ],
+                            "dimensionKey": "vessel",
+                            "conditionUuid": "f8af78be-9c75-4272-a27c-1eafe6a1f083"
+                          }
+                        ]
+                      }
+                    ],
+                    "obligation": "optional",
+                    "versionUuid": "90c98539-16b8-4d0f-a496-ad2ee20f0fab",
+                    "specificDate": null,
+                    "effectiveFrom": "2026-10-20",
+                    "effectiveKind": "on_release",
+                    "copiedFromVersionUuid": null
+                  },
+                  "versionUuid": "90c98539-16b8-4d0f-a496-ad2ee20f0fab"
+                }
+              ]
+            },
+            "eventUuid": "2dbc6dab-83c1-4c7f-bb76-7550bb87f195"
+          },
+          "candidates": []
+        },
+        "failure_reason": null,
+        "effective_date": "2026-10-01T00:00:00.000Z"
+      }
+    ]
+  }
 }

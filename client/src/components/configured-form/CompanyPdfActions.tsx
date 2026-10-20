@@ -21,11 +21,11 @@ interface CompanyPdfStatus {
 }
 
 const statusMessages: Record<PdfStatus, string> = {
-  disabled: "Company PDF generation is currently disabled.",
+  disabled: "PDF generation for real forms is disabled until the sample layout is approved.",
   pending: "Your PDF is being prepared. Check again shortly.",
   ready: "Your PDF is ready to download or print.",
   failed: "The PDF could not be prepared. Retry the request or contact your administrator.",
-  unavailable: "A PDF is not available for this submission.",
+  unavailable: "A PDF copy is not available for this form. Ask the office to review its saved evidence.",
 };
 
 function formatRecordedAt(value: string): string {
@@ -171,9 +171,9 @@ export function CompanyPdfActions({
               <Download aria-hidden="true" /> {working === "download" ? "Preparing…" : "Download"}
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={() => void fetchDocument("print")} disabled={working !== null}>
-              <Printer aria-hidden="true" /> {working === "print" ? "Opening…" : "Print"}
+              <Printer aria-hidden="true" /> {working === "print" ? "Opening…" : "Print copy"}
             </Button>
-            {canFillIn && status.canFillIn && (
+            {canFillIn && status?.canFillIn && (
               <Button type="button" size="sm" variant="outline" onClick={() => void handover()} disabled={working !== null}>
                 <Check aria-hidden="true" /> {working === "handover" ? "Recording…" : "Copy handed to seafarer"}
               </Button>
@@ -195,11 +195,11 @@ export function CompanyPdfActions({
           Check status
         </Button>
       </div>
-      {status?.handovers?.length > 0 && (
+      {(status?.handovers?.length ?? 0) > 0 && (
         <div className="space-y-2 border-t pt-3">
           <h3 className="text-sm font-medium">Handover records</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
-            {status.handovers.map((record, index) => (
+            {status?.handovers.map((record, index) => (
               <li key={`${record.recordedAt}-${record.fileSha256}-${index}`}>
                 <span className="font-medium text-foreground">{record.actorName || "A user"}</span>
                 {" · "}{formatRecordedAt(record.recordedAt)}

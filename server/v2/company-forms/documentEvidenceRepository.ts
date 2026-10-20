@@ -68,7 +68,7 @@ export async function captureDocumentHeader(input: {
   const { tx, submission, adapter, subject, at, event, actorUserId } = input;
   const tenant = await tenantConnectionManager.getCurrentDocumentCompany();
   const { readBranding } = await import("./documentBranding");
-  const branding = await readBranding(tx);
+  const branding = await readBranding(tx, submission.submissionUuid);
   const identity = tenant.identity ?? (await tx.execute(sql`
     SELECT 'database:' || oid::text AS identity FROM pg_database WHERE datname = current_database()
   `)).rows[0].identity;

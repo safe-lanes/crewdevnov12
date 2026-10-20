@@ -79,6 +79,8 @@ export async function prepareDocument(submissionUuid: string, actorUuid = "docum
     });
   } catch (error) {
     if (error instanceof CompanyFormConflictError) throw error;
+    console.error("[CompanyForms] Stored-copy preparation failed:", error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack } : "Unknown preparation failure");
     // The publication transaction rolled back. Keep a durable, safe failure event;
     // completion and its frozen record remain untouched.
     await db.execute(sql`INSERT INTO frm_document_preparation_events

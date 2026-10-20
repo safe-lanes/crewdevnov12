@@ -23,6 +23,7 @@ interface BrandingHistoryEntry {
 interface BrandingSettings {
   companyName: string;
   logoVersionUuid: string | null;
+  logoDataUrl: string | null;
   version: number;
   history: BrandingHistoryEntry[];
   realGenerationEnabled: false;
@@ -57,7 +58,7 @@ export function CompanyDocumentBranding() {
   useEffect(() => {
     if (!open || !brandingQuery.data) return;
     setCompanyName(brandingQuery.data.companyName ?? "");
-    setDataUrl(null);
+    setDataUrl(brandingQuery.data.logoDataUrl ?? null);
     setLogoName("");
     setFormError(null);
   }, [open, brandingQuery.data]);
@@ -128,7 +129,7 @@ export function CompanyDocumentBranding() {
           </div>
         ) : brandingQuery.error ? (
           <div className="space-y-3 py-3" role="alert">
-            <p className="text-sm text-destructive">Branding settings could not be loaded.</p>
+            <p className="text-sm text-destructive">Branding settings could not be loaded. An explicit Access Control management grant is required; check your access and try again.</p>
             <Button type="button" size="sm" variant="outline" onClick={() => void brandingQuery.refetch()}>
               Try again
             </Button>
@@ -141,10 +142,10 @@ export function CompanyDocumentBranding() {
                 id="company-branding-name"
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
-                placeholder="Leave blank to use fallback text"
+                placeholder="Company name for the plain-text header"
                 maxLength={200}
               />
-              <p className="text-xs text-muted-foreground">When blank, the PDF uses its standard company name text.</p>
+              <p className="text-xs text-muted-foreground">Enter the company name. When no logo is selected, the PDF prints this name in plain text.</p>
             </div>
             <div className="space-y-2">
               <span className="text-sm font-medium">Logo</span>

@@ -481,7 +481,7 @@ export function CrewCompanyFormsHome({
                                 <p className="mt-2 text-sm text-slate-600">{recordedAt}</p>
                                 {submission.handovers?.map((handover, index) => (
                                   <p key={`${handover.recordedAt}-${index}`} className="mt-2 break-all text-xs text-slate-600">
-                                    Copy handed to seafarer by {handover.actorName} · {sailDate(handover.recordedAt)}
+                                    Copy handed to seafarer by {handover.actorName} · {new Date(handover.recordedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "medium", timeZone: "UTC" })} UTC
                                     <br />File SHA-256: {handover.fileSha256}
                                   </p>
                                 ))}

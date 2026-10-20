@@ -34593,3 +34593,11 @@ The closing journey edits registered draft identities only; it never creates an 
 - Retained test context (2026-10-12T18:11:38.559Z): verified-history/cf_verified_history_cdcfffae; target registered_fixture_context; references `7bef7224-30c8-4f4a-abef-b872f4f0cb2c`, `a966ad9a-99d3-403c-9ebf-27d3920034c2`, `ef9a654d-8f8f-49fb-90f6-2b9bcc76c172`, `49912020-7324-43b8-a999-a16179d423ec`, `986b4c9b-fa7e-4774-89a6-7768fa8d36a7`, `0f29a6cc-5bc2-4d86-975e-49d8a1c417db`, `923bb8f4-2675-4853-ae47-e1d124b56916`, `457f2847-decf-4aa1-b02e-e359fc57d67c`, `5a83d97e-01fd-4d73-b7a5-397a09a695bf`, `b3998917-7f6b-44e1-8d52-7949037c0c73`.
 
 - Retained test context (2026-10-12T18:11:58.751Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+## PDF layout approval fixtures (registered 2026-10-20)
+
+Dedicated fixture-only vessel a4120000-0000-4000-8000-000000000001 (TEST ONLY PDF layout review); assignment a4120000-0000-4000-8000-000000000002; existing fixture crew 424584fc-dc59-4f85-aa14-30781eb8477e (id 1266) reused without changing his protected vessel-02 assignment/rotations. Vessel role a4120000-0000-4000-8000-000000000052, synthetic Ship user 412002 / a4120000-0000-4000-8000-000000000062. Detailed form/version/section/question/submission/branding/stage identifiers are recorded in [the layout manifest](company-forms/pdf-layout-fixtures.json). These fixtures are retained and reused. Real-form generation remains disabled. Sample branding is isolated from tenant settings; no real Access Control grants are changed.
+
+Additional joining-stage layout fixture assignment: a4120000-0000-4000-8000-000000000003; same registered fixture seafarer and fixture-only vessel, not his protected vessel-02 assignment.
+
+Dedicated synthetic on-board layout seafarer a4120000-0000-4000-8000-000000000004 (TEST ONLY PDF Layout Seafarer, PDF-LAYOUT-412), current assignment a4120000-0000-4000-8000-000000000005. A separate crew member is necessary because the retained seafarer's protected vessel-02 assignment remains current and unchanged. Preparation assignment a4120000-0000-4000-8000-000000000002 is retained, noncurrent and unused by the PDFs. No new fixture is created by normal verification.
