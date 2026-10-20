@@ -38,3 +38,25 @@ completions will be used for the final-glance samples.
   where the value originated.
 
 No designation, signature identity, or authorization logic changed in this step.
+
+## Step 3 — Disabled-period preparation queue
+
+The server worker now has a rollout-ready branch which reads every tenant's
+persisted pending preparation requests, rather than just sample registrations.
+It processes ten per tick, eventually draining the backlog and handling new
+requests by the same path. Active tenants are visited in their own database
+context; one tenant or document failure does not stop the rest.
+
+The branch is controlled only by the server's reviewed
+`REAL_FORM_PDF_GENERATION_ENABLED` constant, which remains **false**. There is no
+browser or environment-variable enablement switch. While false, the worker and
+explicit preparation still permit only identity-checked registered samples.
+
+Preparation uses the persisted frozen snapshot, verifies its checksum, and never
+reads current crew/profile/Planning facts or recreates missing historical facts.
+Pre-existing archives are returned unchanged. A voided form's original completed
+snapshot can be archived without changing it; void-notice downloads remain the
+later slice's scope. Preparation failures are recorded separately from completion
+and expose the existing Fill in retry. An isolated-database regression exercises
+a request made while disabled, disabled refusal, later enabled processing,
+frozen-data preservation after a live profile edit, and repeat-run idempotency.

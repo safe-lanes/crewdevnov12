@@ -2,7 +2,7 @@ import type { Request } from "express";
 import { sql } from "drizzle-orm";
 import { companyFormSubmissionsService } from "./submissionsService";
 import { getDb } from "../db";
-import { archivedFile, prepareDocument, sampleEligible } from "./documentArchive";
+import { archivedFile, prepareDocument, sampleEligible, REAL_FORM_PDF_GENERATION_ENABLED } from "./documentArchive";
 import { sha256 } from "./documentEvidenceRepository";
 import { CompanyFormConflictError, CompanyFormPermissionError } from "./errors";
 import { handoversFor } from "./documentHandover";
@@ -18,7 +18,7 @@ export async function copyStatus(req: Request, submissionUuid: string) {
   const context = await authorizeCopy(req, submissionUuid);
   const db = getDb();
   const file = await archivedFile(db, submissionUuid);
-  const eligible = await sampleEligible(db, submissionUuid);
+  const eligible = REAL_FORM_PDF_GENERATION_ENABLED || await sampleEligible(db, submissionUuid);
   const mutable = context.submission.status === "completed";
   let canFill = false;
   try { canFill = await context.adapter.authorize(context.principal, "edit_draft", context.subject.context); } catch { /* no Fill in */ }

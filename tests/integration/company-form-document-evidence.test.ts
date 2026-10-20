@@ -9,7 +9,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { tenantConnectionManager } from "../../server/utils/tenantConnectionManager";
 import { getDb } from "../../server/v2/db";
 import { readDocumentEvidenceStatus } from "../../server/v2/company-forms/documentEvidenceRepository";
-import { prepareDocument } from "../../server/v2/company-forms/documentArchive";
+import { createDocumentPreparationQueue, prepareDocument } from "../../server/v2/company-forms/documentArchive";
 
 const prefix = "/api/v2/company-form-submissions";
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=";
@@ -115,6 +115,41 @@ describe("registered sample PDF archive", () => {
       finally { client.release(); }
     }
   });
+  it("drains disabled-period requests from frozen evidence only after the server enables generation", async () => {
+    const f = await start(true);
+    await sign(f, "officer");
+    await sign(f, "seafarer");
+    expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
+    const snapshot = (await requirementPool.query(
+      "SELECT input,frozen_record_sha256 FROM frm_document_snapshots WHERE submission_uuid=$1",
+      [f.submission])).rows[0];
+    // It is not a registered sample. The production-default queue leaves it alone.
+    await createDocumentPreparationQueue().drain(getDb(), f.submission);
+    expect((await requirementPool.query("SELECT 1 FROM frm_document_files WHERE submission_uuid=$1",
+      [f.submission])).rowCount).toBe(0);
+    await expect(prepareDocument(f.submission)).rejects.toThrow("disabled");
+    await requirementPool.query("UPDATE crew_members_v2 SET first_name='Changed after signing' WHERE crew_uuid=$1", [f.crewUuid]);
+    // Enable only this isolated test runner, never the application switch.
+    const enabled = createDocumentPreparationQueue(() => true);
+    await enabled.drain(getDb(), f.submission);
+    const file = (await requirementPool.query(
+      "SELECT file_sha256,frozen_record_sha256,pdf_bytes FROM frm_document_files WHERE submission_uuid=$1",
+      [f.submission])).rows[0];
+    expect(file).toBeDefined();
+    expect(file.frozen_record_sha256).toBe(snapshot.frozen_record_sha256);
+    expect(digest(file.pdf_bytes)).toBe(file.file_sha256);
+    const after = (await requirementPool.query("SELECT input FROM frm_document_snapshots WHERE submission_uuid=$1",
+      [f.submission])).rows[0].input;
+    expect(after).toEqual(snapshot.input);
+    await enabled.drain(getDb(), f.submission);
+    expect((await requirementPool.query(
+      "SELECT file_sha256 FROM frm_document_files WHERE submission_uuid=$1", [f.submission])).rows)
+      .toEqual([{ file_sha256: file.file_sha256 }]);
+    expect((await requirementPool.query(
+      "SELECT 1 FROM frm_document_preparation_events WHERE submission_uuid=$1 AND outcome='READY'",
+      [f.submission])).rowCount).toBe(1);
+  });
+
   it("keeps real generation disabled; publishes once, serves identical bytes, and records a server-derived handover", async () => {
     const f = await start(true);
     await sign(f, "officer");

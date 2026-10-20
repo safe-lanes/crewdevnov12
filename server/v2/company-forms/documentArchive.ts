@@ -46,6 +46,10 @@ export async function archivedFile(tx: any, submissionUuid: string, includeBytes
 }
 
 export async function prepareDocument(submissionUuid: string, actorUuid = "document_worker", db: any = getDb()) {
+  return prepareWithPolicy(submissionUuid, actorUuid, db, REAL_FORM_PDF_GENERATION_ENABLED);
+}
+
+async function prepareWithPolicy(submissionUuid: string, actorUuid: string, db: any, realGenerationEnabled: boolean) {
   // Existing subject lock always precedes document lock, including retries.
   const ref = (await db.execute(sql`SELECT subject_ref FROM frm_company_submissions WHERE submission_uuid=${submissionUuid}`)).rows[0]?.subject_ref;
   if (!ref) throw new CompanyFormConflictError("This form could not be found. Reopen it and try again.");
@@ -56,13 +60,15 @@ export async function prepareDocument(submissionUuid: string, actorUuid = "docum
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${'document:' + submissionUuid},0))`);
       const existing = await archivedFile(tx, submissionUuid);
       if (existing) return existing; // Never render again after publication.
-      if (!await sampleEligible(tx, submissionUuid)) throw new CompanyFormConflictError(
+      if (!realGenerationEnabled && !await sampleEligible(tx, submissionUuid)) throw new CompanyFormConflictError(
         "PDF generation for real forms is disabled until the sample layout is approved.");
       const row = (await tx.execute(sql`SELECT s.*, f.status AS submission_status
         FROM frm_document_snapshots s JOIN frm_company_submissions f USING(submission_uuid)
         JOIN frm_document_preparation_requests r ON r.snapshot_uuid=s.snapshot_uuid AND r.outcome='PENDING'
         WHERE s.submission_uuid=${submissionUuid}`)).rows[0];
-      if (!row || row.submission_status !== "completed") throw new CompanyFormConflictError(
+      // A voided form retains its original completed snapshot. Preparing that
+      // original is separate from producing the later void-notice download.
+      if (!row || !["completed", "voided"].includes(row.submission_status)) throw new CompanyFormConflictError(
         "This form does not have complete frozen evidence for a PDF copy. Ask the office to review it.");
       if (sha256(row.canonical_input) !== row.frozen_record_sha256) throw new Error("Frozen record checksum mismatch");
       const bytes = await renderFrozenDocument(row.input, row.frozen_record_sha256);
@@ -90,28 +96,63 @@ export async function prepareDocument(submissionUuid: string, actorUuid = "docum
   }
 }
 
-let running = false;
-async function drainSamples(db: any) {
-  const rows = (await db.execute(sql`SELECT r.submission_uuid FROM frm_document_samples m
-    JOIN frm_document_preparation_requests r USING(submission_uuid)
-    LEFT JOIN frm_document_files f USING(submission_uuid)
-    WHERE r.outcome='PENDING' AND f.file_uuid IS NULL
-      AND NOT EXISTS(SELECT 1 FROM frm_document_preparation_events e WHERE e.submission_uuid=r.submission_uuid AND e.outcome='FAILED')
-    LIMIT 10`)).rows;
-  for (const row of rows) {
-    try { await prepareDocument(row.submission_uuid, "document_worker", db); }
-    catch { /* status exposes failure; explicit Fill in retry controls another attempt */ }
-  }
+/**
+ * Server-only policy injection makes enabled rollout testable in the isolated
+ * test DB. No route, request body or environment variable supplies this policy.
+ */
+export function createDocumentPreparationQueue(realGenerationEnabled = () => REAL_FORM_PDF_GENERATION_ENABLED) {
+  // Optional server-side target supports checking one durable request without
+  // consuming unrelated tenants' / acceptance fixtures' pending work.
+  const drain = async (db: any, submissionUuid?: string) => {
+    const enabled = realGenerationEnabled();
+    const rows = (await db.execute(sql`SELECT r.submission_uuid FROM frm_document_preparation_requests r
+      LEFT JOIN frm_document_files f USING(submission_uuid)
+      WHERE r.outcome='PENDING' AND f.file_uuid IS NULL
+        AND ${submissionUuid ? sql`r.submission_uuid=${submissionUuid}` : sql`true`}
+        AND (${enabled} OR EXISTS (SELECT 1 FROM frm_document_samples m WHERE m.submission_uuid=r.submission_uuid))
+        AND NOT EXISTS(SELECT 1 FROM frm_document_preparation_events e WHERE e.submission_uuid=r.submission_uuid AND e.outcome='FAILED')
+      ORDER BY r.submission_uuid LIMIT 10`)).rows;
+    const result = { selected: rows.length, ready: 0, failed: 0 };
+    for (const row of rows) {
+      try {
+        await prepareWithPolicy(row.submission_uuid, "document_worker", db, enabled);
+        result.ready++;
+      } catch {
+        result.failed++;
+        await db.execute(sql`INSERT INTO frm_document_preparation_events
+          (event_uuid,submission_uuid,outcome,reason_code,actor_uuid)
+          SELECT ${randomUUID()},${row.submission_uuid},'FAILED','PREPARATION_REFUSED','document_worker'
+          WHERE NOT EXISTS (SELECT 1 FROM frm_document_preparation_events
+            WHERE submission_uuid=${row.submission_uuid} AND outcome='FAILED')`);
+        // Persisted preparation failures remain visible for explicit Fill in
+        // retry; one bad document never prevents later requests being tried.
+      }
+    }
+    return result;
+  };
+  const drainTenants = async () => {
+    if (!tenantConnectionManager.isMultiTenantEnabled) return drain(getDb());
+    if (!realGenerationEnabled()) return; // no production sample eligibility
+    for (const tenant of await tenantConnectionManager.getActiveTenants()) {
+      try {
+        await tenantConnectionManager.runInTenantContext(tenant, () => drain(getDb()));
+      } catch {
+        console.error("[CompanyForms] A tenant's stored-copy queue could not be checked.");
+      }
+    }
+  };
+  return { drain, drainTenants };
 }
-export function startDocumentSampleWorker() {
+
+const preparationQueue = createDocumentPreparationQueue();
+let running = false;
+export function startDocumentPreparationWorker() {
   const tick = async () => {
     if (running) return;
     running = true;
     try {
-      // Real generation is disabled in every tenant. Only registered preview samples
-      // and identity-verified automated samples are considered by this worker.
-      if (!tenantConnectionManager.isMultiTenantEnabled) await drainSamples(getDb());
-    } catch { console.error("[CompanyForms] Stored-copy worker could not check pending samples."); }
+      await preparationQueue.drainTenants();
+    } catch { console.error("[CompanyForms] Stored-copy worker could not check preparation requests."); }
     finally { running = false; }
   };
   const interval = setInterval(() => { void tick(); }, 15000);
