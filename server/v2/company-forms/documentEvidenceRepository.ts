@@ -20,10 +20,12 @@ export function canonicalDocumentJson(input: unknown): string {
 
 export function evidenceStatus(input: {
   status: string; systemSnapshotAt?: unknown; header?: unknown;
+  historicalActions?: boolean;
   outcome?: string; reasonCode?: string; hash?: string | null;
 }): DocumentEvidenceStatus {
   if (input.outcome === "UNAVAILABLE" ||
-      (["completed", "voided"].includes(input.status) && !input.outcome)) {
+      (["completed", "voided"].includes(input.status) && !input.outcome) ||
+      (!input.header && !input.outcome && (input.systemSnapshotAt || input.historicalActions))) {
     return {
       status: "unavailable", frozenRecordSha256: null,
       message: input.reasonCode === "SIGNATURE_EVIDENCE_MISSING"
@@ -53,6 +55,7 @@ export async function readDocumentEvidenceStatus(tx: any, submission: any): Prom
     LEFT JOIN frm_document_snapshots s ON s.snapshot_uuid=r.snapshot_uuid`);
   const row = result.rows[0];
   return evidenceStatus({ status: submission.status, header: row.header,
+    systemSnapshotAt: submission.systemSnapshotAt, historicalActions: submission.historicalActions,
     outcome: row.outcome, reasonCode: row.reason_code, hash: row.frozen_record_sha256 });
 }
 

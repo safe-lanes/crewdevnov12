@@ -248,7 +248,10 @@ export class CompanyFormSubmissionRenderRepository {
       vesselTypes: vesselTypeRows,
       roles: roleRows,
       documentEvidence: previewRequirement
-        ? undefined : await readDocumentEvidenceStatus(executor, parent.submission),
+        ? undefined : await readDocumentEvidenceStatus(executor, {
+          ...parent.submission,
+          historicalActions: signatureHistory.length > 0 || states.some((row: any) => row.state.status === "submitted"),
+        }),
     };
   }
 

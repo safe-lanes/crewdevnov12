@@ -1,3 +1,4 @@
+import { clearCompanyFormDocumentFixtures } from "../../helpers/companyFormDocumentCleanup";
 import { openHarnessStages, captureHarnessContractRank } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
@@ -384,6 +385,7 @@ describe("Company Form signing, section submission, completion, and void history
 
       await db.query("BEGIN");
       try {
+        await clearCompanyFormDocumentFixtures(db, submissionUuids);
         await db.query(
           "ALTER TABLE frm_company_submission_system_snapshots DISABLE TRIGGER USER",
         );

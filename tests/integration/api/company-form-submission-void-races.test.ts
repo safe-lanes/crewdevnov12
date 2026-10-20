@@ -1,3 +1,4 @@
+import { clearCompanyFormDocumentFixtures } from "../../helpers/companyFormDocumentCleanup";
 import { openHarnessStages, captureHarnessContractRank } from "../../helpers/company-form-stage-fixtures";
 let signingFixtureRankId = "";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -189,6 +190,7 @@ describe.sequential("Office void versus trusted Master writes", () => {
     const assets = await db.query("SELECT file_path FROM frm_signature_attachments WHERE created_by_uuid = ANY($1::text[])", [users.map(String)]);
     await db.query("BEGIN");
     try {
+      await clearCompanyFormDocumentFixtures(db, submissions);
       await db.query("DELETE FROM frm_section_signatures WHERE section_state_uuid IN (SELECT section_state_uuid FROM frm_section_states WHERE submission_uuid = ANY($1::text[]))", [submissions]);
       for (const table of ["frm_answers", "frm_company_submission_system_snapshots", "frm_section_states", "frm_company_submission_assignments", "frm_company_submissions"]) {
         await db.query(`DELETE FROM ${table} WHERE submission_uuid = ANY($1::text[])`, [submissions]);

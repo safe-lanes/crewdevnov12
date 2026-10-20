@@ -1,3 +1,4 @@
+import { clearCompanyFormDocumentFixtures } from "../helpers/companyFormDocumentCleanup";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -364,6 +365,7 @@ describe.sequential("stage-less Company Form submission service", () => {
     try {
       await client.query("BEGIN");
       if (lifecycleSchemaReady && submissionUuids.length > 0) {
+        await clearCompanyFormDocumentFixtures(client, submissionUuids);
         // Production rows are immutable. Disable only the database-enforced
         // snapshot DELETE guard while this fixture removes its own private test
         // submissions; no application write path has access to this teardown.
