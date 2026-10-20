@@ -60,7 +60,7 @@ try {
     const group = page.getByTestId(`crew-company-forms-group-${f.assignmentUuid}`);
     await group.waitFor({ timeout: 90000 });
     if (!await group.evaluate(el => el.open)) await group.locator(":scope > summary").click();
-    await group.getByRole("link", { name: new RegExp(`SAMPLE PDF layout review — ${f.kind}`) }).click();
+    await group.getByTestId(`crew-company-forms-open-${f.submissionUuid}`).click();
     const viewer = page.getByTestId("crew-company-form-viewer");
     await viewer.getByRole("button", { name: "Print copy", exact: true }).waitFor({ timeout: 45000 });
     await viewer.getByRole("button", { name: "Download", exact: true }).scrollIntoViewIfNeeded();
@@ -68,7 +68,7 @@ try {
     const downloaded = page.waitForEvent("download");
     await viewer.getByRole("button", { name: "Download", exact: true }).click();
     const download = await downloaded;
-    const destination = `${dir}/sample-${f.kind}.pdf`;
+    const destination = `${dir}/${fixtures.layoutRevision === 2 ? "revised-" : ""}sample-${f.kind}.pdf`;
     await download.saveAs(destination);
     const hash = createHash("sha256").update(await fs.readFile(destination)).digest("hex");
     if (hash !== file.file_sha256) throw Error("Browser Download did not return the archived bytes.");
@@ -85,7 +85,7 @@ try {
     await viewer.getByText("Handover records", { exact: true }).waitFor();
     await page.screenshot({ path: `${dir}/main-${f.kind}-handover.jpg` });
     await viewer.getByRole("button", { name: "Back to Company Forms", exact: true }).click();
-    await group.getByText("Copy handed to seafarer by", { exact: false }).waitFor();
+    await group.getByText("Copy handed to seafarer by", { exact: false }).first().waitFor();
     await group.getByText(`File SHA-256: ${file.file_sha256}`, { exact: false }).waitFor();
     await page.screenshot({ path: `${dir}/main-${f.kind}-g3.jpg` });
     const handovers = (await db.query("SELECT actor_uuid,actor_name,recorded_at,file_sha256 FROM frm_document_handovers WHERE submission_uuid=$1", [f.submissionUuid])).rows;
@@ -102,9 +102,10 @@ try {
   report.checks.push("The logo setting is reachable in Admin > Access Control; explicit management permission is required. No real grants were changed.");
   report.checks.push("Both registered completed forms opened through G3. Download and Print copy use the original stored file. Handover is visible in the form and G3.");
   const finalFiles = (await db.query("SELECT submission_uuid,file_sha256 FROM frm_document_files ORDER BY submission_uuid")).rows;
-  if (finalFiles.length !== 2 || finalFiles.some(row => !fixtures.forms.some(f => f.submissionUuid === row.submission_uuid)))
+  const registered = [...fixtures.forms, ...(fixtures.priorSamples ?? [])];
+  if (finalFiles.length !== registered.length || finalFiles.some(row => !registered.some(f => f.submissionUuid === row.submission_uuid)))
     throw Error("An unregistered real form has an archive file.");
-  report.checks.push("Raw SQL: exactly two archived files, both registered samples; no real-form PDF.");
+  report.checks.push(`Raw SQL: ${finalFiles.length} archived files, all registered samples (including retained originals); no real-form PDF.`);
   if (report.errors.length) throw Error(`Browser errors: ${report.errors.join("; ")}`);
   const now = shell("ps", ["-eo", "pid=,args="]).split("\n")
     .filter(l => l.includes("server/index.ts") && !/watch|npm| -c /.test(l));

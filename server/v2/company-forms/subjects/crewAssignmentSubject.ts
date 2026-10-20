@@ -351,6 +351,11 @@ export function createCrewAssignmentSubject(
         submission: { dateOfDeclaration: null },
       }, executor),
       fields: [
+        { label: "Crew ID", value: (await executor.select({ empNo: crewMembersV2.empNo })
+          .from(crewMembersV2).where(eq(crewMembersV2.crewUuid, subject.crewUuid)).limit(1))[0]?.empNo ?? null },
+        { label: "Nationality", value: await resolveCrewSystemField("nationality", subject, {
+          submission: { dateOfDeclaration: null },
+        }, executor) },
         { label: "Vessel", value: subject.vesselName ?? null },
         { label: "Contract rank", value: await resolveSigningContractRank(subject, executor, false) },
         { label: "Sign-on date", value: subject.signOnDate },

@@ -15,7 +15,8 @@ export async function clearCompanyFormDocumentFixtures(db: any, submissions: str
   await db.query("SAVEPOINT document_fixture_cleanup");
   try {
     for (const table of ["frm_document_handovers", "frm_document_preparation_events", "frm_document_files",
-      "frm_document_samples", "frm_document_preparation_requests", "frm_document_snapshots", "frm_document_assets", "frm_document_headers"]) {
+      "frm_document_samples", "frm_document_preparation_requests", "frm_document_snapshots", "frm_document_assets", "frm_document_headers",
+      "frm_document_references"]) {
       await db.query(`ALTER TABLE ${table} DISABLE TRIGGER USER`);
       await db.query(`DELETE FROM ${table} WHERE submission_uuid=ANY($1::text[])`, [submissions]);
       await db.query(`ALTER TABLE ${table} ENABLE TRIGGER USER`);

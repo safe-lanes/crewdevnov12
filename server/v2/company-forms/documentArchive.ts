@@ -33,7 +33,7 @@ export async function sampleEligible(tx: any, submissionUuid: string): Promise<b
     (SELECT oid::text FROM pg_database WHERE datname=current_database()) AS databaseoid FROM pg_control_system()`)).rows[0];
   return identity.clusterid === manifest.databaseIdentity?.clusterid &&
     identity.databaseoid === manifest.databaseIdentity?.databaseoid &&
-    manifest.forms.some((r: any) => r.submissionUuid === submissionUuid && r.formUuid === row.form_uuid &&
+    [...manifest.forms, ...(manifest.priorSamples ?? [])].some((r: any) => r.submissionUuid === submissionUuid && r.formUuid === row.form_uuid &&
       r.assignmentUuid === row.subject_ref && r.vesselUuid === row.vessel_uuid);
 }
 

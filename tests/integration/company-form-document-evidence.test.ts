@@ -79,10 +79,23 @@ describe("registered sample PDF archive", () => {
       expect(header.branding.logoVersionUuid).toBe(version);
       expect(header.branding.asset.bytesBase64).toBe(PNG.split(",")[1]);
       expect(header.branding.mode).toBe("logo");
+      expect(header.documentReference).toMatch(/^CF-\d{4}-\d{6,}$/);
+      const crew = (await requirementPool.query(`SELECT c.emp_no,n.nationality FROM crew_members_v2 c
+        LEFT JOIN master_nationalities n ON n.nat_uuid=c.nationality_uuid WHERE c.crew_uuid=$1`, [f.crewUuid])).rows[0];
+      expect(header.subject.fields).toContainEqual({ label: "Crew ID", value: crew.emp_no });
+      expect(header.subject.fields).toContainEqual({ label: "Nationality", value: crew.nationality ?? null });
+      await requirementPool.query("UPDATE crew_members_v2 SET emp_no=$1,nationality_uuid=NULL WHERE crew_uuid=$2",
+        [`UPDATED-${f.submission}`, f.crewUuid]);
       await sign(f, "seafarer");
       expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
       const snapshot = (await requirementPool.query("SELECT input FROM frm_document_snapshots WHERE submission_uuid=$1", [f.submission])).rows[0].input;
       expect(snapshot.header.branding).toEqual(header.branding);
+      expect(snapshot.header.documentReference).toBe(header.documentReference);
+      expect(snapshot.header.subject).toEqual(header.subject);
+      const other = await start(true);
+      await sign(other, "officer");
+      const otherHeader = (await requirementPool.query("SELECT evidence FROM frm_document_headers WHERE submission_uuid=$1", [other.submission])).rows[0].evidence;
+      expect(otherHeader.documentReference).not.toBe(header.documentReference);
       await requirementPool.query("UPDATE adm_resource_action_grants SET allowed=false WHERE role_id=$1 AND resource='access_control'", [role]);
       expect((await requirementApi.get(url).set("Authorization", auth)).status).toBe(403);
     } finally {

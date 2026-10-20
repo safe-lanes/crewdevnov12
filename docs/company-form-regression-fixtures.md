@@ -1,3 +1,20 @@
+## Revised PDF layout review fixtures — 20 October 2026
+
+The approved layout revision retains the original two frozen records and PDFs
+unchanged. Two new fixture-only forms reuse the existing registered fixture
+vessel, seafarers and assignments; no new crew, vessel or assignment is created.
+They are named `SAMPLE PDF layout review — logo — revised` and
+`SAMPLE PDF layout review — company-name — revised` (form IDs 5298 and 5299;
+form UUIDs a4120000-0000-4000-8000-000000000211 and
+a4120000-0000-4000-8000-000000000212). All child/version/signing identifiers,
+and the retained original samples, are in
+[the layout manifest](company-forms/pdf-layout-fixtures.json).
+The new completions freeze Crew ID, nationality and unique document references
+CF-2026-000001 / CF-2026-000002 at signing. Missing nationality remains
+"Not recorded"; it is not filled from later data. Every released condition set
+remains restricted to the registered fixture-only vessel. Verification reuses
+these records and never creates a new set on each run. Real generation is off.
+
 # Automated test database separation
 
 The fixture register below is only for deliberate main-preview acceptance

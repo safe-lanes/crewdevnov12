@@ -19,12 +19,16 @@ if (identity.clusterid !== "7586633721581772821" || identity.databaseoid !== "16
   throw Error("Refusing a database other than the approved main-preview development identity.");
 const file = "docs/company-forms/pdf-layout-fixtures.json";
 const prior = JSON.parse(await fs.readFile(file, "utf8"));
-if (prior.forms?.length && !prior.provisioning) {
+const revise = process.argv.includes("--revise-approved-layout");
+if (prior.forms?.length && !prior.provisioning && (!revise || prior.layoutRevision === 2)) {
   console.log("Registered layout fixtures already exist; use the verification command. No new fixtures created.");
   await db.end(); process.exit(0);
 }
 const id = suffix => `a4120000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
-const registry = prior.provisioning ? prior : {
+const registry = revise && !prior.provisioning && prior.layoutRevision !== 2
+  ? { ...prior, priorSamples: [...(prior.priorSamples ?? []), ...prior.forms],
+    forms: [], layoutRevision: 2, provisioning: true }
+  : prior.provisioning ? prior : {
   databaseIdentity: identity, vesselUuid: id(1), assignmentUuid: id(2),
   crewUuid: "424584fc-dc59-4f85-aa14-30781eb8477e",
   vesselRoleUuid: id(52), vesselUserId: 412002,
@@ -95,7 +99,7 @@ try {
     await fs.appendFile("docs/company-form-regression-fixtures.md", `\nAdditional joining-stage layout fixture assignment: ${registry.joiningAssignmentUuid}; same registered fixture seafarer and fixture-only vessel, not his protected vessel-02 assignment.\n`);
   if (!(await fs.readFile("docs/company-form-regression-fixtures.md", "utf8")).includes(registry.onboardCrewUuid))
     await fs.appendFile("docs/company-form-regression-fixtures.md", `\nDedicated synthetic on-board layout seafarer ${registry.onboardCrewUuid} (TEST ONLY PDF Layout Seafarer, PDF-LAYOUT-412), current assignment ${registry.assignmentUuid}. A separate crew member is necessary because the retained seafarer's protected vessel-02 assignment remains current and unchanged. Preparation assignment ${registry.retainedPreparationAssignmentUuid} is retained, noncurrent and unused by the PDFs. No new fixture is created by normal verification.\n`);
-  await api("PUT", `/admin/access-control/roles/${registry.vesselRoleUuid}/action-permissions`, {
+  if (!revise) await api("PUT", `/admin/access-control/roles/${registry.vesselRoleUuid}/action-permissions`, {
     grants: { view: true, fill_in: true, witness: true, sign_representative: false, void: false,
       void_completed: false, override_checklist: false },
   });
@@ -107,17 +111,19 @@ try {
     sourceKey: "pdf-layout-review-joining-fixture", actor: "24", businessDate: "2026-10-01" });
   for (const [index, kind] of ["logo", "company-name"].entries()) {
     if (registry.forms.some(f => f.kind === kind)) continue;
-    const formUuid = id(11 + index), templatePart = id(81 + index);
+    const offset = registry.layoutRevision === 2 ? 200 : 0;
+    const formUuid = id(offset + 11 + index), templatePart = id(offset + 81 + index);
     const form = (await db.query(`INSERT INTO adm_forms_v2(form_uuid,name,category,subject_type,rank_group,version_no,version_date)
       VALUES($1,$2,'dynamic','crew_assignment','','00','20-Oct-2026') RETURNING id`,
-      [formUuid, `SAMPLE PDF layout review — ${kind}`])).rows[0];
+      [formUuid, `SAMPLE PDF layout review — ${kind}${registry.layoutRevision === 2 ? " — revised" : ""}`])).rows[0];
     await db.query(`INSERT INTO frm_form_parts(form_part_uuid,form_uuid,part_code,part_title,part_type)
       VALUES($1,$2,$3,'Recorded form and signatures','configurable')`, [templatePart, formUuid, `PDF_${index}`]);
     const version = await api("POST", `/admin/forms/${form.id}/versions`, {
       versionNo: "01", versionDate: "20-Oct-2026", configuration: "{}", stageKey: "on_board",
     });
     const part = (await db.query("SELECT form_part_uuid FROM frm_form_parts WHERE form_version_uuid=$1", [version.fvUuid])).rows[0];
-    const section = id(21 + index), question = id(31 + index), rankQuestion = id(41 + index), content = id(91 + index);
+    const section = id(offset + 21 + index), question = id(offset + 31 + index),
+      rankQuestion = id(offset + 41 + index), content = id(offset + 91 + index);
     await db.query(`INSERT INTO frm_sections(section_uuid,form_version_uuid,form_part_uuid,section_code,section_title,
       responsible_mode,signature_officer_required,signature_seafarer_required,signature_vessel_management_required,vessel_signature_role_uuids)
       VALUES($1,$2,$3,'SIGNED_RECORD','Recorded answers and signatures','seafarer',true,true,true,$4)`,

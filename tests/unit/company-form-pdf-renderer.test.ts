@@ -10,12 +10,15 @@ function fixture(logo: boolean): FrozenDocumentInput {
     source: { kind: "company_form", recordUuid: "sample", formUuid: "form", versionUuid: "version",
       stageKey: "on_board", subjectType: "crew_assignment", subjectRef: "assignment",
       origin: "MANUAL", requirementUuid: null, completedAt: "2026-10-20T00:00:00Z" },
-    header: { schemaVersion: 1, capturedAt: "2026-10-20T00:00:00Z", captureEvent: "signature",
+    header: { schemaVersion: 1, documentReference: "CF-2026-000123",
+      capturedAt: "2026-10-20T00:00:00Z", captureEvent: "signature",
       tenant: { identity: "test", companyName: "Sample Shipping — Étienne / Дмитрий", source: "tenant_setting" },
       branding: logo ? { mode: "logo", logoVersionUuid: "logo-1", assetSha256: sha256(Buffer.from(png, "base64")),
         asset: { bytesBase64: png, mediaType: "image/png", sha256: sha256(Buffer.from(png, "base64")) } }
         : { mode: "company_name", logoVersionUuid: null, assetSha256: null },
-      subject: { subjectLabel: "TEST ONLY", fields: [{ label: "Contract rank", value: "Not recorded" }] },
+      subject: { subjectLabel: "TEST ONLY", fields: [{ label: "Contract rank", value: "Not recorded" },
+        { label: "Crew ID", value: "FROZEN-123" }, { label: "Nationality", value: "Recorded nationality" },
+        { label: "Sign-on date", value: "2026-10-01" }] },
       definition: {
         form: { name: "PDF layout sample" }, version: { versionNo: "01" },
         parts: [{ formPartUuid: "part", partTitle: "Recorded form" }],

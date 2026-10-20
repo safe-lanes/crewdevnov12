@@ -1,5 +1,9 @@
 # Company Form PDF layout review — 20 October 2026
 
+**Historical first sample review:** the files and results below describe the
+original samples, retained unchanged. The revised layout is documented in
+`pdf-layout-revision-review.md`.
+
 ## Approval status
 
 **Real-form PDF generation remains disabled. Layout approval has not been given.**

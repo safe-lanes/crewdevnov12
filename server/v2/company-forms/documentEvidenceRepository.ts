@@ -82,8 +82,14 @@ export async function captureDocumentHeader(input: {
       ORDER BY s.set_uuid) FROM frm_applicability_sets s
       WHERE s.version_uuid=p.version_uuid), '[]'::jsonb) AS sets
     FROM frm_version_applicability p WHERE p.version_uuid=${submission.formVersionUuid}`);
+  await tx.execute(sql`INSERT INTO frm_document_references(submission_uuid,issued_year)
+    VALUES(${submission.submissionUuid},${at.getUTCFullYear()})
+    ON CONFLICT(submission_uuid) DO NOTHING`);
+  const reference = (await tx.execute(sql`SELECT document_reference FROM frm_document_references
+    WHERE submission_uuid=${submission.submissionUuid}`)).rows[0].document_reference;
   const evidence: FrozenDocumentHeader = {
     schemaVersion: 1,
+    documentReference: reference,
     tenant: { identity, companyName: tenant.companyName ?? branding?.company_name ?? null,
       source: tenant.companyName ? "parent" : branding?.company_name ? "tenant_setting" : "not_recorded" },
     branding: branding?.media_type

@@ -6,6 +6,8 @@ export type DocumentHeaderFacts = {
 
 export type FrozenDocumentHeader = {
   schemaVersion: 1;
+  /** Absent only on legacy frozen records. Never reconstructed from live data. */
+  documentReference?: string;
   tenant: { identity: string; companyName: string | null; source: "parent" | "tenant_setting" | "not_recorded" };
   branding: {
     logoVersionUuid: string | null; assetSha256: string | null; mode: "company_name" | "logo";
