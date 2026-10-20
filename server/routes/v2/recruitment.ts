@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { recruitmentAttachmentAccess } from "../../v2/shared/recruitmentAttachmentAccess";
+import { recruitmentAggregateAttachmentAccess } from "../../v2/shared/attachmentAggregateAccess";
+import { redactAttachmentJson } from "../../v2/shared/attachmentJsonAccess";
 import {
   getAllCandidates,
   getCandidateById,
@@ -111,6 +113,8 @@ import { complianceScreeningController } from "../../v2/recruitment/controllers/
 
 const router = Router();
 router.use(recruitmentAttachmentAccess);
+router.use(recruitmentAggregateAttachmentAccess);
+router.use(redactAttachmentJson);
 
 // Vessel search (no role middleware beyond standard recruitment-module auth)
 router.get("/vessel-search", searchVessels);

@@ -293,4 +293,16 @@ describe("secondary attachment response paths", () => {
     expect(JSON.stringify(own.body)).not.toContain("fileData");
     expect(JSON.stringify(own.body)).not.toContain("filePath");
   });
+  it("recruitment metadata cannot bypass the Office permission boundary", async () => {
+    const f = cases.find(c => c.name === "recruitment/training")!;
+    for (const path of [`/api/v2/recruitment/training/${f.parent}/attachments`,
+      `/api/v2/recruitment/candidates/${crew}/training`]) {
+      expect((await call(path, "ship")).status).toBe(403);
+      expect((await call(path, "denied")).status).toBe(403);
+      const result = await call(path);
+      expect(result.status).toBe(200);
+      expect(JSON.stringify(result.body)).not.toContain("fileData");
+      expect(JSON.stringify(result.body)).not.toContain("filePath");
+    }
+  });
 });
