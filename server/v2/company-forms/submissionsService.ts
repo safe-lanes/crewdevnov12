@@ -282,7 +282,7 @@ export class CompanyFormSubmissionsService {
     throw new CompanyFormPermissionError();
   }
 
-  private async authorizeSubmission(
+  async authorizeSubmission(
     req: Request,
     submissionUuid: string,
     action: CompanyFormAction,

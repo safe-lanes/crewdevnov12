@@ -37,7 +37,7 @@ export async function renderFrozenDocument(input: FrozenDocumentInput, frozenHas
   const definition = input.header.definition as any;
   const title = recorded(definition.form?.name);
   const version = recorded(definition.version?.versionNo);
-  const stage = ({ before_joining: "Before joining", on_board: "On board", sign_off: "At sign-off" } as Record<string, string>)
+  const stage = ({ before_joining: "Before joining", on_board: "On board", at_sign_off: "At sign-off" } as Record<string, string>)
     [input.source.stageKey ?? ""] ?? recorded(input.source.stageKey);
   pdf.setTitle(`${title} — v${version}`);
   pdf.setAuthor(recorded(input.header.tenant.companyName));

@@ -5,8 +5,27 @@ import { z } from "zod";
 import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 import { getBranding, saveBranding } from "./documentBranding";
+import { copyStatus, downloadCopy, retryCopy } from "./documentCopyService";
 
 const router = Router();
+router.get("/:submissionUuid/pdf/status", async (req, res) => {
+  if (!z.string().uuid().safeParse(req.params.submissionUuid).success) { res.status(400).json({ message: "Select a valid form." }); return; }
+  try { res.json(await copyStatus(req, req.params.submissionUuid)); } catch (error) { sendError(res, error); }
+});
+router.get("/:submissionUuid/pdf", async (req, res) => {
+  if (!z.string().uuid().safeParse(req.params.submissionUuid).success) { res.status(400).json({ message: "Select a valid form." }); return; }
+  try {
+    const bytes = await downloadCopy(req, req.params.submissionUuid);
+    res.set({ "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="company-form.pdf"',
+      "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" }).send(bytes);
+  } catch (error) { sendError(res, error); }
+});
+router.post("/:submissionUuid/pdf/retry", async (req, res) => {
+  if (!z.string().uuid().safeParse(req.params.submissionUuid).success || !z.object({}).strict().safeParse(req.body).success) {
+    res.status(400).json({ message: "Supply only the form to retry." }); return;
+  }
+  try { res.json(await retryCopy(req, req.params.submissionUuid)); } catch (error) { sendError(res, error); }
+});
 router.get("/settings/branding", async (req, res) => {
   try { res.json(await getBranding(req)); } catch (error) { sendError(res, error); }
 });
