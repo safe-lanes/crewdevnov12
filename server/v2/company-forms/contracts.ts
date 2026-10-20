@@ -116,6 +116,8 @@ export type SystemFieldResolutionContext = {
 };
 
 export type CompanyFormSubjectAdapter<Context = unknown> = {
+  /** Trusted display facts captured under the subject lock at first freeze. */
+  documentHeader?(subject: Context, executor: any): Promise<import("../../../shared/v2/forms-engine/documentEvidence").DocumentHeaderFacts>;
   ruleDimensions?: readonly import("../../../shared/v2/forms-engine/ruleDimensions").RuleDimension[];
   ruleMasterChoices?(key: string, executor: unknown, lock?: boolean): Promise<readonly import("../../../shared/v2/forms-engine/ruleDimensions").RuleMasterChoice[]>;
   readRuleDimensions?(subject: Context, executor: unknown): Promise<import("../../../shared/v2/forms-engine/ruleDimensions").AssignmentDimensionReport>;

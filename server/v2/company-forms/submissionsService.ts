@@ -1013,6 +1013,7 @@ export class CompanyFormSubmissionsService {
           fileName: "signature.png",
           fileType: mimeType,
           fileSize: bytes.length,
+          bytes,
         },
         actor: principal,
         adapter,

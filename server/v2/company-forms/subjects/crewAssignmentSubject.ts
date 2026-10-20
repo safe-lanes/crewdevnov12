@@ -346,6 +346,16 @@ export function createCrewAssignmentSubject(
       }));
     },
     groupingIdentifier: (subject, subjectRef) => subject.assignUuid || subjectRef,
+    documentHeader: async (subject, executor) => ({
+      subjectLabel: await resolveCrewSystemField("seafarer_name", subject, {
+        submission: { dateOfDeclaration: null },
+      }, executor),
+      fields: [
+        { label: "Vessel", value: subject.vesselName ?? null },
+        { label: "Contract rank", value: await resolveSigningContractRank(subject, executor, false) },
+        { label: "Sign-on date", value: subject.signOnDate },
+      ],
+    }),
     homeGroupDisplay: (subject) => ({
       label: subject.vesselName || "Vessel name unavailable",
       status: subject.assignmentType.replace(/^OnBoard$/i, "On board"),

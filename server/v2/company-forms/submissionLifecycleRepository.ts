@@ -30,6 +30,7 @@ import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured 
 import { sectionRequiresSubmission } from "./lifecyclePolicy";
 import { getDb } from "../db";
 import { ownsCompanyFormSignature } from "./signatureOwnership";
+import { captureDocumentHeader, captureDocumentSignature } from "./documentEvidenceRepository";
 
 type Executor = any;
 type LifecycleAdapter = CompanyFormSubjectAdapter<any>;
@@ -210,6 +211,7 @@ async function freezeSystemFields(input: {
   // A pre-migration signed/submitted declaration has no trustworthy historical
   // snapshot. Never turn a later event into a present-day backfill.
   if (priorSubmitted.length || priorSignatures.length) return;
+  await captureDocumentHeader(input);
   const fields = await systemQuestions(tx, submission);
   const declarationDate = at.toISOString().slice(0, 10);
   const values = await Promise.all(fields.map(async ({ section, question }: any) => ({
@@ -413,6 +415,7 @@ export class CompanyFormSubmissionLifecycleRepository {
       fileName: string;
       fileType: string;
       fileSize: number;
+      bytes?: Buffer;
     };
     actor: CompanyFormPrincipal;
     adapter: LifecycleAdapter;
@@ -489,6 +492,12 @@ export class CompanyFormSubmissionLifecycleRepository {
       }).returning();
       if (!created.length) throw new Error("Unable to persist Company Form signature attachment.");
       const now = new Date();
+      if (input.attachment.bytes) {
+        await captureDocumentSignature({
+          tx, submissionUuid: submission.submissionUuid, attachmentUuid: input.attachment.uuid,
+          bytes: input.attachment.bytes, actorUserId: input.actor.userId, at: now,
+        });
+      }
       // The schema's signature-type/state unique key includes soft-deleted rows.
       // Revive that slot on an explicit re-sign instead of colliding on insert.
       const prior = await tx.select().from(frmSectionSignatures).where(and(

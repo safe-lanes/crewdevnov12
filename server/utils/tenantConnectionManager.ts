@@ -405,6 +405,17 @@ class TenantConnectionManager {
     return this.tenantStorage.getStore()?.domain ?? null;
   }
 
+  /** PDF evidence reads identity from server context, never request-body data. */
+  async getCurrentDocumentCompany(): Promise<{ identity: string | null; companyName: string | null }> {
+    const identity = this.getCurrentTenantId();
+    if (!this._isMultiTenantEnabled) return { identity: null, companyName: null };
+    if (!identity || !this.masterDb) throw new Error("Tenant context required for document evidence.");
+    const rows = await this.masterDb.select({ companyName: tenants.companyName }).from(tenants)
+      .where(and(eq(tenants.tuid, identity), eq(tenants.isActive, true), eq(tenants.isDeleted, false))).limit(1);
+    if (!rows[0]) throw new Error("Company identity is unavailable for document evidence.");
+    return { identity, companyName: rows[0].companyName };
+  }
+
   async getActiveTenants(): Promise<string[]> {
     if (!this._isMultiTenantEnabled || !this.masterDb) {
       return [];
