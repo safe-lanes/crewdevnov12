@@ -65,9 +65,25 @@ Server audit event 21 records View from absent (`null`) to `true` at
 Events 22–24 record the new row's Create/Edit/Delete values as `false`.
 Existing Company Forms actions and all other grants/memberships are unchanged.
 
-Crew Pool View remains absent. A browser check after this grant still shows
-the plain module Access Restricted screen; the additional navigation grant
-has not been enabled without approval.
+With the user's subsequent explicit approval, the normal audited Access
+Control API also enabled **Crew Pool View only** for this same fixture-only
+role. Exclusivity was checked again immediately before writing: user 412002
+is still the only matching master user, including normalised role names.
+
+| Grant | Menu UUID | Grant row UUID | View audit event | Server time (UTC) |
+| --- | --- | --- | --- | --- |
+| Crew Database View | 8e526cf4-d5ab-4e81-9736-bad10a722108 | 7da25780-a041-4966-aee1-7606a3973793 | 21 | 20-Oct-2026 15:25:44 |
+| Crew Pool View | 2dcbfb8e-8cf8-499e-ab9d-d21f9b635eb2 | 561ad59b-58c6-4c29-af02-54868ece9487 | 25 | 20-Oct-2026 15:49:12 |
+
+Both View events record absent (`null`) → `true`, with server-derived actor
+master user 1 / Sail Admin. Create/Edit/Delete remain `false` for both;
+events 26–28 record those values for the new Crew Pool row. No other role,
+membership or permission was changed.
+
+The vessel profile now opens through the screen. Its separate **CP Travel ID
+Documents View** permission remains absent, so Part C and the document
+attachment are not shown. This is a grant gap, not a failed file request; no
+additional section permission has been granted without approval.
 
 # Attachment display verification — 20-Oct-2026
 

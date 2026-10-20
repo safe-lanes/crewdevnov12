@@ -1,7 +1,7 @@
 # Attachment security: main-preview UI verification
 
 20-Oct-2026. **All requested Office attachment families are now verified;
-the vessel screen check remains blocked by Crew Pool navigation permission.**
+the vessel document check remains blocked by its separate profile-section permission.**
 Slice 2 has not been started.
 
 ## Authorised follow-up: missing examples prepared and checked
@@ -29,13 +29,22 @@ Briefing, Debriefing, D3, Planning and Company Form passes remain applicable.
 These are UI evidence, not direct API checks.
 
 The fixture vessel role is exclusively used by registered user 412002.
-Crew Database View was enabled through the audited Access Control API, with
-Create/Edit/Delete false; event 21 records the server-derived actor and change.
-The browser was then checked again (`slice1-vessel-own.json`): **Crew Pool
-View is separately required by navigation**, and that screen still gives a
-plain Access Restricted message. No extra grant was silently added. Own-vessel
-opening and ownership-specific other-vessel refusal are therefore still pending
-approval of that additional navigation grant.
+Crew Database View and, with subsequent explicit approval, Crew Pool View
+were enabled through the audited Access Control API. Both have Create/Edit/Delete
+false; audit events 21 and 25 record the server-derived actor and View changes.
+Both grants are recorded in the fixture register.
+
+The next actual screen check (`slice1-vessel-own-granted.json`) opens the
+own-vessel profile. However, the profile separately requires **CP Travel ID
+Documents View** to show Part C. Only B and G are currently available.
+The document is therefore not yet verified; no file request was made.
+No additional section grant was silently enabled.
+
+The other-vessel deep link (`slice1-vessel-other-granted.json`) shows only the
+own-vessel crew list and does not expose the other seafarer or open his profile.
+It also supplies no explanatory refusal message, so this is **not** certified
+as the requested plain-message denial. The remaining UI verification is
+explicitly incomplete.
 
 The sections below retain the original pre-follow-up inventory and results.
 
