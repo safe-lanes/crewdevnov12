@@ -1,3 +1,21 @@
+# PDF final-glance revision registration
+
+The final-glance pair is registered in
+`docs/company-forms/pdf-layout-fixtures.json` (layout revision 3). It reuses the
+same fixture-only vessel, seafarers and assignment UUIDs. Its form UUIDs are
+`a4120000-0000-4000-8000-000000000311` and
+`a4120000-0000-4000-8000-000000000312`; both released applicability rules remain
+conditional on the fixture-only vessel. Every prior sample is retained under
+`priorSamples`; no historical PDF or frozen evidence is replaced.
+
+One deliberately registered Planning row, plan UUID
+`a4120000-0000-4000-8000-000000000006`, links the existing joining fixture
+assignment to planned joining date 23-Oct-2026. Its numeric ID and the new form,
+version, submission and branding identifiers are recorded in the manifest after
+provisioning. It is unrelated to protected Planning row 1112, rotation entry 473
+and archive 414. Normal verification reuses these records; it does not create a
+new pair per run.
+
 ## Revised PDF layout review fixtures — 20 October 2026
 
 The approved layout revision retains the original two frozen records and PDFs

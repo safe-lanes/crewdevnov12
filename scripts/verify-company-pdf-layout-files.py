@@ -10,10 +10,10 @@ from pathlib import Path
 import fitz
 
 root = Path("generated-artifacts/company-pdf-layout")
-records = json.loads((root / "revised-layout-frozen-facts.json").read_text())
+records = json.loads((root / "final-glance-layout-frozen-facts.json").read_text())
 signature_types = set()
 for record in records:
-    path = root / f"revised-sample-{record['kind']}.pdf"
+    path = root / f"final-glance-sample-{record['kind']}.pdf"
     assert hashlib.sha256(path.read_bytes()).hexdigest() == record["fileSha256"]
     doc = fitz.open(path)
     header = record["header"]
@@ -38,6 +38,12 @@ for record in records:
         value = next(field["value"] for field in header["subject"]["fields"] if field["label"] == label)
         assert f"{label}: {value or 'Not recorded'}" in first
     assert f"Document reference: {reference}" in first
+    if record["kind"] == "logo":
+        assert "Sign-on date:" not in first
+        assert "Planned joining date: 23-Oct-2026" in first
+    else:
+        assert "Sign-on date: 01-Oct-2026" in first
+        assert "Planned joining date:" not in first
     all_text = "\n".join(texts)
     for value in ["1 · Recorded form and signatures", "1.1 Recorded answers and signatures",
                   "1.1.1 Long recorded answer", "Rank: Not recorded", "Witness designation:",
@@ -50,7 +56,7 @@ for record in records:
             signature_types.add(label)
     for page_index in {0, len(doc) // 2, len(doc) - 1}:
         doc[page_index].get_pixmap(matrix=fitz.Matrix(1.3, 1.3)).save(
-            root / f"revised-{record['kind']}-page-{page_index + 1}.png")
+            root / f"final-glance-{record['kind']}-page-{page_index + 1}.png")
     print(f"{record['kind']}: {len(doc)} pages; {reference}; all frozen-fact/layout checks passed")
 assert len({r["header"]["documentReference"] for r in records}) == len(records)
 assert signature_types == {"Company Representative", "Seafarer", "Vessel Management"}

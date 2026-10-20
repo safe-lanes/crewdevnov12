@@ -20,14 +20,14 @@ if (identity.clusterid !== "7586633721581772821" || identity.databaseoid !== "16
 const file = "docs/company-forms/pdf-layout-fixtures.json";
 const prior = JSON.parse(await fs.readFile(file, "utf8"));
 const revise = process.argv.includes("--revise-approved-layout");
-if (prior.forms?.length && !prior.provisioning && (!revise || prior.layoutRevision === 2)) {
+if (prior.forms?.length && !prior.provisioning && (!revise || prior.layoutRevision === 3)) {
   console.log("Registered layout fixtures already exist; use the verification command. No new fixtures created.");
   await db.end(); process.exit(0);
 }
 const id = suffix => `a4120000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
-const registry = revise && !prior.provisioning && prior.layoutRevision !== 2
+const registry = revise && !prior.provisioning && prior.layoutRevision !== 3
   ? { ...prior, priorSamples: [...(prior.priorSamples ?? []), ...prior.forms],
-    forms: [], layoutRevision: 2, provisioning: true }
+    forms: [], layoutRevision: 3, provisioning: true }
   : prior.provisioning ? prior : {
   databaseIdentity: identity, vesselUuid: id(1), assignmentUuid: id(2),
   crewUuid: "424584fc-dc59-4f85-aa14-30781eb8477e",
@@ -75,6 +75,13 @@ try {
   registry.joiningAssignmentUuid = id(3);
   await db.query(`INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_current)
     VALUES($1,$2,$3,'Planned',false) ON CONFLICT(assign_uuid) DO NOTHING`, [registry.joiningAssignmentUuid, registry.crewUuid, registry.vesselUuid]);
+  registry.joiningPlanningUuid = id(6);
+  const rank = (await db.query("SELECT ar_uuid,name FROM adm_available_ranks_v2 WHERE NOT is_deleted LIMIT 1")).rows[0];
+  if (!rank) throw Error("A master rank is required for the registered fixture Planning row.");
+  await db.query(`INSERT INTO vessel_planning_v2
+    (plan_uuid,vessel_uuid,rank_id,rank,reliever_crew_uuid,reliever_assign_uuid,reliever_sign_on_date)
+    VALUES($1,$2,$3,$4,$5,$6,'2026-10-23') ON CONFLICT(plan_uuid) DO NOTHING`,
+    [registry.joiningPlanningUuid, registry.vesselUuid, rank.ar_uuid, rank.name, registry.crewUuid, registry.joiningAssignmentUuid]);
   registry.retainedPreparationAssignmentUuid = id(2);
   registry.onboardCrewUuid = id(4);
   registry.assignmentUuid = id(5);
@@ -111,11 +118,11 @@ try {
     sourceKey: "pdf-layout-review-joining-fixture", actor: "24", businessDate: "2026-10-01" });
   for (const [index, kind] of ["logo", "company-name"].entries()) {
     if (registry.forms.some(f => f.kind === kind)) continue;
-    const offset = registry.layoutRevision === 2 ? 200 : 0;
+    const offset = registry.layoutRevision === 3 ? 300 : registry.layoutRevision === 2 ? 200 : 0;
     const formUuid = id(offset + 11 + index), templatePart = id(offset + 81 + index);
     const form = (await db.query(`INSERT INTO adm_forms_v2(form_uuid,name,category,subject_type,rank_group,version_no,version_date)
       VALUES($1,$2,'dynamic','crew_assignment','','00','20-Oct-2026') RETURNING id`,
-      [formUuid, `SAMPLE PDF layout review — ${kind}${registry.layoutRevision === 2 ? " — revised" : ""}`])).rows[0];
+      [formUuid, `SAMPLE PDF layout review — ${kind}${registry.layoutRevision === 3 ? " — final glance" : registry.layoutRevision === 2 ? " — revised" : ""}`])).rows[0];
     await db.query(`INSERT INTO frm_form_parts(form_part_uuid,form_uuid,part_code,part_title,part_type)
       VALUES($1,$2,$3,'Recorded form and signatures','configurable')`, [templatePart, formUuid, `PDF_${index}`]);
     const version = await api("POST", `/admin/forms/${form.id}/versions`, {

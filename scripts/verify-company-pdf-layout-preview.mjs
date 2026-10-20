@@ -68,7 +68,7 @@ try {
     const downloaded = page.waitForEvent("download");
     await viewer.getByRole("button", { name: "Download", exact: true }).click();
     const download = await downloaded;
-    const destination = `${dir}/${fixtures.layoutRevision === 2 ? "revised-" : ""}sample-${f.kind}.pdf`;
+    const destination = `${dir}/${fixtures.layoutRevision >= 3 ? "final-glance-" : fixtures.layoutRevision === 2 ? "revised-" : ""}sample-${f.kind}.pdf`;
     await download.saveAs(destination);
     const hash = createHash("sha256").update(await fs.readFile(destination)).digest("hex");
     if (hash !== file.file_sha256) throw Error("Browser Download did not return the archived bytes.");

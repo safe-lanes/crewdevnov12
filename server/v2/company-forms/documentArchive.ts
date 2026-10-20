@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { PDFDocument } from "pdf-lib";
 import { getDb } from "../db";
 import { tenantConnectionManager } from "../../utils/tenantConnectionManager";
-import { renderFrozenDocument, PDF_FONT_VERSION, PDF_RENDERER_VERSION } from "./documentPdfRenderer";
 import { sha256 } from "./documentEvidenceRepository";
 import { CompanyFormConflictError } from "./errors";
 
@@ -71,6 +69,11 @@ async function prepareWithPolicy(submissionUuid: string, actorUuid: string, db: 
       if (!row || !["completed", "voided"].includes(row.submission_status)) throw new CompanyFormConflictError(
         "This form does not have complete frozen evidence for a PDF copy. Ask the office to review it.");
       if (sha256(row.canonical_input) !== row.frozen_record_sha256) throw new Error("Frozen record checksum mismatch");
+      // No PDF/font renderer import for ordinary startup, status or queue scans.
+      // Load only after eligibility and frozen-evidence checks have succeeded.
+      const [{ renderFrozenDocument, PDF_FONT_VERSION, PDF_RENDERER_VERSION }, { PDFDocument }] = await Promise.all([
+        import("./documentPdfRenderer"), import("pdf-lib"),
+      ]);
       const bytes = await renderFrozenDocument(row.input, row.frozen_record_sha256);
       const pages = (await PDFDocument.load(bytes)).getPageCount();
       await tx.execute(sql`INSERT INTO frm_document_files

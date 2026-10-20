@@ -806,16 +806,18 @@ export async function generateImportTemplate(): Promise<Buffer> {
       );
     };
 
-    // Write formulas for all data rows (up to ATTACHMENT_MAX_ROWS, same as TEMPLATE_MAX_ROWS)
-    for (let row = 3; row <= ATTACHMENT_MAX_ROWS + 2; row++) {
-      // sanitizeForFolder is applied to the *display* parts only.
-      // The COUNTIF criteria still reference the raw $A{row} so deduplication works.
-      const suffix = descriptorCol
-        ? `&IF(${descriptorCol}${row}<>"","_"&${sanitizeForFolder(`${descriptorCol}${row}`)},"")`
-        : "";
-      const formula = `IF($A${row}="","",${sanitizeForFolder(`$A${row}`)}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row})${suffix})`;
-      ws.getCell(row, colIdx).value = { formula, result: "" };
-    }
+    // Same physical cells and 30,000-row coverage, but store the long expression
+    // once using XLSX shared formulas. Repeating it in every cell caused large
+    // XML strings, garbage collection and compression work near the test limit.
+    // Relative row references (including COUNTIF's expanding end) translate;
+    // the absolute start $A$3 stays fixed. Excel recalculates on first opening.
+    const row = 3;
+    const suffix = descriptorCol
+      ? `&IF(${descriptorCol}${row}<>"","_"&${sanitizeForFolder(`${descriptorCol}${row}`)},"")`
+      : "";
+    const formula = `IF($A${row}="","",${sanitizeForFolder(`$A${row}`)}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row})${suffix})`;
+    const letter = colLetter(colIdx);
+    ws.fillFormula(`${letter}3:${letter}${ATTACHMENT_MAX_ROWS + 2}`, formula, () => "");
 
     // Protect the Attachment Ref column using column-level default styles so
     // the locked:false flag is stored once per column, not once per cell.
