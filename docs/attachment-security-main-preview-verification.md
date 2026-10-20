@@ -1,7 +1,7 @@
 # Attachment security: main-preview UI verification
 
-20-Oct-2026. **All requested Office attachment families are now verified;
-the vessel document check remains blocked by its separate profile-section permission.**
+20-Oct-2026. **All requested Office attachment families and both vessel
+screen cases are now verified using the approved development personas.**
 Slice 2 has not been started.
 
 ## Authorised follow-up: missing examples prepared and checked
@@ -24,29 +24,37 @@ As the same limited **Crewing Manager** persona, actual screen clicks now pass:
 | Recruitment document | Fixture candidate → A2 → document attachment → Preview; `slice1-office-recruit-document.json`, raw 200 and visible image popup |
 | Recruitment screening | Same candidate → Screening → B1 Attachment(s) → Preview; `slice1-office-screening-file.json`, raw 200 and visible image popup |
 
-No display regression was found; no application code was changed. The previous
-Briefing, Debriefing, D3, Planning and Company Form passes remain applicable.
+The Office checks found no display regression. The previous Briefing,
+Debriefing, D3, Planning and Company Form passes remain applicable.
 These are UI evidence, not direct API checks.
 
 The fixture vessel role is exclusively used by registered user 412002.
-Crew Database View and, with subsequent explicit approval, Crew Pool View
-were enabled through the audited Access Control API. Both have Create/Edit/Delete
-false; audit events 21 and 25 record the server-derived actor and View changes.
-Both grants are recorded in the fixture register.
+Crew Database View, Crew Pool View and CP Travel ID Documents View were enabled
+with explicit approval through the audited Access Control API.
+All have Create/Edit/Delete false; audit events 21, 25 and 29 record the
+server-derived actor and View changes. All three grants are recorded in the
+fixture register. No further grants were needed.
 
-The next actual screen check (`slice1-vessel-own-granted.json`) opens the
-own-vessel profile. However, the profile separately requires **CP Travel ID
-Documents View** to show Part C. Only B and G are currently available.
-The document is therefore not yet verified; no file request was made.
-No additional section grant was silently enabled.
+After the section grant, a genuine View-only display failure was reproduced:
+the Part C document appeared, but the attachment action was hidden under Edit.
+The fix exposes the saved document's attachment action to viewers and supplies
+a read-only attachment dialog. Upload, removal and record deletion remain
+unavailable without Edit; no server authorization or ownership check changed.
 
-The other-vessel deep link (`slice1-vessel-other-granted.json`) shows only the
-own-vessel crew list and does not expose the other seafarer or open his profile.
-It also supplies no explanatory refusal message, so this is **not** certified
-as the requested plain-message denial. The remaining UI verification is
-explicitly incomplete.
+The other-vessel link previously silently returned to the scoped list.
+It now explains that the crew record is unavailable or outside the user's
+permitted vessels, without exposing whether an inaccessible record exists.
 
-The sections below retain the original pre-follow-up inventory and results.
+| Vessel screen case | Result |
+| --- | --- |
+| Own crew document, Part C → attachment → Preview | `slice1-vessel-own-view-only.json`: saved image loaded at width 850; authenticated browser file request 200 image/png; image popup captured. No upload/remove controls. |
+| Other vessel's registered crew/document entry | `slice1-vessel-other-refused.json`: “Cannot open crew record” with plain explanatory text; only own-vessel crew remains visible. No foreign profile or attachment request is exposed. This is a UI-entry denial, not a claimed raw-file HTTP 403. |
+
+Two regression tests cover read-only preview/download controls with no upload
+or removal, and preservation of existing editing controls for default callers.
+
+The original through-screen inventory is retained below for traceability;
+the follow-up tables above describe current coverage.
 
 ## Authentication boundary
 
@@ -68,7 +76,7 @@ parent handoff or production tenant binding. Normal parent Office and vessel
 sign-in is explicitly required in `docs/production-checklist.md`, item 4,
 committed separately as `3476c1b43ecab99cc3c03ddf2812ade80dcc4d34`.
 
-## Personas and unchanged grants
+## Personas and grant changes
 
 - **Office:** existing user 3, **Crewing Manager**, parent role UUID
   `408d9fe9-1d0f-11f1-925d-5419ffd80f01`. Of 81 menu grants, 65 enable View
@@ -82,15 +90,18 @@ committed separately as `3476c1b43ecab99cc3c03ddf2812ade80dcc4d34`.
   points to fixture-only vessel UUID
   `a4120000-0000-4000-8000-000000000001`. Company Forms View, Fill in and
   Witness are allowed; Sign representative, Void, Void completed and
-  Override checklist are false. **There are no menu grants**, including
-  Crew Pool, Crew Database and Vessel.
+   Override checklist are false. The only added menu grants are View on
+   Crew Pool, Crew Database and CP Travel ID Documents; their Create/Edit/Delete
+   values are false. Vessel View and all other missing menu grants remain absent.
 
-No grants, role assignments or vessel memberships were changed. The built-in
+Office grants, role assignments and vessel memberships were unchanged. The built-in
 Vessel User persona was not substituted: it also lacks Crew Pool/Crew Database
 View and has no persisted vessel membership.
 
-## Through-screen results
+## Original through-screen inventory — superseded by the follow-up above
 
+These entries record the earlier, incomplete run, before the additional
+fixtures and approved grants. They are not the current acceptance status.
 All successful file requests below originated from clicks in the screen.
 Network records are observations of those browser actions, not API probes.
 Evidence is under ignored `generated-artifacts/attachment-display/`.
@@ -170,16 +181,24 @@ before React mounted. These transport failures were recorded separately;
 the verifier retries the real page once and uses a persistent profile per
 persona. It does not replace modules or suppress permission failures.
 
-Application/test source is unchanged from the last gated source at
-`8da3d77d770f3ba17cf1a265c0706f886cba010e`. Its gate results remain:
-full suite 1,382 passed / 162 failed / 67 pending; Company Forms 648 passed,
-zero skipped across 96 files; attachment security 101 passed; TypeScript 222
-diagnostics. These gates were **not rerun** for documentation, UI-only tooling
-and an isolated main-preview fixture upload. The new verifier passes
-`node --check`. Closing commit/process chronology and fresh read-only journeys
-are recorded in `generated-artifacts/attachment-display/closing-evidence.json`.
+Fresh gates after the display fixes:
 
-Acceptance remains incomplete until the missing attachment examples and a
-properly granted fixture-vessel account are available. No grants are changed
-to obtain that evidence. Parent-authenticated verification remains a production
-checklist item. Slice 2 is not built.
+- Full suite: **1,384 passed / 162 failed / 67 pending**, 1,613 tests in
+  166 files. This meets the approved ceiling; it is not a green full suite.
+- Company Forms: **648 passed, zero failed or skipped, 96 files**. Verified
+  from the actual full-run results for every suite discovered by the existing
+  Company Forms gate, not from a second run or the full suite's global status.
+- Attachment security: **101 passed**, zero failed.
+- New read-only component regression tests: **2 passed**.
+- TypeScript: **222 diagnostics**, within the standing ceiling.
+
+Raw reports are `generated-artifacts/attachment-display/full-suite.json`,
+`closing-gates.json` and `typescript.log`. Closing main-preview process/HEAD
+chronology is recorded after the final commit in
+`generated-artifacts/attachment-display/closing-main-preview.json`; closing
+journeys use labels beginning `closing-`.
+
+All requested development-persona UI cases are covered. Parent-authenticated
+verification remains a production checklist item, not a claimed pass here.
+Slice 2 is not built; its proposed plan is
+`docs/pre-joining-training-matrix-slice-2-plan.md`.
