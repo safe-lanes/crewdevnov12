@@ -315,4 +315,17 @@ describe("secondary attachment response paths", () => {
     expect(JSON.stringify(own.body)).not.toContain("fileData");
     expect(JSON.stringify(own.body)).not.toContain("filePath");
   });
+  it("D&A details and aggregate lists cannot expose attachments outside vessel scope", async () => {
+    const f = cases.find(c => c.name === "drugs-alcohol")!;
+    const path = `/api/v2/drugs-alcohol/test-records/${f.parent}`;
+    expect((await call(path, "other")).status).toBe(403);
+    expect((await call(path, "denied")).status).toBe(403);
+    const own = await call(path, "ship");
+    expect(own.status).toBe(200);
+    expect(JSON.stringify(own.body)).not.toContain("data:application/pdf");
+    expect(JSON.stringify(own.body)).not.toContain("filePath");
+    const other = await call("/api/v2/drugs-alcohol/test-records", "other");
+    expect(other.status).toBe(200);
+    expect(other.body).toEqual([]);
+  });
 });

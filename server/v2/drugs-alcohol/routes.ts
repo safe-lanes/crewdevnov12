@@ -1,10 +1,14 @@
 import { Router } from "express";
 import { drugAlcoholAttachmentAccess } from "../shared/operationalAttachmentAccess";
+import { drugAlcoholAggregateAttachmentAccess } from "../shared/attachmentAggregateAccess";
+import { redactAttachmentJson } from "../shared/attachmentJsonAccess";
 import { testRecordsController, attachmentsController } from "./controllers";
 import { crewController } from "./controllers/crewController";
 
 const router = Router();
 router.use(drugAlcoholAttachmentAccess);
+router.use(redactAttachmentJson);
+router.use(drugAlcoholAggregateAttachmentAccess);
 
 router.get("/stats/violations", testRecordsController.getViolationCounts);
 router.get("/test-records/violations", testRecordsController.getViolationFormSummaries);
