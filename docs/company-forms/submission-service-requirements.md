@@ -239,6 +239,40 @@ labels, use submission endpoints. Wrong-role/wrong-vessel requests are
 permission errors, not missing configuration. Existing unrelated forms and
 released definitions remain unchanged.
 
+## Completed Company Form PDF evidence
+
+PDF copies are generated once from an immutable completion snapshot, not from
+current profiles. Existing System fields still freeze at the first successful
+signature or section submission. Document header facts and branding freeze at
+that same event; signatures retain their own recorded identity, designation,
+date and witnessing. Missing contract rank remains "Not recorded".
+
+The footer prints **Frozen-record SHA-256**, computed from the canonical
+frozen document input. The archive separately records the SHA-256 of the exact
+PDF bytes. These are different fingerprints and must never be labelled as
+interchangeable. A document does not contain its own whole-file hash.
+
+Missing company logo never prevents creation. Use the frozen company name in
+plain text, never the SAIL application logo. The later PDF slice adds
+versioned tenant-logo uploads restricted to Access Control management; each
+document retains the logo version used. No current-data reconstruction is
+allowed for historical forms whose original evidence is insufficient.
+
+Completion records the frozen input and one durable preparation request in
+the same transaction. PDF rendering, external storage and mail transport do
+not run inside that transaction. Preparation failure never reopens a completed
+form or its completed requirement. The evidence contract is subject-neutral;
+Standard Forms remain unchanged.
+
+PDF rendering, logo administration, download, print and handover are a later
+slice, not part of the evidence implementation. Before enabling generation
+for real forms, sample PDFs from a registered fixture must cover logo,
+company-name fallback, every signature type, witnessing, "Not recorded" and
+the footer. The user must approve the layout first.
+
+Email implementation belongs to parent developers. This project supplies
+only the developer handover specification in the later void-copy slice.
+
 ## Existing definition audit before implementation
 
 A read-only development-database audit on 2026-10-02 found seven nondeleted
