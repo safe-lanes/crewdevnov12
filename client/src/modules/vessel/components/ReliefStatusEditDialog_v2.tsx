@@ -151,6 +151,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         assignmentType: string | null;
         signOnDate: string | null;
         contractPeriod: string | null;
+        contractRankUuid: string | null;
+        contractRankLabel: string;
+        plannedJoiningDate: string | null;
+        contractRangeEndMonths: number | null;
     } | null>(null);
     const [assignmentLoading, setAssignmentLoading] = useState(false);
     const [assignmentError, setAssignmentError] = useState<string | null>(null);

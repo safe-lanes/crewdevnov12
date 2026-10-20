@@ -99,6 +99,7 @@ export async function nextMatrixRevision(db: Connection, vesselId: string) {
 export async function writeMatrixEquivalents(vesselId: string, input: {
   links: EquivalentLink[]; expectedDraftUuid: string | null; expectedRevisionUuid: string | null;
 }, actor: string) {
+  if (!actor) throw new MatrixPolicyError(401, "Sign in before changing the matrix.");
   return withMatrixLock(vesselId, async db => {
     const current = await readMatrixEquivalents(vesselId, undefined, db);
     const draftUuid = current.source.kind === "draft" ? current.source.uuid : null;
@@ -126,6 +127,7 @@ export async function writeMatrixEquivalents(vesselId: string, input: {
 
 /** Called inside the revision publisher's vessel-locked transaction. */
 export async function freezeMatrixEquivalents(db: Connection, vesselId: string, revisionUuid: string, actor: string) {
+  if (!actor) throw new MatrixPolicyError(401, "Sign in before publishing the matrix.");
   const draft = await matrixRows<{ uuid: string }>(db, sql`SELECT tmvd_uuid AS uuid
     FROM adm_training_matrix_vessel_drafts_v2 WHERE vessel_id=${vesselId} AND NOT is_deleted
     ORDER BY updated_at DESC,id DESC LIMIT 1`);
@@ -142,4 +144,23 @@ export async function freezeMatrixEquivalents(db: Connection, vesselId: string, 
   const masters = validateLinks(links, courses, requirements);
   await insertLinks(db, vesselId, { revisionUuid }, links, masters, actor);
   await event(db, vesselId, actor, "revision_frozen", { revisionUuid }, [], links);
+}
+
+/** A normal matrix Save Draft must inherit, not silently discard, alternatives. */
+export async function inheritMatrixEquivalents(db: Connection, vesselId: string, draftUuid: string, actor: string) {
+  if (!actor) throw new MatrixPolicyError(401, "Sign in before saving the matrix.");
+  const [latest] = await matrixRows<{ uuid: string }>(db, sql`SELECT tmvr_uuid AS uuid
+    FROM adm_training_matrix_vessel_revisions_v2 WHERE vessel_id=${vesselId} AND NOT is_deleted
+    ORDER BY id DESC LIMIT 1`);
+  const originals = await matrixRows<{ link_uuid: string } & EquivalentLink>(db, sql`SELECT link_uuid,
+    required_course_uuid AS "requiredCourseUuid",accepted_course_uuid AS "acceptedCourseUuid"
+    FROM adm_training_matrix_equivalents_v2 WHERE revision_uuid=${latest?.uuid ?? null}`);
+  for (const link of originals) await db.execute(sql`INSERT INTO adm_training_matrix_equivalents_v2
+    (link_uuid,vessel_uuid,draft_uuid,required_course_uuid,accepted_course_uuid,
+      required_course_label,accepted_course_label,recorded_by)
+    SELECT ${randomUUID()},vessel_uuid,${draftUuid},required_course_uuid,accepted_course_uuid,
+      required_course_label,accepted_course_label,${actor}
+    FROM adm_training_matrix_equivalents_v2 WHERE link_uuid=${link.link_uuid}`);
+  await event(db, vesselId, actor, "draft_saved", { draftUuid }, [], originals.map(
+    ({ requiredCourseUuid, acceptedCourseUuid }) => ({ requiredCourseUuid, acceptedCourseUuid })));
 }
