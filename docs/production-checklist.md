@@ -10,7 +10,7 @@ For the parent developers. These are checks and outstanding work, not a declarat
 
 3. **Office designations.** Supply real job titles for office users, rather than using access-role names as designations, because these values print on signed documents. Reference: `server/v2/company-forms/documentPdfRenderer.ts`.
 
-4. **Authentication bypasses.** Remove `AUTH_BYPASS` and `VITE_AUTH_BYPASS` from Configurations (`.replit`) and any published build/runtime configuration before publishing, since they must not reach the published app. Verify in production mode that login is enforced and unauthenticated requests cannot access protected screens or APIs.
+4. **Authentication bypasses and normal parent sign-in.** Remove `AUTH_BYPASS` and `VITE_AUTH_BYPASS` from Configurations (`.replit`) and any published build/runtime configuration before publishing, since they must not reach the published app. Configure and verify the normal parent login/handoff with an ordinary Office crew-manager account and a vessel account whose parent-provided membership includes a fixture vessel. Verify signed-in attachment display through the screens, own-vessel access and a plain-language other-vessel refusal. Development personas are UI-only evidence, not evidence of authentication or parent tenant binding. Verify in production mode that login is enforced and unauthenticated requests cannot access protected screens or APIs.
 
 5. **Seafarer self-signing.** Provide trusted account-to-seafarer linkage before enabling self-signing; a browser-supplied seafarer identifier is not proof of identity. Reference: `server/v2/company-forms/trustedPrincipalService.ts`; tracked as #353.
 
