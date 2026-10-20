@@ -38,7 +38,8 @@ be later than HEAD. Artifacts and screenshots are outside Git under
 ## Excel compatibility
 
 The optimized generator makes **SAIL_Crew_Import_Template.xlsx**, downloaded
-from **Crew Pool → Import Crew Members → Template**. It is the general crew
+from **Admin → Rank Administration → Vessel → Import Crew → Template**
+(the dialog is titled **Import Crew Members**). It is the general crew
 migration workbook, not **Vessel_Crew_Import_Template.xlsx**.
 
 The original template timing test and its timeout remain unchanged.

@@ -13,5 +13,40 @@
   "versionId": 7458,
   "partUuid": "e1ca7d2c-9c3c-4b45-9b01-8b93e8db626f",
   "released": true,
-  "submissionUuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4"
+  "submissionUuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+  "retainedEvidence": {
+    "frm_section_states": [
+      {
+        "section_state_uuid": "61e97d37-f0d5-4ee9-a79a-f95f91628231",
+        "section_uuid": "a4120000-0000-4000-8000-000000000421"
+      }
+    ],
+    "frm_document_snapshots": [
+      {
+        "snapshot_uuid": "5a5fe4c4-961a-432a-9d11-8aeb6efcbc83",
+        "frozen_record_sha256": "3d5e4af2d793129bbd27c153879fd4c7b4f04fda7c0479129eb72013772d0add"
+      }
+    ],
+    "frm_document_files": [
+      {
+        "file_uuid": "1993b1f4-9f0b-4090-bd1d-aa9f666d9888",
+        "file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb"
+      }
+    ],
+    "frm_document_preparation_requests": [
+      {
+        "request_uuid": "19ea89bf-0866-4067-bbe0-d767ccef2307"
+      }
+    ],
+    "signatures": [
+      {
+        "section_signature_uuid": "0b74bd9a-4139-4876-a957-31a9f136e693",
+        "signature_att_uuid": "84db9770-972f-4525-a6bb-b86913c70b56"
+      },
+      {
+        "section_signature_uuid": "85cca331-f99e-420f-b9a2-6f3a766a3e41",
+        "signature_att_uuid": "63e60884-6e5a-41ef-974a-dc7911e2ecf3"
+      }
+    ]
+  }
 }
