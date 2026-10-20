@@ -539,6 +539,7 @@ export class CompanyFormSubmissionsService {
     const history = await this.readableHistory(input.req, data.submission);
     return {
       submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),
+      documentEvidence: data.documentEvidence,
       states,
       answers,
       formUrl: `${formUrl}/form`,
@@ -860,6 +861,7 @@ export class CompanyFormSubmissionsService {
       states,
       answers,
       systemSnapshotAt: isoDate(snapshotAt),
+      documentEvidence: preview ? undefined : data.documentEvidence,
       systemSnapshotEvent: data.submission.systemSnapshotEvent,
       systemValuesChanged,
       systemValuesComparisonError,

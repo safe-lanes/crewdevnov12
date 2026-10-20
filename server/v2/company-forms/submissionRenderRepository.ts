@@ -17,6 +17,7 @@ import {
   frmCompanySubmissions,
 } from "../../../shared/v2/forms-engine/submissions";
 import { getDb } from "../db";
+import { readDocumentEvidenceStatus } from "./documentEvidenceRepository";
 
 type Executor = any;
 
@@ -246,6 +247,8 @@ export class CompanyFormSubmissionRenderRepository {
       hasSignatureHistory: signatureHistory.length > 0,
       vesselTypes: vesselTypeRows,
       roles: roleRows,
+      documentEvidence: previewRequirement
+        ? undefined : await readDocumentEvidenceStatus(executor, parent.submission),
     };
   }
 

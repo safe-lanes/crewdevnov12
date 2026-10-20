@@ -206,6 +206,7 @@ export type CompanyFormRenderPart = {
 };
 
 export type CompanyFormSubmissionRenderContract = {
+  documentEvidence?: import("./documentEvidence").DocumentEvidenceStatus;
   submission: CompanyFormSubmissionSummary;
   signatureMethodOptions: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>;
   form: {
@@ -241,6 +242,7 @@ export type CompanyFormSubmissionRenderContract = {
 };
 
 export type CompanyFormSubmissionDetail = {
+  documentEvidence?: import("./documentEvidence").DocumentEvidenceStatus;
   submission: CompanyFormSubmissionSummary;
   states: CompanyFormSubmissionSectionState[];
   answers: CompanyFormSubmissionAnswer[];

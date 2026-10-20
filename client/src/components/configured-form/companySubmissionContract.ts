@@ -917,6 +917,19 @@ export function CompanySubmissionRenderer({
     lifecycleForm?.submission.stageKey === "on_board" && lifecycleForm.form.archivedAt &&
       submissionStatus === "voided" && !lifecycleForm.submission.replacedBySubmissionUuid &&
       React.createElement("p", { className: "mb-3 text-sm" }, "No replacement — form retired"),
+    lifecycleForm?.documentEvidence && lifecycleForm.documentEvidence.status !== "not_started" && React.createElement(
+      "div",
+      {
+        role: lifecycleForm.documentEvidence.status === "unavailable" ? "alert" : "status",
+        className: "mb-3 rounded-md border bg-slate-50 p-3 text-sm text-slate-800",
+        "aria-label": "Document evidence",
+      },
+      React.createElement("p", null, lifecycleForm.documentEvidence.message),
+      lifecycleForm.documentEvidence.frozenRecordSha256 && React.createElement(
+        "p", { className: "mt-1 break-all text-xs" },
+        `Frozen-record SHA-256: ${lifecycleForm.documentEvidence.frozenRecordSha256}`,
+      ),
+    ),
     lifecycleForm?.systemValuesChangedNotice && React.createElement(
       "div",
       { role: "status", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import type { FrozenDocumentHeader, FrozenDocumentInput } from "../../../shared/v2/forms-engine/documentEvidence";
+import type { DocumentEvidenceStatus, FrozenDocumentHeader, FrozenDocumentInput } from "../../../shared/v2/forms-engine/documentEvidence";
 import type { CompanyFormSubjectAdapter, SubjectLookupResult } from "./contracts";
 import { tenantConnectionManager } from "../../utils/tenantConnectionManager";
 
@@ -16,6 +16,44 @@ export function canonicalDocumentJson(input: unknown): string {
     return value;
   };
   return JSON.stringify(normalize(JSON.parse(JSON.stringify(input))));
+}
+
+export function evidenceStatus(input: {
+  status: string; systemSnapshotAt?: unknown; header?: unknown;
+  outcome?: string; reasonCode?: string; hash?: string | null;
+}): DocumentEvidenceStatus {
+  if (input.outcome === "UNAVAILABLE" ||
+      (["completed", "voided"].includes(input.status) && !input.outcome)) {
+    return {
+      status: "unavailable", frozenRecordSha256: null,
+      message: input.reasonCode === "SIGNATURE_EVIDENCE_MISSING"
+        ? "A saved signature image is missing from this form's original evidence. Ask the office to review it; a historical copy cannot be reconstructed from current details."
+        : input.reasonCode === "SUBJECT_NAME_NOT_RECORDED"
+          ? "The seafarer's name was not recorded with this form. Ask the office to review the original evidence; current details will not be substituted."
+          : "Original document evidence was not captured for this form. Ask the office to review the historical record; current details will not be substituted.",
+    };
+  }
+  if (input.outcome === "PENDING") return {
+    status: "pending", frozenRecordSha256: input.hash ?? null,
+    message: "The completed form's frozen record is saved. A PDF copy will be available once stored-copy generation is enabled.",
+  };
+  if (input.header) return {
+    status: "frozen", frozenRecordSha256: null,
+    message: "Document header details are frozen. The completed record will be saved when all required sections are submitted.",
+  };
+  return { status: "not_started", frozenRecordSha256: null,
+    message: "Document header details will be recorded with the first signature or section submission." };
+}
+
+export async function readDocumentEvidenceStatus(tx: any, submission: any): Promise<DocumentEvidenceStatus> {
+  const result = await tx.execute(sql`SELECT r.outcome,r.reason_code,s.frozen_record_sha256,
+    EXISTS(SELECT 1 FROM frm_document_headers h WHERE h.submission_uuid=${submission.submissionUuid}) AS header
+    FROM (SELECT 1) anchor LEFT JOIN frm_document_preparation_requests r
+      ON r.submission_uuid=${submission.submissionUuid}
+    LEFT JOIN frm_document_snapshots s ON s.snapshot_uuid=r.snapshot_uuid`);
+  const row = result.rows[0];
+  return evidenceStatus({ status: submission.status, header: row.header,
+    outcome: row.outcome, reasonCode: row.reason_code, hash: row.frozen_record_sha256 });
 }
 
 /** Capture only at the existing first-action boundary, never from a read. */
