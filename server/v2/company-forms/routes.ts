@@ -6,8 +6,17 @@ import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 import { getBranding, saveBranding } from "./documentBranding";
 import { copyStatus, downloadCopy, retryCopy } from "./documentCopyService";
+import { recordHandover } from "./documentHandover";
 
 const router = Router();
+router.post("/:submissionUuid/pdf/handover", async (req, res) => {
+  const body = z.object({ fileSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict().safeParse(req.body);
+  if (!body.success || !z.string().uuid().safeParse(req.params.submissionUuid).success) {
+    res.status(400).json({ message: "Select the current stored copy. Handover identity and time are recorded by the server." }); return;
+  }
+  try { res.status(201).json(await recordHandover(req, req.params.submissionUuid, body.data.fileSha256)); }
+  catch (error) { sendError(res, error); }
+});
 router.get("/:submissionUuid/pdf/status", async (req, res) => {
   if (!z.string().uuid().safeParse(req.params.submissionUuid).success) { res.status(400).json({ message: "Select a valid form." }); return; }
   try { res.json(await copyStatus(req, req.params.submissionUuid)); } catch (error) { sendError(res, error); }

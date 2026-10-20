@@ -56,6 +56,7 @@ export type CompanyFormRenderResponseType =
   | "system_field";
 
 export type CompanyFormSubmissionSummary = {
+  handovers?: { actorName: string; recordedAt: string; fileSha256: string }[];
   origin?: "MANUAL" | "REQUIRED";
   requirementUuid?: string | null;
   submissionUuid: string;

@@ -53,6 +53,7 @@ import {
 import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured } from "./draftSectionPolicy";
 import { sanitizeComparisonHtml } from "../../../shared/v2/forms-engine/contentSanitizer";
 import { companyFormSubmissionLifecycleRepository } from "./submissionLifecycleRepository";
+import { handoversFor } from "./documentHandover";
 import { fileStorageService } from "../shared/fileStorageService";
 import { randomUUID } from "node:crypto";
 import { getDb } from "../db";
@@ -1276,6 +1277,7 @@ export class CompanyFormSubmissionsService {
       rowsBySubject.set(row.subjectRef, subjectRows);
     }
 
+    const handovers = await handoversFor(getDb(), rows.map(row => row.submissionUuid));
     const groups = (await Promise.all(permittedSubjects.map(async (subject) => {
       const classified = classifyOutstanding(adapter, subject, rowsBySubject.get(subject.subjectRef) ?? []);
       return {
@@ -1285,6 +1287,7 @@ export class CompanyFormSubmissionsService {
         ...classified,
         submissions: await Promise.all(classified.submissions.map(async row => ({
           ...row,
+          handovers: handovers.filter(h => h.submissionUuid === row.submissionUuid),
           canEdit: await this.canEditSubmission(adapter, principal, subject.context, row.status, row.stageKey),
           replacementHistory: await this.readableHistory(input.req, row),
         }))),

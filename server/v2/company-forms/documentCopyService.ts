@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { archivedFile, prepareDocument, sampleEligible } from "./documentArchive";
 import { sha256 } from "./documentEvidenceRepository";
 import { CompanyFormConflictError, CompanyFormPermissionError } from "./errors";
+import { handoversFor } from "./documentHandover";
 
 export async function authorizeCopy(req: Request, submissionUuid: string, fill = false) {
   const context = await companyFormSubmissionsService.authorizeSubmission(req, submissionUuid, fill ? "edit_draft" : "read_asset");
@@ -40,7 +41,7 @@ export async function copyStatus(req: Request, submissionUuid: string) {
     frozenRecordSha256: file?.frozen_record_sha256,
     canRetry: mutable && eligible && !file && request?.outcome === "PENDING" && canFill,
     canFillIn: canFill,
-    handovers: [] as any[],
+    handovers: await handoversFor(db, [submissionUuid]),
   };
 }
 export async function downloadCopy(req: Request, submissionUuid: string): Promise<Buffer> {
