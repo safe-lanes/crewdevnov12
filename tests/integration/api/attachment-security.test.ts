@@ -328,4 +328,16 @@ describe("secondary attachment response paths", () => {
     expect(other.status).toBe(200);
     expect(other.body).toEqual([]);
   });
+  it("promotion review details and lists authorize the owning seafarer", async () => {
+    const f = cases.find(c => c.name === "promotion")!;
+    const path = `/api/v2/promotions/reviews/by-uuid/${f.parent}`;
+    expect((await call(path, "other")).status).toBe(403);
+    expect((await call(path, "denied")).status).toBe(403);
+    const own = await call(path, "ship");
+    expect(own.status).toBe(200);
+    expect(JSON.stringify(own.body)).not.toContain("filePath");
+    const other = await call("/api/v2/promotions/reviews", "other");
+    expect(other.status).toBe(200);
+    expect(other.body).toEqual([]);
+  });
 });
