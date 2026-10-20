@@ -1,6 +1,15 @@
 # Pre-joining Training Matrix — proposed slice 2
 
-**Plan only. Not built; awaiting approval.**
+**Approved, including canonical inputs before equivalents.**
+
+## Step 0 — canonical linked-assignment inputs
+
+The exact-linked-assignment endpoint returns only the contract rank captured at
+Deploy and the reliever's own planned joining date and contract range-end months.
+Missing values are explicitly absent; no present-rank/name matching, shared
+planning values or incumbent values may replace them. The popup uses those
+canonical inputs. Regression evidence includes blank reliever values alongside
+populated incumbent values. Commit and report HEAD before equivalents.
 
 ## Goal and boundary
 

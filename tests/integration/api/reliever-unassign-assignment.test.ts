@@ -930,6 +930,33 @@ describe("reliever assignment cancellation on planning unassign", () => {
       .set("Authorization", `Bearer ${token()}`);
     expect(opened.status).toBe(200);
     expect(opened.body.assignUuid).toBe(assignUuid);
+    expect(opened.body).toMatchObject({ contractRankUuid: null, contractRankLabel: "Not recorded",
+      inputAvailability: { contractRank: "absent" } });
+    const capturedRank = u();
+    await db.query(`INSERT INTO crew_assignment_rule_context
+      (assign_uuid,contract_rank_uuid,contract_rank_label,rank_source)
+      VALUES ($1,$2,'Captured Deploy rank','{"method":"test_capture"}')
+      ON CONFLICT(assign_uuid) DO UPDATE SET contract_rank_uuid=excluded.contract_rank_uuid,
+        contract_rank_label=excluded.contract_rank_label`, [assignUuid, capturedRank]);
+    await db.query(`UPDATE crew_members_v2 SET present_rank='Different present rank' WHERE crew_uuid=$1`, [crewUuid]);
+    await db.query(`UPDATE vessel_planning_v2 SET sign_on_date='2030-03-01',
+      contract_end_range_end_months=9,reliever_sign_on_date=NULL,
+      reliever_contract_end_range_end_months=NULL WHERE plan_uuid=$1`, [planUuid]);
+    const canonical = await request(server)
+      .get(`/api/v2/vessel/planning/${planUuid}/reliever-assignment/${assignUuid}`)
+      .set("Authorization", `Bearer ${token()}`);
+    expect(canonical.status).toBe(200);
+    expect(canonical.body).toMatchObject({
+      contractRankUuid: capturedRank, contractRankLabel: "Captured Deploy rank",
+      plannedJoiningDate: null, contractRangeEndMonths: null,
+      inputAvailability: { contractRank: "available", plannedJoiningDate: "absent", contractRangeEndMonths: "absent" },
+    });
+    console.info("Canonical reliever inputs (test database)", JSON.stringify({
+      sql: (await db.query(`SELECT sign_on_date,contract_end_range_end_months,
+        reliever_sign_on_date,reliever_contract_end_range_end_months
+        FROM vessel_planning_v2 WHERE plan_uuid=$1`, [planUuid])).rows[0],
+      api: canonical.body,
+    }));
     const wrongId = await request(server)
       .get(`/api/v2/vessel/planning/${planUuid}/reliever-assignment/${u()}`)
       .set("Authorization", `Bearer ${token()}`);

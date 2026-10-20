@@ -186,12 +186,12 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 relieverCrewName: planningData.relieverCrewName || '',
                 relieverNationality: planningData.relieverNationality || '',
                 signOnStatus: planningData.joiningStatus || '',
-                relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? planningData.contractPeriodMonths,
-                relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? planningData.contractEndRangeStartMonths,
-                relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? planningData.contractEndRangeEndMonths,
+                relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? undefined,
+                relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? undefined,
+                relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? undefined,
                 plannedConfirmedDate: planningData.plannedConfirmedDate || '',
                 travelStartDate: planningData.travelStartDate || '',
-                relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '',
+                relieverSignOnDate: planningData.relieverSignOnDate || '',
                 relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPortUuid || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
@@ -226,8 +226,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/reliever-assignment/${encodeURIComponent(planningData.relieverAssignUuid)}`
             );
             setAssignmentDetails(await response.json());
-        } catch (error) {
-            setAssignmentError(error instanceof Error ? error.message : "Assignment unavailable");
+        } catch {
+            setAssignmentError("The linked assignment could not be opened. Check your access or ask the office to review its link, then try again.");
         } finally {
             setAssignmentLoading(false);
         }
@@ -674,8 +674,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                     <div className="mt-2 space-y-1" data-testid="reliever-assignment-details">
                                         <div className="font-mono text-xs break-all">{assignmentDetails.assignUuid}</div>
                                         <div>Status: {assignmentDetails.assignmentType ?? "Unknown"}</div>
-                                        <div>Joining date: {formatDateOnly(assignmentDetails.signOnDate) || "Not set"}</div>
-                                        <div>Contract: {assignmentDetails.contractPeriod ? `${assignmentDetails.contractPeriod} months` : "Not set"}</div>
+                                        <div>Contract rank: {assignmentDetails.contractRankLabel || "Not recorded"}</div>
+                                        <div>Planned joining date: {formatDateOnly(assignmentDetails.plannedJoiningDate) || "Absent — reliever date not set"}</div>
+                                        <div>Contract range end: {assignmentDetails.contractRangeEndMonths != null ? `${assignmentDetails.contractRangeEndMonths} months` : "Absent — reliever range end not set"}</div>
                                     </div>
                                 )}
                                 {assignmentError && <p className="mt-2 text-red-700" role="alert">{assignmentError}</p>}
