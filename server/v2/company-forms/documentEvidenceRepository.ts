@@ -67,6 +67,8 @@ export async function captureDocumentHeader(input: {
 }) {
   const { tx, submission, adapter, subject, at, event, actorUserId } = input;
   const tenant = await tenantConnectionManager.getCurrentDocumentCompany();
+  const { readBranding } = await import("./documentBranding");
+  const branding = await readBranding(tx);
   const identity = tenant.identity ?? (await tx.execute(sql`
     SELECT 'database:' || oid::text AS identity FROM pg_database WHERE datname = current_database()
   `)).rows[0].identity;
@@ -82,9 +84,12 @@ export async function captureDocumentHeader(input: {
     FROM frm_version_applicability p WHERE p.version_uuid=${submission.formVersionUuid}`);
   const evidence: FrozenDocumentHeader = {
     schemaVersion: 1,
-    tenant: { identity, companyName: tenant.companyName, source: tenant.companyName ? "parent" : "not_recorded" },
-    // Logo administration is deliberately deferred. Explicit absence is frozen.
-    branding: { logoVersionUuid: null, assetSha256: null, mode: "company_name" },
+    tenant: { identity, companyName: tenant.companyName ?? branding?.company_name ?? null,
+      source: tenant.companyName ? "parent" : branding?.company_name ? "tenant_setting" : "not_recorded" },
+    branding: branding?.media_type
+      ? { logoVersionUuid: branding.version_uuid, assetSha256: branding.sha256, mode: "logo",
+        asset: { mediaType: branding.media_type, bytesBase64: branding.bytes_base64, sha256: branding.sha256 } }
+      : { logoVersionUuid: branding?.version_uuid ?? null, assetSha256: null, mode: "company_name" },
     subject: await adapter.documentHeader?.(subject.context, tx) ?? { subjectLabel: null, fields: [] },
     definition: {
       form: pinned.form, version: pinned.version, parts: pinned.parts,

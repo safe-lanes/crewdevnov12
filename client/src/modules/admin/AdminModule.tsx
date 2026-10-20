@@ -116,6 +116,7 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
+import { CompanyDocumentBranding } from "@/components/admin/CompanyDocumentBranding";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
@@ -8474,6 +8475,7 @@ const AdminModuleInner = (): JSX.Element => {
     <div className="flex min-h-0 flex-1 flex-col">
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          {accessControlManagement && <CompanyDocumentBranding />}
           {formsTab === "company" && !showArchivedCompany && (permissions.length === 0 || canCreate("Forms")) && (
             <Button variant="outline" onClick={() => setShowCreateFormDialog(true)}
               className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2" data-testid="button-new-company-form">

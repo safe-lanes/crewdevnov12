@@ -6,8 +6,11 @@ export type DocumentHeaderFacts = {
 
 export type FrozenDocumentHeader = {
   schemaVersion: 1;
-  tenant: { identity: string; companyName: string | null; source: "parent" | "not_recorded" };
-  branding: { logoVersionUuid: string | null; assetSha256: string | null; mode: "company_name" };
+  tenant: { identity: string; companyName: string | null; source: "parent" | "tenant_setting" | "not_recorded" };
+  branding: {
+    logoVersionUuid: string | null; assetSha256: string | null; mode: "company_name" | "logo";
+    asset?: { mediaType: string; bytesBase64: string; sha256: string };
+  };
   subject: DocumentHeaderFacts;
   definition: Record<string, unknown>;
   capturedAt: string;

@@ -4,8 +4,15 @@ import { requirePermission } from "../../middleware/requirePermission";
 import { z } from "zod";
 import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
+import { getBranding, saveBranding } from "./documentBranding";
 
 const router = Router();
+router.get("/settings/branding", async (req, res) => {
+  try { res.json(await getBranding(req)); } catch (error) { sendError(res, error); }
+});
+router.post("/settings/branding", async (req, res) => {
+  try { res.json(await saveBranding(req)); } catch (error) { sendError(res, error); }
+});
 router.get("/outstanding", async (req, res) => {
   try { res.json(await outstandingCompanyForms(req)); }
   catch (error) { sendError(res, error); }
