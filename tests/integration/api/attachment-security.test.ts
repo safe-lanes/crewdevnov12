@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { bootstrapMissingTestTables } from "../../helpers/private-schema";
 import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/attachmentAccess";
 import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
+import { planningAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
 
 // Only the connection provider is substituted. Authorization, signed-JWT
 // verification, role/grant lookup, ownership joins and handlers are real.
@@ -32,6 +33,7 @@ const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
 type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string };
 const cases: Case[] = [];
 const specs = [
+  { name: "planning", owner: planningAttachmentOwner, path: "/api/v2/vessel/planning/attachments/:att/raw" },
   ...Object.entries(crewAttachmentOwners).map(([name, owner]) => ({
     name: `crew/${name}`, owner, path: `/api/v2/crew-pool/${["briefing", "debriefing"].includes(name)
       ? `${name}-attachments/:att/raw` : `${name}/attachments/:att/raw`}`,
@@ -61,7 +63,9 @@ async function insert(table: string, supplied: Record<string, unknown>) {
 }
 async function addCase(name: string, path: string, owner: AttachmentOwner) {
   const parent = randomUUID(), attachment = randomUUID();
-  await insert(owner.parent, { [owner.parentKey]: parent, [owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid"]: crew });
+  await insert(owner.parent, { [owner.parentKey]: parent,
+    [owner.subjectColumn ?? (owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid")]:
+      owner.subject === "vessel" ? vessel : crew });
   await insert(owner.table, { att_uuid: attachment, [owner.key]: parent,
     file_name: "evidence.pdf", file_type: "application/pdf",
     file_data: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0Y=" });
@@ -106,6 +110,7 @@ beforeAll(async () => {
   const { authMiddleware } = await import("@server/middleware/authMiddleware");
   const { default: crewRoutes } = await import("@server/v2/crew-pool/routes");
   const { default: recruitmentRoutes } = await import("@server/routes/v2/recruitment");
+  const { default: vesselRoutes } = await import("@server/v2/vessel/routes");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -119,6 +124,7 @@ beforeAll(async () => {
   app.use(authMiddleware);
   app.use("/api/v2/crew-pool", crewRoutes);
   app.use("/api/v2/recruitment", recruitmentRoutes);
+  app.use("/api/v2/vessel", vesselRoutes);
 }, 120000);
 
 afterAll(async () => {
@@ -150,10 +156,11 @@ describe.each(specs)("attachment $name", ({ name, owner }) => {
   });
   it("refuses deleted attachment, deleted parent, deleted crew and orphaned parent", async () => {
     const f = fixture();
-    for (const [table, key, value] of [[owner.table, "att_uuid", f.attachment],
-      [owner.parent, owner.parentKey, f.parent],
+    const deletionCases = [[owner.table, "att_uuid", f.attachment], [owner.parent, owner.parentKey, f.parent]];
+    if (owner.subject !== "vessel") deletionCases.push(
       [owner.subject === "candidate" ? "recruitment_candidates_v2" : "crew_members_v2",
-        owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid", crew]]) {
+        owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid", crew]);
+    for (const [table, key, value] of deletionCases) {
       await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=true WHERE ${ident(key)}=$1`, [value]);
       try { expect((await call(f.path)).status).toBe(404); }
       finally { await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=false WHERE ${ident(key)}=$1`, [value]); }

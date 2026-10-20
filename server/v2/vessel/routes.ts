@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { planningAttachmentAccess } from "../shared/operationalAttachmentAccess";
 import {
   vesselPlanningController,
   vesselCrewCountController,
@@ -12,6 +13,7 @@ import { importUploadMiddleware, tenantContextGuard } from "./middleware/importU
 import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
+router.use(planningAttachmentAccess);
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
