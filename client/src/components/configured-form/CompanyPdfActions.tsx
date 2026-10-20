@@ -3,17 +3,22 @@ import { AlertCircle, Check, Download, Printer, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { sailDate, sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
 
 type PdfStatus = "disabled" | "pending" | "ready" | "failed" | "unavailable";
 interface HandoverRecord {
   actorName: string;
   recordedAt: string;
   fileSha256: string;
+  copyKind?: "original" | "void_notice";
+  currentNotice?: boolean;
 }
 interface CompanyPdfStatus {
   status: PdfStatus;
   message: string;
+  voided?: boolean;
   fileSha256?: string;
+  originalFileSha256?: string;
   frozenRecordSha256?: string;
   documentReference?: string | null;
   canRetry: boolean;
@@ -30,10 +35,9 @@ const statusMessages: Record<PdfStatus, string> = {
 };
 
 function formatRecordedAt(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Date unavailable"
-    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return value && !Number.isNaN(new Date(value).getTime())
+    ? sailUtcTimestamp(value)
+    : "Date unavailable";
 }
 
 export function CompanyPdfActions({
@@ -48,7 +52,7 @@ export function CompanyPdfActions({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [working, setWorking] = useState<"retry" | "handover" | "download" | "print" | null>(null);
+  const [working, setWorking] = useState<"retry" | "handover" | "void-notice-handover" | "download" | "print" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const statusKey = ["company-form-pdf-status", submissionUuid];
   const statusQuery = useQuery({
@@ -71,7 +75,7 @@ export function CompanyPdfActions({
     onChanged?.();
   };
   const runAction = async (
-    kind: "retry" | "handover",
+    kind: "retry" | "handover" | "void-notice-handover",
     action: () => Promise<void>,
   ) => {
     setWorking(kind);
@@ -141,6 +145,16 @@ export function CompanyPdfActions({
       );
     });
   };
+  const voidNoticeHandover = () => {
+    if (!status?.fileSha256 || !window.confirm("Record that the void notice was handed to the seafarer?")) return;
+    return runAction("void-notice-handover", async () => {
+      await apiRequest(
+        "POST",
+        `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/pdf/void-notice-handover`,
+        { fileSha256: status.fileSha256 },
+      );
+    });
+  };
 
   if (!completed) {
     return <p className="text-sm text-muted-foreground">Complete this form before requesting its PDF.</p>;
@@ -160,24 +174,52 @@ export function CompanyPdfActions({
     );
   }
   const currentStatus = status?.status ?? "unavailable";
+  const isVoided = status?.voided === true;
+  const originalHandover = status?.handovers.find((record) =>
+    (record.copyKind ?? "original") === "original",
+  );
+  const currentNoticeHandover = status?.handovers.find((record) =>
+    record.copyKind === "void_notice" && record.currentNotice === true,
+  );
 
   return (
     <section className="space-y-3" aria-label="Company PDF">
       {status?.documentReference && <p className="text-sm">Document reference: {status.documentReference}</p>}
+      {isVoided && currentStatus === "ready" && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">
+          <p className="font-semibold">Voided form — stored void notice copy</p>
+          {status.originalFileSha256 && (
+            <p className="mt-1 break-all text-xs">Original PDF SHA-256: {status.originalFileSha256}</p>
+          )}
+          {status.fileSha256 && (
+            <p className="mt-1 break-all text-xs">Annotated void notice copy SHA-256: {status.fileSha256}</p>
+          )}
+        </div>
+      )}
       <p className="text-sm text-muted-foreground" role="status">{statusMessages[currentStatus]}</p>
+      {isVoided && originalHandover && !currentNoticeHandover && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
+          A copy was handed to the seafarer on {sailDate(originalHandover.recordedAt)}. The void notice has not been handed over.
+        </p>
+      )}
       {actionError && <p className="text-sm text-destructive" role="alert">{actionError}</p>}
       <div className="flex flex-wrap gap-2">
         {currentStatus === "ready" && (
           <>
             <Button type="button" size="sm" onClick={() => void fetchDocument("download")} disabled={working !== null}>
-              <Download aria-hidden="true" /> {working === "download" ? "Preparing…" : "Download"}
+              <Download aria-hidden="true" /> {working === "download" ? "Preparing…" : isVoided ? "Download void notice copy" : "Download"}
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={() => void fetchDocument("print")} disabled={working !== null}>
-              <Printer aria-hidden="true" /> {working === "print" ? "Opening…" : "Print copy"}
+              <Printer aria-hidden="true" /> {working === "print" ? "Opening…" : isVoided ? "Print void notice copy" : "Print copy"}
             </Button>
-            {canFillIn && status?.canFillIn && (
+            {!isVoided && canFillIn && status?.canFillIn && (
               <Button type="button" size="sm" variant="outline" onClick={() => void handover()} disabled={working !== null}>
                 <Check aria-hidden="true" /> {working === "handover" ? "Recording…" : "Copy handed to seafarer"}
+              </Button>
+            )}
+            {isVoided && canFillIn && status?.canFillIn && (
+              <Button type="button" size="sm" variant="outline" onClick={() => void voidNoticeHandover()} disabled={working !== null}>
+                <Check aria-hidden="true" /> {working === "void-notice-handover" ? "Recording…" : "Void notice handed to seafarer"}
               </Button>
             )}
           </>
@@ -205,7 +247,9 @@ export function CompanyPdfActions({
               <li key={`${record.recordedAt}-${record.fileSha256}-${index}`}>
                 <span className="font-medium text-foreground">{record.actorName || "A user"}</span>
                 {" · "}{formatRecordedAt(record.recordedAt)}
-                <span className="sr-only"> · PDF checksum {record.fileSha256}</span>
+                {" · "}{record.copyKind === "void_notice" ? "Void notice copy" : "Original copy"}
+                {record.copyKind === "void_notice" && record.currentNotice && " · Current notice"}
+                <span className="mt-0.5 block break-all text-xs">File SHA-256: {record.fileSha256}</span>
               </li>
             ))}
           </ul>

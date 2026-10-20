@@ -2,7 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
-import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
+import { sailDate, sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
 import { AssignmentDimensionInspector } from "./AssignmentDimensionInspector";
 import { AssignmentFormRequirements } from "./AssignmentFormRequirements";
 import { assignmentFormRequirementsQuery, stageCheckBlocksActions, stageCheckFor } from "./assignmentFormRequirementsQuery";
@@ -479,9 +479,24 @@ export function CrewCompanyFormsHome({
                                   </span>
                                 </div>
                                 <p className="mt-2 text-sm text-slate-600">{recordedAt}</p>
+                                {submission.status === "voided" && (() => {
+                                  const handovers = submission.handovers ?? [];
+                                  const originalHandover = handovers.find((handover) =>
+                                    (handover.copyKind ?? "original") === "original",
+                                  );
+                                  const currentNoticeHandover = handovers.find((handover) =>
+                                    handover.copyKind === "void_notice" && handover.currentNotice === true,
+                                  );
+                                  return originalHandover && !currentNoticeHandover ? (
+                                    <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
+                                      A copy was handed to the seafarer on {sailDate(originalHandover.recordedAt)}. The void notice has not been handed over.
+                                    </p>
+                                  ) : null;
+                                })()}
                                 {submission.handovers?.map((handover, index) => (
                                   <p key={`${handover.recordedAt}-${index}`} className="mt-2 break-all text-xs text-slate-600">
-                                    Copy handed to seafarer by {handover.actorName} · {new Date(handover.recordedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "medium", timeZone: "UTC" })} UTC
+                                    {handover.copyKind === "void_notice" ? "Void notice copy" : "Original copy"} handed to seafarer by {handover.actorName || "A user"} · {sailUtcTimestamp(handover.recordedAt)}
+                                    {handover.copyKind === "void_notice" && handover.currentNotice ? " · Current notice" : ""}
                                     <br />File SHA-256: {handover.fileSha256}
                                   </p>
                                 ))}

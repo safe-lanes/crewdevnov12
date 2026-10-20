@@ -918,7 +918,7 @@ export function CompanySubmissionRenderer({
     lifecycleForm?.submission.stageKey === "on_board" && lifecycleForm.form.archivedAt &&
       submissionStatus === "voided" && !lifecycleForm.submission.replacedBySubmissionUuid &&
       React.createElement("p", { className: "mb-3 text-sm" }, "No replacement — form retired"),
-    lifecycleForm?.documentEvidence && ["completed", "voided"].includes(submissionStatus ?? "") && React.createElement(
+    lifecycleForm && ["completed", "voided"].includes(submissionStatus ?? "") && React.createElement(
       CompanyPdfActions, {
         submissionUuid: lifecycleForm.submission.submissionUuid,
         completed: true,
