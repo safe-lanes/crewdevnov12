@@ -1,3 +1,74 @@
+# Additional attachment display fixtures — 20-Oct-2026
+
+Authorised specifically to finish slice 1 UI verification. Preparation is
+`node scripts/prepare-attachment-display-fixtures.mjs --prepare`; it reuses
+every UUID and refuses to overwrite a mismatched or deleted record.
+These are retained acceptance fixtures, not automated test data.
+
+The existing own-vessel subject remains crew
+`a4120000-0000-4000-8000-000000000004` (`PDF-LAYOUT-412`) on fixture-only vessel
+`a4120000-0000-4000-8000-000000000001`. No real seafarer, candidate or vessel
+was edited. All new UUIDs below have prefix
+`a4200000-0000-4000-8000-`; the last column is their complete 12-digit suffix.
+
+| Record | Table | UUID suffix |
+| --- | --- | --- |
+| Other-vessel fixture seafarer, TEST-ATTACHMENT-OTHER | crew_members_v2 | 000000000001 |
+| TEST ONLY attachment other vessel | master_vessels | 000000000002 |
+| Its current OnBoard assignment, 20-Oct-2026 | crew_assignments | 000000000003 |
+| Own-vessel document | crew_documents | 000000000010 |
+| Own-vessel document attachment | crew_documents_attachments | 000000000011 |
+| Other-vessel document | crew_documents | 000000000012 |
+| Other-vessel document attachment | crew_documents_attachments | 000000000013 |
+| Own-vessel licence | crew_licenses | 000000000020 |
+| Licence attachment | crew_licenses_attachments | 000000000021 |
+| Own-vessel synthetic medical | crew_pre_joining_medicals | 000000000030 |
+| Medical attachment | crew_medical_attachments | 000000000031 |
+| TEST-ATTACHMENT-SLICE1 candidate | recruitment_candidates_v2 | 000000000040 |
+| Candidate document | cand_documents | 000000000041 |
+| Candidate document attachment | cand_documents_attachments | 000000000042 |
+| Candidate B1 initial screening | screening_b1_initial | 000000000043 |
+| B1 screening attachment | screening_b1_attachments | 000000000044 |
+| Candidate B6 context | screening_b6_interviews | 000000000045 |
+| Interview item | screening_b6_interview_items | 000000000046 |
+| Pinned Interview submission | crew_interview_submissions | 000000000047 |
+| Interview section state | frm_section_states | 000000000048 |
+| Synthetic officer signature | frm_section_signatures | 000000000049 |
+| Signature image | frm_signature_attachments | 000000000050 |
+| Own-vessel fixture Promotion review | promotion_reviews_v2 | 000000000060 |
+| Checklist B1.1 progress | promo_checklist_progress_v2 | 000000000061 |
+| Promotion attachment | promo_checklist_attachments_v2 | 000000000062 |
+| Fixture-vessel periodic D&A draft | da_test_records_v2 | 000000000070 |
+| D&A attachment | da_attachments_v2 | 000000000071 |
+
+Every file reuses the small, explicitly TEST ONLY image from the registered D3
+fixture, stored at private tenant-relative
+`main/attachment-ui-verification/slice1.png`. This is not evidence of a real
+qualification, medical examination, interview signature or test result.
+The Interview pins existing released version
+`07bc12fd-3c5d-4a70-9d8b-eba2456c2ea0`, section
+`712c347f-fdce-470a-b7c1-3f435289c5bb`. Promotion pins existing version
+`aea84765-034c-4b6f-8a45-7f4e10e75962`. No Standard Form definition,
+configuration, draft or released version was created or modified.
+
+## Authorised fixture-only role grant
+
+Role `a4120000-0000-4000-8000-000000000052`, PDF Layout Review Vessel, is used
+only by registered fixture user 412002. Checked against all master users by
+normalised role UUID/name before granting. No real user shares the role.
+
+The normal audited Access Control API enabled **Crew Database View only**.
+Menu UUID: `8e526cf4-d5ab-4e81-9736-bad10a722108`; grant row UUID:
+`7da25780-a041-4966-aee1-7606a3973793`.
+Server audit event 21 records View from absent (`null`) to `true` at
+`20-Oct-2026 15:25:44 UTC`, server-derived master user 1 / Sail Admin.
+Events 22–24 record the new row's Create/Edit/Delete values as `false`.
+Existing Company Forms actions and all other grants/memberships are unchanged.
+
+Crew Pool View remains absent. A browser check after this grant still shows
+the plain module Access Restricted screen; the additional navigation grant
+has not been enabled without approval.
+
 # Attachment display verification — 20-Oct-2026
 
 Reuses registered seafarer `424584fc-dc59-4f85-aa14-30781eb8477e`

@@ -1,7 +1,43 @@
 # Attachment security: main-preview UI verification
 
-20-Oct-2026. **Partial coverage; not an all-families acceptance pass.**
+20-Oct-2026. **All requested Office attachment families are now verified;
+the vessel screen check remains blocked by Crew Pool navigation permission.**
 Slice 2 has not been started.
+
+## Authorised follow-up: missing examples prepared and checked
+
+All 27 new fixture records and the authorised role grant are registered at
+the top of `docs/company-form-regression-fixtures.md`. Preparation reuses
+stable UUIDs, only fixture subjects, the existing fixture-only vessel and one
+additional explicitly fixture-only vessel. Original Standard Forms are unchanged.
+
+As the same limited **Crewing Manager** persona, actual screen clicks now pass:
+
+| Previously missing family | Screen action and evidence |
+| --- | --- |
+| Crew document | Registered own-vessel profile → C → attachment → Preview; `slice1-office-document.json`, raw 200 image/png and visible image popup |
+| Licence | Same profile → D → licence attachment → Preview; `slice1-office-license.json`, raw 200 and visible image popup |
+| Medical | Same profile → F → medical attachment → Preview; `slice1-office-medical.json`, raw 200 and visible image popup |
+| Interview signature | Fixture candidate → Screening → B6 Yes (local display choice) → saved Interview → Interview part; `slice1-office-interview-signature.json`, saved officer image loaded at natural width 850, raw 200 |
+| Promotion | Fixture review → Checklist progress → B1.1 attachment → Preview; `slice1-office-promotion-file.json`, raw 200 and visible image popup |
+| Drug & Alcohol | Fixture periodic test → Attachment(s) → Preview; `slice1-office-da-file.json`, raw 200 and visible image popup |
+| Recruitment document | Fixture candidate → A2 → document attachment → Preview; `slice1-office-recruit-document.json`, raw 200 and visible image popup |
+| Recruitment screening | Same candidate → Screening → B1 Attachment(s) → Preview; `slice1-office-screening-file.json`, raw 200 and visible image popup |
+
+No display regression was found; no application code was changed. The previous
+Briefing, Debriefing, D3, Planning and Company Form passes remain applicable.
+These are UI evidence, not direct API checks.
+
+The fixture vessel role is exclusively used by registered user 412002.
+Crew Database View was enabled through the audited Access Control API, with
+Create/Edit/Delete false; event 21 records the server-derived actor and change.
+The browser was then checked again (`slice1-vessel-own.json`): **Crew Pool
+View is separately required by navigation**, and that screen still gives a
+plain Access Restricted message. No extra grant was silently added. Own-vessel
+opening and ownership-specific other-vessel refusal are therefore still pending
+approval of that additional navigation grant.
+
+The sections below retain the original pre-follow-up inventory and results.
 
 ## Authentication boundary
 
