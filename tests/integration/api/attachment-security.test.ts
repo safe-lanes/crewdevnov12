@@ -8,7 +8,8 @@ import { randomUUID } from "node:crypto";
 import { bootstrapMissingTestTables } from "../../helpers/private-schema";
 import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/attachmentAccess";
 import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
-import { planningAttachmentOwner, drugAlcoholAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
+import { planningAttachmentOwner, drugAlcoholAttachmentOwner, promotionAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
+import { fileStorageService } from "@server/v2/shared/fileStorageService";
 
 // Only the connection provider is substituted. Authorization, signed-JWT
 // verification, role/grant lookup, ownership joins and handlers are real.
@@ -32,7 +33,9 @@ const crew = randomUUID(), vessel = randomUUID(), otherVessel = randomUUID();
 const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
 type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string };
 const cases: Case[] = [];
+const paths: string[] = [];
 const specs = [
+  { name: "promotion", owner: promotionAttachmentOwner, path: "/api/v2/promotions/attachments/:att/raw" },
   { name: "drugs-alcohol", owner: drugAlcoholAttachmentOwner, path: "/api/v2/drugs-alcohol/attachments/:att/raw" },
   { name: "planning", owner: planningAttachmentOwner, path: "/api/v2/vessel/planning/attachments/:att/raw" },
   ...Object.entries(crewAttachmentOwners).map(([name, owner]) => ({
@@ -66,10 +69,20 @@ async function addCase(name: string, path: string, owner: AttachmentOwner) {
   const parent = randomUUID(), attachment = randomUUID();
   await insert(owner.parent, { [owner.parentKey]: parent,
     [owner.subjectColumn ?? (owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid")]:
-      owner.subject === "vessel" ? vessel : crew });
-  await insert(owner.table, { att_uuid: attachment, [owner.key]: parent,
+      owner.subject === "vessel" ? vessel : owner.crewKey ? "ATTACHMENT-CREW" : crew });
+  const via = owner.via ? randomUUID() : parent;
+  if (owner.via) await insert(owner.via.table, { [owner.via.key]: via, [owner.via.parentKey]: parent });
+  const hasData = (await pools[0].query(`SELECT 1 FROM information_schema.columns
+    WHERE table_schema=$1 AND table_name=$2 AND column_name='file_data'`, [schemas[0], owner.table])).rowCount;
+  let content: Record<string, string> = { file_data: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0Y=" };
+  if (!hasData) {
+    const filePath = await fileStorageService.writeAttachment("attachment-security", "evidence.pdf", Buffer.from("%PDF-1.4\n%%EOF"));
+    paths.push(filePath);
+    content = { file_path: filePath };
+  }
+  await insert(owner.table, { att_uuid: attachment, [owner.key]: via,
     file_name: "evidence.pdf", file_type: "application/pdf",
-    file_data: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0Y=" });
+    ...content });
   cases.push({ name, path: path.replace(":att", attachment), owner, attachment, parent });
 }
 function call(path: string, actor: keyof typeof users = "office", domain = "a") {
@@ -85,7 +98,7 @@ beforeAll(async () => {
     await bootstrapMissingTestTables(control, schema);
     pools.push(new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}` }));
   }
-  await insert("crew_members_v2", { crew_uuid: crew, first_name: "Synthetic", family_name: "Attachment Evidence" });
+  await insert("crew_members_v2", { crew_uuid: crew, emp_no: "ATTACHMENT-CREW", first_name: "Synthetic", family_name: "Attachment Evidence" });
   await insert("recruitment_candidates_v2", { rec_can_uuid: crew });
   await insert("master_vessels", { id: 880001, vessel_uuid: vessel, vessel: "TEST ONLY Attachment Own", is_active: true, is_deleted: false });
   await insert("master_vessels", { id: 880002, vessel_uuid: otherVessel, vessel: "TEST ONLY Attachment Other", is_active: true, is_deleted: false });
@@ -113,6 +126,7 @@ beforeAll(async () => {
   const { default: recruitmentRoutes } = await import("@server/routes/v2/recruitment");
   const { default: vesselRoutes } = await import("@server/v2/vessel/routes");
   const { default: drugRoutes } = await import("@server/v2/drugs-alcohol/routes");
+  const { default: promotionRoutes } = await import("@server/v2/promotions/routes");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -128,10 +142,12 @@ beforeAll(async () => {
   app.use("/api/v2/recruitment", recruitmentRoutes);
   app.use("/api/v2/vessel", vesselRoutes);
   app.use("/api/v2/drugs-alcohol", drugRoutes);
+  app.use("/api/v2/promotions", promotionRoutes);
 }, 120000);
 
 afterAll(async () => {
   for (const pool of pools) await pool.end();
+  for (const filePath of paths) await fileStorageService.deleteAttachment(filePath);
   for (const schema of schemas) await control.query(`DROP SCHEMA IF EXISTS ${ident(schema)} CASCADE`);
   await control.end();
   if (prior.secret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = prior.secret;
@@ -168,8 +184,9 @@ describe.each(specs)("attachment $name", ({ name, owner }) => {
       try { expect((await call(f.path)).status).toBe(404); }
       finally { await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=false WHERE ${ident(key)}=$1`, [value]); }
     }
+    const originalKey = (await pools[0].query(`SELECT ${ident(owner.key)} AS key FROM ${ident(owner.table)} WHERE att_uuid=$1`, [f.attachment])).rows[0].key;
     await pools[0].query(`UPDATE ${ident(owner.table)} SET ${ident(owner.key)}=$1 WHERE att_uuid=$2`, [randomUUID(), f.attachment]);
     try { expect((await call(f.path)).status).toBe(404); }
-    finally { await pools[0].query(`UPDATE ${ident(owner.table)} SET ${ident(owner.key)}=$1 WHERE att_uuid=$2`, [f.parent, f.attachment]); }
+    finally { await pools[0].query(`UPDATE ${ident(owner.table)} SET ${ident(owner.key)}=$1 WHERE att_uuid=$2`, [originalKey, f.attachment]); }
   });
 });

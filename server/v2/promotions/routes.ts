@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { promotionAttachmentAccess } from "../shared/operationalAttachmentAccess";
 import { PromotionReviewsController } from "./controllers";
 
 const router = Router();
+router.use(promotionAttachmentAccess);
 const controller = new PromotionReviewsController();
 
 router.get("/criteria-master", (req, res) => controller.getCriteriaMaster(req, res));

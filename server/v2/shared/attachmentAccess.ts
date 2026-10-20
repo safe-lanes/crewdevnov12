@@ -13,6 +13,8 @@ export type AttachmentOwner = {
   menu: string;
   subject?: "candidate" | "vessel";
   subjectColumn?: string;
+  crewKey?: "emp_no";
+  via?: { table: string; key: string; parentKey: string };
 };
 export const crewAttachmentOwners: Record<string, AttachmentOwner> = {
   documents: { table: "crew_documents_attachments", key: "doc_uuid", parent: "crew_documents", parentKey: "doc_uuid", menu: "Crew Database" },
@@ -85,11 +87,21 @@ export async function authorizeAttachment(req: Request, owner: AttachmentOwner, 
     ? (await db.execute(sql`SELECT p.${identifier(column)} AS subject FROM ${identifier(owner.parent)} p
         WHERE p.${identifier(owner.parentKey)}=${uuid} AND NOT coalesce(p.is_deleted,false)`)).rows
     : (await db.execute(sql`SELECT p.${identifier(column)} AS subject FROM ${identifier(owner.table)} a
-        JOIN ${identifier(owner.parent)} p ON p.${identifier(owner.parentKey)}=a.${identifier(owner.key)}
+        ${owner.via ? sql`JOIN ${identifier(owner.via.table)} v ON v.${identifier(owner.via.key)}=a.${identifier(owner.key)}` : sql``}
+        JOIN ${identifier(owner.parent)} p ON p.${identifier(owner.parentKey)}=${owner.via
+          ? sql`v.${identifier(owner.via.parentKey)}` : sql`a.${identifier(owner.key)}`}
         WHERE a.att_uuid=${uuid} AND NOT coalesce(a.is_deleted,false)
-          AND NOT coalesce(p.is_deleted,false)`)).rows;
+          AND NOT coalesce(p.is_deleted,false)
+          ${owner.via ? sql`AND NOT coalesce(v.is_deleted,false)` : sql``}`)).rows;
   if (rows.length !== 1 || !rows[0].subject) throw new AttachmentAccessError(404);
-  await authorizeAttachmentSubject(req, owner.menu, String(rows[0].subject), owner.subject ?? "crew");
+  let subject = String(rows[0].subject);
+  if (owner.crewKey) {
+    const crew = (await db.execute(sql`SELECT crew_uuid FROM crew_members_v2
+      WHERE emp_no=${subject} AND NOT coalesce(is_deleted,false)`)).rows;
+    if (crew.length !== 1) throw new AttachmentAccessError(404);
+    subject = String(crew[0].crew_uuid);
+  }
+  await authorizeAttachmentSubject(req, owner.menu, subject, owner.subject ?? "crew");
 }
 
 export function attachmentGuard(check: (req: Request) => Promise<void>): RequestHandler {

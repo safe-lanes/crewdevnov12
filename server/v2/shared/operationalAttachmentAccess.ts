@@ -25,3 +25,15 @@ export const drugAlcoholAttachmentAccess = attachmentGuard(async req => {
   const list = req.path.match(/^\/attachments\/([^/]+)\/?$/);
   if (list) await authorizeAttachment(req, drugAlcoholAttachmentOwner, list[1], true);
 });
+
+export const promotionAttachmentOwner: AttachmentOwner = {
+  table: "promo_checklist_attachments_v2", key: "checklist_progress_uuid",
+  via: { table: "promo_checklist_progress_v2", key: "cp_uuid", parentKey: "review_uuid" },
+  parent: "promotion_reviews_v2", parentKey: "review_uuid",
+  menu: "Promotions", subjectColumn: "crew_member_id", crewKey: "emp_no",
+};
+export const promotionAttachmentAccess = attachmentGuard(async req => {
+  if (!["GET", "HEAD"].includes(req.method)) return;
+  const raw = req.path.match(/^\/attachments\/([^/]+)\/raw\/?$/);
+  if (raw) await authorizeAttachment(req, promotionAttachmentOwner, raw[1]);
+});
