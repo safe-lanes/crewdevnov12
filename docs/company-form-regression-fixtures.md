@@ -1,3 +1,23 @@
+# Attachment display verification — 20-Oct-2026
+
+Reuses registered seafarer `424584fc-dc59-4f85-aa14-30781eb8477e`
+(`TEST-JOINING-DECL-REGRESSION`), with no new crew, vessel, assignment or form.
+The authorised D3 certificate upload uses the existing master course `SB002`,
+Security Training for Seafarers with Designated Security Duties (STSDSD).
+
+- Training row: `3e5d7984-c17a-4352-b620-b1ff7e25ffbc`.
+- Attachment: `ec7e667e-c4a0-4352-91d4-6b9c5cbcaaed`,
+  `fixture-d3-display.png`. Clearly labelled TEST ONLY, not a qualification.
+- The fixture's previously empty Date of Recruitment was set through the
+  screen to `20-Oct-2026`, the mandatory prerequisite for saving the D3 row.
+- The course, attachment and date were saved through the normal Office UI.
+  Existing frozen forms and PDFs were not regenerated or changed.
+- Subsequent verification must open this existing course/attachment, not add
+  another. No grants, memberships or real seafarer records were changed.
+
+Evidence and outstanding coverage are described in
+`docs/attachment-security-main-preview-verification.md`.
+
 # Void-copy and handover verification registration
 
 Reuses the approved automatic-generation fixture form
