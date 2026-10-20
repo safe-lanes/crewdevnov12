@@ -29,6 +29,7 @@ const API_BASE = process.env.TEST_API_URL!;
 describe('Promotions API Integration', () => {
   let testHierarchyId: number;
   const createdReviewUuids: string[] = [];
+  const attachmentOwnerCrewUuids: string[] = [];
 
   beforeAll(async () => {
     const healthCheck = await fetch(`${API_BASE}/api/health`);
@@ -45,6 +46,9 @@ describe('Promotions API Integration', () => {
         }),
       ),
     );
+    if (attachmentOwnerCrewUuids.length) {
+      await getDb().delete(crewMembersV2).where(inArray(crewMembersV2.crewUuid, attachmentOwnerCrewUuids));
+    }
   });
 
   describe('Task 493 selected Position safeguards', () => {
@@ -79,6 +83,13 @@ describe('Promotions API Integration', () => {
 
     it('saves and reloads selectedPosition while keeping promotionToRank as the base rank', async () => {
       const crewMemberId = `T493-POS-${Date.now()}`;
+      // A review must belong to a real persisted crew identity. An orphaned
+      // review is intentionally unreadable under attachment authorization.
+      const crewUuid = randomUUID();
+      await getDb().insert(crewMembersV2).values({
+        crewUuid, empNo: crewMemberId, firstName: "Synthetic", familyName: "Position Review",
+      });
+      attachmentOwnerCrewUuids.push(crewUuid);
       const createResponse = await fetch(`${API_BASE}/api/v2/promotions/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
