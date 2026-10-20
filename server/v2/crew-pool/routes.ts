@@ -1,4 +1,5 @@
 import { Router, raw } from "express";
+import { crewAttachmentAccess } from "../shared/attachmentAccess";
 import {
   crewMembersController,
   crewAssignmentsController,
@@ -19,6 +20,7 @@ import {
 } from "./controllers";
 
 const router = Router();
+router.use(crewAttachmentAccess);
 
 // ============================================
 // CREW MEMBERS

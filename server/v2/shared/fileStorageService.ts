@@ -206,6 +206,11 @@ function resolveInsidePrivateRoot(filePath: string): string {
 export async function readAttachment(
   filePath: string,
 ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
+  // A database reference must never authorize a file in another tenant's folder.
+  const expectedDomain = resolveDomain().replace(/[^a-zA-Z0-9_\-]/g, "_");
+  if (filePath.replace(/\\/g, "/").split("/")[0] !== expectedDomain) {
+    throw new Error("Attachment tenant mismatch");
+  }
   // Resolve path and ensure it remains strictly inside PRIVATE_ROOT to block path traversal
   const resolvedPath = resolveInsidePrivateRoot(filePath);
 
