@@ -65,7 +65,7 @@ describe("registered sample PDF archive", () => {
         .send({ companyName: "Sample company", dataUrl: PNG, actor: "Forged" })).status).toBe(400);
       const first = await requirementApi.post(url).set("Authorization", auth).send({ companyName: "Sample company", dataUrl: PNG });
       expect(first.status, JSON.stringify(first.body)).toBe(200);
-      expect(first.body.realGenerationEnabled).toBe(false);
+      expect(first.body.realGenerationEnabled).toBe(true);
       expect(first.body.logoDataUrl).toBe(PNG);
       const version = first.body.logoVersionUuid;
       const f = await start(true);
@@ -123,14 +123,12 @@ describe("registered sample PDF archive", () => {
     const snapshot = (await requirementPool.query(
       "SELECT input,frozen_record_sha256 FROM frm_document_snapshots WHERE submission_uuid=$1",
       [f.submission])).rows[0];
-    // It is not a registered sample. The production-default queue leaves it alone.
-    await createDocumentPreparationQueue().drain(getDb(), f.submission);
+    // Simulate the disabled period, then drain using the approved default.
+    await createDocumentPreparationQueue(() => false).drain(getDb(), f.submission);
     expect((await requirementPool.query("SELECT 1 FROM frm_document_files WHERE submission_uuid=$1",
       [f.submission])).rowCount).toBe(0);
-    await expect(prepareDocument(f.submission)).rejects.toThrow("disabled");
     await requirementPool.query("UPDATE crew_members_v2 SET first_name='Changed after signing' WHERE crew_uuid=$1", [f.crewUuid]);
-    // Enable only this isolated test runner, never the application switch.
-    const enabled = createDocumentPreparationQueue(() => true);
+    const enabled = createDocumentPreparationQueue();
     await enabled.drain(getDb(), f.submission);
     const file = (await requirementPool.query(
       "SELECT file_sha256,frozen_record_sha256,pdf_bytes FROM frm_document_files WHERE submission_uuid=$1",
@@ -150,17 +148,13 @@ describe("registered sample PDF archive", () => {
       [f.submission])).rowCount).toBe(1);
   });
 
-  it("keeps real generation disabled; publishes once, serves identical bytes, and records a server-derived handover", async () => {
+  it("publishes non-sample forms once, serves identical bytes, and records a server-derived handover", async () => {
     const f = await start(true);
     await sign(f, "officer");
     await sign(f, "seafarer");
     expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
     const path = `${prefix}/${f.submission}/pdf`;
-    expect((await requirementApi.get(`${path}/status`).set("Authorization", `Bearer ${requirementToken}`)).body.status).toBe("disabled");
-    expect((await post(`${path}/retry`)).status).toBe(409);
-    const vessel = (await requirementPool.query("SELECT vessel_uuid FROM crew_assignments WHERE assign_uuid=$1", [f.assignUuid])).rows[0];
-    await requirementPool.query(`INSERT INTO frm_document_samples(submission_uuid,registration) VALUES($1,$2)`,
-      [f.submission, JSON.stringify({ assignmentUuid: f.assignUuid, formUuid: f.formUuid, vesselUuid: vessel.vessel_uuid })]);
+    expect((await requirementApi.get(`${path}/status`).set("Authorization", `Bearer ${requirementToken}`)).body.status).toBe("pending");
     const results = await Promise.all([post(`${path}/retry`), post(`${path}/retry`)]);
     for (const result of results) expect(result.status, JSON.stringify(result.body)).toBe(200);
     const file = (await requirementPool.query("SELECT * FROM frm_document_files WHERE submission_uuid=$1", [f.submission])).rows[0];

@@ -1,4 +1,12 @@
 /** Subject-neutral, versioned evidence. No live lookup is needed to render it. */
+export function frozenDocumentReference(input: FrozenDocumentInput): string {
+  if (input.header.documentReference) return input.header.documentReference;
+  // Legacy completed records predate short references. Never rewrite their
+  // signed snapshot or look up current data to retrofit one. The full UUID
+  // preserves uniqueness without a truncated-hash collision.
+  return `CF-${input.source.completedAt.slice(0, 4)}-${input.source.recordUuid}`;
+}
+
 export type DocumentHeaderFacts = {
   subjectLabel: string | null;
   fields: { label: string; value: string | null }[];

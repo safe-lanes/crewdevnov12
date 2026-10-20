@@ -4,12 +4,13 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import sanitizeHtml from "sanitize-html";
 import type { FrozenDocumentInput } from "../../../shared/v2/forms-engine/documentEvidence";
+import { frozenDocumentReference } from "../../../shared/v2/forms-engine/documentEvidence";
 import { canonicalDocumentJson, sha256 } from "./documentEvidenceRepository";
 import { companyFormNumbers } from "../../../shared/v2/forms-engine/displayNumbering";
 import { sailDate } from "../../../shared/v2/forms-engine/displayFormatting";
 import { documentHeaderFields } from "./documentHeaderDates";
 
-export const PDF_RENDERER_VERSION = "company-form-pdf-3";
+export const PDF_RENDERER_VERSION = "company-form-pdf-4";
 export const PDF_FONT_VERSION = "DejaVu-Sans-2.37";
 const INK = rgb(.12, .18, .24), BLUE = rgb(.09, .27, .40), MUTED = rgb(.35, .40, .45);
 const plain = (html: string) => sanitizeHtml(html
@@ -44,7 +45,7 @@ export async function renderFrozenDocument(input: FrozenDocumentInput, frozenHas
   const definition = input.header.definition as any;
   const title = recorded(definition.form?.name);
   const version = recorded(definition.version?.versionNo);
-  const reference = recorded(input.header.documentReference);
+  const reference = frozenDocumentReference(input);
   const structures = Object.fromEntries((definition.parts ?? []).map((p: any) => [
     p.formPartUuid, (definition.sections ?? []).filter((s: any) => s.formPartUuid === p.formPartUuid)
       .map((s: any) => ({ ...s, section_uuid: s.sectionUuid,

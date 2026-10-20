@@ -14,16 +14,21 @@ vi.mock("../../server/utils/tenantConnectionManager", () => ({
     runInTenantContext: state.context,
   },
 }));
-import { createDocumentPreparationQueue } from "../../server/v2/company-forms/documentArchive";
+import { createDocumentPreparationQueue, REAL_FORM_PDF_GENERATION_ENABLED } from "../../server/v2/company-forms/documentArchive";
 
 beforeEach(() => { state.multi = false; vi.clearAllMocks(); });
 describe("server-controlled document preparation queue", () => {
-  it("defaults to disabled and retains the registered-sample restriction", async () => {
-    await createDocumentPreparationQueue().drainTenants();
+  it("retains the registered-sample restriction under an explicitly disabled policy", async () => {
+    await createDocumentPreparationQueue(() => false).drainTenants();
     const query = new PgDialect().sqlToQuery(state.execute.mock.calls[0][0]);
     expect(query.params).toContain(false);
     expect(query.sql).toContain("frm_document_samples");
     expect(query.sql).toContain("LIMIT 10");
+  });
+  it("enables the approved default rollout for real forms", async () => {
+    expect(REAL_FORM_PDF_GENERATION_ENABLED).toBe(true);
+    await createDocumentPreparationQueue().drainTenants();
+    expect(new PgDialect().sqlToQuery(state.execute.mock.calls[0][0]).params).toEqual([true]);
   });
   it("selects all pending missing-file requests when enabled, with no sample-only join", async () => {
     await createDocumentPreparationQueue(() => true).drainTenants();
@@ -44,7 +49,7 @@ describe("server-controlled document preparation queue", () => {
   });
   it("does not visit production tenant queues while disabled", async () => {
     state.multi = true;
-    await createDocumentPreparationQueue().drainTenants();
+    await createDocumentPreparationQueue(() => false).drainTenants();
     expect(state.context).not.toHaveBeenCalled();
     expect(state.execute).not.toHaveBeenCalled();
   });

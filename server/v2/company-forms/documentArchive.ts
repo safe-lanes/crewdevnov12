@@ -5,9 +5,9 @@ import { tenantConnectionManager } from "../../utils/tenantConnectionManager";
 import { sha256 } from "./documentEvidenceRepository";
 import { CompanyFormConflictError } from "./errors";
 
-// Deliberately no environment-variable or browser switch to enable real forms.
-// Layout approval must precede a separately reviewed rollout change.
-export const REAL_FORM_PDF_GENERATION_ENABLED = false;
+// Sample layout approved by the user on 20-Oct-2026. Server-owned rollout:
+// no browser or environment-variable switch may override this policy.
+export const REAL_FORM_PDF_GENERATION_ENABLED = true;
 
 export async function sampleEligible(tx: any, submissionUuid: string): Promise<boolean> {
   const row = (await tx.execute(sql`SELECT s.registration, f.subject_ref, f.form_uuid,

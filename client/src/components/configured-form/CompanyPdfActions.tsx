@@ -15,6 +15,7 @@ interface CompanyPdfStatus {
   message: string;
   fileSha256?: string;
   frozenRecordSha256?: string;
+  documentReference?: string | null;
   canRetry: boolean;
   canFillIn: boolean;
   handovers: HandoverRecord[];
@@ -162,6 +163,7 @@ export function CompanyPdfActions({
 
   return (
     <section className="space-y-3" aria-label="Company PDF">
+      {status?.documentReference && <p className="text-sm">Document reference: {status.documentReference}</p>}
       <p className="text-sm text-muted-foreground" role="status">{statusMessages[currentStatus]}</p>
       {actionError && <p className="text-sm text-destructive" role="alert">{actionError}</p>}
       <div className="flex flex-wrap gap-2">

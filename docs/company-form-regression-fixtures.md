@@ -34636,3 +34636,7 @@ Dedicated fixture-only vessel a4120000-0000-4000-8000-000000000001 (TEST ONLY PD
 Additional joining-stage layout fixture assignment: a4120000-0000-4000-8000-000000000003; same registered fixture seafarer and fixture-only vessel, not his protected vessel-02 assignment.
 
 Dedicated synthetic on-board layout seafarer a4120000-0000-4000-8000-000000000004 (TEST ONLY PDF Layout Seafarer, PDF-LAYOUT-412), current assignment a4120000-0000-4000-8000-000000000005. A separate crew member is necessary because the retained seafarer's protected vessel-02 assignment remains current and unchanged. Preparation assignment a4120000-0000-4000-8000-000000000002 is retained, noncurrent and unused by the PDFs. No new fixture is created by normal verification.
+
+### Approved PDF rollout acceptance fixture (20-Oct-2026)
+
+One new form a4120000-0000-4000-8000-000000000411, template part a4120000-0000-4000-8000-000000000481, section a4120000-0000-4000-8000-000000000421; existing crew 424584fc-dc59-4f85-aa14-30781eb8477e, assignment a4120000-0000-4000-8000-000000000003, fixture-only vessel a4120000-0000-4000-8000-000000000001 reused. Full retained descendants are registered in [the rollout manifest](company-forms/pdf-rollout-fixtures.json). No new crew, vessel, assignment or grant. The released rule must be conditional on this fixture-only vessel in every set. It is deliberately NOT a registered PDF sample: ordinary generation must prepare it automatically. Normal reruns reuse this form.

@@ -6,6 +6,7 @@ import { archivedFile, prepareDocument, sampleEligible, REAL_FORM_PDF_GENERATION
 import { sha256 } from "./documentEvidenceRepository";
 import { CompanyFormConflictError, CompanyFormPermissionError } from "./errors";
 import { handoversFor } from "./documentHandover";
+import { frozenDocumentReference } from "../../../shared/v2/forms-engine/documentEvidence";
 
 export async function authorizeCopy(req: Request, submissionUuid: string, fill = false) {
   const context = await companyFormSubmissionsService.authorizeSubmission(req, submissionUuid, fill ? "edit_draft" : "read_asset");
@@ -25,6 +26,7 @@ export async function copyStatus(req: Request, submissionUuid: string) {
   const event = (await db.execute(sql`SELECT outcome FROM frm_document_preparation_events
     WHERE submission_uuid=${submissionUuid} ORDER BY created_at DESC,event_uuid DESC LIMIT 1`)).rows[0];
   const request = (await db.execute(sql`SELECT outcome FROM frm_document_preparation_requests WHERE submission_uuid=${submissionUuid}`)).rows[0];
+  const snapshot = (await db.execute(sql`SELECT input FROM frm_document_snapshots WHERE submission_uuid=${submissionUuid}`)).rows[0];
   const status = !mutable ? "unavailable" : file ? "ready" : !eligible ? "disabled"
     : !request || request.outcome === "UNAVAILABLE" ? "unavailable" : event?.outcome === "FAILED" ? "failed" : "pending";
   const messages = {
@@ -34,10 +36,11 @@ export async function copyStatus(req: Request, submissionUuid: string) {
       ? "This form is voided. An annotated copy is not yet available; ask the office to review the void history."
       : "This form does not have complete frozen evidence for a PDF copy. Ask the office to review it.",
     failed: "The PDF copy could not be prepared. Select Retry or ask the office to review the saved evidence.",
-    pending: "The registered sample PDF is awaiting preparation.",
+    pending: "The PDF copy is awaiting preparation. Reopen this form shortly.",
   };
   return {
     status, message: messages[status], fileSha256: file?.file_sha256,
+    documentReference: snapshot ? frozenDocumentReference(snapshot.input) : null,
     frozenRecordSha256: file?.frozen_record_sha256,
     canRetry: mutable && eligible && !file && request?.outcome === "PENDING" && canFill,
     canFillIn: canFill,

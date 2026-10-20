@@ -7,6 +7,7 @@ import { getDb } from "../db";
 import { accessControlAuthority, authenticatedActor, appendAudit, lockAccessControl } from "../admin/services/accessControlManagement";
 import { CompanyFormPermissionError, CompanyFormValidationError } from "./errors";
 import { sha256 } from "./documentEvidenceRepository";
+import { REAL_FORM_PDF_GENERATION_ENABLED } from "./documentArchive";
 
 async function authorize(req: Request, tx: any) {
   await lockAccessControl(tx);
@@ -37,7 +38,7 @@ export async function getBranding(req: Request) {
     return {
       companyName: latest?.company_name ?? "", logoVersionUuid: latest?.version_uuid ?? null,
       logoDataUrl: latest?.media_type ? `data:${latest.media_type};base64,${latest.bytes_base64}` : null,
-      version: latest ? Number(latest.id) : null, realGenerationEnabled: false,
+      version: latest ? Number(latest.id) : null, realGenerationEnabled: REAL_FORM_PDF_GENERATION_ENABLED,
       history: rows.map(r => ({ version: Number(r.id), companyName: r.company_name,
         createdAt: r.created_at, actorName: r.actor.name ?? `User ${r.actor.masterUserId}` })),
     };
