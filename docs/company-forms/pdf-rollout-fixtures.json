@@ -48,5 +48,51 @@
         "signature_att_uuid": "63e60884-6e5a-41ef-974a-dc7911e2ecf3"
       }
     ]
+  },
+  "voidCopyEvidence": {
+    "copies": [
+      {
+        "file_uuid": "68266e83-784e-48bf-8434-b936e7309c98",
+        "notice_uuid": "5f4dfb54-df7e-4e09-886b-78d68c010e0c",
+        "file_sha256": "c6fac05a7c4e5351322aa260fc02e0d3bace3dc469ddf1d1a36c074f08b67f3a",
+        "original_file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+        "page_count": 2,
+        "revision": 1,
+        "evidence": {
+          "reason": "Registered fixture verification: original copy handed over; issue an immutable void notice.",
+          "voidedAt": "2026-10-20T10:34:42.945",
+          "actorName": "Jeevan Naik",
+          "actorUuid": "24",
+          "designation": "Office User",
+          "submissionUuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+          "originalFileSha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+          "replacementSubmissionUuid": null
+        }
+      }
+    ],
+    "handovers": [
+      {
+        "handover_uuid": "c76c42c2-b041-4476-b9d8-ad751460116e",
+        "submission_uuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+        "file_uuid": "68266e83-784e-48bf-8434-b936e7309c98",
+        "file_sha256": "c6fac05a7c4e5351322aa260fc02e0d3bace3dc469ddf1d1a36c074f08b67f3a",
+        "actor_uuid": "9f83f1c3-a8a7-479d-8fea-a67ccad01435",
+        "actor_name": "Jeevan Naik",
+        "actor_role_uuid": "d57dd06b-7c4f-4152-8902-c8af0422b3e6",
+        "recorded_at": "2026-10-20T10:36:53.026Z"
+      }
+    ],
+    "originalHandovers": [
+      {
+        "handover_uuid": "a5049e5c-2666-475b-9ca4-daa721af7531",
+        "submission_uuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+        "file_uuid": "1993b1f4-9f0b-4090-bd1d-aa9f666d9888",
+        "file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+        "actor_uuid": "9f83f1c3-a8a7-479d-8fea-a67ccad01435",
+        "actor_name": "Jeevan Naik",
+        "actor_role_uuid": "d57dd06b-7c4f-4152-8902-c8af0422b3e6",
+        "recorded_at": "2026-10-20T10:34:42.710Z"
+      }
+    ]
   }
 }

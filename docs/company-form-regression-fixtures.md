@@ -1,3 +1,19 @@
+# Void-copy and handover verification registration
+
+Reuses the approved automatic-generation fixture form
+`a4120000-0000-4000-8000-000000000411`, submission
+`ffd002d7-fe0b-45a0-b429-70d85e7c4fc4` (CF-2026-000005), existing seafarer
+`424584fc-dc59-4f85-aa14-30781eb8477e`, assignment
+`a4120000-0000-4000-8000-000000000003`, and fixture-only vessel
+`a4120000-0000-4000-8000-000000000001`. No new crew, assignment, vessel, form
+or released rule was created. The original PDF and signed snapshot are retained
+unchanged. The original handover, void notice, annotated copy and notice handover
+are registered under `voidCopyEvidence` in
+`docs/company-forms/pdf-rollout-fixtures.json`. Reruns read these exact records.
+The normal audited Access Control API temporarily enabled Void completed for
+the existing preview actor's role to void this fixture, then restored false;
+the two grant changes remain audited. No authority or browser bypass was added.
+
 # PDF final-glance revision registration
 
 The final-glance pair is registered in
