@@ -294,6 +294,15 @@ export class CompanyFormSubmissionsService {
     const adapter = this.contextAdapter(req, submission.subjectType);
     const subject = await adapter.lookup(submission.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+    // History remains readable, but a deleted/orphaned subject must never
+    // authorize attachment bytes (including archived PDF copies).
+    if (action === "read_asset" && submission.subjectType === "crew_assignment") {
+      const owners = (await getDb().execute(sql`SELECT 1 FROM crew_assignments a
+        JOIN crew_members_v2 c ON c.crew_uuid=a.crew_uuid
+        WHERE a.assign_uuid=${submission.subjectRef}
+          AND NOT coalesce(a.is_deleted,false) AND NOT coalesce(c.is_deleted,false)`)).rows;
+      if (owners.length !== 1) throw new CompanyFormNotFoundError("Company Form attachment subject not found.");
+    }
     // Void authority belongs exclusively to the locked actual status below.
     // A pre-lock status check would refuse a valid completed-void request, or
     // authorize an in-progress grant against a concurrently completed record.

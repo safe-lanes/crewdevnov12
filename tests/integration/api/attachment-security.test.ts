@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { bootstrapMissingTestTables } from "../../helpers/private-schema";
 import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/attachmentAccess";
 import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
@@ -32,10 +32,17 @@ const prior = { secret: process.env.JWT_SECRET, bypass: process.env.AUTH_BYPASS 
 let app: express.Express;
 const crew = randomUUID(), vessel = randomUUID(), otherVessel = randomUUID();
 const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
-type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string; state?: string };
+type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string; state?: string; assignment?: string };
 const cases: Case[] = [];
 const paths: string[] = [];
-const specs: { name: string; owner: AttachmentOwner; path: string; standard?: SignatureFamily }[] = [
+const specs: { name: string; owner: AttachmentOwner; path: string; standard?: SignatureFamily; company?: boolean }[] = [
+  ...["asset", "pdf"].map(kind => ({ name: `company/${kind}`, company: true,
+    path: kind === "asset" ? "/api/v2/company-form-submissions/:submission/attachments/:att/raw"
+      : "/api/v2/company-form-submissions/:submission/pdf",
+    owner: { table: kind === "asset" ? "frm_signature_attachments" : "frm_document_files",
+      key: kind === "asset" ? "sig_att_uuid" : "file_uuid",
+      parent: "frm_company_submissions", parentKey: "submission_uuid", menu: "Crew Database" },
+  })),
   ...Object.entries(standardSignatureParents).map(([name, config]) => ({
     name, standard: name as SignatureFamily, path: `/api/v2/${name}/signatures/:att/raw`,
     owner: { table: "frm_signature_attachments", key: "sig_att_uuid", parent: config.table,
@@ -104,6 +111,32 @@ async function addStandardCase(spec: typeof specs[number]) {
     signature_type: "officer", signature_method: "officer" });
   cases.push({ ...spec, path: spec.path.replace(":att", attachment), attachment, parent, state });
 }
+async function addCompanyCase(spec: typeof specs[number]) {
+  const parent = randomUUID(), attachment = randomUUID(), state = randomUUID(), assignment = randomUUID();
+  const form = randomUUID(), version = randomUUID(), part = randomUUID(), section = randomUUID();
+  await insert("crew_assignments", { assign_uuid: assignment, crew_uuid: crew, vessel_uuid: vessel,
+    assignment_type: "OnBoard", is_current: true });
+  await insert("frm_company_submissions", { submission_uuid: parent, subject_type: "crew_assignment",
+    subject_ref: assignment, form_uuid: form, form_version_uuid: version, stage_key: "on_board",
+    status: "completed", completed_at: new Date() });
+  if (spec.name.endsWith("asset")) {
+    await insert("frm_form_parts", { form_part_uuid: part, form_uuid: form, form_version_uuid: version, part_type: "configurable" });
+    await insert("frm_sections", { section_uuid: section, form_part_uuid: part, form_version_uuid: version });
+    await insert("frm_section_states", { section_state_uuid: state, submission_uuid: parent, section_uuid: section });
+    const filePath = await fileStorageService.writeAttachment("attachment-security", "signature.pdf", Buffer.from("%PDF-1.4\n%%EOF"));
+    paths.push(filePath);
+    await insert("frm_signature_attachments", { sig_att_uuid: attachment, file_path: filePath });
+    await insert("frm_section_signatures", { section_state_uuid: state, signature_att_uuid: attachment,
+      signature_type: "officer", signature_method: "officer" });
+  } else {
+    const bytes = Buffer.from("%PDF-1.4\n%%EOF");
+    await insert("frm_document_files", { file_uuid: attachment, submission_uuid: parent, pdf_bytes: bytes,
+      file_sha256: createHash("sha256").update(bytes).digest("hex"), frozen_record_sha256: "a".repeat(64),
+      byte_length: bytes.length, page_count: 1 });
+  }
+  cases.push({ ...spec, path: spec.path.replace(":submission", parent).replace(":att", attachment),
+    attachment, parent, state, assignment });
+}
 function call(path: string, actor: keyof typeof users = "office", domain = "a") {
   const token = jwt.sign({ id: users[actor], userType: actor === "office" || actor === "denied" ? "Office" : "Ship",
     domain, vessels: [vessel] }, secret, { expiresIn: "1h" });
@@ -135,9 +168,11 @@ beforeAll(async () => {
     await insert("master_users", { id, user_type: ship ? "Ship" : "Office", role: `Attachment ${name}`,
       vessel_ids: ship ? (name === "ship" ? "880001" : "880002") : null });
     for (const menu of menus) await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: name !== "denied", is_deleted: false });
+    await insert("adm_resource_action_grants", { role_id: role, resource: "company_forms", action: "view", allowed: name !== "denied" });
   }
   for (const spec of specs) {
-    if (spec.standard) await addStandardCase(spec);
+    if (spec.company) await addCompanyCase(spec);
+    else if (spec.standard) await addStandardCase(spec);
     else await addCase(spec.name, spec.path, spec.owner);
   }
   process.env.JWT_SECRET = secret;
@@ -152,6 +187,7 @@ beforeAll(async () => {
   const { default: briefingRoutes } = await import("@server/v2/briefings/routes");
   const { default: debriefingRoutes } = await import("@server/v2/debriefings/routes");
   const { default: interviewRoutes } = await import("@server/v2/interviews/routes");
+  const { default: companyRoutes } = await import("@server/v2/company-forms/routes");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -171,6 +207,7 @@ beforeAll(async () => {
   app.use("/api/v2/briefings", briefingRoutes);
   app.use("/api/v2/debriefings", debriefingRoutes);
   app.use("/api/v2/interviews", interviewRoutes);
+  app.use("/api/v2/company-form-submissions", companyRoutes);
 }, 120000);
 
 afterAll(async () => {
@@ -182,7 +219,7 @@ afterAll(async () => {
   if (prior.bypass === undefined) delete process.env.AUTH_BYPASS; else process.env.AUTH_BYPASS = prior.bypass;
 });
 
-describe.each(specs)("attachment $name", ({ name, owner, standard }) => {
+describe.each(specs)("attachment $name", ({ name, owner, standard, company }) => {
   const fixture = () => cases.find(c => c.name === name)!;
   it("allows authenticated office and own-vessel users to read actual bytes", async () => {
     for (const actor of (owner.subject === "candidate" ? ["office"] : ["office", "ship"]) as ("office" | "ship")[]) {
@@ -203,6 +240,23 @@ describe.each(specs)("attachment $name", ({ name, owner, standard }) => {
   });
   it("refuses deleted attachment, deleted parent, deleted crew and orphaned parent", async () => {
     const f = fixture();
+    if (company) {
+      const deletions = [
+        ["frm_company_submissions", "submission_uuid", f.parent],
+        ["crew_assignments", "assign_uuid", f.assignment!],
+        ["crew_members_v2", "crew_uuid", crew],
+      ];
+      if (name.endsWith("asset")) deletions.push(["frm_signature_attachments", "sig_att_uuid", f.attachment]);
+      for (const [table, key, value] of deletions) {
+        await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=true WHERE ${ident(key)}=$1`, [value]);
+        try { expect((await call(f.path)).status).toBe(404); }
+        finally { await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=false WHERE ${ident(key)}=$1`, [value]); }
+      }
+      await pools[0].query("UPDATE frm_company_submissions SET subject_ref=$1 WHERE submission_uuid=$2", [randomUUID(), f.parent]);
+      try { expect((await call(f.path)).status).toBe(404); }
+      finally { await pools[0].query("UPDATE frm_company_submissions SET subject_ref=$1 WHERE submission_uuid=$2", [f.assignment, f.parent]); }
+      return;
+    }
     const deletionCases = [[owner.table, standard ? "sig_att_uuid" : "att_uuid", f.attachment], [owner.parent, owner.parentKey, f.parent]];
     if (standard) deletionCases.push(["frm_section_states", "section_state_uuid", f.state!],
       ["frm_section_signatures", "signature_att_uuid", f.attachment]);
