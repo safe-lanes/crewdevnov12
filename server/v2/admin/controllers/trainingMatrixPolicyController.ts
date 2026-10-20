@@ -10,6 +10,7 @@ const writeSchema = z.object({
   links: z.array(linkSchema).max(2000),
   expectedDraftUuid: z.string().uuid().nullable(),
   expectedRevisionUuid: z.string().uuid().nullable(),
+  draftData: z.object({ applicableTrainingIds: z.array(z.number().int().positive()).max(2000) }).strict().optional(),
 }).strict();
 const matrixData = z.union([z.string(), z.array(z.any()), z.record(z.any())]);
 const drafts = z.object({ vesselId: z.string().min(1), revision: z.string().optional(), draftData: matrixData }).strict();

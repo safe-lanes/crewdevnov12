@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePermissions } from '@/contexts/PermissionsContext';
+import TrainingEquivalentsEditor from './TrainingEquivalentsEditor';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
@@ -833,6 +834,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
   const [tmFlexDate, setTmFlexDate] = useState("");
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
+  const [tmEquivalentsDirty, setTmEquivalentsDirty] = useState(false);
   const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
 
   // Training Matrix Vessel revision queries - use queryFn with explicit URL
@@ -989,6 +991,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
       // Invalidate draft query to refresh the data
       queryClient.invalidateQueries({ queryKey: ['tm-vessel-draft', variables.vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
     },
     onError: (error: any) => {
       console.error('Failed to save training matrix draft:', error);
@@ -1011,6 +1014,7 @@ const AdminModuleInner = (): JSX.Element => {
         description: "Training matrix revision submitted successfully.",
         duration: 3000,
       });
+      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
       setTmRevisionMode(false);
       // Invalidate all training matrix queries for this vessel using predicate for robust matching
       queryClient.invalidateQueries({
@@ -6516,6 +6520,7 @@ const AdminModuleInner = (): JSX.Element => {
                       role="combobox"
                       className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                       data-testid="tm-vessel-select"
+                      disabled={tmEquivalentsDirty}
                     >
                       {tmSelectedVessels.length === 0 
                         ? "Select Vessel or Group" 
@@ -6658,6 +6663,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
                         data-testid="tm-cancel-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Cancel
                       </Button>
@@ -6671,6 +6677,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-save-draft-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Save Draft
                       </Button>
@@ -6697,6 +6704,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#00AF7B] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-submit-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Submit
                       </Button>
@@ -6896,6 +6904,14 @@ const AdminModuleInner = (): JSX.Element => {
                 </Table>
               </div>
             </div>
+            {tmSelectedVessels.length === 1 && (
+              <TrainingEquivalentsEditor
+                vesselId={tmSelectedVessels[0]}
+                editable={tmRevisionMode && canEdit("Admin Training Matrix")}
+                draftData={{ applicableTrainingIds: Array.from(tmApplicableTrainings.get(tmSelectedVessels[0]) || new Set<number>()) }}
+                onDirtyChange={setTmEquivalentsDirty}
+              />
+            )}
           </div>
         )}
       </div>

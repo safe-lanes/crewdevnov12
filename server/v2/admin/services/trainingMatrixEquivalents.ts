@@ -98,6 +98,7 @@ export async function nextMatrixRevision(db: Connection, vesselId: string) {
 }
 export async function writeMatrixEquivalents(vesselId: string, input: {
   links: EquivalentLink[]; expectedDraftUuid: string | null; expectedRevisionUuid: string | null;
+  draftData?: { applicableTrainingIds: number[] };
 }, actor: string) {
   if (!actor) throw new MatrixPolicyError(401, "Sign in before changing the matrix.");
   return withMatrixLock(vesselId, async db => {
@@ -120,6 +121,8 @@ export async function writeMatrixEquivalents(vesselId: string, input: {
     await insertLinks(db, vesselId, { draftUuid: target }, input.links, masters, actor);
     await db.execute(sql`UPDATE adm_training_matrix_vessel_drafts_v2 SET updated_at=now(),
       updated_by_uuid=${actor} WHERE tmvd_uuid=${target}`);
+    if (input.draftData) await db.execute(sql`UPDATE adm_training_matrix_vessel_drafts_v2
+      SET draft_data=${JSON.stringify(input.draftData)} WHERE tmvd_uuid=${target}`);
     await event(db, vesselId, actor, "draft_saved", { draftUuid: target }, current.links, input.links);
     return readMatrixEquivalents(vesselId, undefined, db);
   });
