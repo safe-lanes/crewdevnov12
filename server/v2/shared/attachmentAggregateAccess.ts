@@ -4,7 +4,7 @@ import { attachmentGuard, AttachmentAccessError, authorizeAttachmentMenu, author
 import { scopeAttachmentJson } from "./attachmentJsonAccess";
 
 export const crewAggregateAttachmentAccess = attachmentGuard(async req => {
-  if (!["GET", "HEAD"].includes(req.method) || !/^\/crew(?:\/enriched|\/details)?\/?$/.test(req.path)) return;
+  if (!["GET", "HEAD"].includes(req.method) || !/^\/crew(?:\/enriched|\/details)?\/?$/i.test(req.path)) return;
   const { ship } = await authorizeAttachmentMenu(req, "Crew Database");
   if (ship) scopeAttachmentJson(req.res!, row => authorizeAttachmentSubject(req, "Crew Database", row.crewUuid));
 });
@@ -16,15 +16,15 @@ export const recruitmentAggregateAttachmentAccess = attachmentGuard(async req =>
 });
 
 export const drugAlcoholAggregateAttachmentAccess = attachmentGuard(async req => {
-  if (!["GET", "HEAD"].includes(req.method) || !/^\/test-records(?:\/|$)/.test(req.path)) return;
+  if (!["GET", "HEAD"].includes(req.method) || !/^\/test-records(?:\/|$)/i.test(req.path)) return;
   // Violation statistics contain no file bytes or attachment metadata.
-  if (req.path === "/test-records/violations") return;
+  if (req.path.toLowerCase() === "/test-records/violations") return;
   await authorizeAttachmentMenu(req, "Drugs Alcohol");
   scopeAttachmentJson(req.res!, row => authorizeAttachmentSubject(req, "Drugs Alcohol", row.vesselId, "vessel"));
 });
 
 export const promotionAggregateAttachmentAccess = attachmentGuard(async req => {
-  if (!["GET", "HEAD"].includes(req.method) || !/^\/reviews(?:\/|$)/.test(req.path)) return;
+  if (!["GET", "HEAD"].includes(req.method) || !/^\/reviews(?:\/|$)/i.test(req.path)) return;
   await authorizeAttachmentMenu(req, "Promotions");
   scopeAttachmentJson(req.res!, async row => {
     if (!row?.crewMemberId) throw new AttachmentAccessError(404);

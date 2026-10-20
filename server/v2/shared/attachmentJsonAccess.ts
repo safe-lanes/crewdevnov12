@@ -12,7 +12,7 @@ export function redactAttachmentData(value: any): any {
   return Object.fromEntries(Object.entries(value).flatMap(([key, item]) => {
     if (["fileData", "file_data", "filePath", "file_path"].includes(key)) return [];
     if (key === "data" && typeof item === "string" && item.startsWith("data:")) return [];
-    if (["attachmentFile", "deprecatedAttachmentsData"].includes(key) && typeof item === "string") {
+    if (["attachmentFile", "deprecatedAttachmentsData", "checklistProgressData"].includes(key) && typeof item === "string") {
       try { return [[key, JSON.stringify(redactAttachmentData(JSON.parse(item)))]]; }
       catch { return [[key, null]]; }
     }

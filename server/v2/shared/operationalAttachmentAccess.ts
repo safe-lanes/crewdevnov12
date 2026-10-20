@@ -7,10 +7,10 @@ export const planningAttachmentOwner: AttachmentOwner = {
 };
 export const planningAttachmentAccess = attachmentGuard(async req => {
   if (!["GET", "HEAD"].includes(req.method)) return;
-  const raw = req.path.match(/^\/planning\/attachments\/([^/]+)\/raw\/?$/);
-  if (raw) { await authorizeAttachment(req, planningAttachmentOwner, raw[1]); return; }
-  const list = req.path.match(/^\/planning\/([^/]+)\/attachments\/?$/);
-  if (list) await authorizeAttachment(req, planningAttachmentOwner, list[1], true);
+  const raw = req.path.match(/^\/planning\/attachments\/([^/]+)\/raw\/?$/i);
+  if (raw) { await authorizeAttachment(req, planningAttachmentOwner, decodeURIComponent(raw[1])); return; }
+  const list = req.path.match(/^\/planning\/([^/]+)\/attachments\/?$/i);
+  if (list) await authorizeAttachment(req, planningAttachmentOwner, decodeURIComponent(list[1]), true);
 });
 
 export const drugAlcoholAttachmentOwner: AttachmentOwner = {
@@ -20,10 +20,10 @@ export const drugAlcoholAttachmentOwner: AttachmentOwner = {
 };
 export const drugAlcoholAttachmentAccess = attachmentGuard(async req => {
   if (!["GET", "HEAD"].includes(req.method)) return;
-  const raw = req.path.match(/^\/attachments\/([^/]+)\/raw\/?$/);
-  if (raw) { await authorizeAttachment(req, drugAlcoholAttachmentOwner, raw[1]); return; }
-  const list = req.path.match(/^\/attachments\/([^/]+)\/?$/);
-  if (list) await authorizeAttachment(req, drugAlcoholAttachmentOwner, list[1], true);
+  const raw = req.path.match(/^\/attachments\/([^/]+)\/raw\/?$/i);
+  if (raw) { await authorizeAttachment(req, drugAlcoholAttachmentOwner, decodeURIComponent(raw[1])); return; }
+  const list = req.path.match(/^\/attachments\/([^/]+)\/?$/i);
+  if (list) await authorizeAttachment(req, drugAlcoholAttachmentOwner, decodeURIComponent(list[1]), true);
 });
 
 export const promotionAttachmentOwner: AttachmentOwner = {
@@ -34,6 +34,6 @@ export const promotionAttachmentOwner: AttachmentOwner = {
 };
 export const promotionAttachmentAccess = attachmentGuard(async req => {
   if (!["GET", "HEAD"].includes(req.method)) return;
-  const raw = req.path.match(/^\/attachments\/([^/]+)\/raw\/?$/);
-  if (raw) await authorizeAttachment(req, promotionAttachmentOwner, raw[1]);
+  const raw = req.path.match(/^\/attachments\/([^/]+)\/raw\/?$/i);
+  if (raw) await authorizeAttachment(req, promotionAttachmentOwner, decodeURIComponent(raw[1]));
 });

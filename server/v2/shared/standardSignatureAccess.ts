@@ -41,16 +41,16 @@ export async function authorizeStandardSignature(req: Request, family: Signature
 export function standardSignatureAccess(family: SignatureFamily) {
   return attachmentGuard(async req => {
     if (!["GET", "HEAD"].includes(req.method)) return;
-    const raw = req.path.match(/^\/signatures\/([^/]+)\/raw\/?$/);
-    if (raw) { await authorizeStandardSignature(req, family, raw[1]); return; }
+    const raw = req.path.match(/^\/signatures\/([^/]+)\/raw\/?$/i);
+    if (raw) { await authorizeStandardSignature(req, family, decodeURIComponent(raw[1])); return; }
     // Detail responses also expose signature attachment metadata.
-    const detail = req.path.match(/^\/submissions\/([^/]+)\/?$/);
+    const detail = req.path.match(/^\/submissions\/([^/]+)\/?$/i);
     if (detail) {
       const config = standardSignatureParents[family];
       const rows = (await getDb().execute(sql`SELECT
         ${sql.raw(config.candidate ? "rec_can_uuid" : "crew_uuid")} AS subject,
         ${family === "briefings" ? sql`vessel_uuid` : sql`NULL`} AS vessel_uuid
-        FROM ${sql.raw(config.table)} WHERE ${sql.raw(config.key)}=${detail[1]}
+        FROM ${sql.raw(config.table)} WHERE ${sql.raw(config.key)}=${decodeURIComponent(detail[1])}
         AND NOT coalesce(is_deleted,false)`)).rows;
       if (rows.length !== 1) throw new AttachmentAccessError(404);
       await authorizeParent(req, family, rows[0]);

@@ -21,18 +21,18 @@ export const recruitmentAttachmentOwners: Record<string, AttachmentOwner> = {
 };
 export const recruitmentAttachmentAccess = attachmentGuard(async req => {
   if (!["GET", "HEAD"].includes(req.method)) return;
-  const raw = req.path.match(/^\/(.+)\/attachments\/([^/]+)\/raw\/?$/);
-  if (raw && recruitmentAttachmentOwners[raw[1]]) {
-    await authorizeAttachment(req, recruitmentAttachmentOwners[raw[1]], raw[2]);
+  const raw = req.path.match(/^\/(.+)\/attachments\/([^/]+)\/raw\/?$/i);
+  if (raw && recruitmentAttachmentOwners[raw[1].toLowerCase()]) {
+    await authorizeAttachment(req, recruitmentAttachmentOwners[raw[1].toLowerCase()], decodeURIComponent(raw[2]));
     return;
   }
-  const attachments = req.path.match(/^\/(.+)\/([^/]+)\/attachments\/?$/);
-  if (attachments && recruitmentAttachmentOwners[attachments[1]]) {
-    await authorizeAttachment(req, recruitmentAttachmentOwners[attachments[1]], attachments[2], true);
+  const attachments = req.path.match(/^\/(.+)\/([^/]+)\/attachments\/?$/i);
+  if (attachments && recruitmentAttachmentOwners[attachments[1].toLowerCase()]) {
+    await authorizeAttachment(req, recruitmentAttachmentOwners[attachments[1].toLowerCase()], decodeURIComponent(attachments[2]), true);
     return;
   }
-  const candidateList = req.path.match(/^\/candidates\/([^/]+)\/(documents|visas|education|licenses|training|sea-service|additional-info)(?:\/|$)/);
-  if (candidateList) await authorizeAttachmentSubject(req, "Recruitment", candidateList[1], "candidate");
-  const screening = req.path.match(/^\/(screening\/b[1-6]|screening\/b8)\/([^/]+)\/?$/);
-  if (screening) await authorizeAttachment(req, recruitmentAttachmentOwners[screening[1]], screening[2], true);
+  const candidateList = req.path.match(/^\/candidates\/([^/]+)\/(documents|visas|education|licenses|training|sea-service|additional-info)(?:\/|$)/i);
+  if (candidateList) await authorizeAttachmentSubject(req, "Recruitment", decodeURIComponent(candidateList[1]), "candidate");
+  const screening = req.path.match(/^\/(screening\/b[1-6]|screening\/b8)\/([^/]+)\/?$/i);
+  if (screening) await authorizeAttachment(req, recruitmentAttachmentOwners[screening[1].toLowerCase()], decodeURIComponent(screening[2]), true);
 });

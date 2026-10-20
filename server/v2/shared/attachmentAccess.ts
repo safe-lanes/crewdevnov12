@@ -132,20 +132,20 @@ export function attachmentGuard(check: (req: Request) => Promise<void>): Request
 /** Also protects collection responses which contain legacy inline file data. */
 export const crewAttachmentAccess = attachmentGuard(async req => {
   if (!["GET", "HEAD"].includes(req.method)) return;
-  const raw = req.path.match(/^\/([^/]+)\/attachments\/([^/]+)\/raw\/?$/);
-  const legacy = req.path.match(/^\/(briefing|debriefing)-attachments\/([^/]+)\/raw\/?$/);
+  const raw = req.path.match(/^\/([^/]+)\/attachments\/([^/]+)\/raw\/?$/i);
+  const legacy = req.path.match(/^\/(briefing|debriefing)-attachments\/([^/]+)\/raw\/?$/i);
   const match = raw ?? legacy;
-  if (match && crewAttachmentOwners[match[1]]) {
-    await authorizeAttachment(req, crewAttachmentOwners[match[1]], match[2]);
+  if (match && crewAttachmentOwners[match[1].toLowerCase()]) {
+    await authorizeAttachment(req, crewAttachmentOwners[match[1].toLowerCase()], decodeURIComponent(match[2]));
     return;
   }
-  const list = req.path.match(/^\/crew\/([^/]+)(?:\/|$)/);
-  if (list && !["enriched", "details", "by-emp-no"].includes(list[1]))
-    await authorizeAttachmentSubject(req, "Crew Database", list[1]);
-  const employee = req.path.match(/^\/crew\/by-emp-no\/([^/]+)(?:\/|$)/);
+  const list = req.path.match(/^\/crew\/([^/]+)(?:\/|$)/i);
+  if (list && !["enriched", "details", "by-emp-no"].includes(list[1].toLowerCase()))
+    await authorizeAttachmentSubject(req, "Crew Database", decodeURIComponent(list[1]));
+  const employee = req.path.match(/^\/crew\/by-emp-no\/([^/]+)(?:\/|$)/i);
   if (employee) {
     const rows = (await getDb().execute(sql`SELECT crew_uuid FROM crew_members_v2
-      WHERE emp_no=${employee[1]} AND NOT coalesce(is_deleted,false)`)).rows;
+      WHERE emp_no=${decodeURIComponent(employee[1])} AND NOT coalesce(is_deleted,false)`)).rows;
     if (rows.length !== 1) throw new AttachmentAccessError(404);
     await authorizeAttachmentSubject(req, "Crew Database", String(rows[0].crew_uuid));
   }

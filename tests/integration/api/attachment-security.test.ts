@@ -31,7 +31,7 @@ const pools: Pool[] = [];
 const prior = { secret: process.env.JWT_SECRET, bypass: process.env.AUTH_BYPASS };
 let app: express.Express;
 const crew = randomUUID(), vessel = randomUUID(), otherVessel = randomUUID();
-const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
+const users = { office: 880001, ship: 880002, other: 880003, denied: 880004, shipDenied: 880005 };
 type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string; state?: string; assignment?: string };
 const cases: Case[] = [];
 const paths: string[] = [];
@@ -163,12 +163,13 @@ beforeAll(async () => {
     menus.push(menu);
   }
   for (const [name, id] of Object.entries(users)) {
-    const role = randomUUID(), ship = name === "ship" || name === "other";
+    const role = randomUUID(), ship = ["ship", "other", "shipDenied"].includes(name);
     await insert("adm_rolemaster_ac", { ruid: role, assigned_role: `Attachment ${name}`, roletype: ship ? "Ship" : "Office", is_active: true, is_deleted: false });
     await insert("master_users", { id, user_type: ship ? "Ship" : "Office", role: `Attachment ${name}`,
-      vessel_ids: ship ? (name === "ship" ? "880001" : "880002") : null });
-    for (const menu of menus) await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: name !== "denied", is_deleted: false });
-    await insert("adm_resource_action_grants", { role_id: role, resource: "company_forms", action: "view", allowed: name !== "denied" });
+      vessel_ids: ship ? (name === "other" ? "880002" : "880001") : null });
+    const allowed = !["denied", "shipDenied"].includes(name);
+    for (const menu of menus) await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: allowed, is_deleted: false });
+    await insert("adm_resource_action_grants", { role_id: role, resource: "company_forms", action: "view", allowed });
   }
   for (const spec of specs) {
     if (spec.company) await addCompanyCase(spec);
@@ -234,6 +235,11 @@ describe.each(specs)("attachment $name", ({ name, owner, standard, company }) =>
     expect((await call(fixture().path, "other")).status).toBe(403);
     expect((await call(fixture().path, "office", "b")).status).toBeGreaterThanOrEqual(400);
     expect((await call(fixture().path, "denied")).status).toBe(403);
+    expect((await call(fixture().path, "shipDenied")).status).toBe(403);
+    const alias = fixture().path.replace(/\/(attachments|signatures|training|documents|medical|planning)\//g,
+      segment => segment.toUpperCase());
+    expect((await call(alias, "other")).status).toBeGreaterThanOrEqual(400);
+    expect((await call(alias, "denied")).status).toBeGreaterThanOrEqual(400);
     expect((await request(app).get(fixture().path)).status).toBe(401);
     const forged = jwt.sign({ id: users.office, domain: "a", userType: "Office" }, "wrong-key");
     expect((await request(app).get(fixture().path).set("Authorization", `Bearer ${forged}`)).status).toBe(401);
