@@ -6741,7 +6741,8 @@ const AdminModuleInner = (): JSX.Element => {
             )}
 
             {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <div className="flex-1 min-h-0 overflow-y-auto pb-4" data-testid="training-vessel-scroll">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[50vh] min-h-[250px] flex flex-col overflow-hidden">
               <div className="flex-1 overflow-auto relative">
                 <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
                   <TableHeader className="sticky top-0 z-50">
@@ -6912,6 +6913,7 @@ const AdminModuleInner = (): JSX.Element => {
                 onDirtyChange={setTmEquivalentsDirty}
               />
             )}
+            </div>
           </div>
         )}
       </div>

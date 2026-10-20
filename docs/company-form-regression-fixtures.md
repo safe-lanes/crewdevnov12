@@ -34770,3 +34770,27 @@ Dedicated synthetic on-board layout seafarer a4120000-0000-4000-8000-00000000000
 ### Approved PDF rollout acceptance fixture (20-Oct-2026)
 
 One new form a4120000-0000-4000-8000-000000000411, template part a4120000-0000-4000-8000-000000000481, section a4120000-0000-4000-8000-000000000421; existing crew 424584fc-dc59-4f85-aa14-30781eb8477e, assignment a4120000-0000-4000-8000-000000000003, fixture-only vessel a4120000-0000-4000-8000-000000000001 reused. Full retained descendants are registered in [the rollout manifest](company-forms/pdf-rollout-fixtures.json). No new crew, vessel, assignment or grant. The released rule must be conditional on this fixture-only vessel in every set. It is deliberately NOT a registered PDF sample: ordinary generation must prepare it automatically. Normal reruns reuse this form.
+
+### Training Matrix equivalents acceptance (20-Oct-2026)
+
+Reuses **TEST ONLY PDF layout review**, vessel
+`a4120000-0000-4000-8000-000000000001`. The deliberately synthetic course
+alternatives apply only to this fixture vessel, not real compliance policy.
+Full identifiers are in [the Training Matrix fixture manifest](training-matrix-slice-2-fixtures.json).
+
+- Retain revision **R0**, `9f2ae8cd-fcd2-4569-a2b1-b3b8632bd95c`, with A accepting B
+  and B accepting C. A accepting C is deliberately absent from this revision.
+- Retain working draft **R1**, `ae8f8713-8c6f-47cb-ab64-b96d03afffa3`, with A accepting C.
+- Retain their three current link records and three append-only audit events.
+  All equivalent links/events selected by this vessel UUID belong to this fixture.
+- Initial working draft `a24fb594-6f11-4405-baf5-eb313b916ee3` was consumed by the
+  ordinary Publish workflow, not fixture cleanup; its audit event remains.
+- Existing master courses/company-training rows are reused. No course, crew,
+  assignment, vessel, candidate, Company Form, role or grant was added.
+- UI verification uses existing office persona **Crewing Manager**, user 3,
+  parent role `408d9fe9-1d0f-11f1-925d-5419ffd80f01`. Its existing **Admin Training
+  Matrix View** and **Edit** grants are unchanged.
+- Normal reruns: `node scripts/verify-training-equivalents.mjs`. This is read-only
+  and reuses these records. `TRAINING_VERIFY_BOOTSTRAP=1` was used for the initial
+  fixture setup through the screen; the tool refuses writes to any other vessel
+  and refuses to add another published revision on a rerun.

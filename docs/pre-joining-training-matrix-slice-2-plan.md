@@ -1,4 +1,4 @@
-# Pre-joining Training Matrix — proposed slice 2
+# Pre-joining Training Matrix — approved slice 2 build plan
 
 **Approved, including canonical inputs before equivalents.**
 
@@ -78,3 +78,5 @@ will be implemented with the later checklist slice, not conflated with
   TypeScript: at most 222 diagnostics. Report actual results, not target numbers.
 - Final main backend start must be later than the final commit.
 - Commit and report HEAD, then stop before the next slice.
+
+Build evidence: [slice 2 implementation and closing record](pre-joining-training-matrix-slice-2-evidence.md).
