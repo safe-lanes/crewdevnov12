@@ -1,5 +1,7 @@
 import { Router, raw } from "express";
 import { crewAttachmentAccess } from "../shared/attachmentAccess";
+import { redactAttachmentJson } from "../shared/attachmentJsonAccess";
+import { crewAggregateAttachmentAccess } from "../shared/attachmentAggregateAccess";
 import {
   crewMembersController,
   crewAssignmentsController,
@@ -21,6 +23,8 @@ import {
 
 const router = Router();
 router.use(crewAttachmentAccess);
+router.use(redactAttachmentJson);
+router.use(crewAggregateAttachmentAccess);
 
 // ============================================
 // CREW MEMBERS

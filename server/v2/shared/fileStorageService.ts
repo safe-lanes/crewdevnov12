@@ -213,6 +213,13 @@ export async function readAttachment(
   }
   // Resolve path and ensure it remains strictly inside PRIVATE_ROOT to block path traversal
   const resolvedPath = resolveInsidePrivateRoot(filePath);
+  // Resolve symlinks as well as lexical traversal before opening a file.
+  const realPath = await fs.realpath(resolvedPath);
+  const tenantRoot = path.join(PRIVATE_ROOT, expectedDomain);
+  const relativeToTenant = path.relative(tenantRoot, realPath);
+  if (!relativeToTenant || relativeToTenant.startsWith("..") || path.isAbsolute(relativeToTenant)) {
+    throw new Error("Attachment tenant mismatch");
+  }
 
   // Check if file exists
   try {
@@ -221,7 +228,7 @@ export async function readAttachment(
     throw new Error("File not found");
   }
 
-  const fileHandle = await fs.open(resolvedPath, "r");
+  const fileHandle = await fs.open(realPath, "r");
   const stream = fileHandle.createReadStream();
 
   const ext = path.extname(resolvedPath).toLowerCase();

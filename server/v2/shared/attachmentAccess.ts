@@ -41,27 +41,18 @@ const identifier = (value: string) => {
 export async function authorizeAttachmentSubject(
   req: Request, menu: string, subject: string, kind: "crew" | "candidate" | "vessel" = "crew",
 ) {
-  const resolution = await resolveRequestRole(req);
-  if (!resolution.ok) throw new AttachmentAccessError(403);
-  const role = resolution.role;
-  const category = role.roleType.trim().toLowerCase();
-  const actorType = role.masterUserType.trim().toLowerCase();
-  const ship = ["ship", "vessel"].includes(category) && ["ship", "vessel"].includes(actorType);
-  const office = ["office", "sail admin"].includes(category) && ["office", "sail admin"].includes(actorType);
-  if (!ship && !office) throw new AttachmentAccessError(403);
+  const { role, ship } = await authorizeAttachmentMenu(req, menu);
   const db = getDb();
-  const grants = (await db.execute(sql`SELECT g.canview FROM adm_roleaccess_ac g
-    JOIN adm_menumaster_ac m ON m.muid=g.menu_id
-    WHERE g.role_id=${role.roleId} AND NOT coalesce(g.is_deleted,false)
-      AND m.is_active=true AND NOT coalesce(m.is_deleted,false)
-      AND lower(btrim(m.name))=lower(${menu})`)).rows;
-  if (grants.length !== 1 || grants[0].canview !== true) throw new AttachmentAccessError(403);
   if (kind === "candidate" && ship) throw new AttachmentAccessError(403);
   if (kind === "crew" || kind === "candidate") {
     const table = kind === "crew" ? "crew_members_v2" : "recruitment_candidates_v2";
     const key = kind === "crew" ? "crew_uuid" : "rec_can_uuid";
     const rows = (await db.execute(sql`SELECT 1 FROM ${identifier(table)}
       WHERE ${identifier(key)}=${subject} AND NOT coalesce(is_deleted,false)`)).rows;
+    if (rows.length !== 1) throw new AttachmentAccessError(404);
+  } else {
+    const rows = (await db.execute(sql`SELECT 1 FROM master_vessels WHERE vessel_uuid=${subject}
+      AND is_active=true AND NOT coalesce(is_deleted,false)`)).rows;
     if (rows.length !== 1) throw new AttachmentAccessError(404);
   }
   if (!ship) return;
@@ -78,6 +69,25 @@ export async function authorizeAttachmentSubject(
       LIMIT 1`)).rows;
     if (!allowed.length) throw new AttachmentAccessError(403);
   }
+}
+
+export async function authorizeAttachmentMenu(req: Request, menu: string) {
+  const resolution = await resolveRequestRole(req);
+  if (!resolution.ok) throw new AttachmentAccessError(403);
+  const role = resolution.role;
+  const category = role.roleType.trim().toLowerCase();
+  const actorType = role.masterUserType.trim().toLowerCase();
+  const ship = ["ship", "vessel"].includes(category) && ["ship", "vessel"].includes(actorType);
+  const office = ["office", "sail admin"].includes(category) && ["office", "sail admin"].includes(actorType);
+  if (!ship && !office) throw new AttachmentAccessError(403);
+  const db = getDb();
+  const grants = (await db.execute(sql`SELECT g.canview FROM adm_roleaccess_ac g
+    JOIN adm_menumaster_ac m ON m.muid=g.menu_id
+    WHERE g.role_id=${role.roleId} AND NOT coalesce(g.is_deleted,false)
+      AND m.is_active=true AND NOT coalesce(m.is_deleted,false)
+      AND lower(btrim(m.name))=lower(${menu})`)).rows;
+  if (grants.length !== 1 || grants[0].canview !== true) throw new AttachmentAccessError(403);
+  return { role, ship };
 }
 
 export async function authorizeAttachment(req: Request, owner: AttachmentOwner, uuid: string, parentOnly = false) {
@@ -129,6 +139,14 @@ export const crewAttachmentAccess = attachmentGuard(async req => {
     await authorizeAttachment(req, crewAttachmentOwners[match[1]], match[2]);
     return;
   }
-  const list = req.path.match(/^\/crew\/([^/]+)\/(documents|visas|education|licenses|training|sea-service|medicals|doctor-visits|briefings|debriefings)(?:\/|$)/);
-  if (list) await authorizeAttachmentSubject(req, "Crew Database", list[1]);
+  const list = req.path.match(/^\/crew\/([^/]+)(?:\/|$)/);
+  if (list && !["enriched", "details", "by-emp-no"].includes(list[1]))
+    await authorizeAttachmentSubject(req, "Crew Database", list[1]);
+  const employee = req.path.match(/^\/crew\/by-emp-no\/([^/]+)(?:\/|$)/);
+  if (employee) {
+    const rows = (await getDb().execute(sql`SELECT crew_uuid FROM crew_members_v2
+      WHERE emp_no=${employee[1]} AND NOT coalesce(is_deleted,false)`)).rows;
+    if (rows.length !== 1) throw new AttachmentAccessError(404);
+    await authorizeAttachmentSubject(req, "Crew Database", String(rows[0].crew_uuid));
+  }
 });

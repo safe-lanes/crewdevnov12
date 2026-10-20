@@ -280,3 +280,17 @@ describe.each(specs)("attachment $name", ({ name, owner, standard, company }) =>
     finally { await pools[0].query(`UPDATE ${ident(owner.table)} SET ${ident(owner.key)}=$1 WHERE att_uuid=$2`, [originalKey, f.attachment]); }
   });
 });
+
+describe("secondary attachment response paths", () => {
+  it("crew profile and collections require grants and own-vessel ownership", async () => {
+    for (const path of [`/api/v2/crew-pool/crew/${crew}/training`, `/api/v2/crew-pool/crew/${crew}/profile`,
+      `/api/v2/crew-pool/crew/by-emp-no/ATTACHMENT-CREW`]) {
+      expect((await call(path, "other")).status).toBe(403);
+      expect((await call(path, "denied")).status).toBe(403);
+    }
+    const own = await call(`/api/v2/crew-pool/crew/${crew}/training`, "ship");
+    expect(own.status).toBe(200);
+    expect(JSON.stringify(own.body)).not.toContain("fileData");
+    expect(JSON.stringify(own.body)).not.toContain("filePath");
+  });
+});
