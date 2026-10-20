@@ -1,3 +1,4 @@
+import { authorizeStandardSignature } from "../shared/standardSignatureAccess";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../db";
@@ -699,7 +700,7 @@ export const debriefingService = {
     return { missing_questions: missing };
   },
   async rawSignature(attUuid: string, req: Request) {
-    await authorizeDebriefingRead(req);
+    await authorizeStandardSignature(req, "debriefings", attUuid);
     const parent = await debriefingRepository.signatureParent(attUuid);
     if (!parent) throw new DebriefingError("Signature parent not found", 404);
     return parent.attachment;

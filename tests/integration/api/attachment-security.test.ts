@@ -10,6 +10,7 @@ import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/at
 import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
 import { planningAttachmentOwner, drugAlcoholAttachmentOwner, promotionAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
 import { fileStorageService } from "@server/v2/shared/fileStorageService";
+import { standardSignatureParents, type SignatureFamily } from "@server/v2/shared/standardSignatureAccess";
 
 // Only the connection provider is substituted. Authorization, signed-JWT
 // verification, role/grant lookup, ownership joins and handlers are real.
@@ -31,10 +32,15 @@ const prior = { secret: process.env.JWT_SECRET, bypass: process.env.AUTH_BYPASS 
 let app: express.Express;
 const crew = randomUUID(), vessel = randomUUID(), otherVessel = randomUUID();
 const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
-type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string };
+type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string; state?: string };
 const cases: Case[] = [];
 const paths: string[] = [];
-const specs = [
+const specs: { name: string; owner: AttachmentOwner; path: string; standard?: SignatureFamily }[] = [
+  ...Object.entries(standardSignatureParents).map(([name, config]) => ({
+    name, standard: name as SignatureFamily, path: `/api/v2/${name}/signatures/:att/raw`,
+    owner: { table: "frm_signature_attachments", key: "sig_att_uuid", parent: config.table,
+      parentKey: config.key, menu: config.menu, subject: config.candidate ? "candidate" as const : undefined },
+  })),
   { name: "promotion", owner: promotionAttachmentOwner, path: "/api/v2/promotions/attachments/:att/raw" },
   { name: "drugs-alcohol", owner: drugAlcoholAttachmentOwner, path: "/api/v2/drugs-alcohol/attachments/:att/raw" },
   { name: "planning", owner: planningAttachmentOwner, path: "/api/v2/vessel/planning/attachments/:att/raw" },
@@ -85,6 +91,19 @@ async function addCase(name: string, path: string, owner: AttachmentOwner) {
     ...content });
   cases.push({ name, path: path.replace(":att", attachment), owner, attachment, parent });
 }
+async function addStandardCase(spec: typeof specs[number]) {
+  const config = standardSignatureParents[spec.standard!];
+  const parent = randomUUID(), attachment = randomUUID(), state = randomUUID();
+  await insert(config.table, { [config.key]: parent, [config.candidate ? "rec_can_uuid" : "crew_uuid"]: crew,
+    ...(spec.standard === "briefings" ? { vessel_uuid: vessel } : {}) });
+  const filePath = await fileStorageService.writeAttachment("attachment-security", "signature.pdf", Buffer.from("%PDF-1.4\n%%EOF"));
+  paths.push(filePath);
+  await insert("frm_signature_attachments", { sig_att_uuid: attachment, file_path: filePath });
+  await insert("frm_section_states", { section_state_uuid: state, submission_uuid: parent });
+  await insert("frm_section_signatures", { section_state_uuid: state, signature_att_uuid: attachment,
+    signature_type: "officer", signature_method: "officer" });
+  cases.push({ ...spec, path: spec.path.replace(":att", attachment), attachment, parent, state });
+}
 function call(path: string, actor: keyof typeof users = "office", domain = "a") {
   const token = jwt.sign({ id: users[actor], userType: actor === "office" || actor === "denied" ? "Office" : "Ship",
     domain, vessels: [vessel] }, secret, { expiresIn: "1h" });
@@ -117,7 +136,10 @@ beforeAll(async () => {
       vessel_ids: ship ? (name === "ship" ? "880001" : "880002") : null });
     for (const menu of menus) await insert("adm_roleaccess_ac", { role_id: role, menu_id: menu, canview: name !== "denied", is_deleted: false });
   }
-  for (const spec of specs) await addCase(spec.name, spec.path, spec.owner);
+  for (const spec of specs) {
+    if (spec.standard) await addStandardCase(spec);
+    else await addCase(spec.name, spec.path, spec.owner);
+  }
   process.env.JWT_SECRET = secret;
   delete process.env.AUTH_BYPASS;
   const { attachmentTestContext } = await import("@server/v2/db") as any;
@@ -127,6 +149,9 @@ beforeAll(async () => {
   const { default: vesselRoutes } = await import("@server/v2/vessel/routes");
   const { default: drugRoutes } = await import("@server/v2/drugs-alcohol/routes");
   const { default: promotionRoutes } = await import("@server/v2/promotions/routes");
+  const { default: briefingRoutes } = await import("@server/v2/briefings/routes");
+  const { default: debriefingRoutes } = await import("@server/v2/debriefings/routes");
+  const { default: interviewRoutes } = await import("@server/v2/interviews/routes");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -143,6 +168,9 @@ beforeAll(async () => {
   app.use("/api/v2/vessel", vesselRoutes);
   app.use("/api/v2/drugs-alcohol", drugRoutes);
   app.use("/api/v2/promotions", promotionRoutes);
+  app.use("/api/v2/briefings", briefingRoutes);
+  app.use("/api/v2/debriefings", debriefingRoutes);
+  app.use("/api/v2/interviews", interviewRoutes);
 }, 120000);
 
 afterAll(async () => {
@@ -154,7 +182,7 @@ afterAll(async () => {
   if (prior.bypass === undefined) delete process.env.AUTH_BYPASS; else process.env.AUTH_BYPASS = prior.bypass;
 });
 
-describe.each(specs)("attachment $name", ({ name, owner }) => {
+describe.each(specs)("attachment $name", ({ name, owner, standard }) => {
   const fixture = () => cases.find(c => c.name === name)!;
   it("allows authenticated office and own-vessel users to read actual bytes", async () => {
     for (const actor of (owner.subject === "candidate" ? ["office"] : ["office", "ship"]) as ("office" | "ship")[]) {
@@ -175,7 +203,9 @@ describe.each(specs)("attachment $name", ({ name, owner }) => {
   });
   it("refuses deleted attachment, deleted parent, deleted crew and orphaned parent", async () => {
     const f = fixture();
-    const deletionCases = [[owner.table, "att_uuid", f.attachment], [owner.parent, owner.parentKey, f.parent]];
+    const deletionCases = [[owner.table, standard ? "sig_att_uuid" : "att_uuid", f.attachment], [owner.parent, owner.parentKey, f.parent]];
+    if (standard) deletionCases.push(["frm_section_states", "section_state_uuid", f.state!],
+      ["frm_section_signatures", "signature_att_uuid", f.attachment]);
     if (owner.subject !== "vessel") deletionCases.push(
       [owner.subject === "candidate" ? "recruitment_candidates_v2" : "crew_members_v2",
         owner.subject === "candidate" ? "rec_can_uuid" : "crew_uuid", crew]);
@@ -183,6 +213,12 @@ describe.each(specs)("attachment $name", ({ name, owner }) => {
       await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=true WHERE ${ident(key)}=$1`, [value]);
       try { expect((await call(f.path)).status).toBe(404); }
       finally { await pools[0].query(`UPDATE ${ident(table)} SET is_deleted=false WHERE ${ident(key)}=$1`, [value]); }
+    }
+    if (standard) {
+      await pools[0].query("UPDATE frm_section_states SET submission_uuid=$1 WHERE section_state_uuid=$2", [randomUUID(), f.state]);
+      try { expect((await call(f.path)).status).toBe(404); }
+      finally { await pools[0].query("UPDATE frm_section_states SET submission_uuid=$1 WHERE section_state_uuid=$2", [f.parent, f.state]); }
+      return;
     }
     const originalKey = (await pools[0].query(`SELECT ${ident(owner.key)} AS key FROM ${ident(owner.table)} WHERE att_uuid=$1`, [f.attachment])).rows[0].key;
     await pools[0].query(`UPDATE ${ident(owner.table)} SET ${ident(owner.key)}=$1 WHERE att_uuid=$2`, [randomUUID(), f.attachment]);
