@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { bootstrapMissingTestTables } from "../../helpers/private-schema";
 import { crewAttachmentOwners, type AttachmentOwner } from "@server/v2/shared/attachmentAccess";
 import { recruitmentAttachmentOwners } from "@server/v2/shared/recruitmentAttachmentAccess";
-import { planningAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
+import { planningAttachmentOwner, drugAlcoholAttachmentOwner } from "@server/v2/shared/operationalAttachmentAccess";
 
 // Only the connection provider is substituted. Authorization, signed-JWT
 // verification, role/grant lookup, ownership joins and handlers are real.
@@ -33,6 +33,7 @@ const users = { office: 880001, ship: 880002, other: 880003, denied: 880004 };
 type Case = { name: string; path: string; owner: AttachmentOwner; attachment: string; parent: string };
 const cases: Case[] = [];
 const specs = [
+  { name: "drugs-alcohol", owner: drugAlcoholAttachmentOwner, path: "/api/v2/drugs-alcohol/attachments/:att/raw" },
   { name: "planning", owner: planningAttachmentOwner, path: "/api/v2/vessel/planning/attachments/:att/raw" },
   ...Object.entries(crewAttachmentOwners).map(([name, owner]) => ({
     name: `crew/${name}`, owner, path: `/api/v2/crew-pool/${["briefing", "debriefing"].includes(name)
@@ -111,6 +112,7 @@ beforeAll(async () => {
   const { default: crewRoutes } = await import("@server/v2/crew-pool/routes");
   const { default: recruitmentRoutes } = await import("@server/routes/v2/recruitment");
   const { default: vesselRoutes } = await import("@server/v2/vessel/routes");
+  const { default: drugRoutes } = await import("@server/v2/drugs-alcohol/routes");
   app = express();
   // Select separate real database schemas as tenants; no connection can fall
   // through to public. The production auth middleware still verifies each JWT.
@@ -125,6 +127,7 @@ beforeAll(async () => {
   app.use("/api/v2/crew-pool", crewRoutes);
   app.use("/api/v2/recruitment", recruitmentRoutes);
   app.use("/api/v2/vessel", vesselRoutes);
+  app.use("/api/v2/drugs-alcohol", drugRoutes);
 }, 120000);
 
 afterAll(async () => {
