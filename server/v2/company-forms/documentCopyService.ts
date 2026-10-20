@@ -39,6 +39,7 @@ export async function copyStatus(req: Request, submissionUuid: string) {
     status, message: messages[status], fileSha256: file?.file_sha256,
     frozenRecordSha256: file?.frozen_record_sha256,
     canRetry: mutable && eligible && !file && request?.outcome === "PENDING" && canFill,
+    canFillIn: canFill,
     handovers: [] as any[],
   };
 }

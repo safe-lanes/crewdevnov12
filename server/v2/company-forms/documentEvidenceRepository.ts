@@ -37,7 +37,7 @@ export function evidenceStatus(input: {
   }
   if (input.outcome === "PENDING") return {
     status: "pending", frozenRecordSha256: input.hash ?? null,
-    message: "The completed form's frozen record is saved. A PDF copy will be available once stored-copy generation is enabled.",
+    message: "The completed form's frozen record is saved. Check the stored-copy status for PDF availability.",
   };
   if (input.header) return {
     status: "frozen", frozenRecordSha256: null,

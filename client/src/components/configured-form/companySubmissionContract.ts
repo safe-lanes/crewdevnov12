@@ -1,3 +1,4 @@
+import { CompanyPdfActions } from "./CompanyPdfActions";
 import { sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
@@ -917,6 +918,13 @@ export function CompanySubmissionRenderer({
     lifecycleForm?.submission.stageKey === "on_board" && lifecycleForm.form.archivedAt &&
       submissionStatus === "voided" && !lifecycleForm.submission.replacedBySubmissionUuid &&
       React.createElement("p", { className: "mb-3 text-sm" }, "No replacement — form retired"),
+    lifecycleForm?.documentEvidence && ["completed", "voided"].includes(submissionStatus ?? "") && React.createElement(
+      CompanyPdfActions, {
+        submissionUuid: lifecycleForm.submission.submissionUuid,
+        completed: true,
+        canFillIn: true, // The status endpoint supplies the actual scoped Fill in decision.
+      },
+    ),
     lifecycleForm?.documentEvidence && lifecycleForm.documentEvidence.status !== "not_started" && React.createElement(
       "div",
       {
