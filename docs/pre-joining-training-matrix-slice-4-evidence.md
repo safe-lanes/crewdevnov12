@@ -133,5 +133,30 @@ or enforcement implementation is included here.
 
 ## Closing gates
 
-The final full-suite, Company Forms and TypeScript results and main-process
-chronology are recorded below after the coherent implementation is verified.
+- Full suite: **1,519 passed, 162 failed, 67 pending; 1,748 total**.
+  Compared with the previous calculation review's full report: **no new failed
+  tests**. These are existing failures, not a claim that the full suite is green.
+- Company Forms: **96 discovered suites, 648 passed, zero skipped/pending/todo**.
+  Derived and checked against the full run, not a hand-picked subset.
+- TypeScript: **222 diagnostics**, none in the new compliance implementation.
+- Focused UI tests: **11 passed**, including the saved-facts cache regression.
+- Automated tests use the registered isolated test database; main-preview
+  records are deliberately retained acceptance fixtures.
+
+Raw results: `full-suite.json`, `gates.json`, `typescript.log`, `ui-tests.log`
+in `generated-artifacts/training-slice4/`.
+
+| Step | Commit | UTC time, 21-Oct-2026 |
+|---|---|---|
+| 0 — malformed issue date / deferred slice 5 policy | `9530f50706ae851ce615d3ba29a878e444644ed6` | 04:30:37 |
+| 1 — read-only authorized endpoint | `206695440de6a173346f2a22ac39feb972741fd1` | 04:40:30 |
+| 2 — Reliever Status and details UI | `a010cc38d9a7e8e035fe8176fe16f9798194606c` | 04:52:24 |
+| 3 — registered UI verification / cache correction | `c844910470fb2cb570c0641f0f57384f5449846d` | 05:14:36 |
+
+Step 4 commits this closing report and verification chronology checks. After
+that final commit the managed main backend is restarted, then the whole browser
+journey is repeated. The runner refuses closing evidence if the backend did
+not start after HEAD, HEAD changes, or the listening PID changes during the
+journey. The final hash/time and backend start are recorded in
+`browser-evidence.json` and the delivered screenshot gallery, avoiding a
+self-referencing commit hash in this file.

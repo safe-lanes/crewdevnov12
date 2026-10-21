@@ -12,6 +12,12 @@ const browser = await chromium.launchPersistentContext("generated-artifacts/atta
 const page = await browser.newPage();
 const evidence = { head: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
   persona: f.persona, scenarios: [], screenshots: [], responses: [], errors: [], writes: [] };
+const listenerPid = () => execFileSync("bash", ["-lc", "lsof -t -iTCP:5000 -sTCP:LISTEN | head -n1"], { encoding: "utf8" }).trim();
+const pid = listenerPid();
+const commitTime = execFileSync("git", ["show", "-s", "--format=%cI", "HEAD"], { encoding: "utf8" }).trim();
+const processStart = execFileSync("ps", ["-p", pid, "-o", "lstart="], {
+  encoding: "utf8", env: { ...process.env, TZ: "UTC" } }).trim();
+evidence.chronology = { pid, commitTime, backendStartUtc: new Date(`${processStart} UTC`).toISOString() };
 const reads = [];
 let abortOnce = false;
 page.on("pageerror", error => evidence.errors.push(error.message));
@@ -132,9 +138,14 @@ try {
   await page.getByTestId("training-compliance-see-details").waitFor();
   d = await details("11-retry-recovered", "Not held"); await closeDetails(d);
   assert.deepEqual(evidence.errors, []);
+  assert.equal(listenerPid(), pid, "Main backend changed during the browser journey.");
+  assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), evidence.head);
+  assert.ok(Date.parse(evidence.chronology.backendStartUtc) > Date.parse(commitTime),
+    "Closing browser evidence requires a backend started after this HEAD.");
   const states = new Set(evidence.scenarios.flatMap(s => s.result.courses.map(c => c.state)).filter(Boolean));
   assert.equal(states.size, 5);
-  console.log(JSON.stringify({ states: [...states], screenshots: evidence.screenshots, attachment: evidence.attachment }));
+  console.log(JSON.stringify({ head: evidence.head, chronology: evidence.chronology,
+    states: [...states], screenshots: evidence.screenshots, attachment: evidence.attachment }));
 } catch (error) {
   evidence.failure = error.message;
   await page.screenshot({ path: `${root}/failure.png` }).catch(() => {});
