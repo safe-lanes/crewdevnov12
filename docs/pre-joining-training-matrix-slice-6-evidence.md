@@ -61,6 +61,11 @@ HEAD/PID across closing evidence, screenshots, identities, before/after history,
 the certificate closure, and an unchanged content fingerprint for the manual
 need. Generated evidence is outside git in `generated-artifacts/training-slice6`.
 `screenshots.html` is self-contained and downloadable.
+The Training Needs grid uses its existing name filter for the fixture-only
+capture, since rows below its virtualized viewport are not initially rendered.
+Replays preserve the original clicked decision journey and its commit/runtime
+metadata; they review the retained decisions instead of manufacturing repeat
+dismissals or fresh fixture roots.
 
 ## Verification
 

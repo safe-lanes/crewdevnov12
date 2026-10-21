@@ -14,6 +14,18 @@ const pid = cmd("bash", ["-lc", "lsof -t -iTCP:5000 -sTCP:LISTEN | head -n1"]);
 const report = { head: cmd("git", ["rev-parse", "HEAD"]), commitTime: cmd("git", ["show", "-s", "--format=%cI", "HEAD"]),
   pid, backendStart: new Date(`${cmd("ps", ["-p", pid, "-o", "lstart="])} UTC`).toISOString(),
   closing, checks: [], screenshots: [], writes: [] };
+if (closing) {
+  const prior = await fs.readFile(`${root}/browser-closing.json`, "utf8").then(JSON.parse).catch(() => null);
+  if (prior?.checks?.some(text => text.startsWith("Confirmed and dismissed through See Details"))) {
+    // Retain the original clicked journey honestly, rather than fabricate
+    // another dismissal or create a fresh fixture merely for a replay.
+    report.priorActionJourney = { head: prior.priorActionJourney?.head ?? prior.head,
+      backendStart: prior.priorActionJourney?.backendStart ?? prior.backendStart,
+      screenshots: prior.screenshots, checks: prior.checks };
+    report.screenshots = [...prior.screenshots];
+    report.checks = [...prior.checks];
+  }
+}
 if (closing) assert.ok(Date.parse(report.backendStart) > Date.parse(report.commitTime));
 const db = new pg.Client({ connectionString: process.env.DATABASE_URL }); await db.connect();
 const subject = (await db.query(`SELECT c.emp_no,c.first_name,c.recruitment_date,v.vessel FROM crew_assignments a
@@ -83,7 +95,8 @@ async function openPlan() {
   await expect(details()).toBeVisible();
 }
 async function shot(name) {
-  const path = `${root}/${name}.png`; await page.screenshot({ path, animations: "disabled" }); report.screenshots.push(path);
+  const path = `${root}/${name}.png`; await page.screenshot({ path, animations: "disabled" });
+  if (!report.screenshots.includes(path)) report.screenshots.push(path);
 }
 try {
   // Reuse certificate and manual-need descendants on replay; no repeated roots.
@@ -184,7 +197,11 @@ try {
     assert.equal(manualAfter, manualBefore);
     report.checks.push("Manual Training Need content fingerprint is unchanged; automatic closure names the qualifying certificate and reason in append-only history.");
     await page.goto(`${base}/training-retention/training`, { waitUntil: "networkidle" });
+    await page.getByTestId("input-search-name").fill("TEST ONLY PDF Layout");
+    await page.getByTestId("button-apply-filters").click();
     await expect(page.getByText("Pre-joining compliance", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("TEST ONLY slice 6 manual need — never auto-close", { exact: true }).first()).toBeVisible();
+    report.checks.push("Training Needs screen filtered to the registered seafarer shows the generated completed need and the untouched manual need.");
     await shot("06-generated-and-manual-training-needs");
     // Restore only temporary edits to the old fixture certificates. New
     // registered descendants and all suggestion histories deliberately remain.

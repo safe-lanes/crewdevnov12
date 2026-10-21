@@ -37,6 +37,9 @@ section{background:white;padding:20px;margin:24px 0;border:1px solid #d6e0e8;bor
 normal persisted grant, ownership and scope checks; not a parent-login claim. Crewing Manager Create refusal also verified.
 No grants or master expiry classifications changed. A pending renewal was prepared through the normal fixture D3 API,
 then completed and saved through the D3 screen. New fixture descendants and append-only history remain registered.</p>
+${browser.priorActionJourney ? `<p>The original clicked confirmation, dismissal and D3 Save journey was captured under
+<code>${escape(browser.priorActionJourney.head)}</code>, backend started ${escape(browser.priorActionJourney.backendStart)}.
+The closing replay reuses those retained records and history; it does not invent a second dismissal.</p>` : ""}
 <p>HEAD <code>${escape(gates.head)}</code><br>Commit ${escape(gates.commitTime)}<br>
 Backend PID ${gates.backendPid}, started ${escape(gates.backendStart)}</p>
 <p>Full suite: ${gates.full.passed} passed / ${gates.full.failed} failed / ${gates.full.pending} pending.
