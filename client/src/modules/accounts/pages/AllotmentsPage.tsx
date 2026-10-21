@@ -55,7 +55,6 @@ import {
 } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { currentPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Allotments";
@@ -160,12 +159,11 @@ export default function AllotmentsPage({
   });
 
   // Crew for the create dialog comes from the selected vessel's engagements.
-  const [dialogVessel, setDialogVessel] = useState("");
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
-      `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${dialogVessel}&period=${currentPeriod()}`,
+      `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${vesselUuid}&period=${period}`,
     ],
-    enabled: !!dialogVessel,
+    enabled: !!vesselUuid && !!period,
   });
   const engagedRows = useMemo(
     () => reviewRows.filter((r) => r.engagement),
@@ -205,7 +203,6 @@ export default function AllotmentsPage({
     resetDateInput();
     setEditing(null);
     setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
-    setDialogVessel("");
     setDialogOpen(true);
   };
 
@@ -244,10 +241,11 @@ export default function AllotmentsPage({
   };
 
   const save = async () => {
-    if (!editing && !form.crewUuid) {
+    const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
+    if (!editing && (!vesselUuid || !period || !crew)) {
       toast({
         title: "Missing crew",
-        description: "Select a vessel and crew member.",
+        description: "Select a vessel and period on the main screen, then choose a crew member from that vessel.",
         variant: "destructive",
       });
       return;
@@ -292,7 +290,6 @@ export default function AllotmentsPage({
           payload,
         );
       } else {
-        const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
         res = await accountsApiV2.allotments.create({
           ...payload,
           crewUuid: form.crewUuid,
@@ -613,6 +610,7 @@ export default function AllotmentsPage({
             <Button
               size="sm"
               onClick={openCreate}
+              disabled={!vesselUuid || !period}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-add-allotment"
             >
@@ -649,26 +647,11 @@ export default function AllotmentsPage({
             {!editing && (
               <>
                 <div className="space-y-1">
-                  <Label>Vessel</Label>
-                  <Select value={dialogVessel} onValueChange={setDialogVessel}>
-                    <SelectTrigger data-testid="select-allotment-vessel">
-                      <SelectValue placeholder="Select vessel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vessels.map((v) => (
-                        <SelectItem key={v.entryId} value={v.entryId}>
-                          {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
                   <Label>Crew</Label>
                   <Select
                     value={form.crewUuid}
                     onValueChange={(v) => set("crewUuid", v)}
-                    disabled={!dialogVessel}
+                    disabled={!vesselUuid || !period}
                   >
                     <SelectTrigger data-testid="select-allotment-crew">
                       <SelectValue placeholder="Select crew member" />
