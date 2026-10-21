@@ -9,14 +9,15 @@ async function rows<T>(db: Connection, query: ReturnType<typeof sql>): Promise<T
 export type RelieverCheckRequest = { planUuid: string; assignmentUuid: string; matrixRevisionUuid?: string };
 export type CanonicalReliever = {
   assignmentUuid: string; crewUuid: string; vesselUuid: string; contractRankUuid: string | null;
-  plannedJoiningDate: string | null; contractRangeEndMonths: number | null; rankRowId: number | null;
+  plannedJoiningDate: string | null; contractRangeEndMonths: number | null; contractPeriodMonths: number | null; rankRowId: number | null;
 };
 export async function readCanonicalReliever(db: Connection, request: RelieverCheckRequest) {
   const result = await rows<CanonicalReliever>(db, sql`SELECT
     a.assign_uuid AS "assignmentUuid",a.crew_uuid AS "crewUuid",a.vessel_uuid AS "vesselUuid",
     c.contract_rank_uuid AS "contractRankUuid",r.id AS "rankRowId",
     p.reliever_sign_on_date AS "plannedJoiningDate",
-    p.reliever_contract_end_range_end_months AS "contractRangeEndMonths"
+    p.reliever_contract_end_range_end_months AS "contractRangeEndMonths",
+    p.reliever_contract_period_months AS "contractPeriodMonths"
     FROM vessel_planning_v2 p
     JOIN crew_assignments a ON a.assign_uuid=p.reliever_assign_uuid
       AND a.crew_uuid=p.reliever_crew_uuid AND a.vessel_uuid=p.vessel_uuid AND NOT a.is_deleted

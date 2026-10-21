@@ -173,6 +173,16 @@ describe("accepted checklist evidence in isolated tenant schemas", () => {
     expect(next.courses[0]).toMatchObject({ state: "Valid, no expiry",
       chosenCertificate: { certificateExpires: false } });
   });
+  it("contract period fallback uses only the reliever, never incumbent/shared values", async () => {
+    tenant = 0;
+    await pools[0].query(`UPDATE vessel_planning_v2 SET reliever_contract_end_range_end_months=NULL,
+      reliever_contract_period_months=NULL,contract_period_months=9,contract_end_range_end_months=10`);
+    const absent = await calculateRelieverTrainingCompliance({ planUuid: ids.plan, assignmentUuid: ids.assignment });
+    expect(absent).toMatchObject({ contractEnd: null, contractEndStatus: "not_set", contractEndSource: null });
+    await pools[0].query("UPDATE vessel_planning_v2 SET reliever_contract_period_months=2");
+    const own = await calculateRelieverTrainingCompliance({ planUuid: ids.plan, assignmentUuid: ids.assignment });
+    expect(own).toMatchObject({ contractEnd: "2026-03-31", contractEndStatus: "set", contractEndSource: "contract_period" });
+  });
   it("missing-expiry setting defaults OFF, requires management, is tenant scoped and audited", async () => {
     tenant = 0;
     const invoke = async (body: any) => {
@@ -292,7 +302,7 @@ describe("read-only operational training endpoint", () => {
     expect(access.menu.mock.calls.map(c => c[1])).toEqual(["Vessel", "Crew Database"]);
     expect(access.subject.mock.calls.map(c => c.slice(1))).toEqual([
       ["Vessel", ids.vessel, "vessel"], ["Crew Database", ids.crew] ]);
-    expect(result.payload).toMatchObject({ calculationVersion: "1.3.0", context: {
+    expect(result.payload).toMatchObject({ calculationVersion: "1.4.0", context: {
       crewUuid: ids.crew }, courses: [{ state: "Valid", certificates: [{
         selected: true, disposition: "selected", attachments: [{
           uuid: attachment, url: `/api/v2/crew-pool/training/attachments/${attachment}/raw` }] }] }] });

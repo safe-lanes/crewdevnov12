@@ -12,6 +12,25 @@ const input = (certificates: TrainingCertificate[]): ComplianceInput => ({
     equivalents: [{ requiredCourseUuid: "course", acceptedCourseUuid: "equivalent" }] },
 });
 describe("expiry classification and independent tenant policy", () => {
+  it("own contract period supplies missing range end with month-end clamping", () => {
+    const data = { ...input([cert("dated", "2027-05-01")]), plannedJoiningDate: "2026-01-31",
+      contractRangeEndMonths: null, contractPeriodMonths: 1 };
+    expect(calculateTrainingCompliance(data)).toMatchObject({
+      contractEnd: "2026-02-28", contractEndStatus: "set", contractEndSource: "contract_period" });
+  });
+  it("explicit range wins over own period; invalid range is not silently replaced", () => {
+    const data = { ...input([cert("dated", "2027-05-01")]), contractPeriodMonths: 1 };
+    expect(calculateTrainingCompliance(data)).toMatchObject({ contractEnd: "2027-04-21", contractEndSource: "range_end" });
+    expect(calculateTrainingCompliance({ ...data, contractRangeEndMonths: -1 })).toMatchObject({
+      status: "incomplete", contractEnd: null, contractEndSource: "range_end" });
+  });
+  it("both absent still exposes a missing certificate and its joining gap", () => {
+    const result = calculateTrainingCompliance({ ...input([]), contractRangeEndMonths: null, contractPeriodMonths: null });
+    expect(result).toMatchObject({ contractEnd: null, contractEndStatus: "not_set", contractEndSource: null });
+    expect(result.courses[0].state).toBe("Not held");
+    expect(result.summary.mandatory.status).toBe("gap");
+    expect(result.issues[0].message).toContain("enter Contract End Range");
+  });
   it("expiring certificate without date is amber warning, not permanent or incomplete", () => {
     const result = calculateTrainingCompliance(input([cert("missing", null)]));
     expect(result.status).toBe("complete");

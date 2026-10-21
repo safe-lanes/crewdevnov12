@@ -6,7 +6,7 @@ export function incompleteTrainingCheck(input: { assignmentUuid: string; vesselU
   issues: CheckIssue[]): ComplianceResult {
   return {
     calculationVersion: version, assignmentUuid: input.assignmentUuid, vesselUuid: input.vesselUuid,
-    contractRankUuid: null, joiningDate: null, contractEnd: null, contractEndStatus: "not_set",
+    contractRankUuid: null, joiningDate: null, contractEnd: null, contractEndStatus: "not_set", contractEndSource: null,
     matrixRevisionUuid: null, matrixRevision: null,
     rankRequirementsSource: "current_company_rank_requirements", status: "incomplete", issues, courses: [],
     summary: { mandatory: { status: "incomplete", count: 0 }, recommended: { status: "incomplete", count: 0 } },
@@ -67,10 +67,11 @@ function courseResult(requirement: TrainingRequirement, input: ComplianceInput,
     : chosen.expiry === null ? "Valid, no expiry" : !end ? "Valid"
       : chosen.expiry < end ? "Expires during contract" : "Valid";
   if (unknownExpiry) state = "Expiry not recorded";
-  if (!end) issues.push({ code: input.contractRangeEndMonths == null ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
-    courseUuid: requirement.courseUuid, blocking: input.contractRangeEndMonths != null,
-    message: input.contractRangeEndMonths == null
-      ? "Contract end not set: full-contract validity not checked"
+  const months = input.contractRangeEndMonths ?? input.contractPeriodMonths;
+  if (!end) issues.push({ code: months == null ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
+    courseUuid: requirement.courseUuid, blocking: months != null,
+    message: months == null
+      ? "Contract end not set: enter Contract End Range to check validity for the whole contract"
       : "The contract end cannot be calculated. Check the whole number of contract months and retry." });
   const invalidOnly = !chosen && issues.some(i => i.code === "INVALID_CERTIFICATE_DATES");
   if (invalidOnly) {
@@ -96,11 +97,14 @@ export function calculateTrainingCompliance(input: ComplianceInput): ComplianceR
       message: "The reliever's planned joining date is missing or invalid. Set it and retry the check." });
     if (!input.matrix) issues.push({ code: "MISSING_MATRIX",
       message: "No saved training matrix is available for this vessel. Ask the office to publish one, then retry." });
-    const end = joining && input.contractRangeEndMonths != null ? contractEndDate(joining, input.contractRangeEndMonths) : null;
-    const endStatus = input.contractRangeEndMonths == null ? "not_set" : end ? "set" : "invalid";
+    const months = input.contractRangeEndMonths ?? input.contractPeriodMonths;
+    const end = joining && months != null ? contractEndDate(joining, months) : null;
+    const endStatus = months == null ? "not_set" : end ? "set" : "invalid";
+    const endSource = input.contractRangeEndMonths != null ? "range_end"
+      : input.contractPeriodMonths != null ? "contract_period" : null;
     if (!end) issues.push({ code: endStatus === "not_set" ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
       blocking: endStatus !== "not_set",
-      message: endStatus === "not_set" ? "Contract end not set: full-contract validity not checked"
+      message: endStatus === "not_set" ? "Contract end not set: enter Contract End Range to check validity for the whole contract"
         : "The contract end cannot be calculated. Check the joining date and whole number of contract months, then retry." });
     const courses = input.contractRankUuid && joining && input.matrix
       ? input.matrix.requirements.map(r => courseResult(r, input, joining, end)) : [];
@@ -114,7 +118,7 @@ export function calculateTrainingCompliance(input: ComplianceInput): ComplianceR
       return { status, count: group.length } as ComplianceResult["summary"]["mandatory"];
     };
     return { ...incompleteTrainingCheck(input, issues), contractRankUuid: input.contractRankUuid, joiningDate: joining,
-      contractEnd: end, contractEndStatus: endStatus, matrixRevisionUuid: input.matrix?.revisionUuid ?? null,
+      contractEnd: end, contractEndStatus: endStatus, contractEndSource: endSource, matrixRevisionUuid: input.matrix?.revisionUuid ?? null,
       matrixRevision: input.matrix?.revision ?? null, status: complete ? "complete" : "incomplete", courses,
       summary: { mandatory: summary("mandatory"), recommended: summary("recommended") },
       unlinkedCertificateUuids: input.certificates.filter(c => !c.courseUuid).map(c => c.certificateUuid).sort() };

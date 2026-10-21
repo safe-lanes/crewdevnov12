@@ -37,3 +37,20 @@ server-derived audit, tenant isolation and explicit No.
 Supporting display changes also consume the new amber state and improve the
 missing-end/action-count wording; canonical contract-period fallback follows in
 the next separate commit.
+
+## 2. Contract end and visible gaps
+
+Canonical input now reads only `reliever_contract_period_months`, alongside
+the reliever's own range and joining date. A present range-end value wins;
+only its absence permits the own-period fallback. Invalid explicit ranges
+are not hidden by a valid period. Calendar addition still clamps to month end.
+Calculation is bumped again to **1.4.0** because end-date semantics changed.
+The end records its source, shown as “based on contract period” when applicable.
+Both missing displays the requested Contract End Range instruction.
+
+Fault found in presentation: the indicator used total requirement count as
+though it counted action-needed courses. It now derives actual problem counts
+from course results; missing end does not erase Not held/Expired at joining
+or missing-expiry states. Backend joining-date states were already retained.
+The isolated reader test explicitly sets incumbent/shared values while leaving
+both reliever lengths blank and proves no fallback to either shared value.
