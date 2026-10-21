@@ -21,6 +21,7 @@ import {
 import { requirePermission } from "../../middleware/requirePermission";
 import { trainingMatrixPolicyController } from "./controllers/trainingMatrixPolicyController";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
+import { trainingComplianceSettingsController } from "./controllers/trainingComplianceSettingsController";
 import { formPartController } from "./controllers/formPartController";
 import { actionPermissionsController } from "./controllers/actionPermissionsController";
 import { applicabilityController } from "./controllers/applicabilityController";
@@ -185,6 +186,11 @@ router.put("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), ac
 router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.deleteRole);
 
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
+router.get("/training-compliance/my-permission", trainingComplianceSettingsController.mine);
+router.get("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.get);
+router.put("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.save);
+router.get("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.grant);
+router.put("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.saveGrant);
 router.get("/access-control/state", requireTrustedAccessControlAdmin(), accessControlController.state);
 router.get("/access-control/audit", requireTrustedAccessControlAdmin(), accessControlController.audit);
 router.get("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.getManagement);
