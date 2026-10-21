@@ -133,12 +133,12 @@ describe("read-only operational training endpoint", () => {
     expect(result.code, databaseErrors.join("; ")).toBe(200);
     expect(result.payload.courses).toHaveLength(2);
     expect(result.payload.courses[0]).toMatchObject({ courseUuid: ids.courseA,
-      state: "Valid", category: "B. Company", categoryOrder: 1, matrixOrder: 1 });
+      state: "Valid", companyId: "COMPANY-0", category: "B. Company", categoryOrder: 1, matrixOrder: 1 });
     expect(result.payload.courses[1]).toMatchObject({ courseUuid: ids.courseB,
       state: "Not held", category: "A. Statutory", categoryOrder: 0, matrixOrder: 0 });
     const { context, ...withLayout } = result.payload;
     expect({ ...withLayout, courses: withLayout.courses.map(
-      ({ category, categoryOrder, matrixOrder, certificates, ...course }: any) => course) }).toEqual(calculated);
+      ({ companyId, category, categoryOrder, matrixOrder, certificates, ...course }: any) => course) }).toEqual(calculated);
     expect(await fingerprint(pools[0])).toBe(before);
   });
   it("returns exact context, certificate details and protected attachment links without writes", async () => {

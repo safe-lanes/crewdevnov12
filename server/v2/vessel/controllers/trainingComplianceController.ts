@@ -27,7 +27,7 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
       const { matrix } = await readSavedTrainingMatrix(db, canonical);
       // Presentation metadata only. Keep the calculator and its inputs/results
       // unchanged; mirror Vessel > Training Matrix's group-code/course order.
-      const layoutRows = (await db.execute(sql`SELECT m.tm_uuid AS "courseUuid",
+      const layoutRows = (await db.execute(sql`SELECT m.tm_uuid AS "courseUuid",c.company_id AS "companyId",
         nullif(c.group_code,'') AS "groupCode",g.label AS "groupLabel",c.sort_order AS "sortOrder",
         r.status
         FROM adm_company_trainings_v2 c
@@ -40,7 +40,7 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
             FROM adm_training_matrix_vessel_revisions_v2
             WHERE tmvr_uuid=${matrix?.revisionUuid ?? null} AND NOT is_deleted)
         ORDER BY nullif(c.group_code,'') COLLATE "C" ASC NULLS LAST,coalesce(c.sort_order,0),c.id`)).rows as {
-          courseUuid: string; groupCode: string | null; groupLabel: string | null;
+          courseUuid: string; companyId: string | null; groupCode: string | null; groupLabel: string | null;
           sortOrder: number | null; status: string | null }[];
       const groups = [...new Set(layoutRows.map(row => row.groupCode))];
       const certificates = await readTrainingCertificates(db, canonical.crewUuid);
@@ -66,6 +66,7 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
         const accepted = new Set(matrix?.equivalents.filter(l => l.requiredCourseUuid === course.courseUuid)
           .map(l => l.acceptedCourseUuid));
         return { ...course,
+          companyId: layout?.companyId || null,
           category: layout?.groupCode
             ? `${layout.groupCode}. ${layout.groupLabel || layout.groupCode}` : "Unassigned",
           categoryOrder: layout ? groups.indexOf(layout.groupCode) : null,

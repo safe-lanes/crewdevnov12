@@ -44,6 +44,24 @@ describe("read-only Reliever Status training display", () => {
     expect(screen.getAllByText(/^Mandatory:/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/^Recommended:/).length).toBeGreaterThan(0);
   });
+  it("shows the API company training code as the first details column without synthesizing missing values", async () => {
+    const data = value(0);
+    const course = data.courses[0];
+    data.courses = [
+      { ...course, courseUuid: "company-code", companyId: "SA005" },
+      { ...course, courseUuid: "company-code-missing", companyId: null },
+    ];
+    await showDetails(data);
+
+    const dialog = screen.getByRole("dialog", { name: "Training Matrix Compliance" });
+    const headers = within(dialog).getAllByRole("columnheader");
+    expect(headers[0].textContent).toBe("Company ID");
+    const companyCodeRow = screen.getByTestId("training-course-row-company-code");
+    const missingCompanyCodeRow = screen.getByTestId("training-course-row-company-code-missing");
+    expect(companyCodeRow.querySelector("td")?.textContent).toBe("SA005");
+    expect(missingCompanyCodeRow.querySelector("td")?.textContent).toBe("Not recorded");
+    expect(within(dialog).getByTestId("training-category-Unassigned").querySelector("th")?.getAttribute("colspan")).toBe("7");
+  });
   it("names the equivalent actually relied on", async () => {
     vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(value(1))));
     mount();

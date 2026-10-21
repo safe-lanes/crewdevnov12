@@ -20,6 +20,7 @@ type CertificateAttachment = { uuid: string; fileName: string; url: string };
 type CourseResult = {
   courseUuid: string;
   name: string;
+  companyId: string | null;
   category?: string | null;
   categoryOrder?: number | null;
   matrixOrder?: number | null;
@@ -301,6 +302,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                   <thead className="bg-sky-700 text-white">
                     <tr>
+                      <th className="px-3 py-2.5 font-semibold">Company ID</th>
                       <th className="px-3 py-2.5 font-semibold">Course</th>
                       <th className="px-3 py-2.5 font-semibold">Rank requirement</th>
                       <th className="px-3 py-2.5 font-semibold">Status</th>
@@ -313,7 +315,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                     {coursesByCategory.map(group => (
                       <React.Fragment key={group.label}>
                         <tr className="border-t border-slate-200 bg-slate-100" data-testid={`training-category-${group.label}`}>
-                          <th colSpan={6} scope="colgroup" className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">{group.label}</th>
+                          <th colSpan={7} scope="colgroup" className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">{group.label}</th>
                         </tr>
                         {group.courses.map(course => {
                       const selected = course.certificates.find(entry => entry.selected);
@@ -324,6 +326,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                       return (
                         <React.Fragment key={course.courseUuid}>
                           <tr className="border-t border-slate-200 align-top" data-testid={`training-course-row-${course.courseUuid}`}>
+                            <td className="px-3 py-3 text-slate-700">{course.companyId ?? "Not recorded"}</td>
                             <td className="px-3 py-3">
                               <div className="flex items-start gap-2">
                                 {expandable ? (
@@ -356,7 +359,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                           </tr>
                           {courseExpanded && expandable && (
                             <tr className="border-t border-slate-100 bg-slate-50">
-                              <td colSpan={6} className="px-4 py-3">
+                              <td colSpan={7} className="px-4 py-3">
                                 {course.certificates.length ? (
                                   <div className="space-y-2">
                                     <p className="text-xs text-slate-600">
@@ -397,7 +400,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                     })}</React.Fragment>
                     ))}
                     {!visibleCourses.length && (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-600">{onlyNeedsAction ? "No items needing action." : "No rank requirements were returned for this assignment."}</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-600">{onlyNeedsAction ? "No items needing action." : "No rank requirements were returned for this assignment."}</td></tr>
                     )}
                   </tbody>
                 </table>
