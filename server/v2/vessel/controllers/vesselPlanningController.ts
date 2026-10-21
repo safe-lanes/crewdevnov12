@@ -466,7 +466,7 @@ export const vesselPlanningController = {
    * For status changes: Planned -> Confirmed -> In Transit
    */
   async updateRelieverStatus(req: Request, res: Response) {
-    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}))
+    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}) || "trainingOverride" in (req.body ?? {}))
       return res.status(400).json({ message: "Complete the deployment checklist through the linked Planning screen, not a status shortcut." });
     try {
       const { planUuid } = req.params;

@@ -6,6 +6,9 @@ import { resolveCompanyFormPrincipal } from "./trustedPrincipalService";
 import { assertCompanyFormPermission } from "./operationalPermissions";
 import { authenticatedActor, appendAudit } from "../admin/services/accessControlManagement";
 import { ChecklistGateError, checklistBlockerMessage, checklistOverrideEligible, type ChecklistBlocker } from "./checklistPolicy";
+import { trainingChecklistEvidence, recordTrainingAcceptance } from "../shared/training-compliance/checklistEvidence";
+import { trainingOverrideAllowed } from "../shared/training-compliance/authority";
+import { trainingBlockerMessage } from "../shared/training-compliance/checklistPolicy";
 
 export function humanFormFactReason(value: string | null): string {
   if (!value) return "A required contract fact is missing. Verify it and retry the rules check.";
@@ -34,7 +37,7 @@ export function humanFormFactReason(value: string | null): string {
 export async function verifyChecklistYes(tx: any, planning: {
   planUuid: string; relieverAssignUuid: string | null; relieverCrewUuid: string | null;
   vesselUuid: string; deploymentChecklistCompleted?: boolean | null;
-}, req?: Request): Promise<void> {
+}, req?: Request) {
   if (!req) throw new ChecklistGateError("Open the seafarer's linked Planning record to complete the deployment checklist.");
   if (["actor", "actorId", "actor_uuid", "actorUuid", "userId", "auditIdentity", "auditUserUuid", "updatedByUuid", "createdByUuid"].some(key => key in (req.body ?? {})))
     throw new ChecklistGateError("Audit identity comes from your signed-in account. Remove supplied audit details and retry.");
@@ -77,6 +80,35 @@ export async function verifyChecklistYes(tx: any, planning: {
     .then(() => true, () => false);
   const canOverride = hasOverride && checklistOverrideEligible(blockers);
   const requested = req.body?.checklistOverride;
+  const training = await trainingChecklistEvidence(tx, planning.planUuid, planning.relieverAssignUuid);
+  const canOverrideTraining = await trainingOverrideAllowed(req, tx);
+  const requestedTraining = req.body?.trainingOverride;
+  const reasonSchema = z.object({ reason: z.string().trim().min(1).max(2000) }).strict();
+  const trainingReason = reasonSchema.safeParse(requestedTraining);
+  const formReason = reasonSchema.safeParse(requested);
+  const formsAccepted = !blockers.length || (canOverride && formReason.success);
+  const trainingAccepted = !training.blockers.length || (canOverrideTraining && trainingReason.success);
+  const allBlockers = [...blockers, ...training.blockers];
+  const message = [
+    blockers.length ? checklistBlockerMessage(blockers) +
+      (checklistOverrideEligible(blockers) ? " Override checklist with a written reason may apply." :
+        " Override checklist cannot replace completion of a mandatory form or an unrun check.") : "",
+    trainingBlockerMessage(training.blockers),
+    requestedTraining !== undefined && !canOverrideTraining ? "You do not have Override training compliance permission." : "",
+    requestedTraining !== undefined && !trainingReason.success ? "Write a reason for the training override." : "",
+    requested !== undefined && !formReason.success ? "Write a reason for the checklist override." : "",
+  ].filter(Boolean).join(" ");
+  if (!formsAccepted || !trainingAccepted || requestedTraining !== undefined && (!canOverrideTraining || !trainingReason.success) ||
+      requested !== undefined && (!canOverride || !formReason.success))
+    throw new ChecklistGateError(message || "The requested override is not permitted. Review the checklist and retry.",
+      allBlockers, canOverride, canOverrideTraining && training.blockers.length > 0);
+  const actor = await authenticatedActor(req, tx);
+  if (requestedTraining !== undefined && trainingReason.success) {
+    await appendAudit(tx, { ...actor, source: "training_compliance_checklist" }, "training_override",
+      actor.roleId ?? null, "training_compliance", "override", planning.deploymentChecklistCompleted ?? null, true,
+      { planUuid: planning.planUuid, assignmentUuid: planning.relieverAssignUuid,
+        reason: trainingReason.data.reason, blockers: training.blockers, results: training.check });
+  }
   if (requested !== undefined) {
     if (blockers.some(b => b.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(b.status)))
       throw new ChecklistGateError(checklistBlockerMessage(blockers), blockers, false);
@@ -95,11 +127,22 @@ export async function verifyChecklistYes(tx: any, planning: {
     throw new ChecklistGateError(checklistBlockerMessage(blockers), blockers, canOverride);
   }
   await tx.execute(sql`SELECT set_config('sail.checklist_verified_plan',${planning.planUuid},true)`);
+  const snapshot = await recordTrainingAcceptance(tx, planning.planUuid, planning.relieverAssignUuid, actor, {
+    planUuid: planning.planUuid, assignmentUuid: planning.relieverAssignUuid,
+    vesselUuid: assignment.vessel_uuid, contractRankUuid: training.check.contractRankUuid,
+    joiningDate: training.check.joiningDate, contractEnd: training.check.contractEnd,
+    ...training, overrides: {
+      training: requestedTraining !== undefined && trainingReason.success ? { reason: trainingReason.data.reason,
+        results: training.blockers } : null,
+      companyForms: requested !== undefined && formReason.success ? { reason: formReason.data.reason, blockers } : null,
+    },
+  });
+  return { ...snapshot, warnings: training.warnings };
 }
 
 export function sendChecklistGateError(error: unknown, res: Response): boolean {
   if (!(error instanceof ChecklistGateError)) return false;
   res.status(error.status).json({ error: error.code, message: error.message,
-    blockers: error.blockers, canOverride: error.canOverride });
+    blockers: error.blockers, canOverride: error.canOverride, canOverrideTraining: error.canOverrideTraining });
   return true;
 }

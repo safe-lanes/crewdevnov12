@@ -13,10 +13,12 @@ import {
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
 import { requirePermission } from "../../middleware/requirePermission";
 import { getRelieverTrainingCompliance } from "./controllers/trainingComplianceController";
+import { getTrainingChecklistHistory } from "./controllers/trainingChecklistHistoryController";
 
 const router = Router();
 router.use(planningAttachmentAccess);
 router.use(redactAttachmentJson);
+router.get("/planning/:planUuid/checklist-history", getTrainingChecklistHistory);
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
