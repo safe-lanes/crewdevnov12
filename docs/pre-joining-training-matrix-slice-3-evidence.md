@@ -1,5 +1,9 @@
 # Pre-joining Training Matrix — slice 3
 
+Historical evidence for calculation 1.0.0. The subsequent approved revision is
+documented in `pre-joining-training-matrix-calculation-1.1-review.md`; the case
+generator now produces the latest review table, preserving the original output.
+
 ## Boundary
 
 Shared server calculation only. No screens, HTTP routes, enforcement, grants,

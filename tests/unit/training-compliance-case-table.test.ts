@@ -13,6 +13,10 @@ describe("review table: one executable assertion set per business case", () => {
     expect(result.contractEnd).toBe(test.end);
     expect(result.calculationVersion).toBe(TRAINING_COMPLIANCE_VERSION);
     if (test.issue) expect(result.issues.map(i => i.code)).toContain(test.issue);
+    if (test.summary) expect(result.summary.mandatory.status).toBe(test.summary);
+    if (test.complete && test.issue) {
+      expect(result.issues.filter(i => i.code === test.issue).every(i => i.blocking === false)).toBe(true);
+    }
     if (!test.complete) {
       expect(result.summary.mandatory.status).toBe("incomplete");
       expect(result.summary.recommended.status).toBe("incomplete");
