@@ -4,14 +4,21 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { randomUUID, createHash } from "node:crypto";
 vi.mock("@server/v2/db", () => ({ getDb: vi.fn() }));
+const access = vi.hoisted(() => ({ menu: vi.fn(), subject: vi.fn() }));
+vi.mock("@server/v2/shared/attachmentAccess", async original => ({
+  ...await original<typeof import("@server/v2/shared/attachmentAccess")>(),
+  authorizeAttachmentMenu: access.menu, authorizeAttachmentSubject: access.subject,
+}));
 import { getDb } from "@server/v2/db";
 import { calculateRelieverTrainingCompliance } from "@server/v2/shared/training-compliance/service";
+import { getRelieverTrainingCompliance } from "@server/v2/vessel/controllers/trainingComplianceController";
+import { AttachmentAccessError } from "@server/v2/shared/attachmentAccess";
 
 const tables = ["crew_members_v2", "crew_assignments", "vessel_planning_v2", "master_vessels",
   "crew_assignment_rule_context", "adm_available_ranks_v2", "adm_training_master_v2",
   "adm_company_trainings_v2", "adm_company_training_requirements_v2",
   "adm_training_matrix_vessel_revisions_v2", "adm_training_matrix_equivalents_v2",
-  "adm_training_matrix_vessel_drafts_v2", "crew_training_courses"];
+  "adm_training_matrix_vessel_drafts_v2", "crew_training_courses", "crew_training_attachments"];
 const schemas = [0, 1].map(() => `training_calc_${randomUUID().replaceAll("-", "")}`);
 const pools: Pool[] = [], dbs: any[] = [], observed: string[][] = [];
 const databaseErrors: string[] = [];
@@ -69,6 +76,8 @@ beforeAll(async () => {
   vi.mocked(getDb).mockImplementation(() => dbs[tenant]);
 }, 60000);
 beforeEach(async () => {
+  access.menu.mockReset().mockResolvedValue({});
+  access.subject.mockReset().mockResolvedValue(undefined);
   databaseErrors.length = 0;
   for (const [index, pool] of pools.entries()) {
     await pool.query(`TRUNCATE ${tables.map(ident).join(",")}`);
@@ -97,6 +106,65 @@ beforeEach(async () => {
       expiry: index ? "2025-01-01" : "2026-12-31", is_deleted: false });
   }
   tenant = 0;
+});
+
+async function display(query: Record<string, string> = {}, planUuid = ids.plan) {
+  tenant = 0;
+  const response: any = { code: 200, payload: undefined, setHeader: vi.fn(),
+    status(code: number) { this.code = code; return this; },
+    json(payload: unknown) { this.payload = payload; return this; } };
+  await getRelieverTrainingCompliance({ params: { planUuid, assignUuid: ids.assignment }, query } as any, response);
+  return response;
+}
+
+describe("read-only operational training endpoint", () => {
+  it("returns exact context, certificate details and protected attachment links without writes", async () => {
+    const attachment = randomUUID();
+    await insert(pools[0], schemas[0], "crew_training_attachments", {
+      att_uuid: attachment, train_uuid: ids.certificateA, file_name: "certificate.pdf",
+      file_data: "NEVER RETURN THIS", is_deleted: false });
+    const before = await fingerprint(pools[0]);
+    const result = await display();
+    expect(result.code, databaseErrors.join("; ")).toBe(200);
+    expect(access.menu.mock.calls.map(c => c[1])).toEqual(["Vessel", "Crew Database"]);
+    expect(access.subject.mock.calls.map(c => c.slice(1))).toEqual([
+      ["Vessel", ids.vessel, "vessel"], ["Crew Database", ids.crew] ]);
+    expect(result.payload).toMatchObject({ calculationVersion: "1.2.0", context: {
+      crewUuid: ids.crew }, courses: [{ state: "Valid", certificates: [{
+        selected: true, disposition: "selected", attachments: [{
+          uuid: attachment, url: `/api/v2/crew-pool/training/attachments/${attachment}/raw` }] }] }] });
+    expect(JSON.stringify(result.payload)).not.toContain("NEVER RETURN THIS");
+    expect(await fingerprint(pools[0])).toBe(before);
+    expect(observed.at(-1)).toEqual(["on", "repeatable read"]);
+  });
+  it("refuses a missing grant before reading reliever facts", async () => {
+    access.menu.mockRejectedValue(new AttachmentAccessError(403));
+    const count = observed.length;
+    const result = await display();
+    expect(result.code).toBe(403);
+    expect(observed.length).toBe(count);
+    expect(result.payload.message).toContain("permission");
+  });
+  it("refuses an out-of-scope vessel before returning certificate information", async () => {
+    access.subject.mockRejectedValue(new AttachmentAccessError(403));
+    const result = await display();
+    expect(result.code).toBe(403);
+    expect(result.payload.courses).toBeUndefined();
+  });
+  it("refuses an orphaned or other-tenant exact link without substituting another assignment", async () => {
+    expect((await display({}, randomUUID())).code).toBe(404);
+  });
+  it("refuses browser-selected revisions or calculation facts", async () => {
+    expect((await display({ matrixRevisionUuid: ids.revision })).code).toBe(400);
+    expect((await display({ plannedJoiningDate: "2035-01-01" })).code).toBe(400);
+  });
+  it("a database failure returns plain retry instructions, not raw SQL", async () => {
+    access.menu.mockRejectedValue(new Error("private SQL detail"));
+    const result = await display();
+    expect(result.code).toBe(500);
+    expect(result.payload.message).toContain("Retry");
+    expect(JSON.stringify(result.payload)).not.toContain("private SQL");
+  });
 });
 afterAll(async () => {
   for (const pool of pools) await pool.end();
