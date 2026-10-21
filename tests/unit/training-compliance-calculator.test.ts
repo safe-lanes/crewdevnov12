@@ -88,4 +88,22 @@ describe("shared training compliance kernel", () => {
     expect(result).toMatchObject({ status: "incomplete", issues: [{ code: "CALCULATION_FAILED",
       message: expect.stringContaining("Retry") }], summary: { mandatory: { status: "incomplete" } } });
   });
+  it("blank stored expiry is explicitly no expiry, not an invalid date", () => {
+    expect(calculateTrainingCompliance(input([cert("blank-expiry", "")])).courses[0])
+      .toMatchObject({ state: "Valid, no expiry", chosenCertificate: { expiry: null } });
+  });
+  it("a missing issue date cannot prove a certificate existed at joining", () => {
+    expect(calculateTrainingCompliance(input([cert("unknown-issue", null, "course-a", "")])).status).toBe("incomplete");
+  });
+  it.each([-1, 1.5, Number.NaN])("rejects invalid contract months %s", months => {
+    const result = calculateTrainingCompliance({ ...input([cert("held", null)]), contractRangeEndMonths: months });
+    expect(result.status).toBe("incomplete");
+    expect(result.contractEnd).toBeNull();
+    expect(result.summary.mandatory.status).toBe("incomplete");
+  });
+  it("a malformed matching certificate is not hidden behind a good certificate", () => {
+    const result = calculateTrainingCompliance(input([cert("good", null), cert("bad", "invalid")]));
+    expect(result.courses[0]).toMatchObject({ state: null, complete: false, validAtJoining: null, validThroughContract: null });
+    expect(result.summary.mandatory.status).toBe("incomplete");
+  });
 });

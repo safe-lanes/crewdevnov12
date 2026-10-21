@@ -52,6 +52,7 @@ export type ComplianceResult = {
   matrixRevisionUuid: string | null;
   matrixRevision: string | null;
   rankRequirementsSource: "current_company_rank_requirements";
+  /** Complete means calculation finished, NOT that the crew member is compliant. */
   status: "complete" | "incomplete";
   issues: CheckIssue[];
   courses: CourseResult[];

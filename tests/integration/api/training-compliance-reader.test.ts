@@ -201,4 +201,34 @@ describe("tenant-scoped read-only compliance loader", () => {
     expect(await check()).toMatchObject({ courses: [{ obligation: "recommended", state: "Not held" }],
       summary: { mandatory: { status: "valid", count: 0 }, recommended: { status: "gap", count: 1 } } });
   });
+  it("an absent own contract end stays absent despite the incumbent's twelve months", async () => {
+    await pools[0].query("UPDATE vessel_planning_v2 SET reliever_contract_end_range_end_months=NULL");
+    expect(await check()).toMatchObject({ status: "incomplete", joiningDate: "2026-01-31",
+      contractEnd: null, contractEndStatus: "not_set", courses: [{ state: null,
+        chosenCertificate: { certificateUuid: ids.certificateA } }] });
+  });
+  it("an unavailable captured rank never resolves through its label", async () => {
+    await pools[0].query("UPDATE adm_available_ranks_v2 SET is_deleted=true");
+    const result = await check();
+    expect(result.status).toBe("incomplete");
+    expect(result.issues.map(i => i.code)).toContain("MISSING_RANK");
+  });
+  it("a corrupted saved matrix is incomplete, not an empty valid matrix", async () => {
+    await pools[0].query(`UPDATE adm_training_matrix_vessel_revisions_v2 SET revision_data='{"applicableTrainingIds":["101"]}'`);
+    const result = await check();
+    expect(result.status).toBe("incomplete");
+    expect(result.issues.map(i => i.code)).toContain("INVALID_MATRIX");
+  });
+  it("a saved course that no longer exists makes the check incomplete", async () => {
+    await pools[0].query("DELETE FROM adm_company_trainings_v2 WHERE id=101");
+    const result = await check();
+    expect(result.status).toBe("incomplete");
+    expect(result.issues.map(i => i.code)).toContain("MATRIX_COURSE_UNAVAILABLE");
+  });
+  it("an unknown rank-cell value is incomplete rather than silently ignored", async () => {
+    await pools[0].query("UPDATE adm_company_training_requirements_v2 SET status='unknown'");
+    const result = await check();
+    expect(result.status).toBe("incomplete");
+    expect(result.issues.map(i => i.code)).toContain("INVALID_REQUIREMENT");
+  });
 });
