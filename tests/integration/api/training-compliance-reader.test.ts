@@ -16,7 +16,7 @@ import { AttachmentAccessError } from "@server/v2/shared/attachmentAccess";
 
 const tables = ["crew_members_v2", "crew_assignments", "vessel_planning_v2", "master_vessels",
   "crew_assignment_rule_context", "adm_available_ranks_v2", "adm_training_master_v2",
-  "adm_company_trainings_v2", "adm_company_training_requirements_v2",
+  "adm_company_trainings_v2", "adm_company_training_requirements_v2", "adm_company_training_groups_v2",
   "adm_training_matrix_vessel_revisions_v2", "adm_training_matrix_equivalents_v2",
   "adm_training_matrix_vessel_drafts_v2", "crew_training_courses", "crew_training_attachments"];
 const schemas = [0, 1].map(() => `training_calc_${randomUUID().replaceAll("-", "")}`);
@@ -118,6 +118,29 @@ async function display(query: Record<string, string> = {}, planUuid = ids.plan) 
 }
 
 describe("read-only operational training endpoint", () => {
+  it("adds matrix category/course order without dropping compliant rows or changing calculated results", async () => {
+    await insert(pools[0], schemas[0], "adm_company_training_groups_v2",
+      { ctg_uuid: randomUUID(), code: "A", label: "Statutory", display_order: 1, is_deleted: false });
+    await insert(pools[0], schemas[0], "adm_company_training_groups_v2",
+      { ctg_uuid: randomUUID(), code: "B", label: "Company", display_order: 2, is_deleted: false });
+    await pools[0].query("UPDATE adm_company_trainings_v2 SET group_code=CASE WHEN id=101 THEN 'B' ELSE 'A' END,sort_order=3");
+    await insert(pools[0], schemas[0], "adm_company_training_requirements_v2",
+      { ctr_uuid: randomUUID(), company_training_id: 102, rank_id: 501, status: "R", is_deleted: false });
+    await pools[0].query(`UPDATE adm_training_matrix_vessel_revisions_v2 SET revision_data='{"applicableTrainingIds":[101,102]}'`);
+    const calculated = await check();
+    const before = await fingerprint(pools[0]);
+    const result = await display();
+    expect(result.code, databaseErrors.join("; ")).toBe(200);
+    expect(result.payload.courses).toHaveLength(2);
+    expect(result.payload.courses[0]).toMatchObject({ courseUuid: ids.courseA,
+      state: "Valid", category: "B. Company", categoryOrder: 1, matrixOrder: 1 });
+    expect(result.payload.courses[1]).toMatchObject({ courseUuid: ids.courseB,
+      state: "Not held", category: "A. Statutory", categoryOrder: 0, matrixOrder: 0 });
+    const { context, ...withLayout } = result.payload;
+    expect({ ...withLayout, courses: withLayout.courses.map(
+      ({ category, categoryOrder, matrixOrder, certificates, ...course }: any) => course) }).toEqual(calculated);
+    expect(await fingerprint(pools[0])).toBe(before);
+  });
   it("returns exact context, certificate details and protected attachment links without writes", async () => {
     const attachment = randomUUID();
     await insert(pools[0], schemas[0], "crew_training_attachments", {

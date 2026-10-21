@@ -25,6 +25,24 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
       await authorizeAttachmentSubject(req, "Crew Database", canonical.crewUuid);
       const check = await readRelieverTrainingCompliance(db, request);
       const { matrix } = await readSavedTrainingMatrix(db, canonical);
+      // Presentation metadata only. Keep the calculator and its inputs/results
+      // unchanged; mirror Vessel > Training Matrix's group-code/course order.
+      const layoutRows = (await db.execute(sql`SELECT m.tm_uuid AS "courseUuid",
+        nullif(c.group_code,'') AS "groupCode",g.label AS "groupLabel",c.sort_order AS "sortOrder",
+        r.status
+        FROM adm_company_trainings_v2 c
+        JOIN adm_training_master_v2 m ON m.id=c.training_master_id
+        JOIN adm_company_training_requirements_v2 r ON r.company_training_id=c.id
+          AND r.rank_id=${canonical.rankRowId} AND NOT r.is_deleted
+        LEFT JOIN adm_company_training_groups_v2 g ON g.code=c.group_code AND NOT g.is_deleted
+        WHERE NOT c.is_deleted AND NOT m.is_deleted
+          AND c.id IN (SELECT json_array_elements_text(revision_data::json->'applicableTrainingIds')::integer
+            FROM adm_training_matrix_vessel_revisions_v2
+            WHERE tmvr_uuid=${matrix?.revisionUuid ?? null} AND NOT is_deleted)
+        ORDER BY nullif(c.group_code,'') COLLATE "C" ASC NULLS LAST,coalesce(c.sort_order,0),c.id`)).rows as {
+          courseUuid: string; groupCode: string | null; groupLabel: string | null;
+          sortOrder: number | null; status: string | null }[];
+      const groups = [...new Set(layoutRows.map(row => row.groupCode))];
       const certificates = await readTrainingCertificates(db, canonical.crewUuid);
       const context = (await db.execute(sql`SELECT
         c.crew_uuid AS "crewUuid",
@@ -43,9 +61,16 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
           AND NOT coalesce(t.is_deleted,false) ORDER BY t.att_uuid`)).rows as {
           uuid: string; certificateUuid: string; fileName: string }[];
       return { ...check, context, courses: check.courses.map(course => {
+        const layout = layoutRows.find(row => row.courseUuid === course.courseUuid
+          && row.status === (course.obligation === "mandatory" ? "M" : "R"));
         const accepted = new Set(matrix?.equivalents.filter(l => l.requiredCourseUuid === course.courseUuid)
           .map(l => l.acceptedCourseUuid));
-        return { ...course, certificates: certificates.filter(c => c.courseUuid
+        return { ...course,
+          category: layout?.groupCode
+            ? `${layout.groupCode}. ${layout.groupLabel || layout.groupCode}` : "Unassigned",
+          categoryOrder: layout ? groups.indexOf(layout.groupCode) : null,
+          matrixOrder: layout ? layoutRows.indexOf(layout) : null,
+          certificates: certificates.filter(c => c.courseUuid
           && (c.courseUuid === course.courseUuid || accepted.has(c.courseUuid))).map(c => {
             const flags = course.issues.filter(i => i.certificateUuid === c.certificateUuid);
             const selected = c.certificateUuid === course.chosenCertificate?.certificateUuid;
