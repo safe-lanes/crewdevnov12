@@ -91,6 +91,9 @@ export const RANK_GROUPS: Record<string, string[]> = {
   cadets: ["deck cadet", "engine cadet"],
 };
 export const RANK_GROUP_UNIONS: Record<string, string[]> = {
+  // "engineers" in everyday speech = the engine officers (PROVISIONAL, decision 5). A named group, so the word maps to
+  // ONE server rule instead of the model choosing a combination (trial run 3 once combined officers + ratings).
+  engineers: ["engine_officers"],
   officers: ["deck_officers", "engine_officers"],
   ratings: ["deck_ratings", "engine_ratings"],
   deck: ["deck_officers", "deck_ratings"],

@@ -53,7 +53,8 @@ function captureCount(): number | null {
 (async () => {
   const label = process.argv[2] || "run";
   const only = process.argv.find((a) => a.startsWith("--only="))?.split("=")[1]?.split(",");
-  const set = JSON.parse(readFileSync(new URL("./test-set.json", import.meta.url), "utf8")) as { cases: Case[] };
+  const setFile = process.env.TRIAL_TEST_SET || "test-set.json";
+  const set = JSON.parse(readFileSync(new URL(`./${setFile}`, import.meta.url), "utf8")) as { cases: Case[] };
   const t = targets();
   const out: Record<string, unknown>[] = [];
   for (const c of set.cases) {

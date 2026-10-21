@@ -36,6 +36,8 @@ async function counts(t: Target) {
   check("A4 Gamma Bay valid zero (ok, 0)", r.ok === true && r.totals?.people === 0, r);
   r = await as({ rankGroups: ["engine_officers"] });
   check("A5 fleet engine officers = 7 people / 8 assignments", r.totals?.people === 7 && r.totals?.assignments === 8, r);
+  r = await as({ rankGroups: ["engineers"] });
+  check("A12 named group 'engineers' = engine officers only → 7 people (Oiler/Bosun not counted)", r.totals?.people === 7 && r.totals?.assignments === 8, r);
   r = await as({ nationalities: ["Indian"] });
   check("A6 nationality 'Indian' → 5 people", r.totals?.people === 5, r);
   r = await as({ ranks: ["Captain"] });

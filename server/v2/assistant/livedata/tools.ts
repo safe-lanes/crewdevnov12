@@ -26,7 +26,11 @@ const ranksJson = { type: "array", items: { type: "string" }, description: "Exac
 const rankGroupsJson = {
   type: "array",
   items: { type: "string", enum: [...RANK_GROUP_NAMES] },
-  description: "Rank groups (provisional list): officers, deck_officers, engine_officers ('engineers'), ratings, deck_ratings, engine_ratings, deck, engine, catering, cadets.",
+  description:
+    "Rank groups (PROVISIONAL list). Use the group named after the user's word: 'engineers' → engineers (= engine officers: Chief to " +
+    "Fifth Engineer, Electrical Officer, Gas Engineer); 'officers' → officers; 'ratings' → ratings; 'deck crew' → deck; 'engine crew' / " +
+    "'engine room' → engine; also deck_officers, engine_officers, deck_ratings, engine_ratings, catering, cadets. Never combine groups " +
+    "to stand for one word.",
 };
 const docTypesJson = {
   type: "array",

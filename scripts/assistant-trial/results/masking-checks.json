@@ -1,0 +1,154 @@
+[
+ {
+  "scenario": "S1-turn1",
+  "q": "List the crew on board MV Alpha Star",
+  "conversationId": "b5f87cec-cff4-41ea-8484-73a81d6f44cb",
+  "start": 448,
+  "end": 449,
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**8 crew members** are on board **MV Alpha Star**.\n\n| Name | Rank | Sign-on date | Relief due |\n|---|---|---:|---:|\n| Aldric Vexmoor | Master | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | Second Officer | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | Third Engineer | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | 2026-10-20 | Not recorded |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S1-turn2-followup",
+  "q": "which of them are officers?",
+  "conversationId": "b5f87cec-cff4-41ea-8484-73a81d6f44cb",
+  "start": 450,
+  "end": 451,
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**6 crew members** on **MV Alpha Star** are officers:\n\n| Name | Rank |\n|---|---|\n| Benedek Quorrlyn | Chief Officer |\n| Aldric Vexmoor | Master |\n| Corvina Tallowind | Second Officer |\n| Elsbet Orvanne | 2nd Engineer |\n| Dagny Brisketh | Chief Engineer |\n| Faustin Kelderwick | Third Engineer |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, on board, rank group officers, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S2-turn1",
+  "q": "List the crew on board MV Beta Ocean",
+  "conversationId": "8a7c6b83-91da-4d86-a634-75060dc1c979",
+  "start": 452,
+  "end": 453,
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on date | Relief due |\n|---|---|---|---|---|\n| Faustin Kelderwick | Third Engineer | MV Beta Ocean | 2026-10-25 | — |\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-04-01 | 2026-10-01 |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | 2026-08-20 | 2026-11-20 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 2026-07-01 | 2027-01-01 |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean | 2026-10-15 | 2027-04-15 |\n| Quillon Rasterby | Electrical Officer | MV Beta Ocean | 2026-09-10 | 2027-03-10 |\n| Rasmine Thornquay | Oiler | MV Beta Ocean | 2026-06-20 | 2026-12-20 |\n\n**Total: 7 crew members** on board.\n\nFilters: vessel MV Beta Ocean, on-board crew, all ranks, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S2-turn2-after-restart",
+  "q": "which of them are engineers?",
+  "conversationId": "8a7c6b83-91da-4d86-a634-75060dc1c979",
+  "start": 454,
+  "end": 455,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **4 engineers** on board **MV Beta Ocean**:\n\n| Name | Rank | Vessel |\n|---|---|---|\n| Faustin Kelderwick | Third Engineer | MV Beta Ocean |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean |\n| Quillon Rasterby | Electrical Officer | MV Beta Ocean |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S3-new-conversation",
+  "q": "which of them are officers?",
+  "conversationId": "ab84c5a9-c9a0-45cb-8a78-e18e1929f7a8",
+  "start": 456,
+  "end": 457,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nSix officers are on board MV Alpha Star:\n\n| Name | Rank | Vessel |\n|---|---|---|\n| Aldric Vexmoor | Master | MV Alpha Star |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star |\n| Corvina Tallowind | Second Officer | MV Alpha Star |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star |\n| Faustin Kelderwick | Third Engineer | MV Alpha Star |\n\nFilters: vessel MV Alpha Star, rank group officers, on-board crew, unit people. Some definitions are provisional (trial).",
+  "citations": []
+ },
+ {
+  "scenario": "S4-turn1-user1",
+  "q": "List the crew on board MV Alpha Star",
+  "conversationId": "1352b4d5-32a1-47b0-905d-2d1e65b0e788",
+  "start": 458,
+  "end": 459,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **8 crew members** on board **MV Alpha Star**.\n\n| Name | Rank | Sign-on date | Relief due |\n|---|---|---:|---:|\n| Aldric Vexmoor | Master | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | Second Officer | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | Third Engineer | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | 2026-10-20 | Not recorded |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, on-board crew, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S4-turn2-other-user",
+  "q": "which of them are officers?",
+  "conversationId": "1352b4d5-32a1-47b0-905d-2d1e65b0e788",
+  "start": 460,
+  "end": 461,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **6 officers** on board **MV Alpha Star**:\n\n| Name | Rank |\n|---|---|\n| Aldric Vexmoor | Master |\n| Benedek Quorrlyn | Chief Officer |\n| Corvina Tallowind | Second Officer |\n| Dagny Brisketh | Chief Engineer |\n| Elsbet Orvanne | 2nd Engineer |\n| Faustin Kelderwick | Third Engineer |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, rank group officers, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S5-turn1-companyA",
+  "q": "List the crew on board MV Alpha Star",
+  "conversationId": "d0f9f3d4-0211-4724-a471-2a41a6e27e57",
+  "start": 462,
+  "end": 463,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **8 crew members** on board **MV Alpha Star**.\n\n| Name | Rank | Sign-on date | Relief due |\n|---|---|---:|---:|\n| Aldric Vexmoor | Master | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | Second Officer | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | Third Engineer | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | 2026-10-20 | Not recorded |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S5-turn2-companyB",
+  "q": "which of them are officers?",
+  "conversationId": "d0f9f3d4-0211-4724-a471-2a41a6e27e57",
+  "start": 464,
+  "end": 465,
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **4 officer crew members** on board **MV Alpha Star**:\n\n| Name | Rank |\n|---|---|\n| Wendel Crossfeather | Master |\n| Xanthe Moorgrave | Chief Officer |\n| Yorick Fellhammer | Chief Engineer |\n| Zelia Brantwood | Second Engineer |\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, rank group officers, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S6-turn1-issuer-pilot",
+  "q": "List the crew on board MV Alpha Star",
+  "conversationId": "29db436d-76e6-4c97-b84c-cb3991bec05c",
+  "start": 466,
+  "end": 467,
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on date | Relief due |\n|---|---|---|---|---|\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | Second Officer | MV Alpha Star | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | Third Engineer | MV Alpha Star | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | MV Alpha Star | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | MV Alpha Star | 2026-10-20 | Not recorded |\n\n**Total: 8 crew members** on board.\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Alpha Star, on board, unit people.",
+  "citations": []
+ },
+ {
+  "scenario": "S6-turn2-issuer-pilotmt",
+  "q": "which of them are officers?",
+  "conversationId": "29db436d-76e6-4c97-b84c-cb3991bec05c",
+  "start": 468,
+  "end": 469,
+  "answer": "I couldn’t retrieve the Crewing data right now because the company context is unavailable. I can’t determine which crew members are officers.",
+  "citations": []
+ },
+ {
+  "scenario": "S7-turn1-typed-first-name",
+  "q": "Is Petra on board?",
+  "conversationId": "906790a3-09d1-4b72-b8b9-abe0e894ecbc",
+  "start": 470,
+  "end": 472,
+  "answer": "From Crewing data (as of 2026-11-01): **Yes. Petra Wintermarsh is on board MV Beta Ocean as Second Engineer.**\n\nFilters: vessel MV Beta Ocean, on-board primary assignments, unit people.  \n\nSome definitions are provisional (trial).",
+  "citations": []
+ },
+ {
+  "scenario": "S7-turn2-typed-again-after-lookup",
+  "q": "Which certificates does Petra have expiring in the next 60 days?",
+  "conversationId": "906790a3-09d1-4b72-b8b9-abe0e894ecbc",
+  "start": 473,
+  "end": 475,
+  "answer": "From Crewing data (as of 2026-11-01): **Petra Wintermarsh has 2 certificates expiring in the next 60 days**.\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n\nFilters: crew member Petra Wintermarsh, expiry state not expired, expiry within the next 60 days, unit documents.",
+  "citations": []
+ },
+ {
+  "scenario": "S8-howto-citations",
+  "q": "How do I approve or reject a rotation plan?",
+  "conversationId": "9fea245d-46e6-4bf3-a8e3-0f232521c224",
+  "start": 476,
+  "end": 478,
+  "answer": "1. Open the **Approval** sub-sub module.\n2. Select the rotation plan using the **checkbox**.\n3. Click:\n   - **Deploy** to approve and proceed with the rotation plan.\n   - **Reject** to decline the proposal.\n\nWhen deployed, the crew member moves to the **Planning** tab under **Reliever Status**.\n\nSource: *Crewing - Crewing User Manual R2_10.06.2026*, section 1.5.3.3, p. 43.",
+  "citations": [
+   {
+    "module": "Crewing",
+    "manual": "Crewing - Crewing User Manual R2_10.06.2026",
+    "section": "1.5.3.3 HOW TO APPROVE OR REJECT A ROTATION PLAN (p.43)"
+   },
+   {
+    "module": "Crewing",
+    "manual": "Crewing - Crewing User Manual R2_10.06.2026",
+    "section": "Introduction (p.42)"
+   },
+   {
+    "module": "Crewing",
+    "manual": "Crewing - Crewing User Manual R2_10.06.2026",
+    "section": "1.5.3.1 HOW TO ACCESS APPROVAL (p.42)"
+   },
+   {
+    "module": "Crewing",
+    "manual": "Crewing - Crewing User Manual R2_10.06.2026",
+    "section": "SAIL - CREWING MODULE USER MANUAL (p.41)"
+   },
+   {
+    "module": "Crewing",
+    "manual": "Crewing - Crewing User Manual R2_10.06.2026",
+    "section": "Document (p.3)"
+   }
+  ]
+ }
+]

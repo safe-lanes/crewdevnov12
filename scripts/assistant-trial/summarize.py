@@ -1,7 +1,7 @@
 """PILOT TRIAL — summary of one or more results/<run>.json files (pass rates, axes, latency, model calls, tokens, cost).
 
-Cost is an ESTIMATE: scaled from the measured luna figure of 4-Sep-2026 (≈ $0.62 per 1,000 answers at ≈1,517 input +
-266 output tokens per answer, project log), i.e. per-token prices are not known here — only that ratio.
+Cost: measured tokens × per-token rates. The official rate was NOT verified (third-party trackers disagree), so two
+rate sets are shown and labelled UNVERIFIED. (Round 1 scaled a 4-Sep figure; withdrawn — its rates were never verified.)
 Usage: python summarize.py results/run3-final.json [results/run4-repeat.json ...]
 """
 import json
@@ -41,7 +41,23 @@ for path in sys.argv[1:]:
     print(f"latency ms  p50 {pct(lat, 50)} · p95 {pct(lat, 95)} · max {max(lat) if lat else None}")
     if calls:
         print(f"model calls per turn  mean {statistics.mean(calls):.2f} · max {max(calls)}")
-    print(f"tokens per turn  in {mean_in:.0f} · out {mean_out:.0f}" + (f" · est. cost ≈ ${est * 1000:.2f} per 1,000 turns (ESTIMATE)" if est else ""))
+    print(f"tokens per turn (measured)  in {mean_in:.0f} · out {mean_out:.0f}")
+    # cost: OpenAI's own price page was NOT verified; two conflicting third-party rate sets (USD per 1M tokens) shown
+    for label, rin, rout in (("third-party A $0.20/$1.20", 0.20, 1.20), ("third-party B $1.00/$6.00", 1.00, 6.00)):
+        print(f"    cost UNVERIFIED at {label}: ${(mean_in * rin + mean_out * rout) / 1000:.2f} per 1,000 turns")
     print("by category  " + " · ".join(f"{k} {v[0]}/{v[1]}" for k, v in sorted(cats.items())))
     fails = [f"{r['id']}.{r['turn']}" for r in rows if not r["pass"]]
     print("failed  " + (", ".join(fails) or "none"))
+    # classification of FAILED turns (original pass/fail scores above are unchanged)
+    cls = {"infrastructure": [], "correct answer via another valid route": [], "wrong or incomplete answer": []}
+    for r in rows:
+        if r["pass"]:
+            continue
+        key = f"{r['id']}.{r['turn']}"
+        if r["status"] != 200 or str(r["answer"]).startswith("TypeError"):
+            cls["infrastructure"].append(key)
+        elif r["answerOk"]:
+            cls["correct answer via another valid route"].append(key)
+        else:
+            cls["wrong or incomplete answer"].append(key)
+    print("classified  " + " · ".join(f"{k}: {len(v)} {v}" for k, v in cls.items()))

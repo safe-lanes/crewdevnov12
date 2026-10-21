@@ -68,5 +68,51 @@ def main() -> None:
         print(f"  line {f[0]:5d}  {f[1]:24s} {f[2]:7s} {f[3]}")
 
 
+CATEGORY = {
+    "tool-result": "names returned by tools (visible in tool results)",
+    "history-assistant": "names replayed through earlier ASSISTANT answers",
+    "history-user": "names the user typed in EARLIER turns (replayed)",
+    "current-user-message": "names the user typed in THIS turn",
+    "tool-call-arguments": "names the model wrote into tool arguments",
+    "system": "system prompt", "tool-schemas": "tool schemas", "this-turn-assistant": "this turn's assistant text",
+}
+
+
+def classify(lines: list[str], first: int, last: int) -> dict:
+    counts: dict[str, list[str]] = {}
+    masked_tool_tokens = 0
+    for n in range(first, last + 1):
+        body = json.loads(json.loads(lines[n - 1])["body"])
+        msgs = body.get("messages") or []
+        last_user = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
+        for i, m in enumerate(msgs):
+            role = m.get("role")
+            text = m.get("content") if isinstance(m.get("content"), str) else json.dumps(m.get("content") or "")
+            where = {"system": "system", "tool": "tool-result"}.get(role) or (
+                ("current-user-message" if i == last_user else "history-user") if role == "user" else
+                ("history-assistant" if i < last_user else "this-turn-assistant"))
+            if role == "tool":
+                masked_tool_tokens += len(re.findall(r"\[(PERSON|VESSEL)_\d+\]", text))
+            for term, _ in hits(text):
+                counts.setdefault(where, []).append(term)
+            for tc in m.get("tool_calls") or []:
+                for term, _ in hits(tc.get("function", {}).get("arguments", "")):
+                    counts.setdefault("tool-call-arguments", []).append(term)
+        for term, _ in hits(json.dumps(body.get("tools") or [])):
+            counts.setdefault("tool-schemas", []).append(term)
+    return {"requests": last - first + 1, "maskedTokensInToolResults": masked_tool_tokens,
+            "visible": {k: sorted(set(v)) for k, v in counts.items()}}
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 2 and sys.argv[2] == "--ranges":
+        cap = open(sys.argv[1], encoding="utf-8").read().splitlines()
+        for row in json.load(open(sys.argv[3], encoding="utf-8")):
+            if row["end"] < row["start"]:
+                print(row["scenario"], "no model request"); continue
+            c = classify(cap, row["start"], row["end"])
+            print(f"{row['scenario']:36s} requests {c['requests']}  masked-in-tool-results {c['maskedTokensInToolResults']}")
+            for k, v in c["visible"].items():
+                print(f"    VISIBLE {k:22s} {', '.join(v)}")
+    else:
+        main()
