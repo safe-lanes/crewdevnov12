@@ -90,7 +90,23 @@ function areasNeeded(tool: string, args: unknown): Area[] {
   return [];
 }
 
-async function runTool(tool: string, args: unknown, ctx: ToolContext) {
+/** Models often send optional parameters as "", [] or null. Treat those as "not given" (recursively); unknown
+ *  keys are still rejected by the strict schemas. Found in the pilot widget walk-through (documentNameContains: ""). */
+export function dropEmpty(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(dropEmpty);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (x === null || x === undefined || (typeof x === "string" && x.trim() === "") || (Array.isArray(x) && x.length === 0)) continue;
+      out[k] = dropEmpty(x);
+    }
+    return out;
+  }
+  return v;
+}
+
+async function runTool(tool: string, rawArgs: unknown, ctx: ToolContext) {
+  const args = dropEmpty(rawArgs ?? {});
   return runReadOnly(async (q) => {
     switch (tool) {
       case "crewing_query_assignments":
@@ -122,7 +138,7 @@ async function authorizedExecute(identity: VerifiedIdentity, tool: string, args:
     return refuse("unknown_tool", `Unknown tool '${tool}'.`);
   }
   const areas = await viewableAreas(resolution.role.roleId);
-  const missing = areasNeeded(tool, args).filter((a) => !areas.has(a));
+  const missing = areasNeeded(tool, dropEmpty(args ?? {})).filter((a) => !areas.has(a));
   if (missing.length) {
     return refuse("not_allowed", `Your role cannot view: ${missing.map((m) => AREA_MENUS[m]).join(", ")}.`);
   }

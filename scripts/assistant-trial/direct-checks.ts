@@ -123,6 +123,8 @@ async function counts(t: Target) {
   check("S3 unknown argument → invalid_args (strict schema)", r.ok === false && r.code === "invalid_args", r);
   r = await q(t, "crewing_query_documents", { mode: "group", groupBy: ["crew_uuid"] });
   check("S4 group key outside the allow-list → invalid_args", r.ok === false && r.code === "invalid_args", r);
+  r = await ds({ documentNameContains: "", vessels: [], expiryState: "expired", expiryWithin: null });
+  check("S6 empty optional values are ignored (not invalid, not zero): expired = 2", r.ok === true && r.totals?.documents === 2, r);
   r = await q(t, "crewing_run_sql", { sql: "select 1" });
   check("S5 unknown tool → unknown_tool", r.ok === false && r.code === "unknown_tool", r);
 }
