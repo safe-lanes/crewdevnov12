@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +36,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDetails";
 import { JoiningCompanyForms } from "./JoiningCompanyForms";
 import { TrainingMatrixCompliance } from "./TrainingMatrixCompliance";
+import { AcceptedChecklistHistory } from "./AcceptedChecklistHistory";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -53,8 +54,8 @@ const reliefStatusFormSchema = z.object({
 });
 
 type ReliefStatusFormData = z.infer<typeof reliefStatusFormSchema>;
-type ChecklistBlocker = { kind: "requirement" | "check"; status: string; formName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
-type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean };
+type ChecklistBlocker = { kind: "requirement" | "check" | "training"; status: string; formName?: string; courseName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
+type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean; canOverrideTraining: boolean };
 
 function parseChecklistConflict(error: unknown): ChecklistConflict | null {
     if (!(error instanceof Error)) return null;
@@ -63,10 +64,10 @@ function parseChecklistConflict(error: unknown): ChecklistConflict | null {
         const value = JSON.parse(body);
         if (value?.error !== "company_forms_checklist_blocked" || typeof value.message !== "string" || !Array.isArray(value.blockers) || typeof value.canOverride !== "boolean") return null;
         const blockers = value.blockers.filter((item: any) =>
-            item && (item.kind === "requirement" || item.kind === "check") && typeof item.status === "string"
+            item && (item.kind === "requirement" || item.kind === "check" || item.kind === "training") && typeof item.status === "string"
         ) as ChecklistBlocker[];
         if (blockers.length !== value.blockers.length) return null;
-        return { message: value.message, blockers, canOverride: value.canOverride };
+        return { message: value.message, blockers, canOverride: value.canOverride, canOverrideTraining: value.canOverrideTraining === true };
     } catch { return null; }
 }
 
@@ -131,6 +132,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const canOverrideChecklist = canCompanyFormAction("override_checklist");
     const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
     const [overrideReason, setOverrideReason] = useState("");
+    const [trainingOverrideReason, setTrainingOverrideReason] = useState("");
+    const [requestChecklistOverride, setRequestChecklistOverride] = useState(false);
+    const [requestTrainingOverride, setRequestTrainingOverride] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const trainingPermissionQuery = useQuery<{ allowed: boolean }>({
+        queryKey: ["/api/v2/admin/training-compliance/my-permission"],
+        queryFn: async () => (await apiRequest("GET", "/api/v2/admin/training-compliance/my-permission")).json(),
+        retry: false,
+        enabled: open,
+        staleTime: 0,
+        refetchOnMount: "always",
+    });
     const [pendingChecklistPayload, setPendingChecklistPayload] = useState<Record<string, unknown> | null>(null);
     const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
         && userType?.trim().toLowerCase() !== 'ship'
@@ -285,6 +298,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
+            let saveResult: any;
             
             if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
@@ -317,12 +331,12 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 };
                 
                 if (planningData?.planUuid) {
-                    await updatePlanningV2.mutateAsync({
+                    saveResult = await updatePlanningV2.mutateAsync({
                         planUuid: planningData.planUuid,
                         data: payload
                     });
                 } else {
-                    await createPlanningV2.mutateAsync({
+                    saveResult = await createPlanningV2.mutateAsync({
                         vesselUuid,
                         rankId,
                         rank,
@@ -336,20 +350,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             
             toast({
                 title: "Success",
-                description: "Relief status saved successfully",
+                description: `Relief status saved successfully${Array.isArray(saveResult?.checklistAcceptance?.warnings) && saveResult.checklistAcceptance.warnings.length ? ` Checklist notes: ${saveResult.checklistAcceptance.warnings.join(" ")}` : ""}`,
             });
             onOpenChange(false);
         } catch (error: any) {
             console.error('Relief status save error:', error);
             const conflict = parseChecklistConflict(error);
-            const eligibleBlockers = conflict?.blockers.length
-                ? conflict.blockers.every((blocker) =>
-                    (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                    (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                )
-                : false;
             if (conflict && data.deploymentChecklistCompleted === true && planningData?.planUuid) {
                 setChecklistConflict(conflict);
+                setOverrideReason("");
+                setTrainingOverrideReason("");
+                setRequestChecklistOverride(false);
+                setRequestTrainingOverride(false);
                 setPendingChecklistPayload({
                     relieverContractPeriodMonths: data.relieverContractPeriodMonths,
                     relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
@@ -362,9 +374,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 });
-                if (!eligibleBlockers || !conflict.canOverride || !canOverrideChecklist) {
-                    toast({ title: "Forms must be completed", description: conflict.message, variant: "destructive", duration: 7000 });
-                }
                 return;
             }
             toast({
@@ -377,12 +386,30 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const confirmChecklistOverride = async () => {
-        if (!planningData?.planUuid || !pendingChecklistPayload || !overrideReason.trim() ||
-            !checklistConflict?.canOverride || !canOverrideChecklist) return;
+        if (!planningData?.planUuid || !pendingChecklistPayload || !checklistConflict) return;
+        const hasFormBlockers = checklistConflict.blockers.some(blocker => blocker.kind !== "training");
+        const hasTrainingBlockers = checklistConflict.blockers.some(blocker => blocker.kind === "training");
+        const hasUnsafeMandatoryBlocker = checklistConflict.blockers.some(blocker =>
+            (blocker.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(blocker.status.toUpperCase())) ||
+            (blocker.kind === "check" && blocker.status.toUpperCase() === "NOT_CHECKED")
+        );
+        const formsEligible = hasFormBlockers && checklistConflict.canOverride && canOverrideChecklist &&
+            checklistConflict.blockers.filter(blocker => blocker.kind !== "training").every(blocker =>
+                (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+            );
+        const trainingEligible = hasTrainingBlockers && checklistConflict.canOverrideTraining &&
+            trainingPermissionQuery.data?.allowed === true;
+        if (hasUnsafeMandatoryBlocker || (!requestChecklistOverride && !requestTrainingOverride) ||
+            (requestChecklistOverride && (!formsEligible || !overrideReason.trim())) ||
+            (requestTrainingOverride && (!trainingEligible || !trainingOverrideReason.trim()))) return;
         try {
-            await updatePlanningV2.mutateAsync({
+            const overrides: Record<string, { reason: string }> = {};
+            if (requestChecklistOverride) overrides.checklistOverride = { reason: overrideReason.trim() };
+            if (requestTrainingOverride) overrides.trainingOverride = { reason: trainingOverrideReason.trim() };
+            const result: any = await updatePlanningV2.mutateAsync({
                 planUuid: planningData.planUuid,
-                data: { ...pendingChecklistPayload, checklistOverride: { reason: overrideReason.trim() } } as any,
+                data: { ...pendingChecklistPayload, ...overrides } as any,
             });
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
@@ -391,7 +418,11 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             setChecklistConflict(null);
             setPendingChecklistPayload(null);
             setOverrideReason("");
-            toast({ title: "Success", description: "Relief status saved with the recorded checklist override." });
+            setTrainingOverrideReason("");
+            setRequestChecklistOverride(false);
+            setRequestTrainingOverride(false);
+            const warnings = result?.checklistAcceptance?.warnings;
+            toast({ title: "Success", description: `Relief status saved.${Array.isArray(warnings) && warnings.length ? ` Checklist notes: ${warnings.join(" ")}` : " Checklist acceptance was recorded."}` });
             onOpenChange(false);
         } catch (error) {
             const conflict = parseChecklistConflict(error);
@@ -603,18 +634,19 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     return (
         <>
             <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
-                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); }
+                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); setTrainingOverrideReason(""); setRequestChecklistOverride(false); setRequestTrainingOverride(false); }
             }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Company Forms checklist is incomplete</AlertDialogTitle>
+                        <AlertDialogTitle>Checklist needs attention</AlertDialogTitle>
                         <AlertDialogDescription>{checklistConflict?.message}</AlertDialogDescription>
                     </AlertDialogHeader>
                     {checklistConflict?.blockers.map((blocker, index) => (
                         <div key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
                           data-testid={`checklist-blocker-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
                           className="text-sm text-amber-900">
-                            {blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")} · {blocker.status}
+                            <span className="font-medium">{blocker.kind === "training" ? blocker.courseName || "Training course" : blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")}</span>
+                            {" · "}{blocker.status.toLowerCase().replace(/_/g, " ")}
                             {blocker.reason ? ` — ${blocker.reason}` : ""}
                             {blocker.requirementUuid && planningData?.relieverAssignUuid && canCompanyFormAction("view") &&
                               <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => {
@@ -623,31 +655,40 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                               }}>Open form</Button>}
                         </div>
                     ))}
-                    {checklistConflict?.canOverride && canOverrideChecklist &&
-                        checklistConflict.blockers.length > 0 &&
-                        checklistConflict.blockers.every((blocker) =>
-                            (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                            (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                        ) ? (
-                        <div className="space-y-2">
-                            <Label htmlFor="checklist-override-reason">Reason for override</Label>
-                            <Textarea id="checklist-override-reason" value={overrideReason}
-                                onChange={(event) => setOverrideReason(event.target.value)}
-                                placeholder="Record why deployment is proceeding before the checklist is clear." />
-                            <AlertDialogDescription>This reason will be recorded with the planning change. The override does not complete any form.</AlertDialogDescription>
-                        </div>
-                    ) : null}
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Return to forms</AlertDialogCancel>
-                        {checklistConflict?.canOverride && canOverrideChecklist &&
-                            checklistConflict.blockers.length > 0 &&
-                            checklistConflict.blockers.every((blocker) =>
+                    {checklistConflict && (() => {
+                        const formBlockers = checklistConflict.blockers.filter(blocker => blocker.kind !== "training");
+                        const trainingBlockers = checklistConflict.blockers.filter(blocker => blocker.kind === "training");
+                        const forbidden = checklistConflict.blockers.some(blocker =>
+                            (blocker.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(blocker.status.toUpperCase())) ||
+                            (blocker.kind === "check" && blocker.status.toUpperCase() === "NOT_CHECKED"));
+                        const formsEligible = formBlockers.length > 0 && checklistConflict.canOverride && canOverrideChecklist && !forbidden &&
+                            formBlockers.every(blocker =>
                                 (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                            ) && (
-                            <AlertDialogAction disabled={!overrideReason.trim() || updatePlanningV2.isPending}
+                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase())));
+                        const trainingEligible = trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && trainingPermissionQuery.data?.allowed === true && !forbidden &&
+                            trainingBlockers.length > 0;
+                        return <div className="space-y-4 border-t pt-3">
+                            {forbidden && <p className="text-sm text-rose-800" role="status">An outstanding or started mandatory form, or an unchecked stage, must be completed first. An override is not available.</p>}
+                            {formBlockers.length > 0 && !forbidden && (!checklistConflict.canOverride || !canOverrideChecklist) && <p className="text-sm text-slate-600" role="status">A Company Forms override is not available for this checklist or your role.</p>}
+                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && trainingPermissionQuery.isLoading && <p className="text-sm text-slate-600" role="status">Checking your training override permission…</p>}
+                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && !trainingPermissionQuery.isLoading && trainingPermissionQuery.data?.allowed !== true && <p className="text-sm text-slate-600" role="status">Your role does not have permission to override training compliance.</p>}
+                            {trainingBlockers.length > 0 && !checklistConflict.canOverrideTraining && !forbidden && <p className="text-sm text-slate-600" role="status">Training compliance cannot be overridden for these results.</p>}
+                            {formsEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
+                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestChecklistOverride} onCheckedChange={checked => setRequestChecklistOverride(checked === true)} />Request a Company Forms checklist override</label>
+                                {requestChecklistOverride && <><Label htmlFor="checklist-override-reason">Reason for Company Forms override</Label><Textarea id="checklist-override-reason" value={overrideReason} onChange={event => setOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding before the forms are clear." /><p className="text-xs text-slate-600">This reason is recorded with the planning change. It does not complete any form.</p></>}
+                            </div>}
+                            {trainingEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
+                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestTrainingOverride} onCheckedChange={checked => setRequestTrainingOverride(checked === true)} />Request a training compliance override</label>
+                                {requestTrainingOverride && <><Label htmlFor="training-override-reason">Reason for training override</Label><Textarea id="training-override-reason" value={trainingOverrideReason} onChange={event => setTrainingOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding with these training results." /><p className="text-xs text-slate-600">This reason is recorded separately from any Company Forms override.</p></>}
+                            </div>}
+                        </div>;
+                    })()}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{checklistConflict?.blockers.some(blocker => blocker.kind === "requirement" && blocker.requirementUuid) ? "Return to forms" : "Close"}</AlertDialogCancel>
+                        {(requestChecklistOverride || requestTrainingOverride) && (
+                            <AlertDialogAction disabled={(!requestChecklistOverride || !overrideReason.trim()) && (!requestTrainingOverride || !trainingOverrideReason.trim()) || updatePlanningV2.isPending}
                                 onClick={(event) => { event.preventDefault(); void confirmChecklistOverride(); }}>
-                                {updatePlanningV2.isPending ? "Saving…" : "Confirm override"}
+                                {updatePlanningV2.isPending ? "Saving…" : "Save planning change"}
                             </AlertDialogAction>
                         )}
                     </AlertDialogFooter>
@@ -1063,8 +1104,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                         <Label htmlFor="docs-no">No</Label>
                                                     </div>
                                                 </RadioGroup>
-                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned}>
-                                                    See Checklist
+                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned || !planningData?.planUuid} onClick={() => setHistoryOpen(true)}>
+                                                    Accepted checklist history
                                                 </Button>
                                             </div>
                                         </FormControl>
@@ -1080,6 +1121,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 open={open}
                             />
                         )}
+                        <AcceptedChecklistHistory planUuid={planningData?.planUuid} open={historyOpen} onOpenChange={setHistoryOpen} />
 
                         {isRelieverAssigned && !isUnlinkedReliever && (
                             <div className="flex items-center gap-2 pt-2 border-t">

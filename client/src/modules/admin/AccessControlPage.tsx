@@ -7,6 +7,8 @@ import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck, History } f
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
+import { TrainingCompliancePolicySetting, TrainingComplianceRolePermissionEditor } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { adminApiV2 } from "./api/adminApiV2";
 import {
   useAccessControlMenusV2,
@@ -137,6 +139,7 @@ function buildMenuTree(menus: MenuItemApi[]): MenuTreeItem[] {
 
 export default function AccessControlPage() {
   const { toast } = useToast();
+  const { accessControlManagement } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
   const [auditFilter, setAuditFilter] = useState<"all" | "management" | "void_completed" | "parent_sync">("all");
@@ -420,6 +423,7 @@ export default function AccessControlPage() {
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
       <div className="flex justify-end"><CompanyDocumentBranding /></div>
+      {accessControlManagement && <TrainingCompliancePolicySetting />}
       <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading">
         <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
           <ShieldCheck size={18} aria-hidden="true" />
@@ -547,7 +551,10 @@ export default function AccessControlPage() {
           <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="flex-1">
-          {selectedRoleUuid && <CompanyFormsPermissionEditor key={selectedRoleUuid} roleId={selectedRoleUuid} />}
+          {selectedRoleUuid && stateQuery.data?.allowed && <>
+            <CompanyFormsPermissionEditor key={`forms-${selectedRoleUuid}`} roleId={selectedRoleUuid} />
+            <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
+          </>}
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />

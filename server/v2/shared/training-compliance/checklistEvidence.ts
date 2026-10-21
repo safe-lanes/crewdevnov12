@@ -10,7 +10,7 @@ export async function trainingChecklistEvidence(tx: any, planUuid: string, assig
   const setting = (await tx.execute(sql`SELECT block_expiring_during_contract FROM adm_training_compliance_settings
     WHERE singleton FOR SHARE`)).rows[0];
   if (!setting) throw new Error("Training settings upgrade required.");
-  let check, canonical = null, matrix = null, certificates: unknown[] = [];
+  let check, canonical = null, matrix = null, certificates: unknown[] = [], header = null;
   await tx.execute(sql`SAVEPOINT training_check`);
   try {
     // Pin evidence against concurrent D3/master/revision changes for the rest
@@ -26,6 +26,15 @@ export async function trainingChecklistEvidence(tx: any, planUuid: string, assig
     check = await readRelieverTrainingCompliance(tx, { planUuid, assignmentUuid });
     canonical = await readCanonicalReliever(tx, { planUuid, assignmentUuid });
     if (canonical) {
+      header = (await tx.execute(sql`SELECT
+        btrim(concat_ws(' ',c.first_name,nullif(c.middle_name,''),c.family_name)) AS "crewName",
+        v.vessel AS "vesselName",
+        CASE WHEN x.contract_rank_uuid IS NULL THEN 'Not recorded'
+          ELSE coalesce(nullif(x.contract_rank_label,''),'Not recorded') END AS "contractRankLabel"
+        FROM crew_assignments a JOIN crew_members_v2 c ON c.crew_uuid=a.crew_uuid
+        JOIN master_vessels v ON v.vessel_uuid=a.vessel_uuid
+        LEFT JOIN crew_assignment_rule_context x ON x.assign_uuid=a.assign_uuid
+        WHERE a.assign_uuid=${assignmentUuid}`)).rows[0] ?? null;
       matrix = (await readSavedTrainingMatrix(tx, canonical)).matrix;
       certificates = await readTrainingCertificates(tx, canonical.crewUuid);
     }
@@ -37,7 +46,7 @@ export async function trainingChecklistEvidence(tx: any, planUuid: string, assig
       code: "CALCULATION_FAILED", message: "The training check could not finish. Retry it; if it fails again, contact your office." }]);
   }
   const blockExpiringDuringContract = setting.block_expiring_during_contract === true;
-  return { check, canonical, matrix, certificates, blockExpiringDuringContract,
+  return { check, canonical, matrix, certificates, header, blockExpiringDuringContract,
     ...trainingChecklistPolicy(check, blockExpiringDuringContract) };
 }
 
