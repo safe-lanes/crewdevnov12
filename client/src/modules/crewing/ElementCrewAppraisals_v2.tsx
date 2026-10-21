@@ -67,7 +67,6 @@ interface CrewAppraisalData {
   competenceRating: { value: string; color: string };
   behavioralRating: { value: string; color: string };
   overallRating: { value: string; color: string };
-  appraisalId?: number;
   appraisalUuid?: string;
   _openedFromDeepLink?: boolean;
 }
@@ -154,7 +153,7 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
 
 const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; handleViewClick: (data: CrewAppraisalData) => void; handleDeleteClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean; canActOnRank: (rank: string | null | undefined) => boolean } }) => {
   if (!params.colDef || !params.data) return null;
-  const appraisalId = params.data.appraisalId;
+  const appraisalUuid = params.data.appraisalUuid;
   const canAct = params.context.canActOnRank(params.data.rank);
 
   return (
@@ -165,7 +164,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         className="h-6 w-6"
         onClick={() => { if (canAct) params.context.handleViewClick(params.data); }}
         disabled={!canAct}
-        data-testid={`button-view-appraisal-${appraisalId}`}
+        data-testid={`button-view-appraisal-${appraisalUuid}`}
       >
         <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
@@ -176,7 +175,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         className="h-6 w-6"
         onClick={() => { if (canAct) params.context.handleEditClick(params.data); }}
         disabled={!canAct}
-        data-testid={`button-edit-appraisal-${appraisalId}`}
+        data-testid={`button-edit-appraisal-${appraisalUuid}`}
       >
         <EditIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
@@ -188,7 +187,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         className="h-6 w-6"
         onClick={() => { if (canAct) params.context.handleDeleteClick(params.data); }}
         disabled={!canAct}
-        data-testid={`button-delete-appraisal-${appraisalId}`}
+        data-testid={`button-delete-appraisal-${appraisalUuid}`}
       >
         <Trash2Icon className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
       </Button>
@@ -377,8 +376,8 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   }, []);
 
   const deleteMutation = useMutation({
-    mutationFn: async (vars: { id: number; name: string }) => {
-      await appraisalsApiV2.delete(vars.id);
+    mutationFn: async (vars: { appraisalUuid: string; name: string }) => {
+      await appraisalsApiV2.delete(vars.appraisalUuid);
       return vars;
     },
     onSuccess: (vars) => {
@@ -401,10 +400,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   });
 
   const confirmDelete = useCallback(() => {
-    if (deleteTarget?.appraisalId == null) return;
+    if (!deleteTarget?.appraisalUuid) return;
     const name = `${deleteTarget.name.first} ${deleteTarget.name.middle} ${deleteTarget.name.last}`
       .replace(/\s+/g, ' ').trim();
-    deleteMutation.mutate({ id: deleteTarget.appraisalId, name });
+    deleteMutation.mutate({ appraisalUuid: deleteTarget.appraisalUuid, name });
   }, [deleteTarget, deleteMutation]);
 
 
@@ -503,7 +502,6 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           value: showOverall ? appraisal.overallRating : "N/A",
           color: showOverall ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
         },
-        appraisalId: appraisal.id,
         appraisalUuid: appraisal.appraisalUuid,
       };
     }), [appraisalResults, getRatingColor, getVesselName, crewByUuid, vesselTypeByName, calculateAge]);
@@ -520,7 +518,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     if (!pendingAppraisalUuid) return;
     if (isLoadingAppraisals) return;
     const found = allCrewData.find((c) => c.appraisalUuid === pendingAppraisalUuid);
-    if (found && found.appraisalId != null) {
+    if (found && found.appraisalUuid) {
       setViewingAppraisal({ ...found, _openedFromDeepLink: true });
     }
     setPendingAppraisalUuid(null);
@@ -1209,16 +1207,16 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         {showAppraisalForm && selectedCrewMember && (
           <AppraisalForm
             crewMember={selectedCrewMember}
-            appraisalId={selectedCrewMember.appraisalId}
+            appraisalUuid={selectedCrewMember.appraisalUuid}
             initialStatus={selectedCrewMember.status as 'draft' | 'preliminary' | 'submitted' | 'stage2_submitted' | 'pending_review' | 'reviewed' | 'stage3_submitted'}
             onClose={handleCloseForm}
           />
         )}
 
         {/* Read-only View Modal */}
-        {viewingAppraisal && viewingAppraisal.appraisalId != null && (
+        {viewingAppraisal && viewingAppraisal.appraisalUuid && (
           <AppraisalView
-            appraisalId={viewingAppraisal.appraisalId}
+            appraisalUuid={viewingAppraisal.appraisalUuid}
             rank={viewingAppraisal.rank}
             seafarerNameFallback={`${viewingAppraisal.name.first} ${viewingAppraisal.name.middle} ${viewingAppraisal.name.last}`.replace(/\s+/g, ' ').trim()}
             onClose={handleCloseView}

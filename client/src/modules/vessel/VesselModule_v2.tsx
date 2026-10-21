@@ -784,7 +784,7 @@ export function VesselModule_v2(): JSX.Element {
         rank: string;
         readOnly: boolean;
     }>({ planningId: '', vesselId: '', crewName: '', rank: '', readOnly: false });
-    const [appraisalView, setAppraisalView] = useState<{ appraisalId: number; rank: string; seafarerName: string } | null>(null);
+    const [appraisalView, setAppraisalView] = useState<{ appraisalUuid: string; rank: string; seafarerName: string } | null>(null);
     const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
     const [onBoardDialogData, setOnBoardDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
@@ -1473,42 +1473,22 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleAppraisalView = (planning: any, latestAppraisal: any) => {
-        if (!latestAppraisal?.id) return;
+        if (!latestAppraisal?.appraisalUuid) return;
         const crewRank = planning.presentRank || planning.rank || '';
         setAppraisalView({
-            appraisalId: latestAppraisal.id,
+            appraisalUuid: latestAppraisal.appraisalUuid,
             rank: getBaseRank(crewRank) || crewRank,
             seafarerName: planning.crewMemberName || '',
         });
     };
 
-    const handleAppraisalClick = async (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
+    // No rank-group pre-check here: AppraisalForm resolves the form via the
+    // ungated forms/for-rank read and shows its own "Form Not Available" state.
+    // The admin check-assignment route requires Forms:view, which Ship roles lack.
+    const handleAppraisalClick = (crew: any, buttonConfig: { text: string; appraisalUuid?: string; status?: string }) => {
         const crewRank = crew.presentRank || crew.rank || '';
-        const displayRank = getBaseRank(crewRank) || crewRank;
 
-        try {
-            const response = await fetch(`/api/v2/admin/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
-            const result = await response.json();
-            
-            if (!result.hasAssignment) {
-                toast({
-                    title: "Cannot Open Appraisal Form",
-                    description: `No Appraisal Rank Group assigned from Admin Module for rank "${displayRank}". Please configure rank groups in Admin > Forms Configuration.`,
-                    variant: "destructive",
-                });
-                return;
-            }
-        } catch (error) {
-            console.error("Error checking rank group assignment:", error);
-            toast({
-                title: "Error",
-                description: "Failed to validate rank group assignment. Please try again.",
-                variant: "destructive",
-            });
-            return;
-        }
-        
-        if (!buttonConfig.appraisalId && !crew.hasStructuredCrewName) {
+        if (!buttonConfig.appraisalUuid && !crew.hasStructuredCrewName) {
             toast({
                 title: "Crew name details are not loaded",
                 description:
@@ -1531,7 +1511,7 @@ export function VesselModule_v2(): JSX.Element {
             vessel: selectedVessel?.name || crew.presentVessel || '',
             vesselType: selectedVessel?.vesselType || '',
             signOn: crew.signOnDate || crew.joiningDate || '',
-            _appraisalId: buttonConfig.appraisalId,
+            _appraisalUuid: buttonConfig.appraisalUuid,
             _initialStatus: buttonConfig.status,
         };
         setSelectedCrewForAppraisal(crewForAppraisal);
@@ -1925,11 +1905,11 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
                                                                                 const buttonConfig = isDraft ? {
                                                                                     text: buttonText,
-                                                                                    appraisalId: latestAppraisal?.id,
+                                                                                    appraisalUuid: latestAppraisal?.appraisalUuid,
                                                                                     status: latestAppraisal?.status
                                                                                 } : {
                                                                                     text: 'Add',
-                                                                                    appraisalId: undefined,
+                                                                                    appraisalUuid: undefined,
                                                                                     status: undefined
                                                                                 };
                                                                                 return (
@@ -2139,11 +2119,11 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
                                                                                 const buttonConfig = isDraft ? {
                                                                                     text: buttonText,
-                                                                                    appraisalId: latestAppraisal?.id,
+                                                                                    appraisalUuid: latestAppraisal?.appraisalUuid,
                                                                                     status: latestAppraisal?.status
                                                                                 } : {
                                                                                     text: 'Add',
-                                                                                    appraisalId: undefined,
+                                                                                    appraisalUuid: undefined,
                                                                                     status: undefined
                                                                                 };
                                                                                 return (
@@ -2787,7 +2767,7 @@ export function VesselModule_v2(): JSX.Element {
 
             {appraisalView && (
                 <AppraisalView
-                    appraisalId={appraisalView.appraisalId}
+                    appraisalUuid={appraisalView.appraisalUuid}
                     rank={appraisalView.rank}
                     seafarerNameFallback={appraisalView.seafarerName}
                     onClose={() => setAppraisalView(null)}
@@ -2797,7 +2777,7 @@ export function VesselModule_v2(): JSX.Element {
             {showAppraisalForm && selectedCrewForAppraisal && (
                 <AppraisalForm
                     crewMember={selectedCrewForAppraisal}
-                    appraisalId={selectedCrewForAppraisal._appraisalId}
+                    appraisalUuid={selectedCrewForAppraisal._appraisalUuid}
                     initialStatus={selectedCrewForAppraisal._initialStatus as 'draft' | 'preliminary' | 'submitted' | 'reviewed' | undefined}
                     onClose={() => {
                         setShowAppraisalForm(false);

@@ -50,6 +50,19 @@ const stage3SubmissionSchema = z.object({
   submittedBy: z.string().optional(),
 });
 
+// Appraisals are addressed by appraisal_uuid, never the serial id: serial ids
+// are assigned independently on ship and shore, so they are not portable.
+const appraisalUuidSchema = z.string().uuid();
+
+function parseAppraisalUuid(req: Request, res: Response): string | null {
+  const parsed = appraisalUuidSchema.safeParse(req.params.appraisalUuid);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid appraisal id" });
+    return null;
+  }
+  return parsed.data;
+}
+
 export class AppraisalResultsController {
   async getAll(_req: Request, res: Response) {
     try {
@@ -63,8 +76,9 @@ export class AppraisalResultsController {
 
   async getById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
-      const appraisal = await service.getById(id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
+      const appraisal = await service.getByUuid(appraisalUuid);
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -116,9 +130,10 @@ export class AppraisalResultsController {
 
   async update(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.update(id, { ...req.body, auditUserUuid });
+      const appraisal = await service.update(appraisalUuid, { ...req.body, auditUserUuid });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -134,8 +149,9 @@ export class AppraisalResultsController {
 
   async deleteAppraisal(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
-      const deleted = await service.delete(id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
+      const deleted = await service.delete(appraisalUuid);
       if (!deleted) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -148,14 +164,15 @@ export class AppraisalResultsController {
 
   async submitStage1(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
       const validationResult = stage1SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
       const { data, submittedBy } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -171,7 +188,8 @@ export class AppraisalResultsController {
 
   async submitStage2(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
       const validationResult = stage2SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
@@ -180,7 +198,7 @@ export class AppraisalResultsController {
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
       // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(id, "stage2", { ...data, auditUserUuid }, submittedBy || "Unknown", {
+      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid }, submittedBy || "Unknown", {
         competenceRating,
         behavioralRating,
         overallRating,
@@ -200,14 +218,15 @@ export class AppraisalResultsController {
 
   async submitStage3(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const appraisalUuid = parseAppraisalUuid(req, res);
+      if (!appraisalUuid) return;
       const validationResult = stage3SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
       }
       const { data, submittedBy } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage3", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const appraisal = await service.submitStage(appraisalUuid, "stage3", { ...data, auditUserUuid }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }

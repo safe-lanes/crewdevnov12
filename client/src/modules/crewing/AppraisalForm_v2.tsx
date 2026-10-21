@@ -342,12 +342,12 @@ interface AppraisalFormProps {
     signOn?: string;
     vesselType?: string;
   };
-  appraisalId?: number;
+  appraisalUuid?: string;
   initialStatus?: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
   onClose: () => void;
 }
 
-export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalId: propAppraisalId, initialStatus = 'draft', onClose }) => {
+export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalUuid: propAppraisalUuid, initialStatus = 'draft', onClose }) => {
   const { permissions, canView } = usePermissions();
 
   const apSectionMenuMap: Record<string, string> = {
@@ -392,7 +392,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
   const [g1ReviewPickerOpen, setG1ReviewPickerOpen] = useState(false);
-  const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
+  const [appraisalUuid, setAppraisalUuid] = useState<string | null>(propAppraisalUuid || null);
   // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
   // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
   // rows with the persisted (possibly empty) trainings array.
@@ -528,12 +528,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
-    queryKey: [`/api/v2/appraisals/${appraisalId}`],
-    enabled: !!appraisalId,
+    queryKey: [`/api/v2/appraisals/${appraisalUuid}`],
+    enabled: !!appraisalUuid,
   });
 
   // Form-config fetching strategy:
-  // - New appraisal (no appraisalId): load the latest released version for the rank.
+  // - New appraisal (no appraisalUuid): load the latest released version for the rank.
   // - Existing appraisal with a pinned formVersionId: load that exact version's
   //   configuration so layout matches the version it was saved against.
   // - Existing appraisal with NO pinned formVersionId (historical row): fall back
@@ -550,7 +550,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     formVersionUuid: string;
   };
 
-  const isEditing = !!appraisalId;
+  const isEditing = !!appraisalUuid;
   const pinnedFormVersionId = existingAppraisal?.formVersionId ?? null;
   // Wait for existingAppraisal before deciding whether to fall back to latest.
   const useLatestForEditing = isEditing && existingAppraisal !== undefined && !pinnedFormVersionId;
@@ -794,7 +794,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Pre-populate crew member fields when data loads (only for new appraisals)
   useEffect(() => {
     // Only for new appraisals - existing appraisals will be populated from existingAppraisal data
-    if (!appraisalId && crewMember) {
+    if (!appraisalUuid && crewMember) {
       const currentValues = form.getValues();
       const updates: Partial<AppraisalFormData> = {};
       
@@ -851,7 +851,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
       }
     }
-  }, [crewMember, appraisalId, form]);
+  }, [crewMember, appraisalUuid, form]);
 
   // Normalize the vessel field to its master-data UUID. The vessel form value
   // may be a NAME — seeded from a crew member (new appraisal) or loaded from a
@@ -881,13 +881,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     console.log('🔄 Config loading effect triggered:', { 
       hasConfig: !!config, 
       hasRankGroupConfig: !!config?.rankGroupConfig,
-      appraisalId,
+      appraisalUuid,
       competenceCount: config?.rankGroupConfig?.competenceAssessments?.length 
     });
     
     // Skip loading rank group defaults if we have existing appraisal data
     // existingAppraisal is loaded via useQuery and will populate the form separately
-    if (config?.rankGroupConfig && !appraisalId) {
+    if (config?.rankGroupConfig && !appraisalUuid) {
       console.log('📋 Loading rank group configuration (new appraisal):', config.rankGroupName);
       
       // Get current form values and merge with config values
@@ -1003,11 +1003,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         console.log('📋 Hidden sections loaded:', config.rankGroupConfig.hiddenSections);
       }
     }
-  }, [formConfig, form, appraisalId]);
+  }, [formConfig, form, appraisalUuid]);
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingUuid?: string | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -1084,7 +1084,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
 
       // Use PUT for existing appraisals, POST for new ones
-      const idToUse = payload.existingId || appraisalId;
+      const idToUse = payload.existingUuid || appraisalUuid;
       const method = idToUse ? 'PUT' : 'POST';
       const url = idToUse ? `/api/v2/appraisals/${idToUse}` : '/api/v2/appraisals';
       
@@ -1096,9 +1096,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
     onSuccess: (data, variables) => {
       console.log('🎉 Mutation onSuccess called', data);
-      if (data && data.id) {
-        setAppraisalId(data.id);
-        queryClient.setQueryData([`/api/v2/appraisals/${data.id}`], data);
+      if (data && data.appraisalUuid) {
+        setAppraisalUuid(data.appraisalUuid);
+        queryClient.setQueryData([`/api/v2/appraisals/${data.appraisalUuid}`], data);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (!variables.silent) {
@@ -1126,7 +1126,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 1 mutation (Parts A & B) - accepts synced form data to ensure comment persistence
   const stage1Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
       const stageData = {
         seafarersName: formData.seafarersName,
         seafarersRank: formData.seafarersRank,
@@ -1142,7 +1142,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         targets: formData.targets,
       };
       
-      const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage1`, {
+      const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage1`, {
         data: stageData,
         submittedBy: 'Current User',
         auditUserUuid: getCrewUserId(),
@@ -1154,7 +1154,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         setAppraisalStatus('preliminary');
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
+      if (appraisalUuid) queryClient.setQueryData([`/api/v2/appraisals/${appraisalUuid}`], responseData);
       toast({ title: 'Stage 1 Submitted', description: 'Appraisal information (Parts A-B) saved successfully.' });
       onClose();
     },
@@ -1165,7 +1165,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
   const stage2Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
       // Calculate scores from current form data so the Crew Appraisals table
       // reflects the Overall score immediately on direct Stage 2 submit
       // (mirrors logic used by saveAppraisalMutation / Save Draft).
@@ -1217,7 +1217,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         reviewers: selectedReviewers,
       };
       
-      const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage2`, {
+      const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage2`, {
         data: stageData,
         submittedBy: 'Current User',
         competenceRating: competenceScore,
@@ -1231,7 +1231,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Stage 2 now sets status to `pending_review` (awaiting office review)
       setAppraisalStatus('pending_review');
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
+      if (appraisalUuid) queryClient.setQueryData([`/api/v2/appraisals/${appraisalUuid}`], responseData);
       toast({ title: 'Submitted for Review', description: 'Performance assessment (Parts C-F) submitted. Reviewers have been notified.' });
       onClose();
     },
@@ -1242,7 +1242,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 3 mutation (Part G) - accepts synced form data to ensure comment persistence
   const stage3Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
       const stageData = {
         // Task #500: B1 Evaluation stays editable through Stage 3, so we must
         // ship the latest `trainings` array along with Section G payloads so
@@ -1253,7 +1253,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         trainingFollowups: formData.trainingFollowups,
       };
       
-      const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage3`, {
+      const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage3`, {
         data: stageData,
         submittedBy: 'Current User',
         auditUserUuid: getCrewUserId(),
@@ -1263,7 +1263,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onSuccess: (responseData) => {
       setAppraisalStatus('reviewed');
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
+      if (appraisalUuid) queryClient.setQueryData([`/api/v2/appraisals/${appraisalUuid}`], responseData);
       toast({ title: 'Stage 3 Submitted', description: 'Office review (Part G) submitted successfully. Form is now locked.' });
       onClose();
     },
@@ -1534,15 +1534,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return;
     }
     
-    let idToUse = appraisalId;
+    let idToUse = appraisalUuid;
     
-    // If no appraisalId, save as draft first
+    // If no appraisalUuid, save as draft first
     if (!idToUse) {
       try {
         const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true });
-        if (result && result.id) {
-          idToUse = result.id;
-          setAppraisalId(result.id);
+        if (result && result.appraisalUuid) {
+          idToUse = result.appraisalUuid;
+          setAppraisalUuid(result.appraisalUuid);
         } else {
           toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
           return;
@@ -1561,7 +1561,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     
     // Trigger the appropriate stage mutation with guaranteed non-null ID and synced form data
     if (stage === 'stage1') {
-      stage1Mutation.mutate({ id: idToUse, formData });
+      stage1Mutation.mutate({ uuid: idToUse, formData });
     } else if (stage === 'stage2') {
       if (!isPostStage1 && !isSectionVisible('partB2')) {
         try {
@@ -1590,9 +1590,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           return;
         }
       }
-      stage2Mutation.mutate({ id: idToUse, formData });
+      stage2Mutation.mutate({ uuid: idToUse, formData });
     } else if (stage === 'stage3') {
-      stage3Mutation.mutate({ id: idToUse, formData });
+      stage3Mutation.mutate({ uuid: idToUse, formData });
     }
   };
 
@@ -2723,7 +2723,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   const noReleasedVersion = !!formConfig?.noReleasedVersion;
   const noFormConfigured = !usePinned && latestFormError?.message.startsWith('404:');
-  if ((noReleasedVersion && !appraisalId) || noFormConfigured) {
+  if ((noReleasedVersion && !appraisalUuid) || noFormConfigured) {
     const reason = noFormConfigured
       ? `No appraisal form configured for rank "${crewMember?.rank}". Ask an administrator to assign this rank to an active appraisal rank group.`
       : formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';

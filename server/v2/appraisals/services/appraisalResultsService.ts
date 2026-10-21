@@ -267,8 +267,8 @@ export class AppraisalResultsService {
     return appraisals.map(a => assembleOne(a, childData));
   }
 
-  async getById(id: number) {
-    const appraisal = await appraisalResultsRepo.findById(id);
+  async getByUuid(appraisalUuid: string) {
+    const appraisal = await appraisalResultsRepo.findByAppraisalUuid(appraisalUuid);
     if (!appraisal) return null;
     const childData = await fetchChildDataForUuids([appraisal.appraisalUuid]);
     return assembleOne(appraisal, childData);
@@ -417,11 +417,11 @@ export class AppraisalResultsService {
       appraisalData.seafarersRank || '',
     );
 
-    return this.getById(created.id);
+    return this.getByUuid(created.appraisalUuid);
   }
 
-  async update(id: number, body: any) {
-    const existing = await appraisalResultsRepo.findById(id);
+  async update(appraisalUuid: string, body: any) {
+    const existing = await appraisalResultsRepo.findByAppraisalUuid(appraisalUuid);
     if (!existing) return null;
 
     const auditData = applyAuditUser(body);
@@ -480,7 +480,7 @@ export class AppraisalResultsService {
       updateFields.formVersionUuid = resolvedPin.formVersionUuid;
     }
 
-    await appraisalResultsRepo.updateById(id, updateFields);
+    await appraisalResultsRepo.updateByAppraisalUuid(existing.appraisalUuid, updateFields);
 
     if (appraisalData) {
       const auditUserUuid = auditData.updatedByUuid || null;
@@ -505,15 +505,15 @@ export class AppraisalResultsService {
       );
     }
 
-    return this.getById(id);
+    return this.getByUuid(existing.appraisalUuid);
   }
 
-  async delete(id: number) {
-    return appraisalResultsRepo.softDeleteById(id);
+  async delete(appraisalUuid: string) {
+    return appraisalResultsRepo.softDeleteByAppraisalUuid(appraisalUuid);
   }
 
   async submitStage(
-    id: number,
+    appraisalUuid: string,
     stage: "stage1" | "stage2" | "stage3",
     data: any,
     submittedBy: string,
@@ -521,7 +521,7 @@ export class AppraisalResultsService {
   ) {
     const auditUserUuid = (data as any)?.auditUserUuid ?? null;
 
-    const appraisal = await appraisalResultsRepo.findById(id);
+    const appraisal = await appraisalResultsRepo.findByAppraisalUuid(appraisalUuid);
     if (!appraisal) return null;
 
     if (stage === "stage2" && !appraisal.stage1Status) {
@@ -705,6 +705,6 @@ export class AppraisalResultsService {
       await Promise.all(stage3Writes);
     }
 
-    return this.getById(id);
+    return this.getByUuid(appraisal.appraisalUuid);
   }
 }

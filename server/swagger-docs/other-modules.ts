@@ -739,15 +739,15 @@
  *       200:
  *         description: Crew member appraisals
  *
- * /api/v2/appraisals/{id}:
+ * /api/v2/appraisals/{appraisalUuid}:
  *   get:
  *     tags: [Appraisals]
- *     summary: Get appraisal by ID
+ *     summary: Get appraisal by UUID
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Appraisal details
@@ -756,9 +756,9 @@
  *     summary: Update appraisal
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Appraisal updated
@@ -767,48 +767,48 @@
  *     summary: Delete appraisal
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Appraisal deleted
  *
- * /api/v2/appraisals/{id}/submit-stage1:
+ * /api/v2/appraisals/{appraisalUuid}/submit-stage1:
  *   post:
  *     tags: [Appraisals]
  *     summary: Submit appraisal Stage 1
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Stage 1 submitted
  *
- * /api/v2/appraisals/{id}/submit-stage2:
+ * /api/v2/appraisals/{appraisalUuid}/submit-stage2:
  *   post:
  *     tags: [Appraisals]
  *     summary: Submit appraisal Stage 2
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Stage 2 submitted
  *
- * /api/v2/appraisals/{id}/submit-stage3:
+ * /api/v2/appraisals/{appraisalUuid}/submit-stage3:
  *   post:
  *     tags: [Appraisals]
  *     summary: Submit appraisal Stage 3 (final)
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: appraisalUuid
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Stage 3 submitted (complete)

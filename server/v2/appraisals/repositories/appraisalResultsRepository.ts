@@ -14,15 +14,6 @@ export class AppraisalResultsRepository {
       .orderBy(desc(appraisalResultsV2.createdAt));
   }
 
-  async findById(id: number): Promise<AppraisalResultV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .select()
-      .from(appraisalResultsV2)
-      .where(and(eq(appraisalResultsV2.id, id), eq(appraisalResultsV2.isDeleted, false)));
-    return results[0];
-  }
-
   async findByAppraisalUuid(uuid: string): Promise<AppraisalResultV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -76,16 +67,6 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
-  async updateById(id: number, data: Partial<InsertAppraisalResultV2>): Promise<AppraisalResultV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(appraisalResultsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(appraisalResultsV2.id, id), eq(appraisalResultsV2.isDeleted, false)))
-      .returning();
-    return results[0];
-  }
-
   async updateByAppraisalUuid(uuid: string, data: Partial<InsertAppraisalResultV2>): Promise<AppraisalResultV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -96,12 +77,12 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
-  async softDeleteById(id: number): Promise<boolean> {
+  async softDeleteByAppraisalUuid(uuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
       .update(appraisalResultsV2)
       .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(appraisalResultsV2.id, id), eq(appraisalResultsV2.isDeleted, false)))
+      .where(and(eq(appraisalResultsV2.appraisalUuid, uuid), eq(appraisalResultsV2.isDeleted, false)))
       .returning();
     return results.length > 0;
   }

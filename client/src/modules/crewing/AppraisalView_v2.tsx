@@ -87,7 +87,7 @@ interface LatestFormConfigResponse {
 }
 
 interface AppraisalViewProps {
-  appraisalId: number;
+  appraisalUuid: string;
   rank?: string;
   seafarerNameFallback?: string;
   onClose: () => void;
@@ -256,14 +256,14 @@ function ViewSkeleton() {
 }
 
 export const AppraisalView: React.FC<AppraisalViewProps> = ({
-  appraisalId,
+  appraisalUuid,
   rank,
   seafarerNameFallback,
   onClose,
 }) => {
   const { data: existingAppraisal, isLoading, error } = useQuery<ExistingAppraisal | undefined>({
-    queryKey: [`/api/v2/appraisals/${appraisalId}`],
-    enabled: !!appraisalId,
+    queryKey: [`/api/v2/appraisals/${appraisalUuid}`],
+    enabled: !!appraisalUuid,
   });
 
   const { getName: getDbTrainingName } = useCompanyTrainings();
