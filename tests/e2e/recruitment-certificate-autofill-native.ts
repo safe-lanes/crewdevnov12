@@ -52,20 +52,20 @@ async function main() {
   const changed = add("changed");
   changed.sheet.getCell("A90").value = certificateOption(catalogs.licenses[1]);
   changed.sheet.getCell("A108").value = certificateOption(catalogs.training[1]);
-  for (const address of ["E90", "I90", "E108", "I108"]) {
+  for (const address of ["H90", "L90", "H108", "L108"]) {
     const cell = changed.sheet.getCell(address);
     cell.value = { formula: cell.formula!, result: "OLD DEFAULT" };
   }
   changed.fixture.expected = ["DO", "Deck officers", "IND", "Before joining"];
   const cleared = add("cleared");
-  for (const address of ["E90", "I90", "E108", "I108"]) {
+  for (const address of ["H90", "L90", "H108", "L108"]) {
     const cell = cleared.sheet.getCell(address);
     cell.value = { formula: cell.formula!, result: "OLD DEFAULT" };
   }
   const manual = add("manual");
   manual.sheet.getCell("A90").value = "Custom License";
   manual.sheet.getCell("A108").value = "Custom Training";
-  ["E90", "I90", "E108", "I108"].forEach((address, i) => { manual.sheet.getCell(address).value = `Manual ${i}`; });
+  ["H90", "L90", "H108", "L108"].forEach((address, i) => { manual.sheet.getCell(address).value = `Manual ${i}`; });
   manual.fixture.expected = ["Manual 0", "Manual 1", "Manual 2", "Manual 3"];
   const wildcard = add("wildcard");
   wildcard.sheet.getCell("A90").value = "*";
@@ -102,15 +102,15 @@ async function main() {
       const book = new ExcelJS.Workbook();
       await book.xlsx.load(bytes as any);
       const sheet = book.getWorksheet(FORM_SHEET)!;
-      const computed = ["E90", "I90", "E108", "I108"].map(address => {
+      const computed = ["H90", "L90", "H108", "L108"].map(address => {
         const cell = sheet.getCell(address);
         return String(cell.type === ExcelJS.ValueType.Formula ? cell.result ?? "" : cell.value ?? "");
       });
       assert.deepEqual(computed, fixture.expected, `${fixture.name}: real spreadsheet calculation`);
       const parsed = await parseWorkbook(bytes, fixture.catalogs);
       if (!parsed.isValid) console.error(JSON.stringify({
-        case: fixture.name, spreadsheetFormula: sheet.getCell("E90").formula,
-        generatedFormula: fixture.book.getWorksheet(FORM_SHEET)!.getCell("E90").formula,
+        case: fixture.name, spreadsheetFormula: sheet.getCell("H90").formula,
+        generatedFormula: fixture.book.getWorksheet(FORM_SHEET)!.getCell("H90").formula,
       }));
       assert.equal(parsed.isValid, true, `${fixture.name}: ${JSON.stringify(parsed.errors.slice(0, 3))}`);
       assert.equal(candidateFingerprint(parsed), before.get(fixture.name), `${fixture.name}: spreadsheet recalculation must not alter retry identity`);

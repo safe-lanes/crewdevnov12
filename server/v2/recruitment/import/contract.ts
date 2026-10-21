@@ -1,14 +1,16 @@
 // Fixed, versioned cell locations are shared by the generator and reader.
 // Uploaded workbooks cannot supply field/table mappings or identity/status values.
-import { FORM_LAYOUT, PREVIOUS_FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
+import { FORM_LAYOUT, ALIGNED_FORM_LAYOUT, PREVIOUS_FORM_LAYOUT, LEGACY_FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
 export const LEGACY_VERSION = "Recruitment A1-A5 / 2 — Single sheet";
 export const PREVIOUS_VERSION = "Recruitment A1-A5 / 3 — Single sheet";
 export const ALIGNED_VERSION = "Recruitment A1-A5 / 4 — Single sheet";
-export const VERSION = "Recruitment A1-A5 / 5 — Single sheet";
-export type TemplateVersion = typeof VERSION | typeof ALIGNED_VERSION | typeof PREVIOUS_VERSION | typeof LEGACY_VERSION;
+export const DOCUMENT_VERSION = "Recruitment A1-A5 / 5 — Single sheet";
+export const VERSION = "Recruitment A1-A5 / 6 — Single sheet";
+export type TemplateVersion = typeof VERSION | typeof DOCUMENT_VERSION | typeof ALIGNED_VERSION | typeof PREVIOUS_VERSION | typeof LEGACY_VERSION;
 export const isTemplateVersion = (value: unknown): value is TemplateVersion =>
-  [VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION].some(version => version === value);
-export const usesAlignedLayout = (version: TemplateVersion) => version === VERSION || version === ALIGNED_VERSION;
+  [VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION].some(version => version === value);
+export const usesAlignedLayout = (version: TemplateVersion) => version === VERSION || version === DOCUMENT_VERSION || version === ALIGNED_VERSION;
+export const usesDocumentCatalog = (version: TemplateVersion) => version === VERSION || version === DOCUMENT_VERSION;
 export type Field = { key: string; label: string; date?: boolean; catalog?: string; certificateCatalog?: "licenses" | "training"; documentCatalog?: "travelDocuments"; choices?: string[]; max?: number };
 export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
@@ -67,18 +69,29 @@ const SECTIONS: Record<string, string> = {
   education: "A3.1", licenses: "A3.2", training: "A3.3", sea: "A4.1", additional: "A5.1",
 };
 export const ALIGNED_BLOCKS: Block[] = PREVIOUS_BLOCKS.map(block => ({
-  ...block, section: SECTIONS[block.entity], start: FORM_LAYOUT[block.entity].start,
-  placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
+  ...block, section: SECTIONS[block.entity], start: ALIGNED_FORM_LAYOUT[block.entity].start,
+  placements: ALIGNED_FORM_LAYOUT[block.entity].placements, rowStep: ALIGNED_FORM_LAYOUT[block.entity].step || 1,
   fields: block.entity === "sea" ? [...block.fields, f("imoNumber", "IMO Number", { max: 10 })] : block.fields,
 }));
-export const BLOCKS: Block[] = ALIGNED_BLOCKS.map(block => ({
+export const DOCUMENT_BLOCKS: Block[] = ALIGNED_BLOCKS.map(block => ({
   ...block,
   fields: block.entity === "documents"
     ? block.fields.map(field => field.key === "documentName" ? { ...field, documentCatalog: "travelDocuments" } : field)
     : block.fields,
 }));
+export const BLOCKS: Block[] = DOCUMENT_BLOCKS.map(block => ({
+  ...block, placements: FORM_LAYOUT[block.entity].placements,
+  fields: block.fields
+    .filter(field => !(["documents", "licenses", "training"].includes(block.entity) && field.key === "issuingCountryUuid")
+      && !(block.entity === "visas" && field.key === "source"))
+    .map(field => block.entity === "visas" && field.key === "countryUuid" ? { ...field, catalog: "visaCountries" }
+      : block.entity === "education" ? { ...field, label: ({
+        dateOfCompletion: "Date of Completion", institution: "School/College/University",
+        subjectsField: "Subjects/Field", qualifications: "Qualifications",
+      } as Record<string, string>)[field.key] } : field),
+}));
 export function blocksForVersion(version: TemplateVersion): Block[] {
-  return version === LEGACY_VERSION ? LEGACY_BLOCKS : version === PREVIOUS_VERSION ? PREVIOUS_BLOCKS : version === ALIGNED_VERSION ? ALIGNED_BLOCKS : BLOCKS;
+  return version === LEGACY_VERSION ? LEGACY_BLOCKS : version === PREVIOUS_VERSION ? PREVIOUS_BLOCKS : version === ALIGNED_VERSION ? ALIGNED_BLOCKS : version === DOCUMENT_VERSION ? DOCUMENT_BLOCKS : BLOCKS;
 }
 export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
 export type CatalogEntry = { label: string; value: string; abbr?: string | null; requirement?: string | null };

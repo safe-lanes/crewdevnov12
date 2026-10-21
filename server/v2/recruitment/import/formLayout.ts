@@ -40,7 +40,7 @@ export const PREVIOUS_FORM_LAYOUT: Record<string, Layout> = {
 };
 // Placement order follows the stable data contract, not visual column order.
 // Never change the old layouts when moving fields in a new template revision.
-export const FORM_LAYOUT: Record<string, Layout> = {
+export const ALIGNED_FORM_LAYOUT: Record<string, Layout> = {
   candidate: { start: 6, placements: [left(8), right(8, "AB"), left(9), left(10), left(12), left(11), right(11), left(6)] },
   personal: { start: 12, placements: [right(13), left(14), right(12), left(13), right(14), right(15), left(15), left(16)] },
   vesselTypes: { start: 10, placements: [right(10)] },
@@ -55,6 +55,15 @@ export const FORM_LAYOUT: Record<string, Layout> = {
   training: table(108, ["A", "E", "I", "M", "Q", "W", "AA", "AD"], ["D", "H", "L", "P", "V", "Z", "AC", "AF"]),
   sea: table(142, ["A", "I", "M", "P", "T", "X", "AA", "AD", "F"], ["E", "L", "O", "S", "W", "Z", "AC", "AF", "H"]),
   additional: table(185, ["A", "Q"], ["P", "AF"]),
+};
+// Revision 6: field order remains semantic; placements set the visual order.
+export const FORM_LAYOUT: Record<string, Layout> = {
+  ...ALIGNED_FORM_LAYOUT,
+  documents: table(48, ["A", "I", "Q", "U", "Y"], ["H", "P", "T", "X", "AF"]),
+  visas: table(66, ["A", "I", "Q", "U", "Y"], ["H", "P", "T", "X", "AF"]),
+  education: table(79, ["Y", "Q", "I", "A"], ["AF", "X", "P", "H"]),
+  licenses: table(90, ["A", "H", "L", "P", "V", "AB", "AE"], ["G", "K", "O", "U", "AA", "AD", "AF"]),
+  training: table(108, ["A", "H", "L", "P", "V", "AB", "AE"], ["G", "K", "O", "U", "AA", "AD", "AF"]),
 };
 export const FORM_SECTION_BANDS = [
   ["A5:AF5", "A1.1 General Particulars"],

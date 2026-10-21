@@ -4,7 +4,7 @@ import ExcelJS from "exceljs";
 import { getTableName } from "drizzle-orm";
 import { v5 } from "uuid";
 import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
-import { VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, cleanRecord, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 vi.mock("../../server/v2/db", () => ({ getDb: vi.fn() }));
@@ -39,22 +39,22 @@ describe("Recruitment Excel A2.1 database and manual documents", () => {
       expect(sheet.getCell(`${column}2`).value).toBe("Passport [DB:DOC001]");
       expect(cell.note).toBeUndefined();
     }
-    expect(sheet.getCell("V15").dataValidation?.type).toBeUndefined();
+    expect(sheet.getCell("V15").dataValidation?.type).toBe("any");
     expect(sheet.pageSetup.printArea).toBe("A1:AF207");
     expect(sheet.getCell("A205").text).toContain("Document type: choose a database option");
   });
 
-  it("persists linked and manual rows, leading zeros and provided issuing country without filling blank fields", async () => {
+  it("persists linked and manual rows and leading zeros without adding removed or blank fields", async () => {
     const parsed = await read(["Passport [DB:DOC001]", "Custom Port Pass", null, "Seaman Book [DB:DOC002]"], {
       edit: sheet => {
-        sheet.getCell("G48").value = "00123";
-        sheet.getCell("AA48").value = "India";
+        sheet.getCell("I48").value = "00123";
         sheet.getCell("V15").value = "Hindi, French";
       },
     });
     expect(parsed.errors).toEqual([]);
     expect(parsed.summary.A2).toBe(3);
-    expect(parsed.data.documents[0]).toMatchObject({ documentName: "Passport", documentId: "DOC001", number: "00123", issuingCountryUuid: "country-uuid" });
+    expect(parsed.data.documents[0]).toMatchObject({ documentName: "Passport", documentId: "DOC001", number: "00123" });
+    expect(parsed.data.documents[0]).not.toHaveProperty("issuingCountryUuid");
     expect(cleanRecord(parsed.data.documents[1])).toEqual({ documentName: "Custom Port Pass" });
     expect(parsed.data.documents[2]).toMatchObject({ documentId: "DOC002", __row: "3" });
     expect(parsed.data.personal[0].foreignLanguages).toBe("Hindi, French");
@@ -70,6 +70,7 @@ describe("Recruitment Excel A2.1 database and manual documents", () => {
     expect(documents[0]).not.toHaveProperty("__documentInput");
     expect(documents[0]).not.toHaveProperty("issued");
     expect(documents[0]).not.toHaveProperty("issuingAuthority");
+    expect(documents[0]).not.toHaveProperty("issuingCountryUuid");
     expect(documents[1]).not.toHaveProperty("documentId");
     expect(documents[2].sortOrder).toBe(3);
     expect(saved.find(row => row.table === "recruitment_candidates_v2")!.values).toMatchObject({ status: "Applied", fileNo: expect.stringMatching(/-0018$/), screeningDate: expect.any(String) });
@@ -136,7 +137,7 @@ describe("Recruitment Excel A2.1 database and manual documents", () => {
   it("rejects document formulas and validates only populated detail rows", async () => {
     const formula = await read([{ formula: '"Passport"', result: "Passport" }]);
     expect(formula.errors).toContainEqual(expect.objectContaining({ cell: "A48", message: expect.stringContaining("not a formula") }));
-    const partial = await read([], { edit: sheet => { sheet.getCell("G48").value = "00123"; } });
+    const partial = await read([], { edit: sheet => { sheet.getCell("I48").value = "00123"; } });
     expect(partial.errors).toContainEqual(expect.objectContaining({ section: "A2.1", cell: "A48", message: "Required for a populated row." }));
   });
 });

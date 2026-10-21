@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { VERSION, LEGACY_VERSION, isTemplateVersion, usesAlignedLayout, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
+import { LEGACY_VERSION, isTemplateVersion, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
 import { FORM_SHEET, FORM_GUIDELINE_START, LOOKUP_START_COLUMN } from "./formLayout";
 import { createTemplateWorkbook, DOCUMENT_SELECTION_GUIDE } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
@@ -73,7 +73,7 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
     const label = labels.get(cell.address);
     const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
       : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
-        : cell.address === `A${usesAlignedLayout(version) ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE, ...(version === VERSION ? [DOCUMENT_SELECTION_GUIDE] : [])].includes(actual!)
+        : cell.address === `A${usesAlignedLayout(version) ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE, ...(usesDocumentCatalog(version) ? [DOCUMENT_SELECTION_GUIDE] : [])].includes(actual!)
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
   }));

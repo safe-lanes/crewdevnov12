@@ -1,7 +1,9 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { loadCatalogs } from "../../server/v2/recruitment/import/catalogs";
+import { masterLanguages } from "../../shared/schema";
 const mocks = vi.hoisted(() => ({
+  visaEntries: vi.fn(async () => [{ id: 9, name: "Indian" }]),
   licenses: vi.fn(async () => [{ id: "internal-uuid", entryId: "LIC007", name: "Chief Engineer", shortCode: "CE", description: "Master default" }]),
   training: vi.fn(async () => [{ id: 197, trainingMasterId: 92, companyId: "SAF029", trainingLabel: "Company Safety Induction", abr: "CSI", requirement: "Company requirement" }]),
   documents: vi.fn(async () => [
@@ -11,10 +13,15 @@ const mocks = vi.hoisted(() => ({
   ]),
 }));
 vi.mock("../../server/v2/db", () => ({ getDb: () => ({
-  select: () => ({ from: () => ({ where: async () => [] }) }),
+  select: () => ({ from: (table: unknown) => ({ where: async () => table === masterLanguages ? [
+    { label: "French", value: "french-uuid", isActive: true },
+    { label: "Spanish", value: "spanish-uuid", isActive: true },
+    { label: "Inactive", value: "inactive-uuid", isActive: false },
+    { label: "", value: "blank-uuid", isActive: true },
+  ] : [] }) }),
 }) }));
 vi.mock("../../server/v2/masters/repositories/mastersRepository", () => ({
-  MastersRepository: class { findAllLicensesDce = mocks.licenses; },
+  MastersRepository: class { findAllLicensesDce = mocks.licenses; getMasterDataEntries = mocks.visaEntries; },
 }));
 vi.mock("../../server/v2/admin/repositories/companyTrainingsRepository", () => ({
   CompanyTrainingsRepository: class { findAll = mocks.training; },
@@ -24,6 +31,24 @@ vi.mock("../../server/v2/masters/repositories/travelDocumentTypeRepository", () 
 }));
 
 describe("Recruitment Excel certificate catalog sources", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("loads the web visa entry source and supplements it with predefined choices", async () => {
+    const catalogs = await loadCatalogs();
+    expect(mocks.visaEntries).toHaveBeenCalledWith("001");
+    expect(catalogs.visaCountries).toContainEqual({ label: "India", value: "India" });
+    expect(catalogs.visaCountries).toContainEqual({ label: "Schengen", value: "Schengen" });
+  });
+  it("reports a visa master read failure instead of silently returning an incomplete list", async () => {
+    mocks.visaEntries.mockRejectedValueOnce(new Error("Visa master unavailable"));
+    await expect(loadCatalogs()).rejects.toThrow("Visa master unavailable");
+  });
+  it("matches the web language eligibility while preserving the existing native-language catalog", async () => {
+    const catalogs = await loadCatalogs();
+    expect(catalogs.foreignLanguages).toEqual([
+      { label: "French", value: "french-uuid" }, { label: "Spanish", value: "spanish-uuid" },
+    ]);
+    expect(catalogs.languages).toContainEqual({ label: "Inactive", value: "inactive-uuid" });
+  });
   it("reuses the live web-selection repositories with business IDs and the same two dependent defaults", async () => {
     const catalogs = await loadCatalogs();
     expect(mocks.licenses).toHaveBeenCalledOnce();
