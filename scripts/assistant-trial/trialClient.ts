@@ -57,7 +57,10 @@ export async function call(t: Target, tool: string, args: unknown, opts: { token
   } catch {
     /* non-JSON */
   }
-  return { status: r.status, body: body as Record<string, any>, ms: Date.now() - started };
+  // authenticated responses are {ok:true, data}; tests read the data (raw kept for envelope checks)
+  const raw = body as Record<string, any>;
+  const inner = raw && typeof raw === "object" && raw.ok === true && "data" in raw ? raw.data : raw;
+  return { status: r.status, body: inner as Record<string, any>, raw, ms: Date.now() - started };
 }
 
 export async function manifest(t: Target, secret: string | null = t.secret) {

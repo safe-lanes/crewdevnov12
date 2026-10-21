@@ -9,9 +9,10 @@
  *   4    role re-resolved on the server (master_users → adm_rolemaster_ac), Office only, in ASSISTANT_ALLOWED_ROLES.
  *   5    menu view permission for EVERY data area the call uses (adm_roleaccess_ac).
  *   6    tool + strict argument schema; read-only snapshot transaction with a statement timeout.
- * Steps 3-6 refuse with HTTP 200 {ok:false, code, error}: business refusals of an authenticated call.
+ * Steps 3-6 refuse with HTTP 200 and data = {ok:false, code, error}: business refusals of an authenticated call.
  */
 import type { Request } from "express";
+import { appendFileSync } from "fs";
 import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { getDb } from "../../db";
@@ -127,21 +128,39 @@ async function authorizedExecute(identity: VerifiedIdentity, tool: string, args:
   }
   const ctx: ToolContext = { asOf: asOfDate(), canView: (a) => areas.has(a) };
   const started = Date.now();
+  const out = await (async () => {
+    try {
+      return await runTool(tool, args, ctx);
+    } catch (err: unknown) {
+      if (err instanceof ToolRefusal) return err.refusal;
+      if (err instanceof ZodError) {
+        return refuse("invalid_args", "Invalid arguments: " + err.issues.map((i) => `${i.path.join(".") || "args"} ${i.message}`).join("; "));
+      }
+      if (err instanceof DataTimeoutError) {
+        return refuse("timeout", "The query took too long and was stopped — no result. Try a narrower question (one vessel or a shorter period).");
+      }
+      console.error(`[assistant-data] ${requestId} ${tool} failed:`, err);
+      return refuse("failed", "The data could not be read — no result.");
+    }
+  })();
+  const ms = Date.now() - started;
+  console.log(`[assistant-data] ${requestId} ${tool} user=${identity.userId} role=${resolution.role.roleName} ` +
+    `tenant=${tenantConnectionManager.getCurrentTenantId() ?? "single"} argKeys=${Object.keys((args as object) ?? {}).join(",")} ${ms}ms`);
+  return out;
+}
+
+/** PILOT TRIAL ONLY: full arguments + result summary to a local file, so expected-vs-actual can compare the selected
+ *  query. Off unless ASSISTANT_TRIAL_ARG_LOG names a file; never enabled outside the isolated pilot. */
+function trialArgLog(requestId: string, tool: string, args: unknown, out: unknown, ms: number) {
+  const file = process.env.ASSISTANT_TRIAL_ARG_LOG;
+  if (!file || process.env.NODE_ENV === "production") return;
+  const o = (out ?? {}) as Record<string, unknown>;
+  const line = { t: new Date().toISOString(), requestId, tool, args, ok: o.ok, code: o.code, total: o.total, totals: o.totals,
+    groupsTotal: o.groupsTotal, returned: o.returned, nextOffset: o.nextOffset, excluded: o.excluded, ms };
   try {
-    const out = await runTool(tool, args, ctx);
-    console.log(`[assistant-data] ${requestId} ${tool} user=${identity.userId} role=${resolution.role.roleName} ` +
-      `tenant=${tenantConnectionManager.getCurrentTenantId() ?? "single"} argKeys=${Object.keys((args as object) ?? {}).join(",")} ${Date.now() - started}ms`);
-    return out;
-  } catch (err: unknown) {
-    if (err instanceof ToolRefusal) return err.refusal;
-    if (err instanceof ZodError) {
-      return refuse("invalid_args", "Invalid arguments: " + err.issues.map((i) => `${i.path.join(".") || "args"} ${i.message}`).join("; "));
-    }
-    if (err instanceof DataTimeoutError) {
-      return refuse("timeout", "The query took too long and was stopped — no result. Try a narrower question (one vessel or a shorter period).");
-    }
-    console.error(`[assistant-data] ${requestId} ${tool} failed:`, err);
-    return refuse("failed", "The data could not be read — no result.");
+    appendFileSync(file, JSON.stringify(line) + "\n");
+  } catch {
+    /* logging never breaks a call */
   }
 }
 
@@ -152,22 +171,37 @@ export async function execute(req: Request): Promise<ServiceResult> {
   const body = (req.body ?? {}) as { tool?: unknown; args?: unknown; requestId?: unknown };
   const tool = typeof body.tool === "string" ? body.tool : "";
   const requestId = typeof body.requestId === "string" ? body.requestId.slice(0, 64) : "-";
+  const started = Date.now();
+  const done = (result: unknown): ServiceResult => {
+    trialArgLog(requestId, tool, body.args, result, Date.now() - started); // every authenticated outcome, refusals included
+    return { status: 200, body: wrap(result) };
+  };
 
   if (!tenantConnectionManager.isMultiTenantEnabled) {
-    return { status: 200, body: await authorizedExecute(identity, tool, body.args, requestId) };
+    return done(await authorizedExecute(identity, tool, body.args, requestId));
   }
   const domain = (identity.tenantDomain || "").trim();
-  if (!domain) return { status: 200, body: refuse("company_unavailable", "The identity carries no company.") };
+  if (!domain) return done(refuse("company_unavailable", "The identity carries no company."));
   let tuid: string;
   try {
     tuid = (await tenantConnectionManager.resolveTenant(domain)).tuid;
   } catch {
-    return { status: 200, body: refuse("company_unavailable", "Your company is not available for live data.") };
+    return done(refuse("company_unavailable", "Your company is not available for live data."));
   }
   if (identity.tuid && identity.tuid !== tuid) {
     console.warn(`[assistant-data] ${requestId} identity tuid does not match its domain — refused`);
     return { status: 401, body: { error: "unauthorized" } };
   }
   const out = await tenantConnectionManager.runInTenantContext(tuid, () => authorizedExecute(identity, tool, body.args, requestId), domain);
-  return { status: 200, body: out };
+  return done(out);
+}
+
+/**
+ * Envelope of every AUTHENTICATED call: {ok:true, data}. The assistant hands only `data` to the model and keeps
+ * nothing but the error text of a top-level ok:false (agent.call_tool) — so business refusals travel INSIDE data
+ * ({ok:false, code, error, details}) to keep their code and structured details (e.g. vessel candidates, whose
+ * `vesselName` keys the assistant's masker recognises; inside a plain error string they would not be masked).
+ */
+function wrap(result: unknown) {
+  return { ok: true, data: result };
 }

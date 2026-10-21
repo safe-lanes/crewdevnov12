@@ -28,7 +28,13 @@ const rankGroupsJson = {
   items: { type: "string", enum: [...RANK_GROUP_NAMES] },
   description: "Rank groups (provisional list): officers, deck_officers, engine_officers ('engineers'), ratings, deck_ratings, engine_ratings, deck, engine, catering, cadets.",
 };
-const docTypesJson = { type: "array", items: { type: "string", enum: ["licence", "training"] }, description: "licence = licences/certificates (CoC, endorsements…); training = training-course certificates. Omit for both." };
+const docTypesJson = {
+  type: "array",
+  items: { type: "string", enum: ["licence", "training"] },
+  description: "licence = licences / certificates of competency, endorsements; training = training-course certificates. OMIT for both: " +
+    "everyday 'certificates' or 'documents' means both (PROVISIONAL trial rule). Set licence only when the user says licence/CoC/endorsement, " +
+    "training only when the user says course/training.",
+};
 
 export const CREWING_TOOLS = [
   {

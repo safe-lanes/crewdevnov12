@@ -15,7 +15,7 @@ export class AssistantDataController {
       return res.status(r.status).json(r.body);
     } catch (error) {
       console.error("[AssistantDataController] execute failed:", error);
-      return res.status(200).json({ ok: false, code: "failed", error: "The data could not be read — no result." });
+      return res.status(200).json({ ok: true, data: { ok: false, code: "failed", error: "The data could not be read — no result." } });
     }
   }
 }

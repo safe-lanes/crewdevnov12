@@ -144,6 +144,11 @@ async function security(t: Target, s: Target) {
   const browser = await fetch(`${t.base}/assistant/execute`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer x.y.z" }, body: JSON.stringify({ tool, args }) });
   check("X9 browser-style Bearer call → 401", browser.status === 401);
   check("X10 manifest without secret → 401", (await manifest(t, null)).status === 401);
+  // assistant contract (agent.call_tool hands only `data` to the model): authenticated → {ok:true, data}
+  const env1 = await call(t, tool, args, { who: A });
+  const env2 = await call(t, tool, { mode: "count", vessels: ["MV Zeta"] }, { who: A });
+  check("X11 envelope: success and refusal both arrive as {ok:true, data}; refusal code inside data",
+    env1.raw?.ok === true && env1.raw?.data?.ok === true && env2.raw?.ok === true && env2.raw?.data?.code === "vessel_not_found", { env1: env1.raw?.ok, env2: env2.raw });
   const ref = async (who: object) => (await call(t, tool, args, { who })).body;
   let r = await ref({ ...A, userId: "37", userType: "Ship", role: "Vessel Admin" });
   check("R1 Ship user → 200 not_allowed", r.ok === false && r.code === "not_allowed", r);

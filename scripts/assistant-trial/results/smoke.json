@@ -1,0 +1,93 @@
+[
+ {
+  "id": "C02",
+  "turn": 1,
+  "cat": "simple-count",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on MV Beta Ocean right now?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "latencyMs": 3732,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 6929,
+   "completion_tokens": 92
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": true,
+    "total": 7,
+    "totals": {
+     "assignments": 7,
+     "people": 7
+    },
+    "ms": 13
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **7 crew members** are on **MV Beta Ocean** right now.\n\nFilters: vessel MV Beta Ocean, on board, unit people.  \nSome definitions are provisional (trial)."
+ },
+ {
+  "id": "C12",
+  "turn": 1,
+  "cat": "ambiguous",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board Alpha?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "latencyMs": 3606,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 6849,
+   "completion_tokens": 72
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "vessels": [
+      "Alpha"
+     ],
+     "limit": 10,
+     "offset": 0,
+     "sort": "name"
+    },
+    "ok": false,
+    "code": "vessel_ambiguous",
+    "ms": 6
+   }
+  ],
+  "answer": "The vessel name is ambiguous. Which vessel did you mean?\n\n- MV Alpha Star\n- MV Alpha Trader"
+ }
+]
