@@ -1,5 +1,9 @@
 # Training compliance calculation 1.1.0 — review revision
 
+Historical review: malformed issue dates were subsequently approved as held.
+See [calculation 1.2.0 and the rerun of row 34](pre-joining-training-matrix-slice-4-evidence.md).
+The table below preserves the results of the earlier review.
+
 User decision: 21-Oct-2026. Server-only, read-only; no screens, routes,
 enforcement or Training Needs introduced. Slice 4 remains stopped for review.
 

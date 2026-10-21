@@ -74,4 +74,21 @@ describe("read-only Reliever Status training display", () => {
     await waitFor(() => expect(screen.getByText(/linked reliever assignment is required/)).toBeTruthy());
     expect(apiRequest).not.toHaveBeenCalled();
   });
+  it("rechecks saved facts on reopen despite the application-wide infinite stale time; hides the cached result while checking", async () => {
+    client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, gcTime: Infinity, retry: false } } });
+    vi.mocked(apiRequest).mockResolvedValueOnce(new Response(JSON.stringify(value(0))));
+    const first = mount();
+    await screen.findByTestId("training-compliance-see-details");
+    first.unmount();
+    let finish!: (response: Response) => void;
+    vi.mocked(apiRequest).mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }));
+    mount();
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId("training-compliance-see-details")).toBeNull();
+    expect(screen.getByLabelText("Loading training compliance")).toBeTruthy();
+    finish(new Response(JSON.stringify(value(4))));
+    fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    expect(within(screen.getByTestId(`training-course-row-${value(4).courses[0].courseUuid}`))
+      .getByText(value(4).courses[0].state!)).toBeTruthy();
+  });
 });

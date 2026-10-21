@@ -126,8 +126,10 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
     queryFn: () => fetchCompliance(url),
     enabled: open && hasIds,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
-  const result = !query.isError && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
+  const result = !query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
 
   const openAttachment = async (attachment: CertificateAttachment) => {
     const pendingWindow = window.open("about:blank", "_blank");
@@ -158,7 +160,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
         <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2">
           {!hasIds ? (
             <span className="text-sm text-slate-600">Unavailable — a linked reliever assignment is required.</span>
-          ) : query.isLoading ? (
+          ) : query.isFetching ? (
             <span className="inline-flex h-5 w-40 animate-pulse rounded bg-slate-200" aria-label="Loading training compliance" />
           ) : query.isError ? (
             <>
@@ -194,7 +196,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
           <DialogHeader className="border-b border-slate-200 bg-white px-6 py-5">
             <DialogTitle className="text-lg font-semibold text-slate-800">Training Matrix Compliance</DialogTitle>
           </DialogHeader>
-          {!result && query.isLoading && (
+          {!result && query.isFetching && (
             <div className="space-y-4 p-6" aria-label="Loading training compliance">
               <div className="h-20 animate-pulse rounded-md bg-slate-200" />
               <div className="h-8 animate-pulse rounded-md bg-slate-200" />
@@ -209,7 +211,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
               </Button>
             </div>
           )}
-          {!result && !query.isLoading && !query.isError && (
+          {!result && !query.isFetching && !query.isError && (
             <p className="p-6 text-sm text-slate-600">Training compliance is unavailable for this reliever assignment.</p>
           )}
           {result && (

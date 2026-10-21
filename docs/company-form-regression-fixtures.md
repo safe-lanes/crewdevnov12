@@ -34794,3 +34794,27 @@ Full identifiers are in [the Training Matrix fixture manifest](training-matrix-s
   and reuses these records. `TRAINING_VERIFY_BOOTSTRAP=1` was used for the initial
   fixture setup through the screen; the tool refuses writes to any other vessel
   and refuses to add another published revision on a rerun.
+
+### Training compliance UI — initial setup registration (21-Oct-2026)
+
+Reuses the dedicated synthetic crew `a4120000-0000-4000-8000-000000000004`
+(`PDF-LAYOUT-412`) on fixture-only vessel `a4120000-0000-4000-8000-000000000001`.
+The retained seafarer with protected vessel-02 history is not changed.
+Stable setup identities (retained even if setup needs resuming):
+- Fixture vessel rank revision `a4240000-0000-4000-8000-000000000010`.
+- Fixture rotation draft `a4240000-0000-4000-8000-000000000011`.
+- Fixture rotation entry `a4240000-0000-4000-8000-000000000012`, and its exact
+  normal-Deploy-created assignment/planning and all their lifecycle descendants.
+- D3 certificates `a4240000-0000-4000-8000-000000000020`,
+  `a4240000-0000-4000-8000-000000000021`,
+  `a4240000-0000-4000-8000-000000000022`; attachment
+  `a4240000-0000-4000-8000-000000000023`.
+No vessel, seafarer, role, grant, company-wide M/R rule or saved training matrix
+revision is created or changed. The existing R0 equivalents are reused. The
+completed manifest records exact server-generated assignment/planning identities.
+Normal setup reruns reuse records; none are deleted. UI scenarios change only
+this fixture's saved reliever dates and restore their baseline afterwards.
+
+### Read-only training compliance UI (21-Oct-2026)
+
+Reuses fixture-only vessel a4120000-0000-4000-8000-000000000001 and dedicated fixture seafarer a4120000-0000-4000-8000-000000000004; no protected vessel-02 records touched. Exact retained records are in [the slice 4 manifest](training-compliance-slice-4-fixtures.json): planning 068511d9-9c64-4125-9e55-f3e4b41beac0, assignment dc2528aa-45d1-4507-95a3-5128b9501065, rank revision a4240000-0000-4000-8000-000000000010, rotation draft a4240000-0000-4000-8000-000000000011, entry a4240000-0000-4000-8000-000000000012, certificates a4240000-0000-4000-8000-000000000020, a4240000-0000-4000-8000-000000000021, a4240000-0000-4000-8000-000000000022, attachment a4240000-0000-4000-8000-000000000023. Their assignment-scoped lifecycle descendants are retained. No grants or real/global policy changed. Normal setup reruns only verify/reuse; UI replay changes only this fixture's saved reliever dates.

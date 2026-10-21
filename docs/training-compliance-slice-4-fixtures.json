@@ -1,0 +1,48 @@
+{
+  "registeredAt": "2026-10-21T04:53:56.309Z",
+  "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+  "crewUuid": "a4120000-0000-4000-8000-000000000004",
+  "planUuid": "068511d9-9c64-4125-9e55-f3e4b41beac0",
+  "assignmentUuid": "dc2528aa-45d1-4507-95a3-5128b9501065",
+  "rankRevisionUuid": "a4240000-0000-4000-8000-000000000010",
+  "rotationDraftUuid": "a4240000-0000-4000-8000-000000000011",
+  "rotationEntryUuid": "a4240000-0000-4000-8000-000000000012",
+  "certificateUuids": [
+    "a4240000-0000-4000-8000-000000000020",
+    "a4240000-0000-4000-8000-000000000021",
+    "a4240000-0000-4000-8000-000000000022"
+  ],
+  "attachmentUuid": "a4240000-0000-4000-8000-000000000023",
+  "matrixRevisionUuid": "9f2ae8cd-fcd2-4569-a2b1-b3b8632bd95c",
+  "persona": {
+    "masterUserId": 3,
+    "role": "Crewing Manager",
+    "roleUuid": "408d9fe9-1d0f-11f1-925d-5419ffd80f01",
+    "grants": [
+      {
+        "name": "Vessel",
+        "canview": true,
+        "canedit": true
+      },
+      {
+        "name": "Rotation",
+        "canview": true,
+        "canedit": true
+      },
+      {
+        "name": "Crew Database",
+        "canview": true,
+        "canedit": true
+      },
+      {
+        "name": "Planning",
+        "canview": true,
+        "canedit": true
+      }
+    ],
+    "grantsAdded": []
+  },
+  "descendants": "All Company Form lifecycle events, runs and requirements for this assignment are retained acceptance fixtures.",
+  "retention": "Reuse these exact records. Never delete. No new vessel, crew, role, grant or global training policy.",
+  "scenarios": "Saved joining absent => incomplete; joining 01-May-2027 with end absent => warning; 6 months => Valid/Not held; 01-Oct-2027 => Expires during contract; 01-Dec-2027 => Expired at joining; 01-Jan-2028 => Valid, no expiry and equivalent. UI replay restores 01-May-2027/6 months."
+}
