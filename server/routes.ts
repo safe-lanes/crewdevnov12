@@ -17,6 +17,7 @@ import reportsV2Routes from "./v2/reports/routes";
 import testCasesV2Routes from "./v2/test-cases/routes";
 import alertsV2Routes from "./v2/alerts/routes";
 import accountsV2Routes from "./v2/accounts/routes";
+import assistantV2Routes from "./v2/assistant/routes";
 import { briefingsV2Routes } from "./v2/briefings";
 import { interviewsV2Routes } from "./v2/interviews";
 import { debriefingsV2Routes } from "./v2/debriefings";
@@ -125,6 +126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/v2/briefings", briefingsV2Routes);
   app.use("/api/v2/interviews", interviewsV2Routes);
   app.use("/api/v2/debriefings", debriefingsV2Routes);
+
+  // Shared SAIL chat widget: identity token for the central assistant (knowledge answers, stage 1)
+  app.use("/api/v2/assistant", assistantV2Routes);
 
   // Start crewing alert background scanner (multi-tenant only)
   if (tenantConnectionManager.isMultiTenantEnabled) {
