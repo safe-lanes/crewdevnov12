@@ -463,7 +463,7 @@ export default function PayslipsPage() {
         field: "engagementUuid",
         width: 130,
         sortable: false,
-        cellRenderer: (p: any) => (
+        cellRenderer: (p: any) => p.node.rowPinned === "bottom" ? null : (
           <Button
             size="sm"
             variant="outline"
