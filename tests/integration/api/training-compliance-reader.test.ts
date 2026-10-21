@@ -203,9 +203,32 @@ describe("tenant-scoped read-only compliance loader", () => {
   });
   it("an absent own contract end stays absent despite the incumbent's twelve months", async () => {
     await pools[0].query("UPDATE vessel_planning_v2 SET reliever_contract_end_range_end_months=NULL");
-    expect(await check()).toMatchObject({ status: "incomplete", joiningDate: "2026-01-31",
-      contractEnd: null, contractEndStatus: "not_set", courses: [{ state: null,
+    expect(await check()).toMatchObject({ status: "complete", joiningDate: "2026-01-31",
+       contractEnd: null, contractEndStatus: "not_set", courses: [{ state: "Valid", validThroughContract: null,
         chosenCertificate: { certificateUuid: ids.certificateA } }] });
+  });
+  it("reads an absent D3 issue date as held, without filling it or changing records", async () => {
+    await pools[0].query("UPDATE crew_training_courses SET issued=NULL");
+    const before = await fingerprint(pools[0]);
+    const result = await check();
+    expect(result).toMatchObject({ status: "complete", courses: [{ state: "Valid",
+      chosenCertificate: { certificateUuid: ids.certificateA, issued: null },
+      issues: [expect.objectContaining({ code: "ISSUE_DATE_NOT_RECORDED", blocking: false })] }] });
+    expect(await fingerprint(pools[0])).toBe(before);
+  });
+  it("sets invalid D3 dates aside and uses another certificate without writing a correction", async () => {
+    await pools[0].query("UPDATE crew_training_courses SET expiry='not-a-date'");
+    await insert(pools[0], schemas[0], "crew_training_courses", {
+      train_uuid: randomUUID(), crew_uuid: ids.crew, course_id: "101",
+      training_course: "Good replacement", certificate_no: "GOOD", issued: "2024-01-01",
+      expiry: "2027-01-01", is_deleted: false });
+    const before = await fingerprint(pools[0]);
+    const result = await check();
+    expect(result).toMatchObject({ status: "complete", courses: [{ state: "Valid",
+      chosenCertificate: { number: "GOOD" } }] });
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "INVALID_CERTIFICATE_DATES",
+      certificateUuid: ids.certificateA, blocking: false, message: "Certificate dates invalid: correct the record" }));
+    expect(await fingerprint(pools[0])).toBe(before);
   });
   it("an unavailable captured rank never resolves through its label", async () => {
     await pools[0].query("UPDATE adm_available_ranks_v2 SET is_deleted=true");

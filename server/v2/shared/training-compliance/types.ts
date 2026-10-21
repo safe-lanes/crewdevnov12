@@ -1,9 +1,12 @@
 /** Bump for any change to date, matching, selection or state semantics. */
-export const TRAINING_COMPLIANCE_VERSION = "1.0.0";
+export const TRAINING_COMPLIANCE_VERSION = "1.1.0";
 export type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract"
   | "Expired at joining" | "Not held";
 export type Obligation = "mandatory" | "recommended";
-export type CheckIssue = { code: string; message: string; courseUuid?: string };
+/** Existing reader issues block by default; explicitly nonblocking issues are warnings. */
+export type CheckIssue = {
+  code: string; message: string; courseUuid?: string; certificateUuid?: string; blocking?: boolean;
+};
 export type TrainingCertificate = {
   certificateUuid: string;
   courseUuid: string | null;

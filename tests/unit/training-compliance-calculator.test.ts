@@ -69,13 +69,12 @@ describe("shared training compliance kernel", () => {
   ])("clamps %s plus %s months to %s", (joining, months, expected) => {
     expect(contractEndDate(joining, months)).toBe(expected);
   });
-  it.each(["contractRankUuid", "plannedJoiningDate", "matrix", "contractRangeEndMonths"] as const)("fails closed for missing %s", key => {
+  it.each(["contractRankUuid", "plannedJoiningDate", "matrix"] as const)("fails closed for missing %s", key => {
     const value = input([cert("held", null)]);
     value[key] = null;
     const result = calculateTrainingCompliance(value);
     expect(result.status).toBe("incomplete");
     expect(result.summary.mandatory.status).toBe("incomplete");
-    if (key === "contractRangeEndMonths") expect(result.issues.some(i => i.message.startsWith("Contract end not set"))).toBe(true);
   });
   it("invalid dates never become no-expiry or silently roll forward", () => {
     expect(calculateTrainingCompliance(input([cert("invalid", "2026-02-30")])).status).toBe("incomplete");
@@ -92,8 +91,13 @@ describe("shared training compliance kernel", () => {
     expect(calculateTrainingCompliance(input([cert("blank-expiry", "")])).courses[0])
       .toMatchObject({ state: "Valid, no expiry", chosenCertificate: { expiry: null } });
   });
-  it("a missing issue date cannot prove a certificate existed at joining", () => {
-    expect(calculateTrainingCompliance(input([cert("unknown-issue", null, "course-a", "")])).status).toBe("incomplete");
+  it.each([null, "", "   "])("a missing issue date %s is held with a warning, never invented", issued => {
+    const result = calculateTrainingCompliance(input([{ ...cert("unknown-issue", null), issued }]));
+    expect(result.status).toBe("complete");
+    expect(result.courses[0]).toMatchObject({ state: "Valid, no expiry", complete: true,
+      chosenCertificate: { issued: null }, issues: [expect.objectContaining({
+        code: "ISSUE_DATE_NOT_RECORDED", message: "Issue date not recorded", blocking: false })] });
+    expect(result.summary.mandatory.status).toBe("warning");
   });
   it.each([-1, 1.5, Number.NaN])("rejects invalid contract months %s", months => {
     const result = calculateTrainingCompliance({ ...input([cert("held", null)]), contractRangeEndMonths: months });
@@ -101,9 +105,62 @@ describe("shared training compliance kernel", () => {
     expect(result.contractEnd).toBeNull();
     expect(result.summary.mandatory.status).toBe("incomplete");
   });
-  it("a malformed matching certificate is not hidden behind a good certificate", () => {
+  it("sets malformed certificates aside without invalidating the remaining good certificate", () => {
     const result = calculateTrainingCompliance(input([cert("good", null), cert("bad", "invalid")]));
-    expect(result.courses[0]).toMatchObject({ state: null, complete: false, validAtJoining: null, validThroughContract: null });
-    expect(result.summary.mandatory.status).toBe("incomplete");
+    expect(result.status).toBe("complete");
+    expect(result.courses[0]).toMatchObject({ state: "Valid, no expiry", complete: true, validAtJoining: true,
+      validThroughContract: true, chosenCertificate: { certificateUuid: "good" } });
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "INVALID_CERTIFICATE_DATES",
+      certificateUuid: "bad", blocking: false, message: "Certificate dates invalid: correct the record" }));
+    expect(result.summary.mandatory.status).toBe("warning");
+  });
+  it.each([
+    ["2027-05-01", "Valid", true],
+    ["2026-10-21", "Valid", true],
+    [null, "Valid, no expiry", true],
+    ["2026-10-20", "Expired at joining", false],
+  ])("without contract end, keeps joining state for expiry %s", (expiry, state, atJoining) => {
+    const result = calculateTrainingCompliance({ ...input([cert("held", expiry)]), contractRangeEndMonths: null });
+    expect(result).toMatchObject({ status: "complete", contractEnd: null, contractEndStatus: "not_set" });
+    expect(result.courses[0]).toMatchObject({ state, complete: true, validAtJoining: atJoining,
+      validThroughContract: null, chosenCertificate: { certificateUuid: "held" } });
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "CONTRACT_END_NOT_SET",
+      blocking: false, message: "Contract end not set: full-contract validity not checked" }));
+  });
+  it("missing contract end never hides a missing certificate gap", () => {
+    const result = calculateTrainingCompliance({ ...input(), contractRangeEndMonths: null });
+    expect(result.status).toBe("complete");
+    expect(result.courses[0].state).toBe("Not held");
+    expect(result.summary.mandatory.status).toBe("gap");
+  });
+  it.each([
+    cert("bad-issue", "2027-05-01", "course-a", "bad"),
+    cert("inverted", "2026-01-01", "course-a", "2026-02-01"),
+    cert("bad-expiry", "bad"),
+  ])("all-invalid matching records are incomplete: $certificateUuid", invalid => {
+    const result = calculateTrainingCompliance(input([invalid]));
+    expect(result.status).toBe("incomplete");
+    expect(result.courses[0]).toMatchObject({ state: null, complete: false, chosenCertificate: null });
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "INVALID_CERTIFICATE_DATES", blocking: true }));
+  });
+  it("an expired remaining certificate remains a gap, not incomplete or valid", () => {
+    const result = calculateTrainingCompliance(input([cert("bad", "bad"), cert("expired", "2026-10-20")]));
+    expect(result.status).toBe("complete");
+    expect(result.courses[0]).toMatchObject({ state: "Expired at joining",
+      chosenCertificate: { certificateUuid: "expired" } });
+    expect(result.summary.mandatory.status).toBe("gap");
+  });
+  it("missing issue dates do not outrank longer validity or invent an issue date", () => {
+    const result = calculateTrainingCompliance(input([cert("dated", "2026-12-01"),
+      { ...cert("undated", "2027-05-01"), issued: null }]));
+    expect(result.courses[0]).toMatchObject({ state: "Valid", chosenCertificate: {
+      certificateUuid: "undated", issued: null } });
+    expect(result.status).toBe("complete");
+  });
+  it("equal expiries with missing issue dates sort deterministically without throwing", () => {
+    const result = calculateTrainingCompliance(input([
+      { ...cert("b", "2027-05-01"), issued: null }, { ...cert("a", "2027-05-01"), issued: null }]));
+    expect(result.status).toBe("complete");
+    expect(result.courses[0].chosenCertificate?.certificateUuid).toBe("a");
   });
 });
