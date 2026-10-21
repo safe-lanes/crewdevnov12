@@ -29,6 +29,7 @@ type CourseResult = {
   calculationVersion: string;
   state: CourseState | null;
   complete: boolean;
+  displayStatus?: string;
   validAtJoining: boolean | null;
   validThroughContract: boolean | null;
   chosenCertificate: TrainingCertificate | null;
@@ -52,7 +53,7 @@ type ComplianceResult = {
   joiningDate: string | null;
   contractEnd: string | null;
   contractEndStatus: "set" | "not_set" | "invalid";
-  contractEndSource: "range_end" | "contract_period" | null;
+  contractEndSource: "range_end" | "contract_period" | "planned_relief" | null;
   canonical?: { contractPeriodMonths: number | null };
   matrixRevisionUuid: string | null;
   matrixRevision: string | null;
@@ -60,6 +61,11 @@ type ComplianceResult = {
   status: "complete" | "incomplete";
   issues: { code: string; message: string; courseUuid?: string; certificateUuid?: string; blocking?: boolean }[];
   courses: CourseResult[];
+  referenceKind?: "on_board";
+  referenceDate?: string;
+  twoMonthDate?: string;
+  plannedReliefDate?: string | null;
+  dots?: { courseUuid: string; color: "green" | "amber" | "red" | "grey"; outline: boolean; label: string; reasons: string[] }[];
   summary: { mandatory: GroupSummary; recommended: GroupSummary };
   unlinkedCertificateUuids: string[];
   context: {
@@ -69,10 +75,13 @@ type ComplianceResult = {
     vesselName: string;
   };
 };
+export type TrainingComplianceResponse = ComplianceResult;
 
 type TrainingMatrixComplianceProps = {
   planUuid?: string | null;
   assignmentUuid?: string | null;
+  embeddedResult?: TrainingComplianceResponse;
+  onDetailsClose?: () => void;
   open: boolean;
 };
 
@@ -248,7 +257,7 @@ async function fetchCompliance(url: string): Promise<ComplianceResult> {
   return await response.json() as ComplianceResult;
 }
 
-export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: TrainingMatrixComplianceProps) {
+export function TrainingMatrixCompliance({ planUuid, assignmentUuid, embeddedResult, onDetailsClose, open }: TrainingMatrixComplianceProps) {
   const queryClient = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
@@ -266,13 +275,13 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
   const query = useQuery({
     queryKey: ["training-matrix-compliance", planUuid ?? null, assignmentUuid ?? null],
     queryFn: () => fetchCompliance(url),
-    enabled: open && hasIds,
+    enabled: !embeddedResult && open && hasIds,
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
   });
   const reconcileSuggestions = useCallback(async () => {
-    if (!planUuid || !assignmentUuid) return;
+    if (embeddedResult || !planUuid || !assignmentUuid) return;
     setSuggestionsLoading(true);
     setSuggestionsError(false);
     setSuggestions([]);
@@ -295,19 +304,21 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
     } finally {
       setSuggestionsLoading(false);
     }
-  }, [planUuid, assignmentUuid, suggestionQueryKey]);
+  }, [planUuid, assignmentUuid, suggestionQueryKey, embeddedResult]);
   useEffect(() => {
+    if (embeddedResult) return;
     if (!open || query.isFetching || query.isError || !query.data
       || query.data.assignmentUuid !== assignmentUuid || !query.dataUpdatedAt) return;
     const updateKey = `${planUuid ?? ""}:${assignmentUuid ?? ""}:${query.dataUpdatedAt}`;
     if (processedComplianceUpdate.current === updateKey) return;
     processedComplianceUpdate.current = updateKey;
     void reconcileSuggestions();
-  }, [open, query.isFetching, query.isError, query.data, query.dataUpdatedAt, assignmentUuid, reconcileSuggestions]);
+  }, [open, query.isFetching, query.isError, query.data, query.dataUpdatedAt, assignmentUuid, reconcileSuggestions, embeddedResult]);
   const saveSuggestion = (saved: TrainingSuggestion) => {
     setSuggestions(current => current.map(item => item.suggestion_uuid === saved.suggestion_uuid ? saved : item));
   };
-  const result = !query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
+  const result = embeddedResult ?? (!query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined);
+  const dialogOpen = embeddedResult ? open : detailsOpen;
   const sortedCourses = result ? orderedCourses(result.courses) : [];
   const mandatoryProblemCount = result ? groupProblemCount(sortedCourses, "mandatory", result.summary.mandatory) : 0;
   const recommendedProblemCount = result ? groupProblemCount(sortedCourses, "recommended", result.summary.recommended) : 0;
@@ -344,7 +355,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
 
   return (
     <>
-      <div className="grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-3" data-testid="training-matrix-compliance-line">
+      {!embeddedResult && <div className="grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-3" data-testid="training-matrix-compliance-line">
         <div className="text-sm font-medium text-slate-700">Training Matrix Compliance:</div>
         <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2">
           {!hasIds ? (
@@ -389,9 +400,13 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
             </span>
           )}
         </div>
-      </div>
+      </div>}
 
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(nextOpen) => {
+        if (embeddedResult) {
+          if (!nextOpen) onDetailsClose?.();
+        } else setDetailsOpen(nextOpen);
+      }}>
         <DialogContent aria-describedby={undefined} className="max-h-[92vh] w-[min(1120px,96vw)] max-w-none overflow-y-auto border-slate-200 bg-[#fbfcfd] p-0">
           <DialogHeader className="border-b border-slate-200 bg-white px-6 py-5">
             <DialogTitle className="text-lg font-semibold text-slate-800">Training Matrix Compliance</DialogTitle>
@@ -420,16 +435,18 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 <ContextItem label="Seafarer" value={result.context.crewName} />
                 <ContextItem label="Contract rank" value={result.context.contractRankLabel} />
                 <ContextItem label="Vessel" value={result.context.vesselName} />
-                <ContextItem label="Planned joining" value={dateLabel(result.joiningDate)} />
+                <ContextItem label={embeddedResult ? "Today" : "Planned joining"} value={dateLabel(result.joiningDate)} />
                 <ContextItem
-                  label={result.contractEndSource === "contract_period"
+                  label={embeddedResult ? "Planned relief date" : result.contractEndSource === "contract_period"
                     ? "Calculated contract end (based on contract period)"
                     : "Calculated contract end"}
-                  value={result.contractEndStatus === "set" ? dateLabel(result.contractEnd) : result.contractEndStatus === "invalid" ? "Invalid date" : "Not set"}
+                  value={embeddedResult
+                    ? result.plannedReliefDate ? dateLabel(result.plannedReliefDate) : "Planned relief date not set"
+                    : result.contractEndStatus === "set" ? dateLabel(result.contractEnd) : result.contractEndStatus === "invalid" ? "Invalid date" : "Not set"}
                 />
                 <ContextItem label="Matrix revision" value={result.matrixRevision ?? "Not available"} />
               </section>
-              {result.contractEndStatus === "not_set" && (
+              {!embeddedResult && result.contractEndStatus === "not_set" && (
                 <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
                   Contract end not set: full-contract validity not checked. Enter Contract End Range to check validity for the whole contract.
                 </p>
@@ -463,17 +480,17 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 data-testid="training-open-crew-profile"
               >Open crew profile (D3)</a>
 
-              <div className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white px-4 py-3">
+              {!embeddedResult && <div className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white px-4 py-3">
                 <label htmlFor="training-only-needs-action" className="text-sm font-medium text-slate-700">Show only items needing action</label>
                 <Switch id="training-only-needs-action" aria-label="Show only items needing action" checked={onlyNeedsAction} onCheckedChange={setOnlyNeedsAction} />
-              </div>
-              {suggestionsError && (
+              </div>}
+              {!embeddedResult && suggestionsError && (
                 <div className="flex flex-wrap items-center gap-2 text-sm text-rose-800" role="alert">
                   <span>Training suggestions could not be loaded.</span>
                   <Button type="button" variant="outline" size="sm" onClick={() => void reconcileSuggestions()} disabled={suggestionsLoading}>Retry</Button>
                 </div>
               )}
-              {!suggestionsError && suggestionsLoading && (
+              {!embeddedResult && !suggestionsError && suggestionsLoading && (
                 <p className="text-xs text-slate-600" role="status">Checking training suggestions…</p>
               )}
 
@@ -503,7 +520,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                       const certificate = selected?.certificate ?? course.chosenCertificate;
                       const courseExpanded = Boolean(expandedCourses[course.courseUuid]);
                       const expandable = canExpand(course);
-                      const statusText = !course.complete || course.state === null ? "Incomplete" : course.state;
+                      const statusText = course.displayStatus ?? (!course.complete || course.state === null ? "Incomplete" : course.state);
                       return (
                         <React.Fragment key={course.courseUuid}>
                           <tr className="border-t border-slate-200 align-top" data-testid={`training-course-row-${course.courseUuid}`}>
@@ -520,7 +537,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                                   {(selected?.isEquivalent || course.isEquivalent) && certificate && (
                                     <div className="mt-1 text-xs text-sky-800">Covered by {certificate.name} (accepted equivalent)</div>
                                   )}
-                                  {suggestions.find(item => item.course_uuid === course.courseUuid) && (
+                                  {!embeddedResult && suggestions.find(item => item.course_uuid === course.courseUuid) && (
                                     <TrainingNeedSuggestion
                                       suggestion={suggestions.find(item => item.course_uuid === course.courseUuid)!}
                                       canCreate={suggestionsCanCreate}
@@ -583,7 +600,9 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 </table>
               </div>
               <p className="text-xs leading-relaxed text-slate-600">
-                Dates reflect the last saved reliever assignment. Save changes to reliever dates and refresh this view to recalculate compliance.
+                {embeddedResult
+                  ? "Onboard evidence is evaluated against the server-provided date and planned relief date. No certificate or rank-name inference is applied in this view."
+                  : "Dates reflect the last saved reliever assignment. Save changes to reliever dates and refresh this view to recalculate compliance."}
                 {" "}Calculation version: {result.calculationVersion}.
               </p>
             </div>
