@@ -7,7 +7,7 @@ import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workb
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { FORM_SHEET } from "../../server/v2/recruitment/import/formLayout";
 
-const state = vi.hoisted(() => ({ db: null as any, licenses: [] as any[], training: [] as any[], documents: [] as any[] }));
+const state = vi.hoisted(() => ({ db: null as any, licenses: [] as any[], training: [] as any[], documents: [] as any[], personal: null as any }));
 vi.mock("../../server/v2/db", () => ({ getDb: () => state.db }));
 vi.mock("../../server/v2/crew-pool/repositories", () => ({
   CrewMembersRepository: class { async findByEmpNo() { return undefined; } },
@@ -20,7 +20,7 @@ vi.mock("../../server/v2/recruitment/repositories/approvalsRepository", () => ({
   recruitmentDecisionRepository: { findByCandidateUuid: async () => null },
 }));
 vi.mock("../../server/v2/recruitment/repositories/profileRepository", () => ({
-  personalDetailsRepository: { findByCandidateUuid: async () => null },
+  personalDetailsRepository: { findByCandidateUuid: async () => state.personal },
   addressRepository: { findByCandidateUuid: async () => null },
   familyInfoRepository: { findByCandidateUuid: async () => null },
   childrenRepository: { findByCandidateUuid: async () => [] },
@@ -50,6 +50,7 @@ describe("Imported certificate links through Recruitment → Crew Pool", () => {
     };
     const book = createTemplateWorkbook(catalogs), sheet = book.getWorksheet(FORM_SHEET)!;
     sheet.getCell("F8").value = "Import";
+    sheet.getCell("V15").value = "French, Spanish";
     sheet.getCell("A48").value = "Passport [DB:DOC001]";
     sheet.getCell("G48").value = "00123";
     sheet.getCell("A49").value = "Custom Port Pass";
@@ -62,6 +63,7 @@ describe("Imported certificate links through Recruitment → Crew Pool", () => {
     sheet.getCell("A109").value = "Custom Workshop";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
     expect(parsed.errors).toEqual([]);
+    state.personal = cleanRecord(parsed.data.personal[0]);
     state.documents = parsed.data.documents.map((row, i) => ({ ...cleanRecord(row), docUuid: `doc-${i}`, sortOrder: Number(row.__row) }));
     state.licenses = parsed.data.licenses.map((row, i) => ({ ...cleanRecord(row), licUuid: `lic-${i}`, sortOrder: Number(row.__row) }));
     state.training = parsed.data.training.map((row, i) => ({ ...cleanRecord(row), trainUuid: `train-${i}`, sortOrder: Number(row.__row) }));
@@ -76,6 +78,7 @@ describe("Imported certificate links through Recruitment → Crew Pool", () => {
     const licenses = saved.filter(row => row.table === "crew_licenses").map(row => row.values);
     const training = saved.filter(row => row.table === "crew_training_courses").map(row => row.values);
     const documents = saved.filter(row => row.table === "crew_documents").map(row => row.values);
+    expect(saved.find(row => row.table === "crew_personal_details")!.values.foreignLanguages).toBe("French, Spanish");
     expect(documents).toHaveLength(2);
     expect(documents[0]).toMatchObject({ documentId: "DOC001", documentName: "Passport", number: "00123", crewUuid: result.crewUuid });
     expect(documents[1].documentName).toBe("Custom Port Pass");

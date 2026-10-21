@@ -39,7 +39,7 @@ describe("Recruitment Excel A2.1 database and manual documents", () => {
       expect(sheet.getCell(`${column}2`).value).toBe("Passport [DB:DOC001]");
       expect(cell.note).toBeUndefined();
     }
-    expect(sheet.getCell("V15").dataValidation?.type).toBeUndefined();
+    expect(sheet.getCell("V15").dataValidation?.type).toBe("any");
     expect(sheet.pageSetup.printArea).toBe("A1:AF207");
     expect(sheet.getCell("A205").text).toContain("Document type: choose a database option");
   });

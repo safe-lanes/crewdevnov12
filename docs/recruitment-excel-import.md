@@ -18,7 +18,11 @@ Every Document Type input has a non-blocking dropdown sourced from the current t
 
 The server rechecks choices against the live catalog during both validation and confirmation, never trusting hidden workbook lookup cells. Renamed, inactive, deleted, forged or ambiguous options get an A2.1 cell error requesting a current selection. No document number, dates or issuing details are inferred. The derived association does not change the historical retry fingerprint of otherwise identical plain-name input.
 
-Foreign Languages is unchanged and remains free text in Excel; no macros or checkbox selectors have been introduced.
+### Foreign Languages
+
+Newly downloaded templates offer a normal single-choice dropdown using the same active, non-deleted language names as the web application's Foreign Languages selector. For multiple languages, manually enter names separated by commas, e.g. `French, Spanish`. The input prompt explains this when the cell is selected. Choosing another dropdown option replaces the whole cell value; it does not append.
+
+Manual comma-separated entries are not blocked by Excel dropdown validation. The existing 100-character import limit applies; blank cells are not saved. Values remain plain language-name text, not UUIDs, and older filled templates retain their existing import behavior. If there are no eligible language choices, manual entry and the input prompt remain available. No macros, add-ins, installations, or checkbox controls are required. Native Language and its existing validation are unchanged.
 
 Only populated fields and rows are saved. Empty optional sections do not create records. Zero/false values are preserved. Unknown or ambiguous masters, invalid dates and partial rows with missing required values prevent the entire import.
 

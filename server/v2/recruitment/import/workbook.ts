@@ -6,6 +6,7 @@ import { styleBox, requiredLabel, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, typ
 import { certificateOption, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
 import { writeCertificateDefaults, certificateDefaultFormula, isCertificateDefault, AUTOFILL_CERTIFICATE_GUIDE } from "./certificateAutofill";
 export const DOCUMENT_SELECTION_GUIDE = `${AUTOFILL_CERTIFICATE_GUIDE} Document type: choose a database option or type a custom name.`;
+export const FOREIGN_LANGUAGES_PROMPT = "For multiple languages, manually enter names separated by commas, e.g. French, Spanish. Choosing another dropdown option replaces the cell value. Maximum 100 characters.";
 
 export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVersion = VERSION): ExcelJS.Workbook {
   const legacy = version === LEGACY_VERSION;
@@ -77,6 +78,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   const ranges: Record<string, string> = {};
   Object.entries(catalogs).forEach(([name, entries], index) => {
     if (name === "travelDocuments" && version !== VERSION) return;
+    if (name === "foreignLanguages" && version !== VERSION) return;
     const col = LOOKUP_START_COLUMN + index;
     const letter = columnLetter(col);
     const labels = [...new Set(entries.map(e => ["licenses", "training", "travelDocuments"].includes(name) ? certificateOption(e) : e.label))].sort();
@@ -116,6 +118,17 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
             prompt: "Select a database option to link this record and fill abbreviation/requirement, or type a custom name and details. Defaults can be replaced or cleared.",
           } : {}),
         };
+        // Suggestions only: the importer must continue to read language names
+        // as text, not resolve this combined value as a single master UUID.
+        if (version === VERSION && block.entity === "personal" && field.key === "foreignLanguages") {
+          cell.dataValidation = {
+            type: ranges.foreignLanguages ? "list" : "any",
+            allowBlank: true, showErrorMessage: false, showInputMessage: true,
+            promptTitle: "Foreign languages",
+            prompt: FOREIGN_LANGUAGES_PROMPT,
+            ...(ranges.foreignLanguages ? { formulae: [ranges.foreignLanguages] } : {}),
+          };
+        }
         // Explicitly anchor validation on the top-left of each merged input box.
         if (cell.address !== cellLocation(block, j, row)) throw new Error("Invalid form input mapping.");
       });

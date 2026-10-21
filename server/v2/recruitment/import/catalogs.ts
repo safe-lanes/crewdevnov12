@@ -12,7 +12,7 @@ export async function loadCatalogs(): Promise<Catalogs> {
   const [countries, nationalities, languages, vesselTypes, agents, ranks, licenses, training, travelDocuments] = await Promise.all([
     db.select({ label: masterCountries.countryName, value: masterCountries.countryUuid }).from(masterCountries).where(eq(masterCountries.isDeleted, false)),
     db.select({ label: masterNationalities.nationality, value: masterNationalities.natUuid }).from(masterNationalities).where(eq(masterNationalities.isDeleted, false)),
-    db.select({ label: masterLanguages.languageName, value: masterLanguages.langUuid }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
+    db.select({ label: masterLanguages.languageName, value: masterLanguages.langUuid, isActive: masterLanguages.isActive }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
     db.select({ label: masterVesselTypes.vesselType, value: masterVesselTypes.vtUuid }).from(masterVesselTypes).where(and(eq(masterVesselTypes.isDeleted, false), eq(masterVesselTypes.isActive, true))),
     db.select({ label: masterManningAgents.name, value: masterManningAgents.name }).from(masterManningAgents).where(and(eq(masterManningAgents.isDeleted, false), eq(masterManningAgents.isActive, true))),
     db.select({ name: admAvailableRanksV2.name, label: admAvailableRanksV2.label }).from(admAvailableRanksV2).where(and(eq(admAvailableRanksV2.isDeleted, false), eq(admAvailableRanksV2.applicableToCompany, true))),
@@ -34,5 +34,9 @@ export async function loadCatalogs(): Promise<Catalogs> {
     .map(row => ({ label: row.trainingLabel, value: row.companyId, abbr: row.abr || "", requirement: row.requirement || "" }));
   result.travelDocuments = travelDocuments.filter(row => row.isActive && !row.isDeleted && row.name.trim() && row.entryId.trim())
     .map(row => ({ label: row.name, value: row.entryId }));
+  // Match the web Foreign Languages selector without tightening historical
+  // Native Language validation, which uses the existing languages catalog.
+  result.foreignLanguages = languages.filter(row => row.isActive && row.label && row.value)
+    .map(row => ({ label: row.label!, value: row.value! }));
   return result;
 }

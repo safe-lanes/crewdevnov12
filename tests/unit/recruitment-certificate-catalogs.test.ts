@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { loadCatalogs } from "../../server/v2/recruitment/import/catalogs";
+import { masterLanguages } from "../../shared/schema";
 const mocks = vi.hoisted(() => ({
   licenses: vi.fn(async () => [{ id: "internal-uuid", entryId: "LIC007", name: "Chief Engineer", shortCode: "CE", description: "Master default" }]),
   training: vi.fn(async () => [{ id: 197, trainingMasterId: 92, companyId: "SAF029", trainingLabel: "Company Safety Induction", abr: "CSI", requirement: "Company requirement" }]),
@@ -11,7 +12,12 @@ const mocks = vi.hoisted(() => ({
   ]),
 }));
 vi.mock("../../server/v2/db", () => ({ getDb: () => ({
-  select: () => ({ from: () => ({ where: async () => [] }) }),
+  select: () => ({ from: (table: unknown) => ({ where: async () => table === masterLanguages ? [
+    { label: "French", value: "french-uuid", isActive: true },
+    { label: "Spanish", value: "spanish-uuid", isActive: true },
+    { label: "Inactive", value: "inactive-uuid", isActive: false },
+    { label: "", value: "blank-uuid", isActive: true },
+  ] : [] }) }),
 }) }));
 vi.mock("../../server/v2/masters/repositories/mastersRepository", () => ({
   MastersRepository: class { findAllLicensesDce = mocks.licenses; },
@@ -24,6 +30,14 @@ vi.mock("../../server/v2/masters/repositories/travelDocumentTypeRepository", () 
 }));
 
 describe("Recruitment Excel certificate catalog sources", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("matches the web language eligibility while preserving the existing native-language catalog", async () => {
+    const catalogs = await loadCatalogs();
+    expect(catalogs.foreignLanguages).toEqual([
+      { label: "French", value: "french-uuid" }, { label: "Spanish", value: "spanish-uuid" },
+    ]);
+    expect(catalogs.languages).toContainEqual({ label: "Inactive", value: "inactive-uuid" });
+  });
   it("reuses the live web-selection repositories with business IDs and the same two dependent defaults", async () => {
     const catalogs = await loadCatalogs();
     expect(mocks.licenses).toHaveBeenCalledOnce();

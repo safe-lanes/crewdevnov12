@@ -26,6 +26,23 @@ async function main() {
     assert.equal(workbook.worksheets.length, 1);
     const sheet = workbook.getWorksheet("APPLICATION FORM");
     assert.equal(sheet.getCell("A1").value, "Recruitment A1-A5 / 5 — Single sheet");
+    const languageResponse = await page.request.get(`${base}/api/v2/masters/languages`);
+    assert.equal(languageResponse.ok(), true);
+    const languagePayload = await languageResponse.json();
+    const languages = languagePayload.languages || languagePayload;
+    const expectedLanguages = [...new Set(languages.map(row => row.languageName || row.name).filter(Boolean))].sort();
+    const languageValidation = sheet.getCell("V15").dataValidation;
+    assert.equal(Boolean(languageValidation.showErrorMessage), false);
+    assert.equal(languageValidation.showInputMessage, true);
+    assert.ok(languageValidation.prompt.includes("For multiple languages, manually enter names separated by commas, e.g. French, Spanish."));
+    if (expectedLanguages.length) {
+      assert.equal(languageValidation.type, "list");
+      const match = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(languageValidation.formulae[0]);
+      assert.ok(match);
+      const actualLanguages = Array.from({ length: Number(match[2]) - 1 }, (_, i) => sheet.getCell(`${match[1]}${i + 2}`).text);
+      assert.deepEqual(actualLanguages, expectedLanguages, "Excel language names must match the web selector's live source");
+    } else assert.equal(languageValidation.type, "any");
+    sheet.getCell("V15").value = "French, Spanish";
     const documentValidation = sheet.getCell("A48").dataValidation;
     assert.equal(documentValidation.type, "list");
     assert.equal(Boolean(documentValidation.showErrorMessage), false);
@@ -105,7 +122,7 @@ async function main() {
     const validation = await (await validated).json();
     assert.equal(validation.isValid, true);
     assert.deepEqual(validation.errors, []);
-    assert.equal(validation.summary.A1, 4, "Candidate + Married family + two separate vessel records");
+    assert.equal(validation.summary.A1, 5, "Candidate + language details + Married family + two separate vessel records");
     assert.equal(validation.summary.A3, 4, "Two linked certificates plus two custom certificate rows");
     assert.equal(validation.summary.A4, 1, "Sea service with optional IMO Number validates");
     assert.equal(validation.summary.A2, 2, "Database and manual travel documents validate");
