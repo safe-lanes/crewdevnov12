@@ -35,6 +35,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDetails";
 import { JoiningCompanyForms } from "./JoiningCompanyForms";
+import { TrainingMatrixCompliance } from "./TrainingMatrixCompliance";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -1071,6 +1072,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+
+                        {planningData?.relieverCrewUuid && (
+                            <TrainingMatrixCompliance
+                                planUuid={planningData?.planUuid}
+                                assignmentUuid={planningData?.relieverAssignUuid}
+                                open={open}
+                            />
+                        )}
 
                         {isRelieverAssigned && !isUnlinkedReliever && (
                             <div className="flex items-center gap-2 pt-2 border-t">
