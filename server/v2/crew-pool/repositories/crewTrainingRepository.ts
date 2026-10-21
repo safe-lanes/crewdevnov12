@@ -86,9 +86,9 @@ export class CrewTrainingRepository {
   }
 
   async create(
-    data: Omit<InsertCrewTrainingCourse, "trainUuid">
+    data: Omit<InsertCrewTrainingCourse, "trainUuid">,
+    db = getDb()
   ): Promise<CrewTrainingCourse> {
-    const db = getDb();
     const results = await db
       .insert(crewTrainingCourses)
       .values({
@@ -101,9 +101,9 @@ export class CrewTrainingRepository {
 
   async update(
     trainUuid: string,
-    data: Partial<InsertCrewTrainingCourse>
+    data: Partial<InsertCrewTrainingCourse>,
+    db = getDb()
   ): Promise<CrewTrainingCourse | undefined> {
-    const db = getDb();
     const results = await db
       .update(crewTrainingCourses)
       .set({ ...data, updatedAt: new Date() })

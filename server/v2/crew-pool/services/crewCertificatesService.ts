@@ -361,21 +361,30 @@ export const crewCertificatesService = {
 
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId });
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
+    return getDb().transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, crewUuid);
+      const created = await crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId }, tx);
+      await reconcileCrewSuggestions(crewUuid, tx);
+      return created;
+    });
   },
 
   async updateTraining(
     trainUuid: string,
     data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
-    await this.getTrainingByUuid(trainUuid);
+    const original = await this.getTrainingByUuid(trainUuid);
     const dataWithAudit = applyAuditUser(data, false);
 
-    const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit);
-    if (!updated) {
-      throw new Error(`Failed to update training: ${trainUuid}`);
-    }
-    return updated;
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
+    return getDb().transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, original.crewUuid);
+      const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit, tx);
+      if (!updated) throw new Error(`Failed to update training: ${trainUuid}`);
+      await reconcileCrewSuggestions(original.crewUuid, tx);
+      return updated;
+    });
   },
 
   async deleteTraining(trainUuid: string): Promise<void> {
@@ -442,7 +451,9 @@ export const crewCertificatesService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
     return db.transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, crewUuid);
       const results: CrewTrainingCourse[] = [];
       const now = new Date();
 
@@ -503,6 +514,7 @@ export const crewCertificatesService = {
         }
       }
 
+      await reconcileCrewSuggestions(crewUuid, tx);
       return results;
     });
   },
