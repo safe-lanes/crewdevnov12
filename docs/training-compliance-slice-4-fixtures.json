@@ -44,5 +44,17 @@
   },
   "descendants": "All Company Form lifecycle events, runs and requirements for this assignment are retained acceptance fixtures.",
   "retention": "Reuse these exact records. Never delete. No new vessel, crew, role, grant or global training policy.",
-  "scenarios": "Saved joining absent => incomplete; joining 01-May-2027 with end absent => warning; 6 months => Valid/Not held; 01-Oct-2027 => Expires during contract; 01-Dec-2027 => Expired at joining; 01-Jan-2028 => Valid, no expiry and equivalent. UI replay restores 01-May-2027/6 months."
+  "scenarios": "Saved joining absent => incomplete; joining 01-May-2027 with end absent => warning; 6 months => Valid/Not held; 01-Oct-2027 => Expires during contract; 01-Dec-2027 => Expired at joining; 01-Jan-2028 => Valid, no expiry and equivalent. UI replay restores 01-May-2027/6 months.",
+  "presentationReview": {
+    "script": "scripts/verify-training-compliance-presentation.mjs",
+    "matrixRequirementCount": 2,
+    "category": "A. Statutory",
+    "companyCourseOrder": [18, 22],
+    "allCompliantStates": "01-Jan-2028 / 6 months: both requirements Valid, no expiry; the older malformed-issue certificate's correction flag remains disclosed.",
+    "mixed": "01-May-2027 / 6 months: AFF Valid with multiple certificates and a correction flag; chemical-tanker course Not held.",
+    "actionOnly": "01-Jan-2028 / 6 months: unflagged compliant chemical-tanker requirement hidden; AFF retained because an older certificate needs correction.",
+    "noRecommended": "Chief Officer has two mandatory requirements in this saved matrix and no recommended courses.",
+    "writes": "Only this registered plan's saved reliever joining/end fields, through the normal screen. Restored to 01-May-2027 / 6 months.",
+    "newRecordsOrGrants": "None."
+  }
 }

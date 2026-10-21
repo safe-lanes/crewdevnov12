@@ -84,3 +84,40 @@ results do not claim that no courses are required.
 
 **17 focused UI tests passed**, including the original five-state, failed
 request, missing-fact and stale-cache regressions.
+
+## Step 3 — registered browser evidence
+
+`node scripts/verify-training-compliance-presentation.mjs` uses the existing
+Crewing Manager development persona and exact registered fixture from
+[the manifest](training-compliance-slice-4-fixtures.json). No records, matrix
+rules or grants are added. It clicks the real main-preview Planning screen;
+no compliance API calls or supplied response data substitute for the UI.
+Only PATCHes to the one registered fixture plan are allowed.
+
+Four screenshots:
+
+1. **All course states compliant**: joining 01-Jan-2028 / 6 months. Both
+   requirements appear under **A. Statutory**, in the same order as the matrix,
+   with the filter OFF. Both are Valid, no expiry. The older malformed-issue
+   certificate's correction flag remains disclosed; this is not a claim that
+   every historical certificate is free of corrections.
+2. **Mixed / expandable**: joining 01-May-2027 / 6 months. AFF is Valid,
+   chemical tanker is Not held. AFF expansion shows the chosen longer
+   certificate, shorter alternative and future-issued equivalent, with the
+   selection explanation and correction flag, without duplicating status.
+3. **Switch ON**: in the all-compliant-state scenario the unflagged
+   chemical-tanker row is hidden; AFF remains because of its correction flag.
+   This proves filtering actually changes the list, not merely the switch.
+4. **No recommended courses**: the rank has two mandatory requirements and
+   zero recommended ones; Reliever Status uses the exact requested sentence.
+
+The retained fixture is restored to **01-May-2027 / 6 months**. The first
+draft replay caught a verification selector matching the closing Details
+dialog as well as the summary line. Waiting for the close animation and
+scoping the selector fixed the verifier, not the application. The successful
+replay produced all four cases with no page errors.
+
+`--draft` is explicitly non-closing evidence. The final run without that flag
+requires a backend newer than HEAD and unchanged HEAD/listening PID throughout.
+`node scripts/build-training-compliance-presentation-gallery.mjs` refuses to
+deliver a gallery from a draft or failed run.

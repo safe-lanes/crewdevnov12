@@ -34818,3 +34818,13 @@ this fixture's saved reliever dates and restore their baseline afterwards.
 ### Read-only training compliance UI (21-Oct-2026)
 
 Reuses fixture-only vessel a4120000-0000-4000-8000-000000000001 and dedicated fixture seafarer a4120000-0000-4000-8000-000000000004; no protected vessel-02 records touched. Exact retained records are in [the slice 4 manifest](training-compliance-slice-4-fixtures.json): planning 068511d9-9c64-4125-9e55-f3e4b41beac0, assignment dc2528aa-45d1-4507-95a3-5128b9501065, rank revision a4240000-0000-4000-8000-000000000010, rotation draft a4240000-0000-4000-8000-000000000011, entry a4240000-0000-4000-8000-000000000012, certificates a4240000-0000-4000-8000-000000000020, a4240000-0000-4000-8000-000000000021, a4240000-0000-4000-8000-000000000022, attachment a4240000-0000-4000-8000-000000000023. Their assignment-scoped lifecycle descendants are retained. No grants or real/global policy changed. Normal setup reruns only verify/reuse; UI replay changes only this fixture's saved reliever dates.
+
+Presentation review reuses these same records, adding no fixtures or grants.
+`node scripts/verify-training-compliance-presentation.mjs` clicks four scenarios:
+all compliant course states, mixed states with expanded certificate evidence,
+action-only filtering, and a rank with no recommended courses. The saved R0
+matrix has two Chief Officer requirements, both mandatory, under A. Statutory,
+ordered company course 18 then 22. The malformed-issue flag remains disclosed
+even when a valid equivalent makes both course states compliant. The replay
+restores the plan to joining 01-May-2027 / 6 months. See `presentationReview`
+in the retained manifest. No current data is replaced by mocked API results.
