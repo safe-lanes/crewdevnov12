@@ -14,6 +14,7 @@ type HistoryEntry = {
       calculationVersion?: string;
       joiningDate?: string | null;
       contractEnd?: string | null;
+      contractEndSource?: string | null;
       contractRankUuid?: string | null;
       matrixRevision?: string | null;
       courses?: Array<{
@@ -26,6 +27,7 @@ type HistoryEntry = {
     overrides?: Array<{ kind?: string; reason?: string; actor?: string; recordedAt?: string }> |
       Record<string, { reason?: string; actor?: string; recordedAt?: string } | null>;
     blockExpiringDuringContract?: boolean;
+    blockMissingExpiry?: boolean;
     canonical?: unknown;
     header?: { crewName?: string; vesselName?: string; contractRankLabel?: string } | null;
   };
@@ -87,11 +89,12 @@ export function AcceptedChecklistHistory({ planUuid, open, onOpenChange }: {
                       <HistoryField label="Matrix revision" value={check?.matrixRevision || "Not recorded"} />
                       <HistoryField label="Calculation version" value={check?.calculationVersion || "Not recorded"} />
                       <HistoryField label="Planned joining" value={utcDate(check?.joiningDate)} />
-                      <HistoryField label="Contract end" value={utcDate(check?.contractEnd)} />
+                      <HistoryField label={check?.contractEndSource === "contract_period" ? "Contract end (based on contract period)" : "Contract end"} value={utcDate(check?.contractEnd)} />
                       <HistoryField label="Seafarer" value={entry.evidence.header?.crewName || "Not recorded"} />
                       <HistoryField label="Vessel" value={entry.evidence.header?.vesselName || "Not recorded"} />
                       <HistoryField label="Contract rank" value={entry.evidence.header?.contractRankLabel || "Not recorded"} />
                       <HistoryField label="Expiring certificates block deployment" value={entry.evidence?.blockExpiringDuringContract === undefined ? "Not recorded" : entry.evidence.blockExpiringDuringContract ? "Yes" : "No"} />
+                      <HistoryField label="Missing expiry blocks deployment" value={entry.evidence.blockMissingExpiry == null ? "Not recorded" : entry.evidence.blockMissingExpiry ? "Yes" : "No"} />
                     </section>
                     <section>
                       <h4 className="mb-2 text-sm font-semibold text-slate-800">Training results</h4>
@@ -99,7 +102,7 @@ export function AcceptedChecklistHistory({ planUuid, open, onOpenChange }: {
                         <div className="divide-y divide-slate-100 rounded-md border border-slate-100">
                           {check.courses.map((course, courseIndex) => <div key={`${course.name}-${courseIndex}`} className="grid gap-2 px-3 py-2 text-sm sm:grid-cols-[1.2fr_0.8fr_1.4fr]">
                             <span className="font-medium text-slate-800">{course.name}</span><span className="text-slate-700">{course.state || "No result"}{course.isEquivalent ? " · Equivalent" : ""}</span>
-                            <span className="text-slate-600">{course.chosenCertificate ? `${course.chosenCertificate.number ? `${course.chosenCertificate.number} — ` : ""}${course.chosenCertificate.name || "Certificate"} · issued ${utcDate(course.chosenCertificate.issued)} · expiry ${course.chosenCertificate.expiry ? utcDate(course.chosenCertificate.expiry) : "No expiry"}` : "No certificate counted"}</span>
+                            <span className="text-slate-600">{course.chosenCertificate ? `${course.chosenCertificate.number ? `${course.chosenCertificate.number} — ` : ""}${course.chosenCertificate.name || "Certificate"} · issued ${utcDate(course.chosenCertificate.issued)} · expiry ${course.chosenCertificate.expiry ? utcDate(course.chosenCertificate.expiry) : course.state === "Valid, no expiry" ? "No expiry" : "Not recorded"}` : "No certificate counted"}</span>
                           </div>)}
                         </div>}
                     </section>

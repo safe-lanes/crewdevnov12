@@ -63,3 +63,19 @@ assignment's compliance query. Override acceptance follows the same behaviour.
 Cleared own period/range/date values are sent as null, not silently omitted.
 X/outside dismissal with unsaved changes asks “Discard unsaved changes?”;
 cancel preserves edits and accept dismisses. Focused root-suite tests: 3 passed.
+
+## 4. Actionable See Details
+
+Company ID stays first, with separate Course and Certificate No. columns.
+All rank requirements remain visible in category/matrix order by default.
+The banner names affected courses, counts unique affected certificates and
+directs corrections to crew profile → D3 Training Courses. Not held, expired,
+future-issued and missing/invalid-date results each provide a next action.
+An Open crew profile (D3) link uses the existing crew/section deep link.
+
+Only multiple certificates or an accepted equivalent produce an expand arrow.
+Expanded text uses Used/Not used with expiry dates and explicit accepted-
+equivalent wording; no selection-rule jargon or repeated status. Correction
+flags alone stay visible without creating an otherwise empty expansion.
+Saved history also distinguishes missing expiry from permanent validity and
+records the new policy/source without inventing values for older snapshots.

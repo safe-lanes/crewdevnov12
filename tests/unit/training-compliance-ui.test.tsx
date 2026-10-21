@@ -62,14 +62,13 @@ describe("read-only Reliever Status training display", () => {
     const missingCompanyCodeRow = screen.getByTestId("training-course-row-company-code-missing");
     expect(companyCodeRow.querySelector("td")?.textContent).toBe("SA005");
     expect(missingCompanyCodeRow.querySelector("td")?.textContent).toBe("Not recorded");
-    expect(within(dialog).getByTestId("training-category-Unassigned").querySelector("th")?.getAttribute("colspan")).toBe("7");
+    expect(within(dialog).getByTestId("training-category-Unassigned").querySelector("th")?.getAttribute("colspan")).toBe("8");
   });
   it("names the equivalent actually relied on", async () => {
     vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(value(1))));
     mount();
     fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
-    expect(screen.getByTestId(/training-selected-certificate/).textContent).toContain("Advanced fire fighting");
-    expect(screen.getByText(/Equivalent/)).toBeTruthy();
+    expect(screen.getByText(/Covered by Advanced fire fighting \(accepted equivalent\)/)).toBeTruthy();
   });
   it("shows every rank requirement by default, under category headings in metadata order", async () => {
     const data = value(0);
@@ -171,7 +170,7 @@ describe("read-only Reliever Status training display", () => {
     expect(screen.getByRole("switch", { name: "Show only items needing action" }).getAttribute("aria-checked")).toBe("false");
     expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(1);
   });
-  it("only expands for multiple certificates, equivalents, or correction flags and does not repeat course status", async () => {
+  it("only expands for multiple certificates or equivalents; correction flags alone do not expand", async () => {
     const data = value(0);
     const plain = data.courses[0];
     const equivalent = { ...plain, courseUuid: `${plain.courseUuid}-equivalent`, name: "Equivalent certificate" };
@@ -196,15 +195,44 @@ describe("read-only Reliever Status training display", () => {
     expect(screen.queryByTestId(`training-certificate-expand-${plain.courseUuid}`)).toBeNull();
     expect(screen.queryByTestId(`training-certificate-expand-${notHeld.courseUuid}`)).toBeNull();
     expect(screen.getByTestId(`training-certificate-expand-${equivalent.courseUuid}`)).toBeTruthy();
-    expect(screen.getByTestId(`training-certificate-expand-${flagged.courseUuid}`)).toBeTruthy();
+    expect(screen.queryByTestId(`training-certificate-expand-${flagged.courseUuid}`)).toBeNull();
     const multipleId = `${plain.courseUuid}-multiple`;
     expect(screen.getByTestId(`training-certificate-expand-${multipleId}`)).toBeTruthy();
     fireEvent.click(screen.getByTestId(`training-certificate-expand-${equivalent.courseUuid}`));
-    expect(screen.getByText("Selected by the compliance calculation")).toBeTruthy();
-    expect(screen.getAllByText("Equivalent").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Valid, no expiry")).toHaveLength(3);
-    fireEvent.click(screen.getByTestId(`training-certificate-expand-${flagged.courseUuid}`));
-    expect(screen.getByText("Name correction required")).toBeTruthy();
+    expect(screen.getByText(/Used: Basic fire fighting, valid until/)).toBeTruthy();
+    expect(screen.getAllByText("Covered by Basic fire fighting (accepted equivalent)").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Selection rule|Selected by the compliance calculation/)).toBeNull();
+    expect(within(screen.getByTestId(`training-course-row-${equivalent.courseUuid}`)).getAllByText("Valid, no expiry")).toHaveLength(1);
+    expect(within(screen.getByTestId(`training-course-row-${flagged.courseUuid}`)).getByText("Name correction required — correct the record in crew profile → D3 Training Courses.")).toBeTruthy();
+  });
+
+  it("separates certificate numbers, gives counted correction actions and links to the crew profile D3 route", async () => {
+    const data = value(0);
+    const course = data.courses[0];
+    const cert = course.chosenCertificate!;
+    const missingIssue = { ...cert, certificateUuid: "issue-missing", number: "CERT-0042", issued: null };
+    const badExpiry = { ...cert, certificateUuid: "expiry-bad", number: "CERT-0043", expiry: null };
+    data.courses = [
+      { ...course, courseUuid: "issue-row", name: "Basic Safety", chosenCertificate: missingIssue,
+        state: "Valid" as const, certificates: [{ certificate: missingIssue, selected: true, isEquivalent: false,
+          disposition: "selected" as const, flags: [], attachments: [] }],
+        issues: [{ code: "ISSUE_DATE_NOT_RECORDED", message: "Issue date not recorded", certificateUuid: missingIssue.certificateUuid }] },
+      { ...course, courseUuid: "expiry-row", name: "Survival Craft", chosenCertificate: badExpiry,
+        state: "Expiry not recorded" as const, certificates: [{ certificate: badExpiry, selected: true, isEquivalent: false,
+          disposition: "selected" as const, flags: [], attachments: [] }],
+        issues: [{ code: "EXPIRY_NOT_RECORDED", message: "Expiry not recorded", certificateUuid: badExpiry.certificateUuid }] },
+    ];
+    data.context.crewUuid = "crew-uuid-for-test";
+    await showDetails(data);
+    const dialog = screen.getByRole("dialog", { name: "Training Matrix Compliance" });
+    const headers = within(dialog).getAllByRole("columnheader");
+    expect(headers.map(header => header.textContent)).toContain("Certificate No.");
+    expect(within(screen.getByTestId("training-course-row-issue-row")).getByTestId("training-certificate-number-issue-row").textContent).toBe("CERT-0042");
+    expect(within(screen.getByTestId("training-course-row-issue-row")).getByText("Basic Safety").textContent).not.toContain("CERT-0042");
+    expect(screen.getByText("1 certificate is missing its issue date: Basic Safety. Correct in crew profile → D3 Training Courses.")).toBeTruthy();
+    expect(screen.getByText("1 certificate is missing its expiry date: Survival Craft. Correct in crew profile → D3 Training Courses.")).toBeTruthy();
+    expect(screen.getByTestId("training-open-crew-profile").getAttribute("href")).toBe("/crew-pool?crew=crew-uuid-for-test&section=training");
+    expect(within(screen.getByTestId("training-course-row-expiry-row")).getByText("Expiry not recorded").className).toContain("bg-amber-50");
   });
   it("shows missing-end guidance and retains/counts joining-date gaps", async () => {
     const data = value(16);
@@ -220,7 +248,7 @@ describe("read-only Reliever Status training display", () => {
     expect(await screen.findByText("Contract end not set: enter Contract End Range to check validity for the whole contract")).toBeTruthy();
     expect(screen.getAllByText("Mandatory: Action needed (1 problem)").length).toBeGreaterThan(0);
     fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
-    expect(screen.getAllByText("Contract end not set: full-contract validity not checked").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Contract end not set: full-contract validity not checked/)).toBeTruthy();
     expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(1);
     expect(within(screen.getByTestId(/^training-course-row-/)).getByText("Expired at joining")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: "Show only items needing action" }));
