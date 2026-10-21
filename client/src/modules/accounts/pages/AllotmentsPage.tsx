@@ -56,6 +56,7 @@ import {
 import { formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { currentPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Allotments";
 
@@ -145,7 +146,10 @@ export default function AllotmentsPage({
   const mayEdit = canEdit(MENU);
 
   const { vessels } = useVesselLookup();
-  const [vesselFilter, setVesselFilter] = useState("all");
+  const { vesselUuid, setVesselUuid } = useVesselPeriod();
+  const vesselFilter = vesselUuid || "all";
+  const setVesselFilter = (value: string) =>
+    setVesselUuid(value === "all" ? "" : value);
   const [statusFilter, setStatusFilter] = useState("all");
   const [crewSearch, setCrewSearch] = useState("");
 
