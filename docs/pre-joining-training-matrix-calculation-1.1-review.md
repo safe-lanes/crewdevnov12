@@ -69,7 +69,32 @@ Step 1: `c73ec1fc43046564d380b0e878f0da0b9f20164f`,
 21-Oct-2026 04:04:51 UTC — calculator, version and kernel/database regressions.
 **66 passed**; TypeScript **222**, no new compliance-module diagnostic.
 
-Step 2: commit containing this initial review document — case table and
-37 executable cases, all passing.
+Step 2: `fc821ddb80c2cd340f2c47e6e13b5de0667271ba`,
+21-Oct-2026 04:08:27 UTC — case table and 37 executable cases, all passing.
 
-Final unfiltered standing gates and backend process evidence follow at closure.
+Step 3: closing commit, reported at delivery. Includes a report-only correction
+to show malformed date text explicitly as invalid instead of formatting it as
+a date. The generator was rerun with all 37 outcome assertions; no calculator
+or test input changed after the full run.
+
+### Standing gates
+
+- Full unfiltered run: **1,501 passed / 162 failed / 67 pending**, 1,730 tests.
+  Within the agreed bounds, not a green suite. No added failing assertions
+  compared with the 1.0.0 closing full run.
+- **103 passed** across calculator, database reader and review-table tests.
+- Company Forms: **96 files, 648 passed, zero failures, zero skipped/pending,
+  zero todo**, with no discovery gaps.
+- TypeScript: **222 diagnostics**, none in the compliance module.
+- Raw SQL: **zero training_calc_* schemas** remaining after normal teardown.
+
+Raw full results and `gates.json` are outside Git under
+`generated-artifacts/training-slice3-v1.1/`. The Markdown review table is
+delivered as a downloadable file alongside the summary.
+
+The managed main workflow is restarted after this final commit. The recorder
+asserts its listening backend process start is later than final HEAD and the
+working tree is clean, saving actual timestamps and PID to
+`generated-artifacts/training-slice3-v1.1/closing-main-preview.json`.
+
+**Stopped for case-table review. No slice 4 work has been built.**

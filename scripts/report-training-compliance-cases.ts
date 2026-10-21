@@ -4,10 +4,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { trainingComplianceCases } from "../tests/fixtures/trainingComplianceCases";
 import { calculateTrainingCompliance } from "../server/v2/shared/training-compliance/calculator";
 import { TRAINING_COMPLIANCE_VERSION } from "../server/v2/shared/training-compliance/types";
+import { civilDate } from "../server/v2/shared/training-compliance/dates";
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const date = (value: string | null) => {
   if (!value) return "Not set";
+  if (!civilDate(value)) return `${value} (invalid)`;
   const [y, m, d] = value.split("-");
   return `${d}-${months[Number(m) - 1] ?? m}-${y}`;
 };
