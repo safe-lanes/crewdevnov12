@@ -95,3 +95,35 @@ production checklist item; these checks do not claim to be parent login tests.
 Restoration uses normal audited APIs: training override OFF, tenant policy OFF,
 fixture certificate/dates restored and checklist set No. The mandatory fixture
 requirement remains outstanding, intentionally, with all history retained.
+
+## Closing gates (21-Oct-2026)
+
+- Full isolated suite: **1,560 passed / 162 failed / 67 pending**.
+  No added or resolved failures versus the prior full-suite result. This is
+  within the agreed ceiling, not a claim that the complete suite is green.
+- All discovered Company Forms coverage: **97 suites / 661 tests passed**,
+  zero skipped/pending/todo. Area totals are derived from the complete full run;
+  the full run's unrelated failures/pending tests remain reported above.
+- TypeScript: **222 diagnostics**, none in the changed implementation.
+- Focused training reader/evidence/authority/settings integration: **38 passed**;
+  training blocker policy **10**, combined gate **13**, settings/history UI **4**,
+  compliance presentation UI **18**.
+- Calculator/date/selection version stays **1.2.0**; no calculation code changed.
+
+### Step commits
+
+| Step | HEAD | Commit time (UTC, 21-Oct-2026) |
+|---|---|---|
+| 0 Company ID | dce264c7cbea4762890b12e4e6b2d5e237cff06a | 09:03:23 |
+| 1 storage/authority/tenant setting | b04c0b3d6ff0fb868afb7c00dda43f3c93014960 | 09:08:15 |
+| 2 training policy | 4f7af8269e680bc2e742b06f581220501bbab8f0 | 09:09:16 |
+| 3 combined gate/frozen snapshot | 76544228fec2c3e02cfc5b1b9c394cfab229f546 | 09:12:22 |
+| 4 UI | d3902033702b6ee382275d34669f3b4d6afc933d | 09:19:51 |
+| 5 regression/fixture/browser verification | d46e9dac526a0b7cddc75ce6913fbcf62e11eb99 | 09:37:49 |
+
+The closing report/evidence commit follows this table. Its exact hash/time and
+the later backend start are recorded in `browser-closing.json` and the review
+gallery after the managed workflow restarts. The browser verifier asserts HEAD
+and the main listener PID are unchanged throughout that closing journey.
+Screenshot files and raw gate/browser outputs remain outside git in
+`generated-artifacts/training-slice5/`.

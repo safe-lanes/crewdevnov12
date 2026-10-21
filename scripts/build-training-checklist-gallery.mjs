@@ -1,0 +1,21 @@
+import fs from "node:fs/promises";
+const root = "generated-artifacts/training-slice5";
+const closing = JSON.parse(await fs.readFile(`${root}/browser-closing.json`, "utf8"));
+if (!closing.closing || closing.failure || closing.restoreError ||
+    ["restoreGrant", "restoreSetting", "restorePlan"].some(key => closing[key]?.status !== 200))
+  throw Error("Successful post-commit closing evidence and restoration required.");
+const gates = JSON.parse(await fs.readFile(`${root}/gates.json`, "utf8"));
+const shots = [
+  ["01-course-block-no-permission", "Missing course blocks", "The course is named. The role has no training override permission."],
+  ["03-training-reason", "Independent training override", "The explicitly granted permission offers its own written reason. A normal screen save then records an immutable snapshot and server audit."],
+  ["04-warning-proceeds", "Expiry warning proceeds — policy OFF", "Both mandatory courses expire during contract. The normal save succeeds and names its warnings."],
+  ["05-frozen-after-certificate-edit", "Stored evidence survives a certificate edit", "The certificate was edited through the normal D3 API after acceptance. Raw SQL compared every snapshot field before/after; the history screen still shows the saved 30-Nov-2027 expiry."],
+  ["06-expiry-policy-on-block", "Tenant policy ON blocks", "The setting was switched on through Access Control. The expiry state now blocks. Policy was restored OFF afterwards."],
+  ["07-closing-accepted-history", "Accepted history — closing replay", "The post-final-commit backend reads the retained accepted warning/override records. It does not recalculate or delete the outstanding fixture requirement to manufacture another pass."],
+  ["08-combined-form-and-training-refusal", "Combined refusal — closing replay", "One message names the mandatory form and training course. Even an explicit training override request is refused while the mandatory form remains outstanding."],
+];
+const escape = x => String(x).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
+const cards = [];
+for (const [name, title, note] of shots) cards.push(`<section><h2>${escape(title)}</h2><p>${escape(note)}</p><img src="data:image/png;base64,${(await fs.readFile(`${root}/${name}.png`)).toString("base64")}" alt="${escape(title)}"></section>`);
+await fs.writeFile(`${root}/training-checklist-review.html`, `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Training checklist — slice 5 evidence</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#edf3f7;color:#172b42}main{max-width:1200px;margin:auto;padding:28px}header,section{background:white;border:1px solid #d4e0e9;border-radius:10px;padding:22px;margin:0 0 24px}h1{margin:0;color:#16569e}h2{margin-top:0}img{width:100%;height:auto;border:1px solid #dde4eb}code{overflow-wrap:anywhere;font-size:13px}small{color:#476078}</style><main><header><h1>Training checklist — slice 5</h1><p>Real main-preview screens on the registered fixture-only vessel, using the user-approved Office development persona (Admin, user 24), with persisted permission and scope checks. This is not parent-production login evidence.</p><p>Scenario captures 1–5 precede the final commit; the last two are the closing replay. The mandatory fixture requirement is deliberately retained, so closing reads the earlier successful acceptance evidence rather than removing the blocker.</p><p>Full suite: ${gates.full.passed} passed / ${gates.full.failed} failed / ${gates.full.pending} pending. Company Forms: ${gates.companyForms.passed} passed, zero skipped. TypeScript: ${gates.typescript} diagnostics. No new full-suite failures.</p><p><b>Closing HEAD:</b> <code>${escape(closing.head)}</code><br><b>Commit:</b> ${escape(closing.commitTime)}<br><b>Backend started:</b> ${escape(closing.backendStart)} (PID ${escape(closing.pid)})</p><p>Temporary training override and tenant expiry policy restored OFF; fixture certificate/dates restored; checklist No. The outstanding fixture requirement and all audit/snapshots remain.</p></header>${cards.join("")}</main></html>`);
+console.log(`${root}/training-checklist-review.html`);

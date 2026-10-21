@@ -223,4 +223,8 @@ try {
   await browser.close();
   await db.end();
 }
+assert.equal(report.restoreGrant.status, 200, "Original training grant must be restored.");
+assert.equal(report.restoreSetting.status, 200, "Original tenant policy must be restored.");
+assert.equal(report.restorePlan.status, 200, "Registered fixture facts must be restored.");
+assert.ok(!report.restoreError, "Registered certificate facts must be restored.");
 console.log(JSON.stringify({ checks: report.checks, screenshots: report.screenshots, head: report.head, backendStart: report.backendStart }));
