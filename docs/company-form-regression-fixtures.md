@@ -18,6 +18,10 @@ the new registered descendants and all history remain.
 
 - Renewal certificate: `9471834c-cff2-4529-b308-a43589c431af`.
 - Manual Training Need: `52199d45-50a6-4b12-897d-7a392e3ef6b0`.
+- AFF suggestion: `dcd99ef3-1d39-4c1a-b6d5-b2c9b65b12e2`,
+  confirmed then automatically closed by the renewal.
+- Chemical-course suggestion: `8a8e9855-63c7-4312-9c4f-c008cd8d9faf`,
+  dismissed with a written reason; dismissal survives rechecks.
 - Office development persona: user 24, Admin parent role
   `d57dd06b-7c4f-4152-8902-c8af0422b3e6`; existing Training View/Create,
   Crew Database View and Vessel View. No grants added.

@@ -197,7 +197,10 @@ try {
     assert.equal(manualAfter, manualBefore);
     report.checks.push("Manual Training Need content fingerprint is unchanged; automatic closure names the qualifying certificate and reason in append-only history.");
     await page.goto(`${base}/training-retention/training`, { waitUntil: "networkidle" });
-    await page.getByTestId("input-search-name").fill("TEST ONLY PDF Layout");
+    // Older manual-source name assembly preserves an empty middle-name
+    // separator; the shared surname substring reaches both without changing
+    // production name formatting as part of this verification.
+    await page.getByTestId("input-search-name").fill("PDF Layout");
     await page.getByTestId("button-apply-filters").click();
     await expect(page.getByText("Pre-joining compliance", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("TEST ONLY slice 6 manual need — never auto-close", { exact: true }).first()).toBeVisible();
@@ -208,12 +211,14 @@ try {
     const originals = JSON.parse(await fs.readFile(backupPath, "utf8"));
     for (const item of originals)
       await ok("PATCH", `${crewPath}/${item.train_uuid}`, { issued: item.issued, expiry: item.expiry });
-    if (!subject.recruitment_date)
-      await ok("PATCH", `/api/v2/crew-pool/crew/${fixture.crewUuid}`, { recruitmentDate: null });
+    // This exact registered fixture's preflight baseline was null. A failed
+    // replay may have persisted the temporary date before reaching cleanup.
+    await ok("PATCH", `/api/v2/crew-pool/crew/${fixture.crewUuid}`, { recruitmentDate: null });
     report.restoredOriginalCertificates = true;
     assert.equal(cmd("git", ["rev-parse", "HEAD"]), report.head);
     assert.equal(cmd("bash", ["-lc", "lsof -t -iTCP:5000 -sTCP:LISTEN | head -n1"]), pid);
   }
+  report.checks = [...new Set(report.checks)];
   await fs.writeFile(`${root}/${closing ? "browser-closing" : "browser-preflight"}.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ head: report.head, closing, checks: report.checks, manualUuid, certificateUuid, screenshots: report.screenshots }));
 } catch (error) {
