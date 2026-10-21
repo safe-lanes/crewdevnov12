@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { getTableName } from "drizzle-orm";
 import { createTemplateWorkbook, FOREIGN_LANGUAGES_PROMPT } from "../../server/v2/recruitment/import/workbook";
-import { VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, usesDocumentCatalog, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 vi.mock("../../server/v2/db", () => ({ getDb: vi.fn() }));
@@ -86,14 +86,14 @@ describe("Foreign Languages suggestions with manual comma-separated input", () =
 
   it("accepts pre-change workbooks and preserves historical fingerprints across every supported layout", async () => {
     const fingerprints = [];
-    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, ALIGNED_VERSION, VERSION] as const) {
+    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, ALIGNED_VERSION, DOCUMENT_VERSION, VERSION] as const) {
       const { book, cell } = filled("French, Spanish", version);
       // Previously downloaded workbooks have no dropdown/prompt at this input.
       book.worksheets[0].getCell(cell).dataValidation = {};
       const parsed = await parse(book);
       expect(parsed.errors).toEqual([]);
       fingerprints.push(candidateFingerprint(parsed));
-      if (version !== VERSION) expect(createTemplateWorkbook(catalogs, version).worksheets[0].getCell(cell).dataValidation?.type).toBeUndefined();
+      if (!usesDocumentCatalog(version)) expect(createTemplateWorkbook(catalogs, version).worksheets[0].getCell(cell).dataValidation?.type).toBeUndefined();
     }
     expect(new Set(fingerprints).size).toBe(1);
     expect(candidateFingerprint(await parse(filled("French, Spanish").book))).toBe(fingerprints[0]);

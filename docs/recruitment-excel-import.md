@@ -2,15 +2,21 @@
 
 In Recruitment → In Progress, **Import Candidate** downloads the current single-candidate `.xlsx` form. It contains exactly one **APPLICATION FORM** worksheet, styled like the supplied Crew Bio Data Form with grey section headings, bordered white input boxes and side-by-side details. Fill white boxes, upload, validate, then confirm.
 
-All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 5 retains revision 4's web-application section and field order, and adds database/manual document choices in A2.1. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
+All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 6 aligns the editable columns with the Recruitment Application: it removes Issuing Country from A2.1 documents, A3.2 licenses and A3.3 training, removes Source from A2.2 visas, and orders Education as **Qualifications → Subjects/Field → School/College/University → Date of Completion**. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
 
-Single-sheet revisions **2, 3 and 4 remain supported with their original field definitions and cell mappings**. Revisions 2 and 3 retain paired sea-service rows and do not have an IMO input; revision 4 supports IMO but keeps document names as unlinked text. Download a fresh revision 5 template for document dropdowns; do not copy encoded database choices into older templates. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
+Single-sheet revisions **2, 3, 4 and 5 remain supported with their original field definitions and cell mappings**, including values in the now-removed inputs. Revisions 2 and 3 retain paired sea-service rows and do not have an IMO input; revision 4 supports IMO but keeps document names as unlinked text; revision 5 adds linked/manual document dropdowns. Previously filled revision 5 workbooks remain valid with or without the Foreign Languages dropdown. Download a fresh revision 6 template for the corrected fields and visa choices; do not copy encoded database choices into revisions before 5. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
 
 - A1.1 General Particulars; A1.2 Address & Contact Info; A1.3 Family and NOK (including children).
 - A2.1 Travel & Identification Documents; A2.2 Visas.
 - A3.1 Education; A3.2 License & DCE; A3.3 Training Course.
 - A4.1 Details of Sea Service.
 - A5.1 Details on Additional Information required.
+
+### A2.2 Visa country choices
+
+Issuing Country uses the same country-name mapping and predefined additions as the web application's Visa selector, including Schengen and its priority ordering. The live list is built from master data category 001 plus the application's predefined visa countries, rather than only the general country master. Other country dropdowns retain their existing catalog.
+
+Selected names resolve server-side to matching country master UUIDs where available. If a predefined visa choice has no matching country master, the readable name is saved, matching the web form's existing behavior. The importer never saves picker-only `COUNTRY-n` identifiers or invented UUIDs, and it does not trust uploaded hidden lookup cells. Unknown or ambiguous choices require correction. Older revisions retain their original general-country validation and Source input semantics; no existing records or database columns are removed.
 
 ### A2.1 database or manual documents
 

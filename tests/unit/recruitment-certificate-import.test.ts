@@ -7,7 +7,7 @@ import { v5 } from "uuid";
 import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, cleanRecord, writeCandidate } from "../../server/v2/recruitment/import/persistence";
-import { BLOCKS, LEGACY_VERSION, VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { BLOCKS, LEGACY_VERSION, DOCUMENT_VERSION, VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { FORM_SHEET } from "../../server/v2/recruitment/import/formLayout";
 import { certificateOption, resolveCertificate, PREVIOUS_CERTIFICATE_GUIDE } from "../../server/v2/recruitment/import/certificateCatalogs";
 import { hasCertificateDatabaseId } from "../../client/src/modules/recruitment/certificateBinding";
@@ -61,11 +61,11 @@ describe("Excel database and manual certificates", () => {
     expect(sheet.getCell("A205").text).toContain("type a custom name");
   });
 
-  it("resolves both selections, permits custom rows and skips blanks without filling unrelated details", async () => {
+  it("retains revision 5 selections, custom rows and historical issuing country without filling unrelated details", async () => {
     const parsed = await read({
       licenses: [{ certificateDocument: certificateOption(catalogs.licenses[0]), certificateNo: "0007", issuingCountryUuid: "India" }, {}, { certificateDocument: "Local Harbor License", abbr: "LHL" }],
       training: [{ trainingCourse: certificateOption(catalogs.training[0]), requirement: "User requirement" }, {}, { trainingCourse: "Custom Company Workshop", issued: "2020-01-01" }],
-    });
+    }, { version: DOCUMENT_VERSION });
     expect(parsed.errors).toEqual([]);
     expect(parsed.summary.A3).toBe(4);
     expect(parsed.data.licenses.map(cleanRecord)).toEqual([

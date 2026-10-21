@@ -19,6 +19,7 @@ vi.mock("../../server/v2/admin/services/accessControlService", () => ({
 }));
 const catalogs: Catalogs = {
   countries: [{ label: "India", value: "country-uuid" }],
+  visaCountries: [{ label: "India", value: "country-uuid" }],
   nationalities: [{ label: "Indian", value: "nat-uuid" }],
   languages: [{ label: "Hindi", value: "lang-uuid" }],
   ranks: [{ label: "Master", value: "Master" }],
@@ -113,7 +114,7 @@ describe("Recruitment A1-A5 workbook", () => {
     const parsed = await parse({ candidate: [core], documents: [{ number: "00123" }], sea: [{ ownerOperator: "Example" }], education: [{ institution: "School" }] });
     expect(parsed.isValid).toBe(false);
     expect(parsed.errors.some(e => e.sheet === FORM_SHEET && e.cell === "A48")).toBe(true);
-    expect(parsed.errors.some(e => e.field === "Qualification" && e.cell === "Y79")).toBe(true);
+    expect(parsed.errors.some(e => e.field === "Qualifications" && e.cell === "A79")).toBe(true);
     expect(parsed.data.documents).toHaveLength(1);
   });
   it("resolves labels to UUIDs and preserves leading-zero text", async () => {

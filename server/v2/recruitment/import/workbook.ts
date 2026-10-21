@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { VERSION, LEGACY_VERSION, usesAlignedLayout, blocksForVersion, cellLocation, inputRange, type Catalogs, type TemplateVersion } from "./contract";
+import { VERSION, LEGACY_VERSION, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, inputRange, type Catalogs, type TemplateVersion } from "./contract";
 import { FORM_SHEET, FORM_LAST_ROW, PREVIOUS_FORM_LAST_ROW, FORM_GUIDELINE_START, FORM_SECTION_BANDS, LOOKUP_START_COLUMN, columnLetter } from "./formLayout";
 import { isRequiredLabel } from "./requirements";
 import { styleBox, requiredLabel, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
@@ -38,7 +38,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     return cell;
   }
   box("A1:P1", version, "meta");
-  box("Q1:AF1", `Template revision: ${version === VERSION ? 5 : aligned ? 4 : legacy ? 2 : 3} · Recruitment A1–A5`, "meta", true);
+   box("Q1:AF1", `Template revision: ${version.match(/\/ (\d+)/)![1]} · Recruitment A1–A5`, "meta", true);
   box("A2:AF3", "APPLICATION FOR EMPLOYMENT", "title", true);
   const legend = box("A4:AB4", legendText, "note", true);
   legend.value = { richText: [
@@ -68,7 +68,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     "Dates: real Excel dates, YYYY-MM-DD or DD-MMM-YYYY. Keep phone, document and certificate numbers as text.",
     legacy ? "Choose current dropdown values. Do not move cells, rename headings, insert rows or add worksheets."
       : "Vessel types: up to 8 names separated by ; (e.g. Bulk Carrier; Oil Tanker). Dropdown shows names; type multiple names manually. Keep the layout unchanged.",
-    version === VERSION ? DOCUMENT_SELECTION_GUIDE : legacy ? PREVIOUS_CERTIFICATE_GUIDE : AUTOFILL_CERTIFICATE_GUIDE,
+    usesDocumentCatalog(version) ? DOCUMENT_SELECTION_GUIDE : legacy ? PREVIOUS_CERTIFICATE_GUIDE : AUTOFILL_CERTIFICATE_GUIDE,
     "Sea service requires vessel name/type, rank, From and To. Dates cannot overlap; age and period are calculated.",
     "Upload → validate → confirm. Status is Applied. Photos, bank details, clothing sizes and other unsupported reference fields are not imported.",
   ].forEach((text, i) => { box(`A${guidelines + i}:AF${guidelines + i}`, text, "note"); sheet.getRow(guidelines + i).height = 30; });
@@ -77,11 +77,12 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   // normal form entry. Uploaded lookup values never authorize/resolve masters.
   const ranges: Record<string, string> = {};
   Object.entries(catalogs).forEach(([name, entries], index) => {
-    if (name === "travelDocuments" && version !== VERSION) return;
-    if (name === "foreignLanguages" && version !== VERSION) return;
+    if (["travelDocuments", "foreignLanguages"].includes(name) && !usesDocumentCatalog(version)) return;
+    if (name === "visaCountries" && version !== VERSION) return;
     const col = LOOKUP_START_COLUMN + index;
     const letter = columnLetter(col);
-    const labels = [...new Set(entries.map(e => ["licenses", "training", "travelDocuments"].includes(name) ? certificateOption(e) : e.label))].sort();
+    const labels = [...new Set(entries.map(e => ["licenses", "training", "travelDocuments"].includes(name) ? certificateOption(e) : e.label))];
+    if (name !== "visaCountries") labels.sort();
     sheet.getColumn(col).hidden = true;
     sheet.getCell(1, col).value = name;
     labels.forEach((label, i) => { sheet.getCell(i + 2, col).value = label; });
@@ -120,13 +121,14 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
         };
         // Suggestions only: the importer must continue to read language names
         // as text, not resolve this combined value as a single master UUID.
-        if (version === VERSION && block.entity === "personal" && field.key === "foreignLanguages") {
+        if (usesDocumentCatalog(version) && block.entity === "personal" && field.key === "foreignLanguages") {
           cell.dataValidation = {
-            type: ranges.foreignLanguages ? "list" : "any",
+             // ExcelJS writes OOXML "any" correctly, but omits it from its type union.
+             type: (ranges.foreignLanguages ? "list" : "any") as ExcelJS.DataValidation["type"],
             allowBlank: true, showErrorMessage: false, showInputMessage: true,
             promptTitle: "Foreign languages",
             prompt: FOREIGN_LANGUAGES_PROMPT,
-            ...(ranges.foreignLanguages ? { formulae: [ranges.foreignLanguages] } : {}),
+             formulae: ranges.foreignLanguages ? [ranges.foreignLanguages] : [],
           };
         }
         // Explicitly anchor validation on the top-left of each merged input box.

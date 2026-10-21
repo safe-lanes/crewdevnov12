@@ -3,13 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { getTableName } from "drizzle-orm";
 import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workbook";
-import { BLOCKS, VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, usesAlignedLayout, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
+import { BLOCKS, VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION, usesAlignedLayout, blocksForVersion, cellLocation, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 vi.mock("../../server/v2/db", () => ({ getDb: vi.fn() }));
 
 const catalogs = {
   countries: [{ label: "India", value: "country" }], nationalities: [], languages: [], agents: [],
+  visaCountries: [{ label: "India", value: "country" }],
   ranks: [{ label: "Master", value: "Master" }], vesselTypes: [{ label: "Bulk Carrier", value: "vessel-type" }],
   licenses: [{ label: "Officer License", value: "license-id", abbr: "OL", requirement: "Required" }],
   training: [{ label: "Safety Course", value: "course-id", abbr: "SC", requirement: "Company" }],
@@ -122,7 +123,7 @@ describe("Application-form-aligned Excel revision", () => {
   it("keeps semantic values and duplicate fingerprints stable across supported revisions", async () => {
     const results = [];
     let withImoFingerprint: string | undefined;
-    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, ALIGNED_VERSION, VERSION] as const) {
+    for (const version of [LEGACY_VERSION, PREVIOUS_VERSION, ALIGNED_VERSION, DOCUMENT_VERSION, VERSION] as const) {
       const { book, set } = filled(version);
       set("sea", service, 1);
       set("address", { mobile: "0012345", countryOfResidenceUuid: "India" });
@@ -149,7 +150,7 @@ describe("Application-form-aligned Excel revision", () => {
         expect(blocksForVersion(version).find(block => block.entity === "sea")!.fields).toHaveLength(8);
       }
     }
-    expect(results.map(candidateFingerprint)).toEqual(Array(4).fill(candidateFingerprint(results[0])));
+    expect(results.map(candidateFingerprint)).toEqual(Array(5).fill(candidateFingerprint(results[0])));
     expect(results[0].data).toEqual(results[1].data);
     expect(results[1].data).toEqual(results[2].data);
     expect(results[2].data).toEqual(results[3].data);
