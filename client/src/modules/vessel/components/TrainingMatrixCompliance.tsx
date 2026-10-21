@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ChevronDown, ChevronRight, FileText, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 
 type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract" | "Expired at joining" | "Not held";
@@ -19,6 +20,9 @@ type CertificateAttachment = { uuid: string; fileName: string; url: string };
 type CourseResult = {
   courseUuid: string;
   name: string;
+  category?: string | null;
+  categoryOrder?: number | null;
+  matrixOrder?: number | null;
   obligation: "mandatory" | "recommended";
   calculationVersion: string;
   state: CourseState | null;
@@ -109,6 +113,39 @@ function summaryTone(status: GroupSummary["status"]) {
   return "text-slate-700";
 }
 
+function summaryLabel(label: "Mandatory" | "Recommended", summary: GroupSummary, resultStatus: ComplianceResult["status"]) {
+  if (resultStatus === "complete" && summary.count === 0) return `${label}: None required for this rank`;
+  return `${label}: ${groupStatusLabel[summary.status]} (${summary.count})`;
+}
+
+function hasCorrectionFlags(course: CourseResult) {
+  return course.certificates.some(entry => entry.flags.length > 0);
+}
+
+function needsAction(course: CourseResult) {
+  return !course.complete
+    || course.state === "Not held"
+    || course.state === "Expired at joining"
+    || course.state === "Expires during contract"
+    || hasCorrectionFlags(course);
+}
+
+function canExpand(course: CourseResult) {
+  return course.certificates.length > 1
+    || Boolean(course.isEquivalent || course.certificates.some(entry => entry.selected && entry.isEquivalent))
+    || hasCorrectionFlags(course);
+}
+
+function orderedCourses(courses: CourseResult[]) {
+  return courses.map((course, index) => ({ course, index })).sort((a, b) => {
+    const categoryOrderA = a.course.categoryOrder ?? Number.MAX_SAFE_INTEGER;
+    const categoryOrderB = b.course.categoryOrder ?? Number.MAX_SAFE_INTEGER;
+    const matrixOrderA = a.course.matrixOrder ?? Number.MAX_SAFE_INTEGER;
+    const matrixOrderB = b.course.matrixOrder ?? Number.MAX_SAFE_INTEGER;
+    return categoryOrderA - categoryOrderB || matrixOrderA - matrixOrderB || a.index - b.index;
+  }).map(item => item.course);
+}
+
 async function fetchCompliance(url: string): Promise<ComplianceResult> {
   const response = await apiRequest("GET", url);
   return await response.json() as ComplianceResult;
@@ -117,6 +154,7 @@ async function fetchCompliance(url: string): Promise<ComplianceResult> {
 export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: TrainingMatrixComplianceProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
+  const [onlyNeedsAction, setOnlyNeedsAction] = useState(false);
   const hasIds = Boolean(planUuid && assignmentUuid);
   const url = hasIds
     ? `/api/v2/vessel/planning/${encodeURIComponent(planUuid!)}/reliever-assignment/${encodeURIComponent(assignmentUuid!)}/training-compliance`
@@ -130,6 +168,15 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
     refetchOnMount: "always",
   });
   const result = !query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
+  const sortedCourses = result ? orderedCourses(result.courses) : [];
+  const visibleCourses = onlyNeedsAction ? sortedCourses.filter(needsAction) : sortedCourses;
+  const coursesByCategory = visibleCourses.reduce<Array<{ label: string; courses: CourseResult[] }>>((groups, course) => {
+    const label = course.category ?? "Unassigned";
+    const last = groups[groups.length - 1];
+    if (last?.label === label) last.courses.push(course);
+    else groups.push({ label, courses: [course] });
+    return groups;
+  }, []);
 
   const openAttachment = async (attachment: CertificateAttachment) => {
     const pendingWindow = window.open("about:blank", "_blank");
@@ -175,13 +222,13 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
             <>
               <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${summaryTone(result.summary.mandatory.status)}`}>
                 <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-                Mandatory: {groupStatusLabel[result.summary.mandatory.status]} <span className="font-normal">({result.summary.mandatory.count})</span>
+                {summaryLabel("Mandatory", result.summary.mandatory, result.status)}
               </span>
               <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${summaryTone(result.summary.recommended.status)}`}>
                 <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-                Recommended: {groupStatusLabel[result.summary.recommended.status]} <span className="font-normal">({result.summary.recommended.count})</span>
+                {summaryLabel("Recommended", result.summary.recommended, result.status)}
               </span>
-              <Button type="button" variant="link" size="sm" className="h-auto px-0 py-0" onClick={() => setDetailsOpen(true)} data-testid="training-compliance-see-details">
+              <Button type="button" variant="link" size="sm" className="h-auto px-0 py-0" onClick={() => { setOnlyNeedsAction(false); setDetailsOpen(true); }} data-testid="training-compliance-see-details">
                 See Details
               </Button>
             </>
@@ -235,8 +282,8 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
               )}
 
               <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                <span className={`font-medium ${summaryTone(result.summary.mandatory.status)}`}>Mandatory: {groupStatusLabel[result.summary.mandatory.status]} ({result.summary.mandatory.count})</span>
-                <span className={`font-medium ${summaryTone(result.summary.recommended.status)}`}>Recommended: {groupStatusLabel[result.summary.recommended.status]} ({result.summary.recommended.count})</span>
+                <span className={`font-medium ${summaryTone(result.summary.mandatory.status)}`}>{summaryLabel("Mandatory", result.summary.mandatory, result.status)}</span>
+                <span className={`font-medium ${summaryTone(result.summary.recommended.status)}`}>{summaryLabel("Recommended", result.summary.recommended, result.status)}</span>
               </div>
               {result.issues.length > 0 && (
                 <ul className="space-y-1 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
@@ -244,6 +291,11 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                   {[...new Set(result.issues.map(issue => issue.message))].map(message => <li key={message}>{message}</li>)}
                 </ul>
               )}
+
+              <div className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white px-4 py-3">
+                <label htmlFor="training-only-needs-action" className="text-sm font-medium text-slate-700">Show only items needing action</label>
+                <Switch id="training-only-needs-action" aria-label="Show only items needing action" checked={onlyNeedsAction} onCheckedChange={setOnlyNeedsAction} />
+              </div>
 
               <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
                 <table className="w-full min-w-[860px] border-collapse text-left text-sm">
@@ -258,22 +310,29 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                     </tr>
                   </thead>
                   <tbody>
-                    {result.courses.map(course => {
+                    {coursesByCategory.map(group => (
+                      <React.Fragment key={group.label}>
+                        <tr className="border-t border-slate-200 bg-slate-100" data-testid={`training-category-${group.label}`}>
+                          <th colSpan={6} scope="colgroup" className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">{group.label}</th>
+                        </tr>
+                        {group.courses.map(course => {
                       const selected = course.certificates.find(entry => entry.selected);
                       const certificate = selected?.certificate ?? course.chosenCertificate;
                       const courseExpanded = Boolean(expandedCourses[course.courseUuid]);
+                      const expandable = canExpand(course);
                       const statusText = !course.complete || course.state === null ? "Incomplete" : course.state;
                       return (
                         <React.Fragment key={course.courseUuid}>
                           <tr className="border-t border-slate-200 align-top" data-testid={`training-course-row-${course.courseUuid}`}>
                             <td className="px-3 py-3">
                               <div className="flex items-start gap-2">
-                                <button type="button" onClick={() => toggleCourse(course.courseUuid)} aria-expanded={courseExpanded} aria-label={`${courseExpanded ? "Collapse" : "Expand"} certificate details for ${course.name}`} className="mt-0.5 rounded p-0.5 text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700" data-testid={`training-certificate-expand-${course.courseUuid}`}>
-                                  {courseExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                </button>
+                                {expandable ? (
+                                  <button type="button" onClick={() => toggleCourse(course.courseUuid)} aria-expanded={courseExpanded} aria-label={`${courseExpanded ? "Collapse" : "Expand"} certificate details for ${course.name}`} className="mt-0.5 rounded p-0.5 text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700" data-testid={`training-certificate-expand-${course.courseUuid}`}>
+                                    {courseExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                  </button>
+                                ) : <span className="mt-0.5 w-5 shrink-0" aria-hidden="true" />}
                                 <div>
                                   <div className="font-medium text-slate-800">{course.name}</div>
-                                  <div className="mt-1 text-xs capitalize text-slate-500">{course.obligation}</div>
                                 </div>
                               </div>
                             </td>
@@ -295,11 +354,16 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                               ) : <span className="text-slate-400">—</span>}
                             </td>
                           </tr>
-                          {courseExpanded && (
+                          {courseExpanded && expandable && (
                             <tr className="border-t border-slate-100 bg-slate-50">
                               <td colSpan={6} className="px-4 py-3">
                                 {course.certificates.length ? (
                                   <div className="space-y-2">
+                                    <p className="text-xs text-slate-600">
+                                      Selection rule: use the certificate counted at joining with no expiry,
+                                      otherwise the latest expiry. Ties prefer the required course itself,
+                                      then the latest issue date.
+                                    </p>
                                     {course.certificates.map(entry => (
                                       <div key={entry.certificate.certificateUuid} className="grid gap-x-4 gap-y-2 rounded border border-slate-200 bg-white p-3 text-xs sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto_minmax(150px,1fr)]">
                                         <div>
@@ -308,7 +372,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                                           {entry.isEquivalent && <span className="ml-2 text-sky-800">Equivalent</span>}
                                         </div>
                                         <span className="text-slate-600">{{
-                                          selected: "Certificate used",
+                                          selected: "Selected by the compliance calculation",
                                           not_selected: "Not used: another certificate was preferred by the calculation",
                                           future_issued: "Issued after planned joining: not counted",
                                           invalid_expiry: "Expiry date invalid: certificate set aside",
@@ -330,9 +394,10 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                           )}
                         </React.Fragment>
                       );
-                    })}
-                    {!result.courses.length && (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-600">No rank requirements were returned for this assignment.</td></tr>
+                    })}</React.Fragment>
+                    ))}
+                    {!visibleCourses.length && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-600">{onlyNeedsAction ? "No items needing action." : "No rank requirements were returned for this assignment."}</td></tr>
                     )}
                   </tbody>
                 </table>

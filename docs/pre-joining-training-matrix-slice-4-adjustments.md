@@ -66,3 +66,21 @@ The integration regression strips only display metadata and certificate
 evidence from the API result and compares the remaining result with the
 unchanged calculation. It also verifies compliant and noncompliant rows and
 unchanged table fingerprints. **32 tests passed.**
+
+## Step 2 verification
+
+The action-only switch is OFF each time Details opens. When ON it retains
+gaps, during-contract expiry warnings, incomplete courses and certificate
+correction flags; a valid equivalent by itself does not need action.
+Category headings remain in matrix order and empty categories disappear
+only from the filtered view. No filter causes an API write or recalculation.
+
+Every base row keeps its course, single Rank requirement label, state,
+chosen certificate, issue/expiry dates and attachment. Expansion is limited
+to multiple certificates, a selected equivalent, or correction flags.
+It explains selection and excluded candidates without repeating course status.
+A complete zero-count group says **None required for this rank**; incomplete
+results do not claim that no courses are required.
+
+**17 focused UI tests passed**, including the original five-state, failed
+request, missing-fact and stale-cache regressions.
