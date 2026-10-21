@@ -54,7 +54,7 @@ type AggregatedRow = {
   status: string | null;
   targetDate: string | null;
   comments: string | null;
-  editable: "limited" | "full";
+  editable: "limited" | "full" | "readonly";
   crewMemberId: string | null;
   rankId: string | null;
 };
@@ -126,6 +126,7 @@ const ActionsCellRenderer = (
 ) => {
   if (!params.colDef || !params.data) return null;
   const r = params.data as AggregatedRow;
+  if (r.editable === "readonly") return null;
   return (
     <div className="flex gap-1 justify-end items-center h-full">
       <Button

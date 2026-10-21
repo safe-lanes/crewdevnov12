@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ChevronDown, ChevronRight, FileText, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
+import { TrainingNeedSuggestion, type TrainingSuggestion } from "./TrainingNeedSuggestion";
 
 type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract" | "Expired at joining" | "Not held" | "Expiry not recorded";
 type GroupSummary = { status: "valid" | "warning" | "gap" | "incomplete"; count: number };
@@ -248,9 +249,16 @@ async function fetchCompliance(url: string): Promise<ComplianceResult> {
 }
 
 export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: TrainingMatrixComplianceProps) {
+  const queryClient = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
   const [onlyNeedsAction, setOnlyNeedsAction] = useState(false);
+  const [suggestions, setSuggestions] = useState<TrainingSuggestion[]>([]);
+  const [suggestionsCanCreate, setSuggestionsCanCreate] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const processedComplianceUpdate = useRef<string | null>(null);
+  const suggestionQueryKey = useMemo(() => ["training-suggestions", planUuid ?? null, assignmentUuid ?? null], [planUuid, assignmentUuid]);
   const hasIds = Boolean(planUuid && assignmentUuid);
   const url = hasIds
     ? `/api/v2/vessel/planning/${encodeURIComponent(planUuid!)}/reliever-assignment/${encodeURIComponent(assignmentUuid!)}/training-compliance`
@@ -263,6 +271,42 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
     staleTime: 0,
     refetchOnMount: "always",
   });
+  const reconcileSuggestions = useCallback(async () => {
+    if (!planUuid || !assignmentUuid) return;
+    setSuggestionsLoading(true);
+    setSuggestionsError(false);
+    setSuggestions([]);
+    setSuggestionsCanCreate(false);
+    try {
+      const response = await apiRequest(
+        "POST",
+        `/api/v2/vessel/planning/${encodeURIComponent(planUuid)}/reliever-assignment/${encodeURIComponent(assignmentUuid)}/training-suggestions`,
+        {},
+      );
+      const payload = await response.json() as { suggestions: TrainingSuggestion[]; canCreate: boolean };
+      if (!Array.isArray(payload.suggestions) || typeof payload.canCreate !== "boolean")
+        throw new Error("Suggestion response unavailable");
+      const normalized = payload;
+      queryClient.setQueryData(suggestionQueryKey, normalized);
+      setSuggestions(normalized.suggestions);
+      setSuggestionsCanCreate(payload.canCreate === true);
+    } catch {
+      setSuggestionsError(true);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, [planUuid, assignmentUuid, suggestionQueryKey]);
+  useEffect(() => {
+    if (!open || query.isFetching || query.isError || !query.data
+      || query.data.assignmentUuid !== assignmentUuid || !query.dataUpdatedAt) return;
+    const updateKey = `${planUuid ?? ""}:${assignmentUuid ?? ""}:${query.dataUpdatedAt}`;
+    if (processedComplianceUpdate.current === updateKey) return;
+    processedComplianceUpdate.current = updateKey;
+    void reconcileSuggestions();
+  }, [open, query.isFetching, query.isError, query.data, query.dataUpdatedAt, assignmentUuid, reconcileSuggestions]);
+  const saveSuggestion = (saved: TrainingSuggestion) => {
+    setSuggestions(current => current.map(item => item.suggestion_uuid === saved.suggestion_uuid ? saved : item));
+  };
   const result = !query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
   const sortedCourses = result ? orderedCourses(result.courses) : [];
   const mandatoryProblemCount = result ? groupProblemCount(sortedCourses, "mandatory", result.summary.mandatory) : 0;
@@ -337,6 +381,12 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
             </>
           ) : (
             <span className="text-sm text-slate-600">Training compliance is unavailable.</span>
+          )}
+          {suggestionsError && !detailsOpen && (
+            <span className="inline-flex flex-wrap items-center gap-2 text-sm text-rose-800" role="alert">
+              Training suggestions could not be loaded.
+              <Button type="button" variant="outline" size="sm" onClick={() => void reconcileSuggestions()} disabled={suggestionsLoading}>Retry</Button>
+            </span>
           )}
         </div>
       </div>
@@ -417,6 +467,15 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 <label htmlFor="training-only-needs-action" className="text-sm font-medium text-slate-700">Show only items needing action</label>
                 <Switch id="training-only-needs-action" aria-label="Show only items needing action" checked={onlyNeedsAction} onCheckedChange={setOnlyNeedsAction} />
               </div>
+              {suggestionsError && (
+                <div className="flex flex-wrap items-center gap-2 text-sm text-rose-800" role="alert">
+                  <span>Training suggestions could not be loaded.</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void reconcileSuggestions()} disabled={suggestionsLoading}>Retry</Button>
+                </div>
+              )}
+              {!suggestionsError && suggestionsLoading && (
+                <p className="text-xs text-slate-600" role="status">Checking training suggestions…</p>
+              )}
 
               <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
                 <table className="w-full min-w-[1000px] table-fixed border-collapse text-left text-sm">
@@ -460,6 +519,14 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                                   <div className="font-medium text-slate-800">{course.name}</div>
                                   {(selected?.isEquivalent || course.isEquivalent) && certificate && (
                                     <div className="mt-1 text-xs text-sky-800">Covered by {certificate.name} (accepted equivalent)</div>
+                                  )}
+                                  {suggestions.find(item => item.course_uuid === course.courseUuid) && (
+                                    <TrainingNeedSuggestion
+                                      suggestion={suggestions.find(item => item.course_uuid === course.courseUuid)!}
+                                      canCreate={suggestionsCanCreate}
+                                      suggestionQueryKey={suggestionQueryKey}
+                                      onSaved={saveSuggestion}
+                                    />
                                   )}
                                 </div>
                               </div>

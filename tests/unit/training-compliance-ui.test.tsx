@@ -158,7 +158,9 @@ describe("read-only Reliever Status training display", () => {
       .toContain("bg-amber-50");
     fireEvent.click(screen.getByRole("switch", { name: "Show only items needing action" }));
     expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(6);
-    expect(vi.mocked(apiRequest)).toHaveBeenCalledTimes(1);
+    // Suggestions now reconcile with a separate POST; the local filter must
+    // still make no additional compliance reads.
+    expect(vi.mocked(apiRequest).mock.calls.filter(([method]) => method === "GET")).toHaveLength(1);
   });
   it("defaults the switch off again when details reopen and shows obligation only in its column", async () => {
     await showDetails(value(0));
@@ -280,7 +282,7 @@ describe("read-only Reliever Status training display", () => {
     fireEvent.click(await screen.findByTestId("training-compliance-retry"));
     expect(await screen.findByTestId("training-compliance-see-details")).toBeTruthy();
     expect(screen.queryByText(/private/)).toBeNull();
-    expect(vi.mocked(apiRequest)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(apiRequest).mock.calls.filter(([method]) => method === "GET")).toHaveLength(2);
   });
   it("does not request another assignment's facts when no link exists", async () => {
     render(<QueryClientProvider client={client}><TrainingMatrixCompliance open /></QueryClientProvider>);
@@ -296,7 +298,7 @@ describe("read-only Reliever Status training display", () => {
     let finish!: (response: Response) => void;
     vi.mocked(apiRequest).mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }));
     mount();
-    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(vi.mocked(apiRequest).mock.calls.filter(([method]) => method === "GET")).toHaveLength(2));
     expect(screen.queryByTestId("training-compliance-see-details")).toBeNull();
     expect(screen.getByLabelText("Loading training compliance")).toBeTruthy();
     finish(new Response(JSON.stringify(value(4))));

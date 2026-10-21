@@ -12,6 +12,7 @@ import {
 } from "./controllers";
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
 import { requirePermission } from "../../middleware/requirePermission";
+import { checkTrainingSuggestions } from "../training-needs/complianceSuggestionController";
 import { getRelieverTrainingCompliance } from "./controllers/trainingComplianceController";
 import { getTrainingChecklistHistory } from "./controllers/trainingChecklistHistoryController";
 
@@ -62,6 +63,7 @@ router.post("/planning/:planUuid/clear-unlinked-reliever",
   requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid/training-compliance", getRelieverTrainingCompliance);
+router.post("/planning/:planUuid/reliever-assignment/:assignUuid/training-suggestions", checkTrainingSuggestions);
 router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
 router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);

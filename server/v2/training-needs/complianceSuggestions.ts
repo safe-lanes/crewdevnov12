@@ -21,8 +21,14 @@ export async function suggestionHistory(tx: any, before: Suggestion | null, afte
       ${before ? JSON.stringify(before) : null}::jsonb,${JSON.stringify(after)}::jsonb,${reason},${certificateUuid})`);
 }
 export async function listSuggestions(tx: any, assignmentUuid: string): Promise<Suggestion[]> {
-  return (await tx.execute(sql`SELECT *,target_date::text AS target_date
-    FROM training_compliance_suggestions WHERE assign_uuid=${assignmentUuid} ORDER BY created_at,suggestion_uuid`)).rows;
+  return (await tx.execute(sql`SELECT s.*,s.target_date::text AS target_date,
+    (SELECT concat_ws(' · ',t.training_course,nullif(t.certificate_no,'')) FROM crew_training_courses t
+      WHERE t.train_uuid=s.closed_certificate_uuid) AS "closingCertificateLabel",
+    (SELECT h.reason FROM training_compliance_suggestion_history h
+      WHERE h.suggestion_uuid=s.suggestion_uuid AND h.event='certificate_qualified'
+      ORDER BY h.id DESC LIMIT 1) AS "closureReason"
+    FROM training_compliance_suggestions s WHERE s.assign_uuid=${assignmentUuid}
+    ORDER BY s.created_at,s.suggestion_uuid`)).rows;
 }
 
 /** Called with the assignment and plan locked in that order. */
@@ -70,6 +76,8 @@ export async function reconcileSuggestionResult(tx: any, request: RelieverCheckR
       if (equal && !["WITHDRAWN", "CLOSED"].includes(before.status)) continue;
       const after = (await tx.execute(sql`UPDATE training_compliance_suggestions SET
         status=${["WITHDRAWN", "CLOSED"].includes(before.status) ? "SUGGESTED" : before.status},
+        confirmed_at=${["WITHDRAWN", "CLOSED"].includes(before.status) ? null : before.confirmed_at}::timestamptz,
+        confirmed_by=${["WITHDRAWN", "CLOSED"].includes(before.status) ? null : before.confirmed_by},
         gap=${JSON.stringify(gap)}::jsonb,target_date=${target}::date,closed_certificate_uuid=NULL,
         plan_uuid=${request.planUuid},updated_at=now() WHERE suggestion_uuid=${before.suggestion_uuid}
         RETURNING *`)).rows[0] as Suggestion;

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { calculateTrainingCompliance } from "../../server/v2/shared/training-compliance/calculator";
 import { reconcileSuggestionResult } from "../../server/v2/training-needs/complianceSuggestions";
+import { decideTrainingSuggestion } from "../../server/v2/training-needs/complianceSuggestionActions";
 import type { ComplianceInput } from "../../server/v2/shared/training-compliance/types";
 
 const schema = `training_suggestions_${randomUUID().slice(0, 8)}`;
@@ -30,7 +31,7 @@ describe("durable training suggestion ledger in isolated schema", () => {
     await root.query(`CREATE SCHEMA "${schema}"`);
     for (const table of ["crew_assignments", "vessel_planning_v2", "crew_members_v2",
       "master_vessels", "crew_assignment_rule_context", "adm_available_ranks_v2", "adm_training_master_v2",
-      "training_needs_other_v2"])
+      "training_needs_other_v2", "crew_training_courses"])
       await local.query(`CREATE TABLE ${table} (LIKE public.${table} INCLUDING ALL)`);
     await local.query("INSERT INTO master_vessels SELECT * FROM public.master_vessels WHERE NOT is_deleted LIMIT 1");
     await local.query("INSERT INTO adm_available_ranks_v2 SELECT * FROM public.adm_available_ranks_v2 WHERE NOT is_deleted LIMIT 1");
@@ -57,7 +58,14 @@ describe("durable training suggestion ledger in isolated schema", () => {
     expect((await local.query("SELECT * FROM training_compliance_suggestion_history")).rows).toHaveLength(1);
   });
   it("a confirmed need closes on a qualifying equivalent, retaining the certificate", async () => {
-    await local.query("UPDATE training_compliance_suggestions SET status='CONFIRMED',confirmed_at=now(),confirmed_by='server-user'");
+    const uuid = (await local.query("SELECT suggestion_uuid FROM training_compliance_suggestions")).rows[0].suggestion_uuid;
+    const confirmed = await decideTrainingSuggestion(tx, uuid, "confirm", "24");
+    expect(confirmed.confirmed_by).toBe("24");
+    const audit = (await local.query("SELECT * FROM training_compliance_suggestion_history ORDER BY id DESC LIMIT 1")).rows[0];
+    expect(audit.actor).toBe("24");
+    expect(audit.before_value.status).toBe("SUGGESTED");
+    expect(audit.after_value.status).toBe("CONFIRMED");
+    expect(audit.occurred_at).toBeTruthy();
     const [closed] = await reconcile("2027-04-30", equivalent);
     expect(closed.status).toBe("CLOSED");
     expect(closed.closed_certificate_uuid).toBe(certificate);
@@ -74,7 +82,14 @@ describe("durable training suggestion ledger in isolated schema", () => {
     expect((await local.query("SELECT count(*)::int AS n FROM training_compliance_suggestions")).rows[0].n).toBe(1);
   });
   it("dismissal survives repeated checks and is not automatically re-created", async () => {
-    await local.query("UPDATE training_compliance_suggestions SET status='DISMISSED'");
+    const uuid = (await local.query("SELECT suggestion_uuid FROM training_compliance_suggestions")).rows[0].suggestion_uuid;
+    await expect(decideTrainingSuggestion(tx, uuid, "dismiss", "24", " ")).rejects.toMatchObject({ status: 400 });
+    await expect(decideTrainingSuggestion(tx, uuid, "dismiss", "", "Reason")).rejects.toMatchObject({ status: 401 });
+    await decideTrainingSuggestion(tx, uuid, "dismiss", "24", "Training already arranged by office");
+    const audit = (await local.query("SELECT * FROM training_compliance_suggestion_history ORDER BY id DESC LIMIT 1")).rows[0];
+    expect(audit.reason).toBe("Training already arranged by office");
+    expect(audit.actor).toBe("24");
+    await expect(decideTrainingSuggestion(tx, uuid, "confirm", "24")).rejects.toMatchObject({ status: 409 });
     await reconcile(); await reconcile();
     expect((await local.query("SELECT status FROM training_compliance_suggestions")).rows[0].status).toBe("DISMISSED");
   });

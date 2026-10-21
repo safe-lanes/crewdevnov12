@@ -2,10 +2,13 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { TrainingNeedsRepository } from "./repository";
 import { insertTrainingNeedOtherSchema } from "../../../shared/v2/training-needs/schema";
+import { complianceSuggestionRoutes } from "./complianceSuggestionController";
+import { complianceNeedRows } from "./complianceNeedRows";
 
 type AuthedRequest = Request & { user?: { uuid?: string | null } };
 
 const router = Router();
+router.use("/compliance", complianceSuggestionRoutes);
 const repo = new TrainingNeedsRepository();
 
 const sourcePatchSchema = z.object({
@@ -15,10 +18,10 @@ const sourcePatchSchema = z.object({
   correspondingInDb: z.string().nullable().optional(),
 });
 
-router.get("/", async (_req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   try {
     const rows = await repo.aggregateAll();
-    res.json(rows);
+    res.json([...rows, ...await complianceNeedRows(req)]);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Training needs aggregate error:", err);
