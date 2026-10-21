@@ -44,7 +44,7 @@ export type GroupSummary = { status: "valid" | "warning" | "gap" | "incomplete";
 export type ComplianceResult = {
   calculationVersion: string;
   assignmentUuid: string;
-  vesselUuid: string;
+  vesselUuid: string | null;
   contractRankUuid: string | null;
   joiningDate: string | null;
   contractEnd: string | null;

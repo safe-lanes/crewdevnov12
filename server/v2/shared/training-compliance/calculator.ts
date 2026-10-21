@@ -2,7 +2,7 @@ import { civilDate, contractEndDate } from "./dates";
 import { TRAINING_COMPLIANCE_VERSION as version, type ComplianceInput, type ComplianceResult,
   type CourseResult, type TrainingRequirement, type TrainingCertificate, type CheckIssue } from "./types";
 
-export function incompleteTrainingCheck(input: Pick<ComplianceInput, "assignmentUuid" | "vesselUuid">,
+export function incompleteTrainingCheck(input: { assignmentUuid: string; vesselUuid: string | null },
   issues: CheckIssue[]): ComplianceResult {
   return {
     calculationVersion: version, assignmentUuid: input.assignmentUuid, vesselUuid: input.vesselUuid,
