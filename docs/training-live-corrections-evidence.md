@@ -54,3 +54,12 @@ from course results; missing end does not erase Not held/Expired at joining
 or missing-expiry states. Backend joining-date states were already retained.
 The isolated reader test explicitly sets incumbent/shared values while leaving
 both reliever lengths blank and proves no fallback to either shared value.
+
+## 3. Save and dismissal
+
+Save preserves the existing checklist/sign-on checks but leaves the popup open
+after success, resets its dirty baseline and invalidates the exact linked
+assignment's compliance query. Override acceptance follows the same behaviour.
+Cleared own period/range/date values are sent as null, not silently omitted.
+X/outside dismissal with unsaved changes asks “Discard unsaved changes?”;
+cancel preserves edits and accept dismisses. Focused root-suite tests: 3 passed.

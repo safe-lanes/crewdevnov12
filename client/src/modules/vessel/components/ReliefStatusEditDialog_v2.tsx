@@ -42,9 +42,9 @@ const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
     relieverNationality: z.string().optional(),
     signOnStatus: z.string().optional(),
-    relieverContractPeriodMonths: z.coerce.number().positive("Contract Period must be greater than 0").optional(),
-    relieverContractEndRangeStartMonths: z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional(),
-    relieverContractEndRangeEndMonths: z.coerce.number().positive("Contract End - Range End must be greater than 0").optional(),
+    relieverContractPeriodMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract Period must be greater than 0").optional()),
+    relieverContractEndRangeStartMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional()),
+    relieverContractEndRangeEndMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract End - Range End must be greater than 0").optional()),
     plannedConfirmedDate: z.string().optional(),
     travelStartDate: z.string().optional(),
     relieverSignOnDate: z.string().optional(),
@@ -172,6 +172,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     } | null>(null);
     const [assignmentLoading, setAssignmentLoading] = useState(false);
     const [assignmentError, setAssignmentError] = useState<string | null>(null);
+    const formSubjectRef = React.useRef<string | null>(null);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -193,8 +194,15 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             applicableDocsChecked: false,
         }
     });
+    const formIsDirty = form.formState.isDirty;
 
     React.useEffect(() => {
+        const subjectKey = `${planningData?.planUuid ?? "new"}:${vesselUuid}:${rankId}`;
+        if (!open) formSubjectRef.current = null;
+        else {
+            if (formSubjectRef.current === subjectKey) return;
+            formSubjectRef.current = subjectKey;
+        }
         setAssignmentDetails(null);
         setAssignmentError(null);
         setClearReason('');
@@ -232,7 +240,45 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             });
             setUnassignChecked(false);
         }
-    }, [open, planningData, form]);
+    }, [open, planningData, form, rankId, vesselUuid]);
+
+    const handleDialogOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && formIsDirty && !window.confirm("Discard unsaved changes?")) return;
+        onOpenChange(nextOpen);
+    };
+
+    const resetAfterSave = (submitted: ReliefStatusFormData, persisted: any) => {
+        const currentValues = form.getValues();
+        const field = (key: keyof ReliefStatusFormData, serverKey: string = key) =>
+            persisted && Object.prototype.hasOwnProperty.call(persisted, serverKey)
+                ? persisted[serverKey]
+                : submitted[key] !== undefined ? submitted[key] : currentValues[key] ?? null;
+        form.reset({
+            ...form.getValues(),
+            relieverCrewName: (field("relieverCrewName") ?? "") as string,
+            relieverNationality: (field("relieverNationality") ?? "") as string,
+            relieverContractPeriodMonths: field("relieverContractPeriodMonths") as number | undefined,
+            relieverContractEndRangeStartMonths: field("relieverContractEndRangeStartMonths") as number | undefined,
+            relieverContractEndRangeEndMonths: field("relieverContractEndRangeEndMonths") as number | undefined,
+            relieverSignOnDate: (field("relieverSignOnDate") ?? "") as string,
+            plannedConfirmedDate: (field("plannedConfirmedDate") ?? "") as string,
+            travelStartDate: (field("travelStartDate") ?? "") as string,
+            relieverSignOnPort: (field("relieverSignOnPort", "joiningPortUuid") ?? "") as string,
+            signOnStatus: (field("signOnStatus", "joiningStatus") ?? "") as string,
+            deploymentChecklistCompleted: field("deploymentChecklistCompleted") as boolean | undefined,
+            applicableDocsChecked: field("applicableDocsChecked") as boolean | undefined,
+        });
+    };
+
+    const refreshAfterSave = async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            queryClient.invalidateQueries({
+                queryKey: ["training-matrix-compliance", planningData?.planUuid ?? null, planningData?.relieverAssignUuid ?? null],
+            }),
+        ]);
+    };
 
     const openLinkedAssignment = async () => {
         if (!planningData?.planUuid || !planningData?.relieverAssignUuid) return;
@@ -303,29 +349,29 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
                 // and moves reliever to on-board crew
-                const signOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
-                const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
-                const contractPeriodMonths = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
+                const signOnDate = data.relieverSignOnDate || null;
+                const signOnPort = data.relieverSignOnPort || null;
+                const contractPeriodMonths = data.relieverContractPeriodMonths ?? null;
                 
-                await vesselApiV2.signOnReliever(planningData.planUuid, {
+                saveResult = await vesselApiV2.signOnReliever(planningData.planUuid, {
                     signOnDate,
                     signOnPort,
                     contractPeriodMonths,
-                    contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths,
-                    contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths,
-                    plannedConfirmedDate: data.plannedConfirmedDate || undefined,
-                    travelStartDate: data.travelStartDate || undefined,
+                    contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
+                    plannedConfirmedDate: data.plannedConfirmedDate || null,
+                    travelStartDate: data.travelStartDate || null,
                 });
             } else {
                 const payload = {
-                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
-                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
-                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths ?? null,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     joiningStatus: data.signOnStatus,
                     relieverSignOnDate: data.relieverSignOnDate || null,
-                    joiningPortUuid: data.relieverSignOnPort,
+                    joiningPortUuid: data.relieverSignOnPort || null,
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 };
@@ -345,14 +391,13 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 }
             }
             
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
+            await refreshAfterSave();
+            resetAfterSave(data, saveResult);
             
             toast({
                 title: "Success",
                 description: `Relief status saved successfully${Array.isArray(saveResult?.checklistAcceptance?.warnings) && saveResult.checklistAcceptance.warnings.length ? ` Checklist notes: ${saveResult.checklistAcceptance.warnings.join(" ")}` : ""}`,
             });
-            onOpenChange(false);
         } catch (error: any) {
             console.error('Relief status save error:', error);
             const conflict = parseChecklistConflict(error);
@@ -363,14 +408,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 setRequestChecklistOverride(false);
                 setRequestTrainingOverride(false);
                 setPendingChecklistPayload({
-                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
-                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
-                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths ?? null,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     joiningStatus: data.signOnStatus,
                     relieverSignOnDate: data.relieverSignOnDate || null,
-                    joiningPortUuid: data.relieverSignOnPort,
+                    joiningPortUuid: data.relieverSignOnPort || null,
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 });
@@ -411,10 +456,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 planUuid: planningData.planUuid,
                 data: { ...pendingChecklistPayload, ...overrides } as any,
             });
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
-                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
-            ]);
+            await refreshAfterSave();
+            resetAfterSave(pendingChecklistPayload as ReliefStatusFormData, result);
             setChecklistConflict(null);
             setPendingChecklistPayload(null);
             setOverrideReason("");
@@ -423,7 +466,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             setRequestTrainingOverride(false);
             const warnings = result?.checklistAcceptance?.warnings;
             toast({ title: "Success", description: `Relief status saved.${Array.isArray(warnings) && warnings.length ? ` Checklist notes: ${warnings.join(" ")}` : " Checklist acceptance was recorded."}` });
-            onOpenChange(false);
         } catch (error) {
             const conflict = parseChecklistConflict(error);
             toast({ title: "Unable to override checklist", description: conflict?.message ?? "The checklist override was not accepted. Review the forms and try again.", variant: "destructive" });
@@ -694,7 +736,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={onOpenChange}>
+            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={handleDialogOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
@@ -1163,7 +1205,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
                                 data-testid="button-submit-relief"
                             >
-                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}
+                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Save"}
                             </Button>
                         </div>
                     </form>
