@@ -3,8 +3,9 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db";
 import { AttachmentAccessError, authorizeAttachmentMenu, authorizeAttachmentSubject } from "../../shared/attachmentAccess";
-import { readCanonicalReliever, readSavedTrainingMatrix, readTrainingCertificates } from "../../shared/training-compliance/reader";
+import { readCanonicalReliever, readSavedTrainingMatrix, readTrainingCertificates, type CanonicalReliever } from "../../shared/training-compliance/reader";
 import { readRelieverTrainingCompliance } from "../../shared/training-compliance/service";
+import type { ComplianceResult, TrainingMatrix } from "../../shared/training-compliance/types";
 
 const ids = z.object({ planUuid: z.string().uuid(), assignUuid: z.string().uuid() });
 
@@ -25,6 +26,22 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
       await authorizeAttachmentSubject(req, "Crew Database", canonical.crewUuid);
       const check = await readRelieverTrainingCompliance(db, request);
       const { matrix } = await readSavedTrainingMatrix(db, canonical);
+      return decorateTrainingCompliance(db, canonical, check, matrix);
+    }, { isolationLevel: "repeatable read", accessMode: "read only" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(result);
+  } catch (error) {
+    const status = error instanceof AttachmentAccessError ? error.status : 500;
+    return res.status(status).json({ message: status === 403
+      ? "You do not have permission to view this reliever's training. Ask your administrator to review your access."
+      : status === 404 ? "This linked reliever is no longer available. Reload Planning and try again."
+      : "The training check could not load. Retry it; if it fails again, contact your office." });
+  }
+}
+
+/** Identical certificate evidence, grouping and protected links on both screens. */
+export async function decorateTrainingCompliance(db: ReturnType<typeof getDb>,
+  canonical: CanonicalReliever, check: ComplianceResult, matrix: TrainingMatrix | null) {
       // Presentation metadata only. Keep the calculator and its inputs/results
       // unchanged; mirror Vessel > Training Matrix's group-code/course order.
       const layoutRows = (await db.execute(sql`SELECT m.tm_uuid AS "courseUuid",c.company_id AS "companyId",
@@ -85,14 +102,4 @@ export async function getRelieverTrainingCompliance(req: Request, res: Response)
                   url: `/api/v2/crew-pool/training/attachments/${encodeURIComponent(a.uuid)}/raw` })) };
           }) };
       }) };
-    }, { isolationLevel: "repeatable read", accessMode: "read only" });
-    res.setHeader("Cache-Control", "no-store");
-    return res.json(result);
-  } catch (error) {
-    const status = error instanceof AttachmentAccessError ? error.status : 500;
-    return res.status(status).json({ message: status === 403
-      ? "You do not have permission to view this reliever's training. Ask your administrator to review your access."
-      : status === 404 ? "This linked reliever is no longer available. Reload Planning and try again."
-      : "The training check could not load. Retry it; if it fails again, contact your office." });
-  }
 }

@@ -12,6 +12,8 @@ vi.mock("@server/v2/shared/attachmentAccess", async original => ({
 import { getDb } from "@server/v2/db";
 import { calculateRelieverTrainingCompliance } from "@server/v2/shared/training-compliance/service";
 import { getRelieverTrainingCompliance } from "@server/v2/vessel/controllers/trainingComplianceController";
+import { getOnboardTrainingCompliance } from "@server/v2/vessel/controllers/onboardTrainingComplianceController";
+import { readOnboardAssignments } from "@server/v2/shared/training-compliance/onboard";
 import { AttachmentAccessError } from "@server/v2/shared/attachmentAccess";
 import { trainingChecklistEvidence, recordTrainingAcceptance } from "@server/v2/shared/training-compliance/checklistEvidence";
 import { trainingOverrideAllowed } from "@server/v2/shared/training-compliance/authority";
@@ -124,6 +126,71 @@ beforeEach(async () => {
       expiry: index ? "2025-01-01" : "2026-12-31", is_deleted: false });
   }
   tenant = 0;
+});
+
+async function onboardDisplay(query: Record<string, string> = {}) {
+  const response: any = { code: 200, payload: undefined, setHeader: vi.fn(),
+    status(n: number) { this.code = n; return this; },
+    json(payload: any) { this.payload = payload; return this; } };
+  await getOnboardTrainingCompliance({ params: { vesselUuid: ids.vessel }, query } as any, response);
+  return response;
+}
+async function makeOnboard() {
+  await pools[0].query("UPDATE crew_assignments SET assignment_type='OnBoard',is_current=true WHERE assign_uuid=$1", [ids.assignment]);
+  await pools[0].query(`UPDATE vessel_planning_v2 SET crew_assign_uuid=$1,crew_uuid=$2,
+    sign_off_date='2090-06-01',relief_due='2050-01-01' WHERE plan_uuid=$3`, [ids.assignment, ids.crew, ids.plan]);
+}
+describe("onboard matrix exact provenance and shared read-only evidence", () => {
+  it("reads captured rank and exact linked planned sign-off, never present rank or relief due", async () => {
+    await makeOnboard();
+    const [row] = await readOnboardAssignments(drizzle(pools[0]), ids.vessel);
+    expect(row).toMatchObject({ assignmentUuid: ids.assignment, contractRankUuid: ids.rank,
+      rankRowId: 501, plannedReliefDate: "2090-06-01", planningCount: 1 });
+  });
+  it("does not borrow another assignment's planned dates", async () => {
+    await makeOnboard();
+    await pools[0].query("UPDATE vessel_planning_v2 SET crew_assign_uuid=$1 WHERE plan_uuid=$2", [randomUUID(), ids.plan]);
+    const [row] = await readOnboardAssignments(drizzle(pools[0]), ids.vessel);
+    expect(row).toMatchObject({ plannedReliefDate: null, planningCount: 0 });
+  });
+  it("shows a missing captured rank as incomplete with no present-rank replacement", async () => {
+    await makeOnboard();
+    await pools[0].query("DELETE FROM crew_assignment_rule_context WHERE assign_uuid=$1", [ids.assignment]);
+    const result = await onboardDisplay();
+    expect(result.code).toBe(200);
+    expect(result.payload.crew[0]).toMatchObject({ status: "incomplete", contractRankUuid: null,
+      context: { contractRankLabel: "Not recorded" } });
+    expect(result.payload.crew[0].issues.some((i: any) => i.code === "MISSING_RANK")).toBe(true);
+  });
+  it("returns ordered rows, dates, certificate evidence and dots without changing any records", async () => {
+    await makeOnboard();
+    const before = await fingerprint(pools[0]);
+    const result = await onboardDisplay();
+    expect(result.code).toBe(200);
+    expect(result.payload.rows[0]).toMatchObject({ companyTrainingId: 101, courseUuid: ids.courseA });
+    expect(result.payload.crew[0]).toMatchObject({ referenceKind: "on_board", contractRankUuid: ids.rank,
+      plannedReliefDate: "2090-06-01", context: { contractRankLabel: "Captured rank" },
+      courses: [{ chosenCertificate: { certificateUuid: ids.certificateA },
+        certificates: [{ selected: true, certificate: { certificateUuid: ids.certificateA } }] }],
+      dots: [{ color: "amber", label: "Expires before planned relief" }] });
+    expect(await fingerprint(pools[0])).toBe(before);
+    expect(observed.at(-1)).toEqual(["on", "repeatable read"]);
+  });
+  it("excludes planned, signed-off and deleted assignments", async () => {
+    expect((await onboardDisplay()).payload.crew).toEqual([]);
+    await makeOnboard();
+    await pools[0].query("UPDATE crew_assignments SET sign_off_date='2026-01-01' WHERE assign_uuid=$1", [ids.assignment]);
+    expect((await onboardDisplay()).payload.crew).toEqual([]);
+    await pools[0].query("UPDATE crew_assignments SET sign_off_date=NULL,is_deleted=true WHERE assign_uuid=$1", [ids.assignment]);
+    expect((await onboardDisplay()).payload.crew).toEqual([]);
+  });
+  it("rejects browser dates/ranks and refuses missing permissions with a plain sentence", async () => {
+    expect((await onboardDisplay({ today: "1990-01-01" })).code).toBe(400);
+    access.menu.mockRejectedValue(new AttachmentAccessError(403));
+    const result = await onboardDisplay();
+    expect(result.code).toBe(403);
+    expect(result.payload.message).toContain("permission");
+  });
 });
 
 describe("accepted checklist evidence in isolated tenant schemas", () => {
@@ -302,7 +369,7 @@ describe("read-only operational training endpoint", () => {
     expect(access.menu.mock.calls.map(c => c[1])).toEqual(["Vessel", "Crew Database"]);
     expect(access.subject.mock.calls.map(c => c.slice(1))).toEqual([
       ["Vessel", ids.vessel, "vessel"], ["Crew Database", ids.crew] ]);
-    expect(result.payload).toMatchObject({ calculationVersion: "1.4.0", context: {
+    expect(result.payload).toMatchObject({ calculationVersion: "1.5.0", context: {
       crewUuid: ids.crew }, courses: [{ state: "Valid", certificates: [{
         selected: true, disposition: "selected", attachments: [{
           uuid: attachment, url: `/api/v2/crew-pool/training/attachments/${attachment}/raw` }] }] }] });

@@ -98,13 +98,19 @@ export function calculateTrainingCompliance(input: ComplianceInput): ComplianceR
     if (!input.matrix) issues.push({ code: "MISSING_MATRIX",
       message: "No saved training matrix is available for this vessel. Ask the office to publish one, then retry." });
     const months = input.contractRangeEndMonths ?? input.contractPeriodMonths;
-    const end = joining && months != null ? contractEndDate(joining, months) : null;
-    const endStatus = months == null ? "not_set" : end ? "set" : "invalid";
-    const endSource = input.contractRangeEndMonths != null ? "range_end"
+    const explicitEnd = input.plannedContractEndDate !== undefined;
+    const end = explicitEnd ? civilDate(input.plannedContractEndDate ?? null)
+      : joining && months != null ? contractEndDate(joining, months) : null;
+    const endStatus = explicitEnd ? input.plannedContractEndDate == null ? "not_set"
+      : end && joining && end >= joining ? "set" : "invalid"
+      : months == null ? "not_set" : end ? "set" : "invalid";
+    const endSource = explicitEnd ? endStatus === "set" ? "planned_relief" : null
+      : input.contractRangeEndMonths != null ? "range_end"
       : input.contractPeriodMonths != null ? "contract_period" : null;
-    if (!end) issues.push({ code: endStatus === "not_set" ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
+    if (!end || endStatus === "invalid") issues.push({ code: endStatus === "not_set" ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
       blocking: endStatus !== "not_set",
       message: endStatus === "not_set" ? "Contract end not set: enter Contract End Range to check validity for the whole contract"
+        : explicitEnd ? "The planned relief date is invalid or earlier than today. Correct it in Planning and retry."
         : "The contract end cannot be calculated. Check the joining date and whole number of contract months, then retry." });
     const courses = input.contractRankUuid && joining && input.matrix
       ? input.matrix.requirements.map(r => courseResult(r, input, joining, end)) : [];

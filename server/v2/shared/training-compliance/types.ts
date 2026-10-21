@@ -1,5 +1,5 @@
 /** Bump for any change to date, matching, selection or state semantics. */
-export const TRAINING_COMPLIANCE_VERSION = "1.4.0";
+export const TRAINING_COMPLIANCE_VERSION = "1.5.0";
 export type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract"
   | "Expired at joining" | "Not held" | "Expiry not recorded";
 export type Obligation = "mandatory" | "recommended";
@@ -31,6 +31,8 @@ export type ComplianceInput = {
   plannedJoiningDate: string | null;
   contractRangeEndMonths: number | null;
   contractPeriodMonths?: number | null;
+  /** Server-owned exact end date. Undefined preserves reliever month semantics. */
+  plannedContractEndDate?: string | null;
   matrix: TrainingMatrix | null;
   certificates: TrainingCertificate[];
   issues?: CheckIssue[];
@@ -55,7 +57,7 @@ export type ComplianceResult = {
   joiningDate: string | null;
   contractEnd: string | null;
   contractEndStatus: "set" | "not_set" | "invalid";
-  contractEndSource: "range_end" | "contract_period" | null;
+  contractEndSource: "range_end" | "contract_period" | "planned_relief" | null;
   matrixRevisionUuid: string | null;
   matrixRevision: string | null;
   rankRequirementsSource: "current_company_rank_requirements";
