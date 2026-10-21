@@ -1,5 +1,5 @@
 /** Bump for any change to date, matching, selection or state semantics. */
-export const TRAINING_COMPLIANCE_VERSION = "1.1.0";
+export const TRAINING_COMPLIANCE_VERSION = "1.2.0";
 export type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract"
   | "Expired at joining" | "Not held";
 export type Obligation = "mandatory" | "recommended";

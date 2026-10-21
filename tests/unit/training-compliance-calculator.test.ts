@@ -134,14 +134,24 @@ describe("shared training compliance kernel", () => {
     expect(result.summary.mandatory.status).toBe("gap");
   });
   it.each([
-    cert("bad-issue", "2027-05-01", "course-a", "bad"),
-    cert("inverted", "2026-01-01", "course-a", "2026-02-01"),
     cert("bad-expiry", "bad"),
   ])("all-invalid matching records are incomplete: $certificateUuid", invalid => {
     const result = calculateTrainingCompliance(input([invalid]));
     expect(result.status).toBe("incomplete");
     expect(result.courses[0]).toMatchObject({ state: null, complete: false, chosenCertificate: null });
     expect(result.issues).toContainEqual(expect.objectContaining({ code: "INVALID_CERTIFICATE_DATES", blocking: true }));
+  });
+  it.each([
+    cert("bad-issue", "2027-05-01", "course-a", "bad"),
+    cert("bad-issue-permanent", null, "course-a", "bad"),
+    cert("inverted", "2026-01-01", "course-a", "2026-02-01"),
+  ])("invalid issue does not set aside a valid-expiry certificate: $certificateUuid", certificate => {
+    const result = calculateTrainingCompliance(input([certificate]));
+    expect(result.status).toBe("complete");
+    expect(result.courses[0].chosenCertificate?.certificateUuid).toBe(certificate.certificateUuid);
+    expect(result.courses[0].chosenCertificate?.issued).toBeNull();
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "INVALID_ISSUE_DATE",
+      blocking: false, message: "Certificate dates invalid: correct the record" }));
   });
   it("an expired remaining certificate remains a gap, not incomplete or valid", () => {
     const result = calculateTrainingCompliance(input([cert("bad", "bad"), cert("expired", "2026-10-20")]));

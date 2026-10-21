@@ -22,12 +22,18 @@ function courseResult(requirement: TrainingRequirement, input: ComplianceInput,
   const issues: CheckIssue[] = [], future: string[] = [];
   for (const cert of input.certificates) {
     if (!cert.courseUuid || (cert.courseUuid !== requirement.courseUuid && !alternatives.has(cert.courseUuid))) continue;
-    const issued = civilDate(cert.issued);
+    let issued = civilDate(cert.issued);
     const missingIssue = !cert.issued?.trim();
     if (missingIssue) issues.push({ code: "ISSUE_DATE_NOT_RECORDED", courseUuid: requirement.courseUuid,
       certificateUuid: cert.certificateUuid, blocking: false, message: "Issue date not recorded" });
     const expiry = cert.expiry?.trim() ? civilDate(cert.expiry) : null;
-    if ((!missingIssue && !issued) || (cert.expiry?.trim() && !expiry) || (expiry && issued && expiry < issued) || !cert.certificateUuid) {
+    const invalidIssue = (!missingIssue && !issued) || Boolean(expiry && issued && expiry < issued);
+    if (invalidIssue) {
+      issues.push({ code: "INVALID_ISSUE_DATE", courseUuid: requirement.courseUuid,
+        certificateUuid: cert.certificateUuid, blocking: false, message: "Certificate dates invalid: correct the record" });
+      issued = null;
+    }
+    if ((cert.expiry?.trim() && !expiry) || !cert.certificateUuid) {
       issues.push({ code: "INVALID_CERTIFICATE_DATES", courseUuid: requirement.courseUuid,
         certificateUuid: cert.certificateUuid, blocking: false,
         message: "Certificate dates invalid: correct the record" });
