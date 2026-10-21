@@ -86,8 +86,9 @@ export async function readSavedTrainingMatrix(db: Connection, canonical: Canonic
 }
 
 export async function readTrainingCertificates(db: Connection, crewUuid: string): Promise<TrainingCertificate[]> {
-  const masters = await rows<{ uuid: string; code: string; name: string }>(db, sql`SELECT
-    tm_uuid AS uuid,training_id AS code,training_name AS name FROM adm_training_master_v2`);
+  const masters = await rows<{ uuid: string; code: string; name: string; certificateExpires: boolean }>(db, sql`SELECT
+    tm_uuid AS uuid,training_id AS code,training_name AS name,certificate_expires AS "certificateExpires"
+    FROM adm_training_master_v2`);
   const company = await rows<{ id: number; uuid: string; code: string; masterUuid: string }>(db, sql`SELECT
     c.id,c.ct_uuid AS uuid,c.company_id AS code,m.tm_uuid AS "masterUuid"
     FROM adm_company_trainings_v2 c JOIN adm_training_master_v2 m ON m.id=c.training_master_id`);
@@ -109,6 +110,7 @@ export async function readTrainingCertificates(db: Connection, crewUuid: string)
     const courseUuid = matches?.size === 1 ? [...matches][0] : null;
     return { certificateUuid: c.certificateUuid, courseUuid,
       name: c.name || masters.find(m => m.uuid === courseUuid)?.name || "Unlinked training certificate",
-      number: c.number, issued: c.issued, expiry: c.expiry };
+      number: c.number, issued: c.issued, expiry: c.expiry,
+      certificateExpires: masters.find(m => m.uuid === courseUuid)?.certificateExpires !== false };
   });
 }

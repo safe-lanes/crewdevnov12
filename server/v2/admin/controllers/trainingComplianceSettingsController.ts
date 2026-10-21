@@ -8,23 +8,29 @@ import { trainingOverrideAllowed } from "../../shared/training-compliance/author
 export const trainingComplianceSettingsController = {
   mine: accessControlHandler(async req => ({ allowed: await trainingOverrideAllowed(req) })),
   get: accessControlHandler(async () => {
-    const row = (await getDb().execute(sql`SELECT block_expiring_during_contract AS "blockExpiringDuringContract"
+    const row = (await getDb().execute(sql`SELECT block_expiring_during_contract AS "blockExpiringDuringContract",
+      block_missing_expiry AS "blockMissingExpiry"
       FROM adm_training_compliance_settings WHERE singleton`)).rows[0];
     if (!row) throw new Error("Training compliance settings upgrade required.");
     return row;
   }),
   save: accessControlHandler(async req => {
-    const parsed = z.object({ blockExpiringDuringContract: z.boolean() }).strict().safeParse(req.body);
+    const parsed = z.object({ blockExpiringDuringContract: z.boolean(), blockMissingExpiry: z.boolean().optional() }).strict().safeParse(req.body);
     if (!parsed.success) throw Object.assign(new Error("Supply only the training expiry setting. Identity is recorded by the server."), { status: 400 });
     return managedWrite(req, async (tx, actor) => {
-      const before = (await tx.execute(sql`SELECT block_expiring_during_contract FROM adm_training_compliance_settings
+      const before = (await tx.execute(sql`SELECT block_expiring_during_contract,block_missing_expiry FROM adm_training_compliance_settings
         WHERE singleton FOR UPDATE`)).rows[0];
       if (!before) throw new Error("Training compliance settings upgrade required.");
+      const blockMissingExpiry = parsed.data.blockMissingExpiry ?? before.block_missing_expiry;
       await tx.execute(sql`UPDATE adm_training_compliance_settings
-        SET block_expiring_during_contract=${parsed.data.blockExpiringDuringContract} WHERE singleton`);
+        SET block_expiring_during_contract=${parsed.data.blockExpiringDuringContract},
+          block_missing_expiry=${blockMissingExpiry} WHERE singleton`);
       await appendAudit(tx, actor, "training_setting_changed", null, "training_compliance", "block_expiring_during_contract",
         before.block_expiring_during_contract, parsed.data.blockExpiringDuringContract);
-      return parsed.data;
+      if (parsed.data.blockMissingExpiry !== undefined)
+        await appendAudit(tx, actor, "training_setting_changed", null, "training_compliance", "block_missing_expiry",
+          before.block_missing_expiry, blockMissingExpiry);
+      return { ...parsed.data, blockMissingExpiry };
     });
   }),
   grant: accessControlHandler(async req => {

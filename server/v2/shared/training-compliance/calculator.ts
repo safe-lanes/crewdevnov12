@@ -40,20 +40,33 @@ function courseResult(requirement: TrainingRequirement, input: ComplianceInput,
       continue;
     }
     if (issued && issued > joining) { future.push(cert.certificateUuid); continue; }
+    if (!expiry && cert.certificateExpires !== false) issues.push({
+      code: "EXPIRY_NOT_RECORDED", courseUuid: requirement.courseUuid,
+      certificateUuid: cert.certificateUuid, blocking: false,
+      message: "Expiry not recorded: enter the expiry date in crew profile → D3 Training Courses.",
+    });
     candidates.push({ ...cert, issued, expiry });
   }
   // No-expiry wins; otherwise latest expiry. Direct wins only on an equal expiry,
   // then newest issue date, then stable ID. Never traverse equivalent links.
   candidates.sort((a, b) => {
+    // Known validity at joining beats unknown expiry; an unknown expiry still
+    // represents a held certificate rather than a proved-expired one.
+    const quality = (c: TrainingCertificate) => c.expiry === null && c.certificateExpires !== false ? 1
+      : c.expiry === null || c.expiry >= joining ? 2 : 0;
+    const knownOrder = quality(b) - quality(a);
+    if (knownOrder) return knownOrder;
     const expiryOrder = (b.expiry ?? "99999").localeCompare(a.expiry ?? "99999");
     return expiryOrder || Number(b.courseUuid === requirement.courseUuid) - Number(a.courseUuid === requirement.courseUuid)
       || (b.issued ?? "").localeCompare(a.issued ?? "") || a.certificateUuid.localeCompare(b.certificateUuid);
   });
   const chosen = candidates[0] ?? null;
-  const validAtJoining = chosen ? chosen.expiry === null || chosen.expiry >= joining : false;
+  const unknownExpiry = chosen?.expiry === null && chosen.certificateExpires !== false;
+  const validAtJoining = unknownExpiry ? null : chosen ? chosen.expiry === null || chosen.expiry >= joining : false;
   let state: CourseResult["state"] = !chosen ? "Not held" : !validAtJoining ? "Expired at joining"
     : chosen.expiry === null ? "Valid, no expiry" : !end ? "Valid"
       : chosen.expiry < end ? "Expires during contract" : "Valid";
+  if (unknownExpiry) state = "Expiry not recorded";
   if (!end) issues.push({ code: input.contractRangeEndMonths == null ? "CONTRACT_END_NOT_SET" : "INVALID_CONTRACT_END",
     courseUuid: requirement.courseUuid, blocking: input.contractRangeEndMonths != null,
     message: input.contractRangeEndMonths == null
@@ -66,7 +79,7 @@ function courseResult(requirement: TrainingRequirement, input: ComplianceInput,
   }
   return { ...requirement, calculationVersion: version, state, complete: !issues.some(i => i.blocking !== false),
     validAtJoining: invalidOnly ? null : validAtJoining,
-    validThroughContract: invalidOnly || !end ? null
+    validThroughContract: invalidOnly || !end || unknownExpiry ? null
       : chosen ? validAtJoining && (chosen.expiry === null || chosen.expiry >= end) : false,
     chosenCertificate: chosen, isEquivalent: chosen ? chosen.courseUuid !== requirement.courseUuid : null,
     issues, futureIssuedCertificateUuids: future.sort() };
@@ -96,7 +109,7 @@ export function calculateTrainingCompliance(input: ComplianceInput): ComplianceR
     const summary = (obligation: "mandatory" | "recommended") => {
       const group = courses.filter(c => c.obligation === obligation);
       const status = !complete ? "incomplete" : group.some(c => ["Not held", "Expired at joining"].includes(c.state!)) ? "gap"
-        : group.some(c => c.state === "Expires during contract" || c.issues.some(i => i.blocking === false))
+        : group.some(c => c.state === "Expires during contract" || c.state === "Expiry not recorded" || c.issues.some(i => i.blocking === false))
           || (group.length > 0 && endStatus === "not_set") ? "warning" : "valid";
       return { status, count: group.length } as ComplianceResult["summary"]["mandatory"];
     };

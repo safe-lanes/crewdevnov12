@@ -31,6 +31,8 @@ export const trainingMasterController = {
 
   async create(req: Request, res: Response) {
     try {
+      if (req.body?.certificateExpires !== undefined && typeof req.body.certificateExpires !== "boolean")
+        return res.status(400).json({ error: "Choose Yes or No for Certificate expires." });
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const record = await trainingMasterService.create({ ...req.body, auditUserUuid });
       res.json(record);
@@ -42,6 +44,8 @@ export const trainingMasterController = {
 
   async update(req: Request, res: Response) {
     try {
+      if (req.body?.certificateExpires !== undefined && typeof req.body.certificateExpires !== "boolean")
+        return res.status(400).json({ error: "Choose Yes or No for Certificate expires." });
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid training master ID" });

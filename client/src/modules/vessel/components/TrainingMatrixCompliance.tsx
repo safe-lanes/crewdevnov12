@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 
-type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract" | "Expired at joining" | "Not held";
+type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract" | "Expired at joining" | "Not held" | "Expiry not recorded";
 type GroupSummary = { status: "valid" | "warning" | "gap" | "incomplete"; count: number };
 type TrainingCertificate = {
   certificateUuid: string;
@@ -51,6 +51,8 @@ type ComplianceResult = {
   joiningDate: string | null;
   contractEnd: string | null;
   contractEndStatus: "set" | "not_set" | "invalid";
+  contractEndSource: "range_end" | "contract_period" | null;
+  canonical?: { contractPeriodMonths: number | null };
   matrixRevisionUuid: string | null;
   matrixRevision: string | null;
   rankRequirementsSource: "current_company_rank_requirements";
@@ -103,7 +105,7 @@ function dateLabel(value: string | null | undefined): string {
 function getStatusTone(state: CourseState | null, complete: boolean) {
   if (!complete || state === null) return "border-slate-300 bg-slate-100 text-slate-700";
   if (state === "Valid" || state === "Valid, no expiry") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (state === "Expires during contract") return "border-amber-200 bg-amber-50 text-amber-900";
+  if (state === "Expires during contract" || state === "Expiry not recorded") return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-rose-200 bg-rose-50 text-rose-800";
 }
 
@@ -114,9 +116,14 @@ function summaryTone(status: GroupSummary["status"]) {
   return "text-slate-700";
 }
 
-function summaryLabel(label: "Mandatory" | "Recommended", summary: GroupSummary, resultStatus: ComplianceResult["status"]) {
-  if (resultStatus === "complete" && summary.count === 0) return `${label}: None required for this rank`;
-  return `${label}: ${groupStatusLabel[summary.status]} (${summary.count})`;
+function summaryLabel(
+  label: "Mandatory" | "Recommended",
+  summary: GroupSummary,
+  resultStatus: ComplianceResult["status"],
+  problemCount: number,
+) {
+  if (resultStatus === "complete" && summary.count === 0 && problemCount === 0) return `${label}: None required for this rank`;
+  return `${label}: ${groupStatusLabel[summary.status]} (${problemCount} ${problemCount === 1 ? "problem" : "problems"})`;
 }
 
 function hasCorrectionFlags(course: CourseResult) {
@@ -128,7 +135,14 @@ function needsAction(course: CourseResult) {
     || course.state === "Not held"
     || course.state === "Expired at joining"
     || course.state === "Expires during contract"
+    || course.state === "Expiry not recorded"
     || hasCorrectionFlags(course);
+}
+
+function groupProblemCount(courses: CourseResult[], obligation: CourseResult["obligation"], summary: GroupSummary) {
+  const visibleProblemCount = courses.filter(course => course.obligation === obligation && needsAction(course)).length;
+  // Any non-clear summary is authoritative even if the detail payload omitted an affected course.
+  return summary.status === "valid" ? visibleProblemCount : Math.max(1, visibleProblemCount);
 }
 
 function canExpand(course: CourseResult) {
@@ -170,6 +184,8 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
   });
   const result = !query.isError && !query.isFetching && query.data?.assignmentUuid === assignmentUuid ? query.data : undefined;
   const sortedCourses = result ? orderedCourses(result.courses) : [];
+  const mandatoryProblemCount = result ? groupProblemCount(sortedCourses, "mandatory", result.summary.mandatory) : 0;
+  const recommendedProblemCount = result ? groupProblemCount(sortedCourses, "recommended", result.summary.recommended) : 0;
   const visibleCourses = onlyNeedsAction ? sortedCourses.filter(needsAction) : sortedCourses;
   const coursesByCategory = visibleCourses.reduce<Array<{ label: string; courses: CourseResult[] }>>((groups, course) => {
     const label = course.category ?? "Unassigned";
@@ -223,12 +239,17 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
             <>
               <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${summaryTone(result.summary.mandatory.status)}`}>
                 <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-                {summaryLabel("Mandatory", result.summary.mandatory, result.status)}
+                {summaryLabel("Mandatory", result.summary.mandatory, result.status, mandatoryProblemCount)}
               </span>
               <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${summaryTone(result.summary.recommended.status)}`}>
                 <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-                {summaryLabel("Recommended", result.summary.recommended, result.status)}
+                {summaryLabel("Recommended", result.summary.recommended, result.status, recommendedProblemCount)}
               </span>
+              {result.contractEndStatus === "not_set" && (
+                <span className="text-sm text-amber-900" role="status">
+                  Contract end not set: enter Contract End Range to check validity for the whole contract
+                </span>
+              )}
               <Button type="button" variant="link" size="sm" className="h-auto px-0 py-0" onClick={() => { setOnlyNeedsAction(false); setDetailsOpen(true); }} data-testid="training-compliance-see-details">
                 See Details
               </Button>
@@ -269,7 +290,12 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 <ContextItem label="Contract rank" value={result.context.contractRankLabel} />
                 <ContextItem label="Vessel" value={result.context.vesselName} />
                 <ContextItem label="Planned joining" value={dateLabel(result.joiningDate)} />
-                <ContextItem label="Calculated contract end" value={result.contractEndStatus === "set" ? dateLabel(result.contractEnd) : result.contractEndStatus === "invalid" ? "Invalid date" : "Not set"} />
+                <ContextItem
+                  label={result.contractEndSource === "contract_period"
+                    ? "Calculated contract end (based on contract period)"
+                    : "Calculated contract end"}
+                  value={result.contractEndStatus === "set" ? dateLabel(result.contractEnd) : result.contractEndStatus === "invalid" ? "Invalid date" : "Not set"}
+                />
                 <ContextItem label="Matrix revision" value={result.matrixRevision ?? "Not available"} />
               </section>
 
@@ -283,8 +309,8 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
               )}
 
               <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                <span className={`font-medium ${summaryTone(result.summary.mandatory.status)}`}>{summaryLabel("Mandatory", result.summary.mandatory, result.status)}</span>
-                <span className={`font-medium ${summaryTone(result.summary.recommended.status)}`}>{summaryLabel("Recommended", result.summary.recommended, result.status)}</span>
+                <span className={`font-medium ${summaryTone(result.summary.mandatory.status)}`}>{summaryLabel("Mandatory", result.summary.mandatory, result.status, mandatoryProblemCount)}</span>
+                <span className={`font-medium ${summaryTone(result.summary.recommended.status)}`}>{summaryLabel("Recommended", result.summary.recommended, result.status, recommendedProblemCount)}</span>
               </div>
               {result.issues.length > 0 && (
                 <ul className="space-y-1 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"

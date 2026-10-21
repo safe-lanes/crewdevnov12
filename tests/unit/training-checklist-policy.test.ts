@@ -13,7 +13,7 @@ const base: ComplianceInput = {
 const check = (input: Partial<ComplianceInput> = {}, on = false) =>
   trainingChecklistPolicy(calculateTrainingCompliance({ ...base, ...input }), on);
 const certificate = (expiry: string | null) => [{ certificateUuid: "cert", courseUuid: "course",
-  name: "Fire fighting", number: "CERT-1", issued: "2025-01-01", expiry }];
+  name: "Fire fighting", number: "CERT-1", issued: "2025-01-01", expiry, certificateExpires: false }];
 describe("training checklist policy, independent of form override", () => {
   it("blocks a named mandatory Not held course", () => {
     expect(check().blockers).toMatchObject([{ courseName: "Fire fighting", status: "Not held" }]);

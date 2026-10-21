@@ -7,7 +7,7 @@ import { trainingChecklistPolicy } from "./checklistPolicy";
 
 /** Use the already locked Planning transaction, not a second connection. */
 export async function trainingChecklistEvidence(tx: any, planUuid: string, assignmentUuid: string) {
-  const setting = (await tx.execute(sql`SELECT block_expiring_during_contract FROM adm_training_compliance_settings
+  const setting = (await tx.execute(sql`SELECT block_expiring_during_contract,block_missing_expiry FROM adm_training_compliance_settings
     WHERE singleton FOR SHARE`)).rows[0];
   if (!setting) throw new Error("Training settings upgrade required.");
   let check, canonical = null, matrix = null, certificates: unknown[] = [], header = null;
@@ -46,8 +46,9 @@ export async function trainingChecklistEvidence(tx: any, planUuid: string, assig
       code: "CALCULATION_FAILED", message: "The training check could not finish. Retry it; if it fails again, contact your office." }]);
   }
   const blockExpiringDuringContract = setting.block_expiring_during_contract === true;
-  return { check, canonical, matrix, certificates, header, blockExpiringDuringContract,
-    ...trainingChecklistPolicy(check, blockExpiringDuringContract) };
+  const blockMissingExpiry = setting.block_missing_expiry === true;
+  return { check, canonical, matrix, certificates, header, blockExpiringDuringContract, blockMissingExpiry,
+    ...trainingChecklistPolicy(check, blockExpiringDuringContract, blockMissingExpiry) };
 }
 
 export async function recordTrainingAcceptance(tx: any, planUuid: string, assignmentUuid: string,

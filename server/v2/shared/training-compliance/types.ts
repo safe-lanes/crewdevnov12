@@ -1,7 +1,7 @@
 /** Bump for any change to date, matching, selection or state semantics. */
-export const TRAINING_COMPLIANCE_VERSION = "1.2.0";
+export const TRAINING_COMPLIANCE_VERSION = "1.3.0";
 export type CourseState = "Valid" | "Valid, no expiry" | "Expires during contract"
-  | "Expired at joining" | "Not held";
+  | "Expired at joining" | "Not held" | "Expiry not recorded";
 export type Obligation = "mandatory" | "recommended";
 /** Existing reader issues block by default; explicitly nonblocking issues are warnings. */
 export type CheckIssue = {
@@ -14,6 +14,8 @@ export type TrainingCertificate = {
   number: string | null;
   issued: string | null;
   expiry: string | null;
+  /** The certificate's own course master, including accepted equivalents. */
+  certificateExpires?: boolean;
 };
 export type TrainingRequirement = { courseUuid: string; name: string; obligation: Obligation };
 export type TrainingMatrix = {

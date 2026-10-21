@@ -12,6 +12,8 @@ function value(index: number) {
   const input = trainingComplianceCases[index].input, result = calculateTrainingCompliance(input);
   return { ...result, context: { crewUuid: "crew", crewName: "TEST ONLY Reliever",
     contractRankLabel: "Chief Officer", vesselName: "TEST ONLY Vessel" },
+    contractEndSource: null,
+    canonical: { contractPeriodMonths: null },
     courses: result.courses.map(c => ({ ...c, certificates: input.certificates
       .filter(cert => cert.certificateUuid === c.chosenCertificate?.certificateUuid)
       .map(certificate => ({ certificate, selected: true, disposition: "selected",
@@ -135,7 +137,7 @@ describe("read-only Reliever Status training display", () => {
       summary: { ...data.summary, mandatory: { status: "incomplete" as const, count: 0 } } };
     await showDetails(incomplete);
     expect(screen.queryByText("Mandatory: None required for this rank")).toBeNull();
-    expect(screen.getAllByText(/Mandatory: Incomplete \(0\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Mandatory: Incomplete \(1 problem\)/).length).toBeGreaterThan(0);
   });
   it("action-only retains gaps, incomplete results and correction flags but not unflagged valid courses", async () => {
     const data = value(0), base = data.courses[0];
@@ -143,6 +145,7 @@ describe("read-only Reliever Status training display", () => {
       { ...base, courseUuid: "clear", name: "Clear" },
       { ...base, courseUuid: "gap", name: "Gap", state: "Not held", chosenCertificate: null, certificates: [] },
       { ...base, courseUuid: "expired", name: "Expired", state: "Expired at joining" },
+      { ...base, courseUuid: "expiry-missing", name: "Expiry missing", state: "Expiry not recorded", complete: true },
       { ...base, courseUuid: "unknown", name: "Unknown", state: null, complete: false },
       { ...base, courseUuid: "flag", name: "Correction", certificates: base.certificates.map(entry =>
         ({ ...entry, flags: ["Certificate dates invalid: correct the record"] })) },
@@ -151,9 +154,11 @@ describe("read-only Reliever Status training display", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Show only items needing action" }));
     expect(screen.queryByTestId("training-course-row-clear")).toBeNull();
     expect(screen.getAllByTestId(/^training-course-row-/).map(row => row.getAttribute("data-testid")))
-      .toEqual(["training-course-row-gap", "training-course-row-expired", "training-course-row-unknown", "training-course-row-flag"]);
+      .toEqual(["training-course-row-gap", "training-course-row-expired", "training-course-row-expiry-missing", "training-course-row-unknown", "training-course-row-flag"]);
+    expect(within(screen.getByTestId("training-course-row-expiry-missing")).getByText("Expiry not recorded").className)
+      .toContain("bg-amber-50");
     fireEvent.click(screen.getByRole("switch", { name: "Show only items needing action" }));
-    expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(5);
+    expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(6);
     expect(vi.mocked(apiRequest)).toHaveBeenCalledTimes(1);
   });
   it("defaults the switch off again when details reopen and shows obligation only in its column", async () => {
@@ -201,12 +206,36 @@ describe("read-only Reliever Status training display", () => {
     fireEvent.click(screen.getByTestId(`training-certificate-expand-${flagged.courseUuid}`));
     expect(screen.getByText("Name correction required")).toBeTruthy();
   });
-  it("shows missing contract end as a warning, not incomplete", async () => {
-    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(value(16))));
+  it("shows missing-end guidance and retains/counts joining-date gaps", async () => {
+    const data = value(16);
+    data.summary.mandatory = { status: "gap", count: 0 };
+    data.courses = data.courses.map(course => ({
+      ...course,
+      state: "Expired at joining",
+      validAtJoining: false,
+      validThroughContract: false,
+    }));
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));
     mount();
+    expect(await screen.findByText("Contract end not set: enter Contract End Range to check validity for the whole contract")).toBeTruthy();
+    expect(screen.getAllByText("Mandatory: Action needed (1 problem)").length).toBeGreaterThan(0);
     fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
     expect(screen.getAllByText("Contract end not set: full-contract validity not checked").length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(1);
+    expect(within(screen.getByTestId(/^training-course-row-/)).getByText("Expired at joining")).toBeTruthy();
+    fireEvent.click(screen.getByRole("switch", { name: "Show only items needing action" }));
+    expect(screen.getAllByTestId(/^training-course-row-/)).toHaveLength(1);
     expect(screen.queryByText("Incomplete")).toBeNull();
+  });
+  it("labels a contract-period-derived end date", async () => {
+    const data = value(0);
+    data.contractEndSource = "contract_period";
+    data.canonical = { contractPeriodMonths: 6 };
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));
+    mount();
+    fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    const label = screen.getByText("Calculated contract end (based on contract period)");
+    expect(label.parentElement?.textContent).toContain("21-Apr-2027");
   });
   it("shows an incomplete check and its missing fact with Retry", async () => {
     vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(value(17))));

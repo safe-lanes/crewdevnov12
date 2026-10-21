@@ -162,6 +162,37 @@ describe("accepted checklist evidence in isolated tenant schemas", () => {
     expect(audit.recorded_at).toBeTruthy();
     expect((await pools[1].query("SELECT block_expiring_during_contract AS flag FROM adm_training_compliance_settings")).rows[0].flag).toBe(false);
   });
+  it("reads expiry classification by master identity and applies an explicit No, not a missing date guess", async () => {
+    tenant = 0;
+    await pools[0].query("UPDATE crew_training_courses SET expiry=NULL");
+    const first = await calculateRelieverTrainingCompliance({ planUuid: ids.plan, assignmentUuid: ids.assignment });
+    expect(first.courses[0]).toMatchObject({ state: "Expiry not recorded",
+      chosenCertificate: { certificateExpires: true } });
+    await pools[0].query("UPDATE adm_training_master_v2 SET certificate_expires=false WHERE tm_uuid=$1", [ids.courseA]);
+    const next = await calculateRelieverTrainingCompliance({ planUuid: ids.plan, assignmentUuid: ids.assignment });
+    expect(next.courses[0]).toMatchObject({ state: "Valid, no expiry",
+      chosenCertificate: { certificateExpires: false } });
+  });
+  it("missing-expiry setting defaults OFF, requires management, is tenant scoped and audited", async () => {
+    tenant = 0;
+    const invoke = async (body: any) => {
+      const res: any = { code: 200, status(code: number) { this.code = code; return this; },
+        json(data: unknown) { this.body = data; return this; } };
+      await trainingComplianceSettingsController.save({ user: { id: 42, userType: "Office" }, body } as any, res);
+      return res;
+    };
+    expect((await pools[0].query("SELECT block_missing_expiry AS flag FROM adm_training_compliance_settings")).rows[0].flag).toBe(false);
+    expect((await invoke({ blockExpiringDuringContract: false, blockMissingExpiry: true })).code).toBe(403);
+    await pools[0].query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES($1,'access_control','manage',true)`, [ids.companyA]);
+    expect((await invoke({ blockExpiringDuringContract: false, blockMissingExpiry: true, actorId: 99 })).code).toBe(400);
+    expect((await invoke({ blockExpiringDuringContract: false, blockMissingExpiry: true })).body)
+      .toMatchObject({ blockMissingExpiry: true, blockExpiringDuringContract: false });
+    const audit = (await pools[0].query(`SELECT * FROM adm_access_control_audit WHERE action='block_missing_expiry'`)).rows[0];
+    expect(audit.actor.masterUserId).toBe(42);
+    expect(audit.before_value).toBe(false); expect(audit.after_value).toBe(true);
+    expect((await pools[1].query("SELECT block_missing_expiry AS flag FROM adm_training_compliance_settings")).rows[0].flag).toBe(false);
+  });
   it("freezes selected revision, rank, equivalents, certificates and policy; later edits cannot change prior evidence", async () => {
     const db = drizzle(pools[0]);
     let frozen: any;
@@ -261,7 +292,7 @@ describe("read-only operational training endpoint", () => {
     expect(access.menu.mock.calls.map(c => c[1])).toEqual(["Vessel", "Crew Database"]);
     expect(access.subject.mock.calls.map(c => c.slice(1))).toEqual([
       ["Vessel", ids.vessel, "vessel"], ["Crew Database", ids.crew] ]);
-    expect(result.payload).toMatchObject({ calculationVersion: "1.2.0", context: {
+    expect(result.payload).toMatchObject({ calculationVersion: "1.3.0", context: {
       crewUuid: ids.crew }, courses: [{ state: "Valid", certificates: [{
         selected: true, disposition: "selected", attachments: [{
           uuid: attachment, url: `/api/v2/crew-pool/training/attachments/${attachment}/raw` }] }] }] });

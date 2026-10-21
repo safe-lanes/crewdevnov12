@@ -3,19 +3,21 @@ import type { ComplianceResult } from "./types";
 export type TrainingBlocker = {
   kind: "training"; status: string; courseName?: string; courseUuid?: string; reason: string;
 };
-export function trainingChecklistPolicy(check: ComplianceResult, blockExpiring: boolean) {
+export function trainingChecklistPolicy(check: ComplianceResult, blockExpiring: boolean, blockMissingExpiry = false) {
   const blockers: TrainingBlocker[] = [];
   const warnings: string[] = [];
   for (const course of check.courses) {
     const reason = course.issues.filter(i => i.blocking !== false).map(i => i.message).join(" ");
     if (course.obligation === "mandatory" && (!course.complete || course.state === "Not held" ||
-        course.state === "Expired at joining" || (blockExpiring && course.state === "Expires during contract"))) {
+        course.state === "Expired at joining" || (blockExpiring && course.state === "Expires during contract") ||
+        (blockMissingExpiry && course.state === "Expiry not recorded"))) {
       blockers.push({ kind: "training", courseName: course.name, courseUuid: course.courseUuid,
         status: !course.complete ? "INCOMPLETE" : course.state!,
         reason: !course.complete ? reason || "The training check is incomplete. Correct the course record and retry."
           : `${course.state}. ${course.state === "Expires during contract"
-            ? "Tenant policy requires full-contract validity." : "Provide a valid certificate at joining."}` });
-    } else if (course.state === "Expires during contract" || course.obligation === "recommended" &&
+            ? "Tenant policy requires full-contract validity." : course.state === "Expiry not recorded"
+              ? "Enter the expiry date in crew profile → D3 Training Courses." : "Provide a valid certificate at joining."}` });
+    } else if (course.state === "Expires during contract" || course.state === "Expiry not recorded" || course.obligation === "recommended" &&
         (!course.complete || ["Not held", "Expired at joining"].includes(course.state ?? ""))) {
       warnings.push(`${course.name}: ${course.state || "check incomplete"}.`);
     }

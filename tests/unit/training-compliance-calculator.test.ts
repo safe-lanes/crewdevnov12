@@ -4,7 +4,7 @@ import { contractEndDate } from "@server/v2/shared/training-compliance/dates";
 import { TRAINING_COMPLIANCE_VERSION, type ComplianceInput, type TrainingCertificate } from "@server/v2/shared/training-compliance/types";
 
 const cert = (id: string, expiry: string | null, courseUuid = "course-a", issued = "2026-01-01"): TrainingCertificate =>
-  ({ certificateUuid: id, courseUuid, name: id, number: id, issued, expiry });
+  ({ certificateUuid: id, courseUuid, name: id, number: id, issued, expiry, certificateExpires: false });
 function input(certificates: TrainingCertificate[] = []): ComplianceInput {
   return { assignmentUuid: "assignment", vesselUuid: "vessel", contractRankUuid: "captured-rank",
     plannedJoiningDate: "2026-10-21", contractRangeEndMonths: 6, certificates,

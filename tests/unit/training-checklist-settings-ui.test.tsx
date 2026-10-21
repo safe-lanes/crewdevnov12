@@ -15,8 +15,11 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); client.clear(); });
 describe("training checklist settings and saved evidence", () => {
-  it("shows default-off tenant setting with its exact name and saves only the flag", async () => {
-    vi.mocked(apiRequest).mockImplementation(async (method: string) => json({ blockExpiringDuringContract: method === "PUT" }));
+  it("shows default-off tenant settings and saves both policy flags", async () => {
+    vi.mocked(apiRequest).mockImplementation(async (method: string) => json({
+      blockExpiringDuringContract: method === "PUT",
+      blockMissingExpiry: false,
+    }));
     mount(<TrainingCompliancePolicySetting />);
     expect(await screen.findByText("Block mandatory courses expiring during contract")).toBeTruthy();
     const checkbox = await screen.findByTestId("training-block-expiring");
@@ -24,7 +27,15 @@ describe("training checklist settings and saved evidence", () => {
     fireEvent.click(checkbox);
     fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("PUT", "/api/v2/admin/training-compliance/settings",
-      { blockExpiringDuringContract: true }));
+      { blockExpiringDuringContract: true, blockMissingExpiry: false }));
+  });
+  it("preserves the existing contract-expiry setting when saving missing-expiry policy", async () => {
+    vi.mocked(apiRequest).mockResolvedValue(json({ blockExpiringDuringContract: true, blockMissingExpiry: false }));
+    mount(<TrainingCompliancePolicySetting />);
+    fireEvent.click(await screen.findByTestId("training-block-missing-expiry"));
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("PUT", "/api/v2/admin/training-compliance/settings",
+      { blockExpiringDuringContract: true, blockMissingExpiry: true }));
   });
   it("saves an independent default-off grant per exact parent role UUID", async () => {
     vi.mocked(apiRequest).mockImplementation(async (method: string) => json({ allowed: method === "PUT" }));
