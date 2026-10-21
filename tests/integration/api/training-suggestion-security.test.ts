@@ -66,6 +66,7 @@ describe("training suggestions use real authentication, grants and tenant/vessel
     const { suggestionTestContext } = await import("@server/v2/db") as any;
     const { authMiddleware } = await import("@server/middleware/authMiddleware");
     const { complianceSuggestionRoutes } = await import("@server/v2/training-needs/complianceSuggestionController");
+    const { getOnboardTrainingCompliance } = await import("@server/v2/vessel/controllers/onboardTrainingComplianceController");
     app = express();
     app.use(express.json());
     app.use((req, res, next) => {
@@ -75,6 +76,7 @@ describe("training suggestions use real authentication, grants and tenant/vessel
       suggestionTestContext.run(drizzle(pools[index]), next);
     });
     app.use(authMiddleware); app.use("/api/v2/training-needs/compliance", complianceSuggestionRoutes);
+    app.get("/api/v2/vessel/:vesselUuid/training-compliance", getOnboardTrainingCompliance);
   });
   afterAll(async () => {
     if (previous.secret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previous.secret;
@@ -85,6 +87,21 @@ describe("training suggestions use real authentication, grants and tenant/vessel
   });
   it("refuses unauthenticated requests", async () => {
     expect((await request(app).post(`/api/v2/training-needs/compliance/${suggestion}/confirm`).send({})).status).toBe(401);
+  });
+  it("onboard matrix requires a signed login and refuses browser date overrides", async () => {
+    const url = `/api/v2/vessel/${vessel}/training-compliance`;
+    expect((await request(app).get(url)).status).toBe(401);
+    const bearer = jwt.sign({ id: users.office, userType: "Office", domain: "a" }, secret);
+    expect((await request(app).get(`${url}?today=1990-01-01`).set("Authorization", `Bearer ${bearer}`)).status).toBe(400);
+  });
+  it("onboard matrix allows own vessel, refuses another vessel and another tenant", async () => {
+    for (const [actor, domain, status] of [["ship", "a", 200], ["other", "a", 403], ["office", "b", 403]] as const) {
+      const bearer = jwt.sign({ id: users[actor], userType: actor === "office" ? "Office" : "Ship", domain }, secret);
+      const response = await request(app).get(`/api/v2/vessel/${vessel}/training-compliance`).set("Authorization", `Bearer ${bearer}`);
+      expect(response.status).toBe(status);
+      if (status === 200) expect(response.body.crew[0]).toMatchObject({ assignmentUuid: assignment, status: "incomplete" });
+      else expect(JSON.stringify(response.body)).not.toContain("TEST ONLY");
+    }
   });
   it("refuses a role with View but without Training Create", async () => {
     expect((await call("denied").send({})).status).toBe(403);

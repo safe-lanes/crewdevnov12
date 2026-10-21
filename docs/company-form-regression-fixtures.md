@@ -1,3 +1,33 @@
+# Vessel Training Matrix slice 7 — 21-Oct-2026
+
+- Reuses fixture vessel `a4120000-0000-4000-8000-000000000001`
+  (TEST ONLY PDF layout review), crew
+  `a4120000-0000-4000-8000-000000000004` (TEST ONLY PDF Layout Seafarer),
+  on-board assignment `a4120000-0000-4000-8000-000000000005`, planned
+  reliever assignment `dc2528aa-45d1-4507-95a3-5128b9501065`, and planning
+  `068511d9-9c64-4125-9e55-f3e4b41beac0`. No new vessel, crew, assignment
+  or planning root.
+- The on-board fixture formerly had no captured rank. A test-only declared
+  contract-rank context is now retained for that exact assignment, with
+  `rank_source.method=registered_fixture_declared_contract_rank`, using the
+  registered fixture's explicit Chief Officer UUID. This is synthetic fixture
+  preparation, **not** a production backfill/name match or a claim of historical
+  Deploy capture. Already frozen signatures/PDFs keep their original values.
+- Reuses the three slice 4 certificates and slice 6 renewal
+  `9471834c-cff2-4529-b308-a43589c431af`. Only their dates and the exact fixture
+  plan's incumbent link/reliever dates are temporarily varied, then restored
+  from the ignored baseline file. Master expiry flags, equivalents and released
+  matrix remain unchanged.
+- `node scripts/verify-vessel-training-matrix.mjs --closing` checks main-preview
+  dots, true touch tap, shared details and identical input/result parity with
+  the reliever screen. Preparation uses tightly UUID-scoped SQL on these
+  registered fixtures, not the UI or production flows. The matrix itself is
+  read-only. The reliever screen's normal suggestion reconciliation is allowed;
+  after restoration it is reconciled again so generated needs are not stale.
+- Office development persona 24/Admin uses its existing Vessel/Crew Database
+  View grants. No grant changes. The separate older no-rank on-board fixture
+  remains available for grey Incomplete dots.
+
 # Training Needs suggestion acceptance — 21-Oct-2026
 
 Reuses the registered TEST ONLY PDF layout review vessel
