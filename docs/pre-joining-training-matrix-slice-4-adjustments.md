@@ -33,6 +33,8 @@ Other visible differences, retained and disclosed for review:
   exactly what is being checked.
 - Status uses written, coloured badges rather than dots alone. This makes
   Not held and incomplete checks explicit and does not rely on colour.
+  Written Mandatory/Recommended summaries include course counts; complete
+  empty groups instead say None required for this rank.
 - A certificate's name/number and whether it is an equivalent appear beneath
   Status. The Rank requirement column states Mandatory or Recommended.
 - The mock-up's separate company course-code column is absent; the approved
@@ -121,3 +123,42 @@ replay produced all four cases with no page errors.
 requires a backend newer than HEAD and unchanged HEAD/listening PID throughout.
 `node scripts/build-training-compliance-presentation-gallery.mjs` refuses to
 deliver a gallery from a draft or failed run.
+
+## Step 4 — closing gates
+
+The full configured suite ran against the registered isolated test database:
+
+| Gate | Result |
+|---|---|
+| Full suite | **1,526 passed / 162 failed / 67 pending**, 1,755 total |
+| Failure comparison with slice 4 | **No new failures; no removed failures** |
+| Company Forms | **96 discovered suites; 648 passed; zero skipped/pending/todo** |
+| TypeScript | **222 diagnostics**, none in changed compliance implementation |
+| Focused API | **32 passed** |
+| Focused UI | **17 passed** |
+
+Existing full-suite failures are not described as a passing suite. Company
+Forms results were checked by the existing full-area discovery/check helper
+against the full run, not by selecting a smaller set.
+
+Raw evidence is under `generated-artifacts/training-slice4-adjustments/`:
+`full-suite.json`, `gates.json`, `typescript.log`, focused reports and
+`browser-evidence.json`. The self-contained delivered gallery is
+`training-presentation-review.html`, generated only after the closing replay.
+
+| Step | Commit | UTC time, 21-Oct-2026 |
+|---|---|---|
+| 1 — category/order metadata | `3202f2fc875d45cd4b6bf880139d90bc9b0c8cf8` | 08:05:28 |
+| 2 — presentation / UI tests | `99e64c2657010bc31ee8a9baf077ddd67db8526c` | 08:06:53 |
+| 3 — registered clicked scenarios | `8f1f040d0354f832cbc5a30f9493ece8bce29a7b` | 08:14:13 |
+
+This closing report is committed as step 4, followed by a managed backend
+restart and the final clicked replay. The actual final HEAD/commit time and
+backend start are recorded in the generated browser evidence and gallery,
+avoiding a self-referencing commit hash here. The runner refuses a changed
+HEAD/PID or a backend older than the closing commit.
+
+Shared training calculator, reader, dates, inputs and calculation version
+have no diff from the approved slice 4 HEAD. Only read-only presentation
+metadata, client display, tests, registered verification tooling and review
+documentation change. Training enforcement remains **disabled**.
