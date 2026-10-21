@@ -34864,3 +34864,27 @@ Management signature was removed **only from that draft**, through the normal
 authoring structure API, before guarded release. Release correctly refused it
 until that change; no validation was relaxed. The retained original version and
 its PDF/signature records were not changed.
+
+### Live Training Matrix corrections — 21-Oct-2026
+
+Reuses the slice 4 fixture vessel, seafarer, exact planned assignment, matrix
+and three certificate UUIDs in `training-compliance-slice-4-fixtures.json`.
+No new vessel, crew, assignment, Company Form or rank fixture is created.
+`scripts/verify-training-live-corrections.mjs` refuses non-allowlisted browser
+writes. It temporarily edits only this reliever's joining/own lengths and the
+issue dates of the registered long AFF/chemical certificates, then restores
+their exact previous values in finally. Checklist stays No; no form is started,
+completed or released. X/outside confirmation is exercised through the screen.
+
+Existing Office development persona 24 (parent Admin role, same persisted
+permission/scope checks) demonstrates the new tenant missing-expiry setting.
+It changes OFF to ON through Access Control's management screen, records the
+server-derived actor and before/after audit, then restores OFF through the same
+audited endpoint. No grant is added. Existing expiry-during-contract policy is
+preserved. This is development-persona UI evidence, not parent-login evidence.
+
+The legacy fixture certificate number ending PERMANENT is an identifier only:
+it does not decide whether the training master says Certificate expires.
+Current default Yes deliberately makes that blank expiry amber. Master courses
+are not changed to No merely to obtain green screenshots. Registered originals,
+signatures and PDF files remain unchanged.

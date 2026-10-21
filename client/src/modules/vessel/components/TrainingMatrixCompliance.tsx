@@ -169,8 +169,18 @@ function courseActions(course: CourseResult) {
     actions.add(`${count} ${count === 1 ? "certificate was" : "certificates were"} issued after planned joining and cannot be counted. Add a certificate valid on the joining date in crew profile → D3.`);
   }
   course.issues.forEach(issue => actions.add(issueAction(issue)));
-  course.certificates.forEach(entry => entry.flags.forEach(flag => actions.add(`${flag} — correct the record in crew profile → D3 Training Courses.`)));
   return [...actions];
+}
+
+function rowNextAction(course: CourseResult) {
+  if (course.state === "Not held") return "Add the certificate in crew profile → D3.";
+  if (course.state === "Expiry not recorded") return "Enter the expiry date in crew profile → D3.";
+  if (course.state === "Expired at joining") return "Add a current certificate in crew profile → D3.";
+  if (course.state === "Expires during contract") return "Renew in D3 before the contract ends.";
+  if (!course.complete) return "Correct the missing information shown above, then retry.";
+  if (course.issues.some(i => i.code.startsWith("INVALID_"))) return "Correct the certificate dates in D3.";
+  if (course.issues.some(i => i.code === "ISSUE_DATE_NOT_RECORDED")) return "Enter the issue date in D3.";
+  return "";
 }
 
 function actionBanner(courses: CourseResult[]) {
@@ -386,7 +396,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                 </section>
               )}
               <a
-                href={`/crew-pool?crew=${encodeURIComponent(result.context.crewUuid)}&section=training`}
+                href={`/crew-pool?crew=${encodeURIComponent(result.context.crewUuid)}&section=D3`}
                 className="inline-flex rounded text-sm font-medium text-sky-800 underline underline-offset-2 hover:text-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
                 data-testid="training-open-crew-profile"
               >Open crew profile (D3)</a>
@@ -397,7 +407,8 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
               </div>
 
               <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-                <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[1000px] table-fixed border-collapse text-left text-sm">
+                  <colgroup>{[8, 20, 13, 9, 19, 9, 9, 13].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}</colgroup>
                   <thead className="bg-sky-700 text-white">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Company ID</th>
@@ -441,11 +452,11 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, open }: Tra
                                 </div>
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-slate-700" data-testid={`training-certificate-number-${course.courseUuid}`}>{certificate?.number || "—"}</td>
+                            <td className="break-words px-3 py-3 text-slate-700" data-testid={`training-certificate-number-${course.courseUuid}`}>{certificate?.number || "—"}</td>
                             <td className="px-3 py-3 text-slate-700">{course.obligation === "mandatory" ? "Mandatory" : "Recommended"}</td>
                             <td className="px-3 py-3">
                               <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${getStatusTone(course.state, course.complete)}`}>{statusText}</span>
-                              {courseActions(course).length > 0 && <ul className="mt-1.5 max-w-[240px] list-disc space-y-1 pl-4 text-xs text-amber-900">{courseActions(course).map(action => <li key={action}>{action}</li>)}</ul>}
+                              {rowNextAction(course) && <p className="mt-1.5 text-xs text-amber-900">{rowNextAction(course)}</p>}
                             </td>
                             <td className="px-3 py-3 text-slate-700">{certificate ? certificate.issued ? dateLabel(certificate.issued) : "Not recorded" : "—"}</td>
                             <td className="px-3 py-3 text-slate-700">{certificate ? certificate.expiry ? dateLabel(certificate.expiry) : course.state === "Expiry not recorded" ? "Not recorded" : "No expiry" : "—"}</td>

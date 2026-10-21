@@ -231,7 +231,7 @@ describe("read-only Reliever Status training display", () => {
     expect(within(screen.getByTestId("training-course-row-issue-row")).getByText("Basic Safety").textContent).not.toContain("CERT-0042");
     expect(screen.getByText("1 certificate is missing its issue date: Basic Safety. Correct in crew profile → D3 Training Courses.")).toBeTruthy();
     expect(screen.getByText("1 certificate is missing its expiry date: Survival Craft. Correct in crew profile → D3 Training Courses.")).toBeTruthy();
-    expect(screen.getByTestId("training-open-crew-profile").getAttribute("href")).toBe("/crew-pool?crew=crew-uuid-for-test&section=training");
+    expect(screen.getByTestId("training-open-crew-profile").getAttribute("href")).toBe("/crew-pool?crew=crew-uuid-for-test&section=D3");
     expect(within(screen.getByTestId("training-course-row-expiry-row")).getByText("Expiry not recorded").className).toContain("bg-amber-50");
   });
   it("shows missing-end guidance and retains/counts joining-date gaps", async () => {

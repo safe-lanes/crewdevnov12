@@ -79,3 +79,26 @@ equivalent wording; no selection-rule jargon or repeated status. Correction
 flags alone stay visible without creating an otherwise empty expansion.
 Saved history also distinguishes missing expiry from permanent validity and
 records the new policy/source without inventing values for older snapshots.
+
+### Closing verification
+
+Main-preview browser replay: `node scripts/verify-training-live-corrections.mjs
+--closing`. It records HEAD, commit time, live backend PID/start time and checks
+that HEAD/PID remain unchanged throughout. It proves Save/refresh, both discard
+choices, own-period fallback, joining gaps with no end, amber missing expiry,
+the banner, D3 navigation and server-derived policy audit; restores all fixture
+edits and both tenant settings. Approved development personas are used; no
+permission/scope bypass or API-response stubs are used.
+
+The first browser replay exposed that `section=training` opened the crew
+dashboard, not D3. The final link uses an explicit D3 anchor and is verified
+in the actual profile screen. Type-only API declarations accept the nullable
+payloads already supported by the server. Existing non-expiring case-table
+certificates now explicitly carry Certificate expires: No; assertions remain
+unchanged except for the newly required missing-end instruction.
+
+The final measured gates and reviewable self-contained screenshot gallery are
+written under ignored `generated-artifacts/training-live-corrections/` by
+`node scripts/report-training-live-corrections.mjs`. Bounds: full suite at most
+162 failed/67 pending, all Company Forms tests passing without skips, and at
+most 222 TypeScript diagnostics. No slice 6 work is included.

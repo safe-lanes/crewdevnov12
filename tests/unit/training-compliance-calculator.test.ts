@@ -125,7 +125,7 @@ describe("shared training compliance kernel", () => {
     expect(result.courses[0]).toMatchObject({ state, complete: true, validAtJoining: atJoining,
       validThroughContract: null, chosenCertificate: { certificateUuid: "held" } });
     expect(result.issues).toContainEqual(expect.objectContaining({ code: "CONTRACT_END_NOT_SET",
-      blocking: false, message: "Contract end not set: full-contract validity not checked" }));
+      blocking: false, message: "Contract end not set: enter Contract End Range to check validity for the whole contract" }));
   });
   it("missing contract end never hides a missing certificate gap", () => {
     const result = calculateTrainingCompliance({ ...input(), contractRangeEndMonths: null });

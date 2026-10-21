@@ -5,7 +5,7 @@ const advanced = "a3030000-0000-4000-8000-000000000002";
 const specialist = "a3030000-0000-4000-8000-000000000003";
 const certificate = (number: string, expiry: string | null, issued: string | null = "2026-01-01", courseUuid = basic): TrainingCertificate =>
   ({ certificateUuid: number, courseUuid, number, name: courseUuid === basic ? "Basic fire fighting"
-    : courseUuid === advanced ? "Advanced fire fighting" : "Specialist fire fighting", issued, expiry });
+    : courseUuid === advanced ? "Advanced fire fighting" : "Specialist fire fighting", issued, expiry, certificateExpires: false });
 const input = (certificates: TrainingCertificate[], changes: Partial<ComplianceInput> = {}): ComplianceInput => ({
   assignmentUuid: "synthetic-assignment", vesselUuid: "synthetic-vessel", contractRankUuid: "captured-rank",
   plannedJoiningDate: "2026-10-21", contractRangeEndMonths: 6, certificates,

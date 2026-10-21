@@ -5717,7 +5717,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const renderA33TrainingCourse = () => {
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div id="crew-training-courses" className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D3 Training Course</h3>
           {canEditSection('D') && (
@@ -9646,6 +9646,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
+    if (sectionId === "D3") {
+      document.getElementById("crew-training-courses")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     let targetRef;
     switch (sectionId) {
       case 'A':

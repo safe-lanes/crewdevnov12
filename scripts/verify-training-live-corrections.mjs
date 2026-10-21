@@ -173,18 +173,13 @@ try {
   await expect(details()).toContainText("Correct in crew profile → D3 Training Courses.");
   await shot("05-actionable-banner-and-d3-link");
   const link = details().getByTestId("training-open-crew-profile");
-  assert.equal(await link.getAttribute("href"), `/crew-pool?crew=${fixture.crewUuid}&section=training`);
-  const popupPromise = context.waitForEvent("page");
-  await link.click();
-  const profilePage = await popupPromise;
-  await profilePage.waitForLoadState("networkidle");
-  assert.ok(profilePage.url().includes(`crew=${fixture.crewUuid}`));
-  await expect(profilePage.getByText("D3 Training Courses", { exact: true })).toBeVisible();
-  await profilePage.screenshot({ path: `${root}/06-open-crew-d3.png`, animations: "disabled" });
+  assert.equal(await link.getAttribute("href"), `/crew-pool?crew=${fixture.crewUuid}&section=D3`);
+  await Promise.all([page.waitForURL(/\/crew-pool\?/), link.click()]);
+  await expect(page.locator("#crew-training-courses")).toBeInViewport();
+  await expect(page.getByText("D3 Training Course", { exact: true })).toBeVisible();
+  await page.screenshot({ path: `${root}/06-open-crew-d3.png`, animations: "disabled" });
   report.screenshots.push(`${root}/06-open-crew-d3.png`);
-  await profilePage.close();
   check("Banner counts affected certificates/names with D3 corrections; Open crew profile (D3) reaches the actual D3 screen.");
-  await closeDetails();
 
   await page.goto(`${base}/admin`, { waitUntil: "networkidle" });
   await page.getByTestId("sidebar-item-access-control").click();

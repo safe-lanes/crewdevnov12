@@ -97,11 +97,11 @@ export interface CreatePlanningInput {
   contractEndRangeEndMonths?: number;
   relieverCrewUuid?: string;
   relieverSignOnDate?: string | null;
-  joiningPortUuid?: string;
+  joiningPortUuid?: string | null;
   joiningStatus?: string;
-  relieverContractPeriodMonths?: number;
-  relieverContractEndRangeStartMonths?: number;
-  relieverContractEndRangeEndMonths?: number;
+  relieverContractPeriodMonths?: number | null;
+  relieverContractEndRangeStartMonths?: number | null;
+  relieverContractEndRangeEndMonths?: number | null;
 }
 
 export interface UpdatePlanningInput {
@@ -248,13 +248,13 @@ export const vesselApiV2 = {
    * This updates crew_assignments.isCurrent to true and moves relieverCrewUuid to crewUuid
    */
   async signOnReliever(planUuid: string, data: {
-    signOnDate?: string;
-    signOnPort?: string;
-    contractPeriodMonths?: number;
-    contractEndRangeStartMonths?: number;
-    contractEndRangeEndMonths?: number;
-    plannedConfirmedDate?: string;
-    travelStartDate?: string;
+    signOnDate?: string | null;
+    signOnPort?: string | null;
+    contractPeriodMonths?: number | null;
+    contractEndRangeStartMonths?: number | null;
+    contractEndRangeEndMonths?: number | null;
+    plannedConfirmedDate?: string | null;
+    travelStartDate?: string | null;
   }): Promise<VesselPlanningV2> {
     const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/sign-on`, data);
     if (!response.ok) {
