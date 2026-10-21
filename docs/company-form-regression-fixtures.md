@@ -34828,3 +34828,39 @@ ordered company course 18 then 22. The malformed-issue flag remains disclosed
 even when a valid equivalent makes both course states compliant. The replay
 restores the plan to joining 01-May-2027 / 6 months. See `presentationReview`
 in the retained manifest. No current data is replaced by mocked API results.
+
+### Training checklist acceptance — slice 5 (21-Oct-2026)
+
+Reuses the exact slice 4 vessel, dedicated crew, assignment, plan, matrix and
+three certificates above. Does not touch the protected fixture crew with real
+vessel-02 history. Certificate edits and reliever dates are restored; successful
+acceptances and their audit/snapshot history are retained, never deleted.
+
+The existing registered Company Form `a4120000-0000-4000-8000-000000000012`
+(SAMPLE PDF layout review — company-name, numeric 5297) receives ONE before-joining
+mandatory draft/version for combined refusal evidence, authored through Forms
+Configuration and then reused on every replay. Every condition card is limited
+to fixture-only vessel `a4120000-0000-4000-8000-000000000001`; the guarded release
+must pass that restriction. Original sample versions/files remain pinned and
+unchanged. Its copied version/part/question descendants are retained fixtures.
+An explicit internal acceptance harness records a requirement against the
+registered planned assignment, not a retrospective operational trigger. Stable
+resolution event key: `a4250000-0000-4000-8000-000000000001`. Exact generated
+identities are recorded after provisioning.
+
+Verification uses existing Office user 24, parent role Admin
+`d57dd06b-7c4f-4152-8902-c8af0422b3e6`, as a development persona subject to the
+real persisted authority/scope checks. Only `training_compliance/override` is
+temporarily granted through Access Control, audited, then restored to its
+original default-off decision. No other role/menu/Company Forms grant is added.
+Tenant expiry policy is switched ON for the requested evidence and restored to
+OFF through audited APIs. These are explicit acceptance actions, not default
+grants or automatic fixture creation on every test run.
+
+Exact new version, copied parts/questions, condition set, resolution run and
+requirement identities: [slice 5 fixture manifest](training-checklist-slice-5-fixtures.json).
+Draft 7459 was copied from the on-board sample: its on-board-only Vessel
+Management signature was removed **only from that draft**, through the normal
+authoring structure API, before guarded release. Release correctly refused it
+until that change; no validation was relaxed. The retained original version and
+its PDF/signature records were not changed.

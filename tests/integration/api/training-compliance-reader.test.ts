@@ -13,12 +13,18 @@ import { getDb } from "@server/v2/db";
 import { calculateRelieverTrainingCompliance } from "@server/v2/shared/training-compliance/service";
 import { getRelieverTrainingCompliance } from "@server/v2/vessel/controllers/trainingComplianceController";
 import { AttachmentAccessError } from "@server/v2/shared/attachmentAccess";
+import { trainingChecklistEvidence, recordTrainingAcceptance } from "@server/v2/shared/training-compliance/checklistEvidence";
+import { trainingOverrideAllowed } from "@server/v2/shared/training-compliance/authority";
+import { trainingComplianceSettingsController } from "@server/v2/admin/controllers/trainingComplianceSettingsController";
 
 const tables = ["crew_members_v2", "crew_assignments", "vessel_planning_v2", "master_vessels",
   "crew_assignment_rule_context", "adm_available_ranks_v2", "adm_training_master_v2",
   "adm_company_trainings_v2", "adm_company_training_requirements_v2", "adm_company_training_groups_v2",
   "adm_training_matrix_vessel_revisions_v2", "adm_training_matrix_equivalents_v2",
-  "adm_training_matrix_vessel_drafts_v2", "crew_training_courses", "crew_training_attachments"];
+  "adm_training_matrix_vessel_drafts_v2", "crew_training_courses", "crew_training_attachments",
+  "adm_training_compliance_settings", "training_checklist_snapshots", "master_users",
+  "adm_rolemaster_ac", "adm_resource_action_grants", "adm_permission_actions",
+  "adm_access_control_state", "adm_access_control_audit"];
 const schemas = [0, 1].map(() => `training_calc_${randomUUID().replaceAll("-", "")}`);
 const pools: Pool[] = [], dbs: any[] = [], observed: string[][] = [];
 const databaseErrors: string[] = [];
@@ -63,6 +69,10 @@ beforeAll(async () => {
       (LIKE public.${ident(table)} INCLUDING ALL)`);
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}` });
     pools.push(pool);
+    await pool.query(`CREATE TRIGGER training_evidence_immutable BEFORE UPDATE OR DELETE ON training_checklist_snapshots
+      FOR EACH ROW EXECUTE FUNCTION public.training_checklist_evidence_immutable()`);
+    await pool.query(`CREATE TRIGGER checklist_verified BEFORE INSERT OR UPDATE OF deployment_checklist_completed ON vessel_planning_v2
+      FOR EACH ROW EXECUTE FUNCTION public.frm_checklist_verified_write()`);
     const db = drizzle(pool), transaction = db.transaction.bind(db);
     dbs.push({ transaction: async (work: any, options: any) => transaction(async tx => {
       observed.push([(await tx.execute(sql`SHOW transaction_read_only`)).rows[0].transaction_read_only as string,
@@ -88,7 +98,15 @@ beforeEach(async () => {
     await add("crew_assignments", { assign_uuid: ids.assignment, crew_uuid: ids.crew, vessel_uuid: ids.vessel,
       assignment_type: "Planned", sign_on_date: "2035-01-01", is_current: false, is_deleted: false });
     await add("crew_assignment_rule_context", { assign_uuid: ids.assignment, contract_rank_uuid: ids.rank, contract_rank_label: "Captured rank" });
+    await add("adm_training_compliance_settings", { singleton: true, block_expiring_during_contract: false });
+    await add("adm_rolemaster_ac", { ruid: ids.companyA, assigned_role: "Synthetic Crew Manager", roletype: "Office",
+      is_active: true, is_deleted: false, parent_owned: true });
+    await add("master_users", { id: 42, user_uuid: randomUUID(), role: "Synthetic Crew Manager", user_type: "Office" });
+    await add("adm_access_control_state", { singleton: true, category_ready: false });
+    for (const [resource, action] of [["training_compliance", "override"], ["access_control", "manage"], ["company_forms", "override_checklist"]])
+      await add("adm_permission_actions", { resource, action, label: action, sort_order: 1 });
     await add("vessel_planning_v2", { plan_uuid: ids.plan, vessel_uuid: ids.vessel, rank_id: randomUUID(),
+      deployment_checklist_completed: false,
       reliever_assign_uuid: ids.assignment, reliever_crew_uuid: ids.crew,
       reliever_sign_on_date: "2026-01-31", reliever_contract_end_range_end_months: 1,
       sign_on_date: "2035-08-01", contract_end_range_end_months: 12, is_deleted: false });
@@ -106,6 +124,97 @@ beforeEach(async () => {
       expiry: index ? "2025-01-01" : "2026-12-31", is_deleted: false });
   }
   tenant = 0;
+});
+
+describe("accepted checklist evidence in isolated tenant schemas", () => {
+  it("default-denies training authority; Company Forms grant and browser role claims grant nothing", async () => {
+    const db = drizzle(pools[0]), req: any = { user: { id: 42, userType: "Office", roleId: "forged-role" } };
+    expect(await trainingOverrideAllowed(req, db)).toBe(false);
+    await pools[0].query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES($1,'company_forms','override_checklist',true)`, [ids.companyA]);
+    expect(await trainingOverrideAllowed(req, db)).toBe(false);
+    await pools[0].query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES($1,'training_compliance','override',true)`, [ids.companyA]);
+    expect(await trainingOverrideAllowed(req, db)).toBe(true);
+    expect(await trainingOverrideAllowed({ user: { id: 999, userType: "Office" } } as any, db)).toBe(false);
+    expect(await trainingOverrideAllowed({ user: { id: 42, userType: "Ship" } } as any, db)).toBe(false);
+    await pools[0].query(`UPDATE adm_rolemaster_ac SET is_active=false WHERE ruid=$1`, [ids.companyA]);
+    expect(await trainingOverrideAllowed(req, db)).toBe(false);
+  });
+  it("settings require management, reject browser identity, and audit server identity and before/after", async () => {
+    tenant = 0;
+    const invoke = async (body: any) => {
+      const res: any = { code: 200, status(code: number) { this.code = code; return this; },
+        json(data: unknown) { this.body = data; return this; } };
+      await trainingComplianceSettingsController.save({ user: { id: 42, userType: "Office" }, body } as any, res);
+      return res;
+    };
+    expect((await invoke({ blockExpiringDuringContract: true })).code).toBe(403);
+    await pools[0].query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES($1,'access_control','manage',true)`, [ids.companyA]);
+    expect((await invoke({ blockExpiringDuringContract: true, actorId: 999 })).code).toBe(400);
+    expect((await invoke({ blockExpiringDuringContract: true })).code).toBe(200);
+    const audit = (await pools[0].query("SELECT * FROM adm_access_control_audit")).rows[0];
+    expect(audit.actor.masterUserId).toBe(42);
+    expect(audit.before_value).toBe(false);
+    expect(audit.after_value).toBe(true);
+    expect(audit.resource).toBe("training_compliance");
+    expect(audit.recorded_at).toBeTruthy();
+    expect((await pools[1].query("SELECT block_expiring_during_contract AS flag FROM adm_training_compliance_settings")).rows[0].flag).toBe(false);
+  });
+  it("freezes selected revision, rank, equivalents, certificates and policy; later edits cannot change prior evidence", async () => {
+    const db = drizzle(pools[0]);
+    let frozen: any;
+    const snapshot = await db.transaction(async tx => {
+      const evidence = await trainingChecklistEvidence(tx, ids.plan, ids.assignment);
+      expect(evidence.blockers).toEqual([]);
+      expect(evidence.canonical?.contractRankUuid).toBe(ids.rank);
+      expect(evidence.matrix?.revisionUuid).toBe(ids.revision);
+      expect(evidence.check.courses[0].chosenCertificate?.certificateUuid).toBe(ids.certificateA);
+      frozen = { ...evidence, overrides: null };
+      return recordTrainingAcceptance(tx, ids.plan, ids.assignment, { masterUserId: 42 }, frozen);
+    });
+    const before = (await pools[0].query("SELECT * FROM training_checklist_snapshots WHERE snapshot_uuid=$1", [snapshot.snapshotUuid])).rows[0];
+    await pools[0].query("UPDATE crew_training_courses SET expiry='2025-01-01' WHERE train_uuid=$1", [ids.certificateA]);
+    expect((await pools[0].query("SELECT * FROM training_checklist_snapshots WHERE snapshot_uuid=$1", [snapshot.snapshotUuid])).rows[0]).toEqual(before);
+    expect(before.evidence.check.courses[0].chosenCertificate.expiry).toBe("2026-12-31");
+    await expect(pools[0].query("UPDATE training_checklist_snapshots SET evidence='{}' WHERE snapshot_uuid=$1",
+      [snapshot.snapshotUuid])).rejects.toMatchObject({ code: "23514" });
+    await expect(pools[0].query("DELETE FROM training_checklist_snapshots WHERE snapshot_uuid=$1",
+      [snapshot.snapshotUuid])).rejects.toMatchObject({ code: "23514" });
+    const second = await db.transaction(tx => recordTrainingAcceptance(tx, ids.plan, ids.assignment, { masterUserId: 42 }, frozen));
+    expect(second.snapshotUuid).not.toBe(snapshot.snapshotUuid);
+    expect((await pools[0].query("SELECT count(*)::int AS n FROM training_checklist_snapshots")).rows[0].n).toBe(2);
+  });
+  it("enforces tenant-local expiry policy and never falls through to another tenant's setting", async () => {
+    await pools[0].query("UPDATE crew_training_courses SET expiry='2026-02-01'");
+    await pools[1].query("UPDATE adm_training_compliance_settings SET block_expiring_during_contract=true");
+    const first = await drizzle(pools[0]).transaction(tx => trainingChecklistEvidence(tx, ids.plan, ids.assignment));
+    expect(first.blockExpiringDuringContract).toBe(false);
+    expect(first.blockers).toEqual([]);
+    expect(first.warnings.join(" ")).toContain("Expires during contract");
+    await pools[0].query("UPDATE adm_training_compliance_settings SET block_expiring_during_contract=true");
+    const on = await drizzle(pools[0]).transaction(tx => trainingChecklistEvidence(tx, ids.plan, ids.assignment));
+    expect(on.blockers[0].status).toBe("Expires during contract");
+  });
+  it("calculation failure returns incomplete through savepoint while leaving the transaction usable", async () => {
+    const result = await drizzle(pools[0]).transaction(async tx => {
+      await tx.execute(sql`ALTER TABLE crew_training_courses RENAME COLUMN expiry TO hidden_expiry`);
+      const evidence = await trainingChecklistEvidence(tx, ids.plan, ids.assignment);
+      expect((await tx.execute(sql`SELECT 1 AS ok`)).rows[0].ok).toBe(1);
+      return evidence;
+    });
+    expect(result.blockers).toMatchObject([{ status: "INCOMPLETE", reason: expect.stringContaining("could not finish") }]);
+    await pools[0].query("ALTER TABLE crew_training_courses RENAME COLUMN hidden_expiry TO expiry");
+  });
+  it("raw Yes and Company Forms-only verification cannot bypass training", async () => {
+    await expect(pools[0].query("UPDATE vessel_planning_v2 SET deployment_checklist_completed=true WHERE plan_uuid=$1",
+      [ids.plan])).rejects.toMatchObject({ code: "23514" });
+    await expect(drizzle(pools[0]).transaction(async tx => {
+      await tx.execute(sql`SELECT set_config('sail.checklist_verified_plan',${ids.plan},true)`);
+      await tx.execute(sql`UPDATE vessel_planning_v2 SET deployment_checklist_completed=true WHERE plan_uuid=${ids.plan}`);
+    })).rejects.toThrow();
+  });
 });
 
 async function display(query: Record<string, string> = {}, planUuid = ids.plan) {

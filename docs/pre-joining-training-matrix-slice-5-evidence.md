@@ -40,3 +40,58 @@ Server-derived actor and time are stored separately from the evidence document.
 The evidence includes canonical inputs, all selected revision equivalents and
 rank requirements, candidate certificates, chosen results, policy/warnings and
 both independent override reasons/results.
+
+## Screens and navigation
+
+- **Vessel → TEST ONLY PDF layout review → Planning → Chief Officer reliever**:
+  choose Deployment Checklist Completed Yes. One refusal dialog contains both
+  domains. Known OUTSTANDING/STARTED mandatory forms have no override route.
+  Eligible forms and training each require their own permission and reason.
+- **Admin → Access Control**: exact tenant setting
+  “Block mandatory courses expiring during contract”, OFF by default.
+  Select a parent role and find the independent **Training compliance**
+  permission editor. Save permission/settings through normal audited APIs.
+- **Reliever Status → Accepted checklist history**: immutable accepted inputs,
+  names/rank as captured, matrix/calculation version, selected certificates and
+  dates, both override reasons, actor/time and fingerprint. Reads stored evidence,
+  not a fresh calculation. No expiry is labelled explicitly.
+
+## Verification
+
+Focused server coverage includes two isolated tenant schemas, real migration
+immutability/Yes-write triggers, canonical reader, actual persisted role
+resolution/default-deny training authority, management-only setting edits and
+server audit before/after values. Combined gate unit tests additionally cover
+both independent reasons/grants, known mandatory forms, incomplete checks,
+forged identity/reasons and normal warning acceptance. Automated tests do not
+write acceptance fixtures to development.
+
+Main preview reuses the slice 4 fixture and one version of the registered
+company-name sample, strictly limited to the fixture-only vessel. Exact identities
+and temporary/restored permission actions are in the fixture register/manifest.
+No real crew or original released Standard Forms were edited.
+
+`initial-acceptance-evidence.json` records seven successful clicked/request checks:
+named missing course; default-off authority; explicit unauthorized override
+refused (negative API check); screen override accepted with a written reason;
+expiry warnings accepted with policy OFF; certificate edited through normal D3
+API while saved snapshot content/fingerprint remains byte-for-byte identical;
+and setting ON through Access Control blocking expiring mandatory courses.
+This run stopped afterwards at the automated version-creation guard. That guard
+was not weakened: the single fixture draft was authored through Forms
+Configuration, and its guarded release and explicit harness requirement followed.
+
+The later browser run confirms the combined form/training refusal, including an
+explicit permitted training override request still refused for the mandatory
+form, plus preserved acceptance/override history. Earlier accepted scenarios
+cannot be replayed as a new normal acceptance once that deliberately retained
+mandatory fixture requirement exists: closing replays read their immutable
+snapshots, do not delete/disable the blocker to manufacture another pass.
+
+These are user-approved development personas with actual persisted grants,
+ownership and vessel checks. Normal parent sign-in remains the developers'
+production checklist item; these checks do not claim to be parent login tests.
+
+Restoration uses normal audited APIs: training override OFF, tenant policy OFF,
+fixture certificate/dates restored and checklist set No. The mandatory fixture
+requirement remains outstanding, intentionally, with all history retained.
