@@ -203,7 +203,8 @@ describe("read-only Reliever Status training display", () => {
     expect(screen.getAllByText("Covered by Basic fire fighting (accepted equivalent)").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Selection rule|Selected by the compliance calculation/)).toBeNull();
     expect(within(screen.getByTestId(`training-course-row-${equivalent.courseUuid}`)).getAllByText("Valid, no expiry")).toHaveLength(1);
-    expect(within(screen.getByTestId(`training-course-row-${flagged.courseUuid}`)).getByText("Name correction required — correct the record in crew profile → D3 Training Courses.")).toBeTruthy();
+    expect(within(screen.getByTestId(`training-course-row-${flagged.courseUuid}`)).getByText("Correct the flagged certificate record in D3.")).toBeTruthy();
+    expect(screen.getByLabelText("Training corrections needed").textContent).toContain("1 certificate needs correction: Flagged certificate. Name correction required. Correct in crew profile → D3 Training Courses.");
   });
 
   it("separates certificate numbers, gives counted correction actions and links to the crew profile D3 route", async () => {

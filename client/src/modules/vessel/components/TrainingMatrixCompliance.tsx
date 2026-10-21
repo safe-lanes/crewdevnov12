@@ -180,11 +180,13 @@ function rowNextAction(course: CourseResult) {
   if (!course.complete) return "Correct the missing information shown above, then retry.";
   if (course.issues.some(i => i.code.startsWith("INVALID_"))) return "Correct the certificate dates in D3.";
   if (course.issues.some(i => i.code === "ISSUE_DATE_NOT_RECORDED")) return "Enter the issue date in D3.";
+  if (course.certificates.some(entry => entry.flags.length > 0)) return "Correct the flagged certificate record in D3.";
   return "";
 }
 
 function actionBanner(courses: CourseResult[]) {
   const certificateIssues = new Map<string, { uuids: Set<string>; names: Set<string> }>();
+  const otherFlags = new Map<string, { uuids: Set<string>; names: Set<string> }>();
   const addCertificateIssue = (label: string, course: CourseResult, certificateUuid?: string) => {
     const item = certificateIssues.get(label) ?? { uuids: new Set<string>(), names: new Set<string>() };
     if (certificateUuid) item.uuids.add(certificateUuid);
@@ -192,6 +194,12 @@ function actionBanner(courses: CourseResult[]) {
     certificateIssues.set(label, item);
   };
   for (const course of courses) {
+    for (const entry of course.certificates) for (const flag of entry.flags) {
+      if (course.issues.some(issue => issue.certificateUuid === entry.certificate.certificateUuid && issue.message === flag)) continue;
+      const item = otherFlags.get(flag) ?? { uuids: new Set<string>(), names: new Set<string>() };
+      item.uuids.add(entry.certificate.certificateUuid); item.names.add(course.name);
+      otherFlags.set(flag, item);
+    }
     for (const issue of course.issues) {
       if (issue.code === "ISSUE_DATE_NOT_RECORDED") addCertificateIssue("missing issue date", course, issue.certificateUuid);
       else if (issue.code === "EXPIRY_NOT_RECORDED") addCertificateIssue("missing expiry date", course, issue.certificateUuid);
@@ -208,6 +216,10 @@ function actionBanner(courses: CourseResult[]) {
     return { text: `${description}: ${[...item.names].join(", ")}. Correct in crew profile → D3 Training Courses.` };
   });
   const stateGroups = new Map<string, Set<string>>();
+  for (const [flag, item] of otherFlags) {
+    const count = item.uuids.size;
+    items.push({ text: `${count} ${count === 1 ? "certificate needs" : "certificates need"} correction: ${[...item.names].join(", ")}. ${flag}. Correct in crew profile → D3 Training Courses.` });
+  }
   for (const course of courses) {
     const action = courseActions(course).find(value => !course.issues.some(issue => issueAction(issue) === value));
     if (action) {

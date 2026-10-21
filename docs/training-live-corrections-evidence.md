@@ -97,6 +97,12 @@ payloads already supported by the server. Existing non-expiring case-table
 certificates now explicitly carry Certificate expires: No; assertions remain
 unchanged except for the newly required missing-end instruction.
 
+The correction-only flag test additionally verifies that flags without a
+matching structured issue remain named in the banner and actionable on the
+row, without adding an expansion arrow. Full guidance stays in the banner;
+row instructions are concise so all requirements remain readable. All 20
+display tests pass with this behaviour.
+
 The final measured gates and reviewable self-contained screenshot gallery are
 written under ignored `generated-artifacts/training-live-corrections/` by
 `node scripts/report-training-live-corrections.mjs`. Bounds: full suite at most
