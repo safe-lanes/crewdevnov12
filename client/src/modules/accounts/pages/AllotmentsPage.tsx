@@ -146,7 +146,8 @@ export default function AllotmentsPage({
   const mayEdit = canEdit(MENU);
 
   const { vessels } = useVesselLookup();
-  const { vesselUuid, setVesselUuid } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
+  const [periodInputKey, setPeriodInputKey] = useState(0);
   const vesselFilter = vesselUuid || "all";
   const setVesselFilter = (value: string) =>
     setVesselUuid(value === "all" ? "" : value);
@@ -176,10 +177,12 @@ export default function AllotmentsPage({
     return allotments.filter(
       (a) =>
         (vesselFilter === "all" || a.vesselUuid === vesselFilter) &&
+        (!a.validFrom || a.validFrom.slice(0, 7) <= period) &&
+        (!a.validTo || a.validTo.slice(0, 7) >= period) &&
         (statusFilter === "all" || a.status === statusFilter) &&
         (!q || (a.crewName ?? "").toLowerCase().includes(q)),
     );
-  }, [allotments, vesselFilter, statusFilter, crewSearch]);
+  }, [allotments, vesselFilter, period, statusFilter, crewSearch]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -529,6 +532,32 @@ export default function AllotmentsPage({
             </SelectContent>
           </Select>
         </div>
+        <div
+          className="space-y-1"
+          onBlur={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            const input =
+              event.currentTarget.querySelector<HTMLInputElement>(
+                'input[type="text"]',
+              );
+            if (
+              input &&
+              (!input.value.trim() || input.dataset.monthValid === "false")
+            ) {
+              setPeriodInputKey((key) => key + 1);
+            }
+          }}
+        >
+          <Label className="text-xs text-gray-600">Period</Label>
+          <FormattedDateInput
+            key={periodInputKey}
+            mode="month"
+            value={period}
+            onChange={(e) => e.target.value && setPeriod(e.target.value)}
+            className="h-8 w-44 bg-transparent text-xs md:text-xs"
+            data-testid="input-period"
+          />
+        </div>
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Status</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -561,7 +590,8 @@ export default function AllotmentsPage({
           variant="outline"
           className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
           onClick={() => {
-            setVesselFilter("all");
+            resetFilters();
+            setPeriodInputKey((key) => key + 1);
             setStatusFilter("all");
             setCrewSearch("");
           }}

@@ -42,6 +42,7 @@ import { ACCOUNTS_BASE, accountsApiV2 } from "../api/accountsApiV2";
 import { formatDate, formatMoney, unknownVesselLabel } from "../accountsFormat";
 import { formatPeriod } from "./VesselPeriodBar";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Settlements";
 
@@ -91,7 +92,11 @@ export default function SettlementsPage() {
   const { getVesselName } = useVesselLookup();
 
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
-  const [filterVessel, setFilterVessel] = useState("all");
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
+  const [periodInputKey, setPeriodInputKey] = useState(0);
+  const filterVessel = vesselUuid || "all";
+  const setFilterVessel = (value: string) =>
+    setVesselUuid(value === "all" ? "" : value);
   const [filterStatus, setFilterStatus] = useState("all");
   const [newOpen, setNewOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -153,7 +158,7 @@ export default function SettlementsPage() {
 
   const vesselOptions = useMemo(() => {
     const uuids = Array.from(
-      new Set(settlements.map((s) => s.vesselUuid).filter(Boolean)),
+      new Set([...settlements.map((s) => s.vesselUuid), vesselUuid].filter(Boolean)),
     ) as string[];
     const nameByUuid = new Map<string, string>();
     for (const s of settlements) {
@@ -162,21 +167,26 @@ export default function SettlementsPage() {
         if (name) nameByUuid.set(s.vesselUuid, name);
       }
     }
+    if (vesselUuid && !nameByUuid.has(vesselUuid)) {
+      const name = getVesselName(vesselUuid);
+      if (name) nameByUuid.set(vesselUuid, name);
+    }
     // Only offer vessels that resolve to a real name.
     return uuids
       .filter((u) => nameByUuid.has(u))
       .map((u) => ({ uuid: u, name: nameByUuid.get(u)! }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [settlements, getVesselName]);
+  }, [settlements, getVesselName, vesselUuid]);
 
   const filteredRows = useMemo(
     () =>
       settlements.filter(
         (s) =>
           (filterVessel === "all" || s.vesselUuid === filterVessel) &&
+          s.period === period &&
           (filterStatus === "all" || s.status === filterStatus),
       ),
-    [settlements, filterVessel, filterStatus],
+    [settlements, filterVessel, period, filterStatus],
   );
 
   const gridApiRef = useRef<GridApi | null>(null);
@@ -503,6 +513,32 @@ export default function SettlementsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div
+            className="space-y-1"
+            onBlur={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget)) return;
+              const input =
+                event.currentTarget.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+              if (
+                input &&
+                (!input.value.trim() || input.dataset.monthValid === "false")
+              ) {
+                setPeriodInputKey((key) => key + 1);
+              }
+            }}
+          >
+            <Label className="text-xs text-gray-600">Period</Label>
+            <FormattedDateInput
+              key={periodInputKey}
+              mode="month"
+              value={period}
+              onChange={(e) => e.target.value && setPeriod(e.target.value)}
+              className="h-8 w-44 bg-transparent text-xs md:text-xs"
+              data-testid="input-period"
+            />
+          </div>
           <div className="space-y-1">
             <Label htmlFor="select-filter-status" className="text-xs text-gray-600">
               Status
@@ -530,7 +566,8 @@ export default function SettlementsPage() {
             variant="outline"
             className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
             onClick={() => {
-              setFilterVessel("all");
+              resetFilters();
+              setPeriodInputKey((key) => key + 1);
               setFilterStatus("all");
             }}
             data-testid="button-clear-filters"
