@@ -1,3 +1,31 @@
+# Training Needs suggestion acceptance — 21-Oct-2026
+
+Reuses the registered TEST ONLY PDF layout review vessel
+`a4120000-0000-4000-8000-000000000001`, TEST ONLY PDF Layout Seafarer
+`a4120000-0000-4000-8000-000000000004`, assignment
+`dc2528aa-45d1-4507-95a3-5128b9501065`, and planning
+`068511d9-9c64-4125-9e55-f3e4b41beac0`.
+All generated Training Needs suggestion slots and append-only transitions on
+this exact assignment are retained acceptance descendants, not realistic needs.
+The additional D3 certificate number `TEST-S6-RENEWAL` and manual need titled
+`TEST ONLY slice 6 manual need — never auto-close` belong only to this seafarer;
+the verification script reuses them by identity on every replay. No new vessel,
+crew, assignment, course master, permission grant or Company Form is created.
+The pending renewal is prepared through the normal authenticated fixture D3
+endpoint and completed/saved through the D3 screen. The manual need must remain
+unchanged while generated needs close. Original certificate edits are restored;
+the new registered descendants and all history remain.
+
+- Renewal certificate: `9471834c-cff2-4529-b308-a43589c431af`.
+- Manual Training Need: `52199d45-50a6-4b12-897d-7a392e3ef6b0`.
+- Office development persona: user 24, Admin parent role
+  `d57dd06b-7c4f-4152-8902-c8af0422b3e6`; existing Training View/Create,
+  Crew Database View and Vessel View. No grants added.
+- Negative-permission persona: user 3, Crewing Manager role
+  `408d9fe9-1d0f-11f1-925d-5419ffd80f01`; Training View true/Create false.
+  No grants added. These are development-persona checks, not parent-login
+  acceptance. Signed-JWT authorization also runs in the isolated test database.
+
 # Additional attachment display fixtures — 20-Oct-2026
 
 Authorised specifically to finish slice 1 UI verification. Preparation is
