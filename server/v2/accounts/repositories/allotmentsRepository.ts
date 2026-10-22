@@ -35,7 +35,7 @@ export class AllotmentsRepository {
     if (filters?.crewUuid) {
       conditions.push(eq(accAllotmentsV2.crewUuid, filters.crewUuid));
     }
-    const rows = await db
+    const rows: AccAllotmentV2[] = await db
       .select()
       .from(accAllotmentsV2)
       .where(and(...conditions))
