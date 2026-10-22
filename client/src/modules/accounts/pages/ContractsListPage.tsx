@@ -201,6 +201,7 @@ export default function ContractsListPage({
         headerName: "Status",
         field: "status",
         width: 120,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge className={STATUS_BADGE[p.value] ?? "bg-slate-500 text-white"}>
             {p.value}

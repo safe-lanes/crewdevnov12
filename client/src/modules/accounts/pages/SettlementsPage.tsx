@@ -255,6 +255,7 @@ export default function SettlementsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge variant="outline" className={STATUS_CLASS[p.value] ?? ""}>
             {STATUS_LABEL[p.value] ?? p.value}

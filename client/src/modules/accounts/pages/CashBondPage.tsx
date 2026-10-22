@@ -350,6 +350,7 @@ export function AdvancesTab({
         headerName: "Status",
         field: "displayStatus",
         width: 130,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"

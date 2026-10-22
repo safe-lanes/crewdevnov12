@@ -430,6 +430,7 @@ export default function AllotmentsPage({
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"

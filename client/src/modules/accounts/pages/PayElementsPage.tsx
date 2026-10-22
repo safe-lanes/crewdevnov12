@@ -384,6 +384,7 @@ export default function PayElementsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant={p.value === "active" ? "default" : "secondary"}

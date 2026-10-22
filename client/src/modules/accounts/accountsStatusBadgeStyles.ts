@@ -1,3 +1,4 @@
+import "./accountsStatusBadgeStyles.css";
 const BASE =
   "rounded-md px-2.5 py-1 font-semibold min-w-[90px] text-center border-transparent shadow hover:bg-primary/80";
 const COLOURS = {
