@@ -10,6 +10,21 @@ import type {
 } from "../../../../shared/v2/accounts/types";
 import { v4 as uuidv4 } from "uuid";
 
+function withCurrentStatus(
+  record: AccAllotmentV2,
+  today = new Date().toISOString().slice(0, 10),
+): AccAllotmentV2 {
+  if (
+    (record.status === "active" || record.status === "suspended") &&
+    record.validTo &&
+    record.validTo < today
+  ) {
+    return { ...record, status: "ended" };
+  }
+
+  return record;
+}
+
 export class AllotmentsRepository {
   async findAll(filters?: {
     crewUuid?: string;
@@ -20,14 +35,18 @@ export class AllotmentsRepository {
     if (filters?.crewUuid) {
       conditions.push(eq(accAllotmentsV2.crewUuid, filters.crewUuid));
     }
-    if (filters?.status) {
-      conditions.push(eq(accAllotmentsV2.status, filters.status));
-    }
-    return db
+    const rows = await db
       .select()
       .from(accAllotmentsV2)
       .where(and(...conditions))
       .orderBy(asc(accAllotmentsV2.priority));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const records = rows.map((row) => withCurrentStatus(row, today));
+
+    return filters?.status
+      ? records.filter((row) => row.status === filters.status)
+      : records;
   }
 
   async findByUuid(
@@ -43,7 +62,7 @@ export class AllotmentsRepository {
           eq(accAllotmentsV2.isDeleted, false),
         ),
       );
-    return results[0];
+    return results[0] ? withCurrentStatus(results[0]) : undefined;
   }
 
   async create(
@@ -54,7 +73,7 @@ export class AllotmentsRepository {
       .insert(accAllotmentsV2)
       .values({ ...data, allotmentUuid: uuidv4() })
       .returning();
-    return results[0];
+    return withCurrentStatus(results[0]);
   }
 
   async update(
@@ -67,7 +86,7 @@ export class AllotmentsRepository {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(accAllotmentsV2.allotmentUuid, allotmentUuid))
       .returning();
-    return results[0];
+    return results[0] ? withCurrentStatus(results[0]) : undefined;
   }
 
   async softDelete(allotmentUuid: string): Promise<boolean> {

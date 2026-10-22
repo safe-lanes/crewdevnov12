@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
+import EndAllotmentDialog from "./EndAllotmentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CURRENCIES } from "../accountsConstants";
@@ -22,16 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -156,7 +147,29 @@ export default function AllotmentsPage({
   const listKey = [`${ACCOUNTS_BASE}/allotments`];
   const { data: allotments = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    refetchOnWindowFocus: "always",
   });
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const scheduleRefresh = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setUTCHours(24, 0, 0, 0);
+
+      timer = setTimeout(() => {
+        void queryClient.invalidateQueries({
+          queryKey: [`${ACCOUNTS_BASE}/allotments`],
+        });
+        scheduleRefresh();
+      }, nextMidnight.getTime() - now.getTime() + 100);
+    };
+
+    scheduleRefresh();
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Crew for the create dialog comes from the selected vessel's engagements.
   const { data: reviewRows = [] } = useQuery<any[]>({
@@ -188,6 +201,14 @@ export default function AllotmentsPage({
   const [saving, setSaving] = useState(false);
   const [dateFormVersion, setDateFormVersion] = useState(0);
   const validFromIsValid = useRef(true);
+
+  const validFromOrderError =
+    editing?.validTo &&
+    form.validFrom &&
+    form.validFrom !== (editing.validFrom ?? "") &&
+    form.validFrom > editing.validTo
+      ? "Valid From cannot be later than Valid To."
+      : "";
 
   const resetDateInput = () => {
     validFromIsValid.current = true;
@@ -266,6 +287,9 @@ export default function AllotmentsPage({
       });
       return;
     }
+    if (validFromOrderError) {
+      return;
+    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -315,24 +339,20 @@ export default function AllotmentsPage({
 
   const lifecycle = async (
     row: any,
-    action: "suspend" | "reactivate" | "end",
+    action: "suspend" | "reactivate",
   ) => {
     setActing(true);
     try {
       const res: any =
         action === "suspend"
           ? await accountsApiV2.allotments.suspend(row.allotmentUuid)
-          : action === "reactivate"
-            ? await accountsApiV2.allotments.reactivate(row.allotmentUuid)
-            : await accountsApiV2.allotments.end(row.allotmentUuid);
+          : await accountsApiV2.allotments.reactivate(row.allotmentUuid);
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({
         title:
           action === "suspend"
             ? "Allotment suspended"
-            : action === "reactivate"
-              ? "Allotment reactivated"
-              : "Allotment ended",
+            : "Allotment reactivated",
       });
       if (action === "reactivate") notifyCap(res);
     } catch (err) {
@@ -795,6 +815,11 @@ export default function AllotmentsPage({
                 }}
                 data-testid="input-allotment-valid-from"
               />
+              {validFromOrderError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {validFromOrderError}
+                </p>
+              )}
             </div>
             <div className="flex items-end gap-6 pb-1">
               <label className="flex items-center gap-2 text-sm">
@@ -836,34 +861,17 @@ export default function AllotmentsPage({
       </Dialog>
 
       {/* End confirmation */}
-      <AlertDialog
-        open={!!endTarget}
-        onOpenChange={(open) => !open && setEndTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>End allotment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This ends the allotment for {endTarget?.crewName ?? "this crew"}{" "}
-              to {endTarget?.beneficiaryName}. It will stop being deducted from
-              the next payroll run.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-end">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              disabled={acting}
-              onClick={() => endTarget && lifecycle(endTarget, "end")}
-              data-testid="button-confirm-end"
-            >
-              End Allotment
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {endTarget && (
+        <EndAllotmentDialog
+          key={endTarget.allotmentUuid}
+          target={endTarget}
+          onClose={() => setEndTarget(null)}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: listKey });
+            setEndTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
