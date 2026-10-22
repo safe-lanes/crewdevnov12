@@ -1,3 +1,10 @@
+# Subsequent correction
+
+The [four display fix-ups](four-fixups-and-rank-provenance.md) supersede this
+record's blank-cell treatment for **missing captured rank** and whole-name
+sentence casing. Those cells now use amber hollow; names use title case.
+The original measurements and closing evidence below remain historical evidence.
+
 # Training Matrix — compact five-dot presentation
 
 ## Scope and measurements

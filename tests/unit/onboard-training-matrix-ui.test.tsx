@@ -318,8 +318,10 @@ describe("server-computed onboard matrix presentation", () => {
     expect(children[0].className).not.toContain("uppercase");
     const name = within(header).getByRole("button", { name: longCrewName });
     expect(name.title).toBe(longCrewName);
-    expect(name.textContent?.trim()).toBe("Test only mariner with an exceptionally long recorded name");
+    expect(name.textContent?.trim()).toBe("Test Only Mariner With An Exceptionally Long Recorded Name");
     expect(name.className).toContain("truncate");
+    expect(name.className).toContain("text-center");
+    expect(name.className).toContain("underline");
     expect(header.className).toContain("min-w-[142px]");
   });
   it("sentence-cases mixed-case visible headings without changing identity or approved popup data", async () => {
@@ -328,12 +330,170 @@ describe("server-computed onboard matrix presentation", () => {
     mount();
     const header = await screen.findByRole("columnheader", { name: /Chief officer/ });
     const name = within(header).getByRole("button", { name: "Test ONLY Mariner" });
-    expect(name.textContent?.trim()).toBe("Test only mariner");
+    expect(name.textContent?.trim()).toBe("Test Only Mariner");
     expect(name.title).toBe("Test ONLY Mariner");
     fireEvent.click(name);
     expect(within(await screen.findByRole("dialog")).getByText("Chief Officer")).toBeTruthy();
     expect(payload.crew[0].context.crewName).toBe("Test ONLY Mariner");
   });
+
+  it("title-cases each name part including hyphens and apostrophes while keeping ranks sentence case", async () => {
+    payload.crew[0].context = {
+      ...payload.crew[0].context,
+      crewName: "mArIa o'neIL-smIth",
+      contractRankLabel: "CHIEF COOK",
+    };
+    mount();
+    const header = await screen.findByRole("columnheader", { name: /Chief cook/ });
+    const name = within(header).getByRole("button", { name: "mArIa o'neIL-smIth" });
+    expect(within(header).getByText("Chief cook")).toBeTruthy();
+    expect(name.textContent).toBe("Maria O'Neil-Smith");
+    expect(name.title).toBe("mArIa o'neIL-smIth");
+    expect(name.className).toContain("text-center");
+    expect(name.className).toContain("underline");
+  });
+
+  it("shows an amber hollow marker and explicit reason when captured contract rank is missing", async () => {
+    payload.crew[0].context = { ...payload.crew[0].context, contractRankLabel: "Not recorded" };
+    payload.crew[0].contractRankUuid = null;
+    payload.crew[0].courses = [];
+    payload.crew[0].dots = [];
+    payload.crew.push({
+      ...crew(),
+      assignmentUuid: "missing-rank-labelled",
+      contractRankUuid: null,
+      context: { ...crew().context, crewName: "TEST ONLY Label Present", contractRankLabel: "Chief Officer" },
+      courses: [],
+      dots: [],
+    });
+    payload.crew.push({
+      ...crew(),
+      assignmentUuid: "rank-label-with-id",
+      contractRankUuid: "captured-rank",
+      context: { ...crew().context, crewName: "TEST ONLY Label Only", contractRankLabel: "Not recorded" },
+      courses: [],
+      dots: [],
+    });
+    mount();
+    await screen.findByRole("button", { name: "TEST ONLY Matrix" });
+    expect(screen.getByText("Required A")).toBeTruthy();
+    const warnings = screen.getAllByRole("button", {
+      name: "Contract rank was not captured for this assignment; requirement could not be checked.",
+    });
+    expect(warnings).toHaveLength(2);
+    for (const warning of warnings) {
+      expect(warning.getAttribute("data-color")).toBe("amber");
+      expect(warning.getAttribute("data-outline")).toBe("true");
+      expect(warning.querySelector("span")?.className).toContain("border-[#F59E0B]");
+      expect(warning.querySelector("span")?.className).toContain("bg-transparent");
+    }
+    expect(matrixCell(4).querySelector('[data-testid="vessel-training-dot"]')).toBeNull();
+    fireEvent.click(warnings[0]);
+    expect(await screen.findByRole("status")).toHaveProperty(
+      "textContent",
+      "Contract rank was not captured for this assignment; requirement could not be checked.",
+    );
+    expect(screen.queryByText(/Not required for this rank/)).toBeNull();
+  });
+
+  it("keeps the unknown-rank warning within the visible evidence boundary and flips placement at viewport edges", async () => {
+    payload.crew[0].contractRankUuid = null;
+    payload.crew[0].courses = [];
+    payload.crew[0].dots = [];
+    mount();
+    const trigger = await screen.findByRole("button", {
+      name: "Contract rank was not captured for this assignment; requirement could not be checked.",
+    });
+    const boundary = screen.getByTestId("vessel-training-evidence-boundary");
+    expect(boundary.className).toContain("fixed");
+    const trainingColumn = screen.getByTestId("vessel-training-fixed-column");
+
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 760 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    const viewport = boundary.parentElement!;
+    const frame = viewport.parentElement!;
+    const visibleFrameRect = {
+      x: 0, y: 100, left: 0, top: 100, right: 760, bottom: 700, width: 760, height: 600,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const frameRect = vi.spyOn(frame, "getBoundingClientRect").mockReturnValue(visibleFrameRect);
+    const viewportRect = vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(visibleFrameRect);
+    const trainingRect = vi.spyOn(trainingColumn, "getBoundingClientRect").mockReturnValue({
+      x: 120, y: 100, left: 120, top: 100, right: 410, bottom: 140, width: 290, height: 40,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.scroll(viewport);
+    expect(boundary.style.left).toBe("410px");
+    expect(boundary.style.width).toBe("350px");
+    expect(boundary.style.top).toBe("100px");
+    const scrolledRect = {
+      x: 0, y: 50, left: 0, top: 50, right: 760, bottom: 500, width: 760, height: 450,
+      toJSON: () => ({}),
+    } as DOMRect;
+    frameRect.mockReturnValue(scrolledRect);
+    viewportRect.mockReturnValue(scrolledRect);
+    trainingRect.mockReturnValue({
+      x: 270, y: 50, left: 270, top: 50, right: 560, bottom: 90, width: 290, height: 40,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.scroll(viewport);
+    expect(boundary.style.left).toBe("560px");
+    expect(boundary.style.width).toBe("200px");
+    expect(boundary.style.top).toBe("50px");
+    expect(boundary.style.height).toBe("450px");
+    vi.spyOn(boundary, "getBoundingClientRect").mockReturnValue({
+      x: 560, y: 50, left: 560, top: 50, right: 760, bottom: 500, width: 200, height: 450,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const triggerRect = vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
+      x: 565, y: 300, left: 565, top: 300, right: 585, bottom: 324, width: 20, height: 24,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.pointerMove(trigger, { pointerType: "mouse" });
+    expect(await screen.findByTestId("vessel-training-tooltip")).toBeTruthy();
+    const tooltip = screen.getByTestId("vessel-training-tooltip");
+    expect(tooltip.getAttribute("data-evidence-boundary")).toBe("visible-evidence-region");
+    // Neither horizontal side can hold the card in this 200px evidence region.
+    expect(tooltip.getAttribute("data-preferred-side")).toBe("top");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1200 });
+    vi.mocked(boundary.getBoundingClientRect).mockReturnValue({
+      x: 560, y: 50, left: 560, top: 50, right: 1160, bottom: 700, width: 600, height: 650,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.pointerMove(trigger, { pointerType: "mouse" });
+    expect(tooltip.getAttribute("data-preferred-side")).toBe("right");
+    fireEvent.click(trigger);
+    const popover = await screen.findByRole("status");
+    expect(popover.getAttribute("data-evidence-boundary")).toBe("visible-evidence-region");
+    expect(popover.getAttribute("data-preferred-side")).toBe("right");
+    fireEvent.click(trigger);
+    triggerRect.mockReturnValue({
+      x: 565, y: 680, left: 565, top: 680, right: 585, bottom: 704, width: 20, height: 24,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.click(trigger);
+    const bottomPopover = await screen.findByRole("status");
+    expect(bottomPopover.getAttribute("data-preferred-side")).toBe("top");
+    expect(bottomPopover.getAttribute("data-testid")).toBe("vessel-training-popover");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: originalHeight });
+  });
+
+  it("includes missing-rank rows with no known obligation, but still hides all rows when filters are off", async () => {
+    payload.crew[0].contractRankUuid = null;
+    payload.crew[0].courses = [];
+    payload.crew[0].dots = [];
+    mount();
+    expect(await screen.findByRole("button", {
+      name: "Contract rank was not captured for this assignment; requirement could not be checked.",
+    })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mandatory", exact: true }));
+    expect(screen.getByText("Choose Mandatory and/or Recommended to show requirement evidence.")).toBeTruthy();
+    expect(screen.getByText("No rows match the selected requirement filters.")).toBeTruthy();
+  });
+
   it("never shows green for an incomplete overall check even if its dot metadata is absent", async () => {
     payload.crew[0].status = "incomplete";
     payload.crew[0].issues = [{ code: "CALCULATION_FAILED", message: "Another required course could not be checked." }];

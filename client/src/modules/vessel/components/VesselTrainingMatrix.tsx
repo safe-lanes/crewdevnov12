@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,10 @@ type VesselTrainingCompliance = {
 
 type Props = { vesselUuid: string | null };
 
+function hasCapturedContractRank(crew: OnboardCrew) {
+  return crew.contractRankUuid !== null && crew.contractRankUuid !== undefined;
+}
+
 const vocabulary = (value: string) => value
   .replaceAll("Expires before planned relief", "Expires during contract")
   .replace(/\bExpired\b(?! at joining)/g, "Expired at joining");
@@ -51,6 +55,11 @@ type MatrixCheck = Pick<OnboardCrew, "status" | "issues">;
 const matrixVocabulary = (value: string) => value
   .replaceAll("Expires before planned relief", "Expires during contract")
   .replace(/\bExpired\b(?! at joining)/g, "Expired at joining");
+
+function titleCaseName(value: string) {
+  return value.toLocaleLowerCase().replace(/(^|[\s.'’-])([\p{L}\p{N}])/gu, (_match, separator: string, initial: string) =>
+    `${separator}${initial.toLocaleUpperCase()}`);
+}
 
 function sentenceCaseLabel(value: string) {
   return value.toLocaleLowerCase().replace(/^(\s*[\p{L}\p{N}])/u, match => match.toLocaleUpperCase());
@@ -130,19 +139,55 @@ function evidenceDotClass(style: EvidenceStyle) {
     : "border-[#DC2626] bg-[#DC2626]";
 }
 
-function MatrixCell({ requirement, course, dot, showStatus, check }: {
-  requirement: "Mandatory" | "Recommended" | "Not required for this rank";
+type PlacementSide = "left" | "right" | "top" | "bottom";
+
+function placementFor(trigger: HTMLElement, boundary: HTMLElement | null): PlacementSide {
+  const triggerRect = trigger.getBoundingClientRect();
+  const bounds = boundary?.getBoundingClientRect();
+  const leftEdge = Math.max(bounds?.left ?? 0, 0);
+  const rightEdge = Math.min(bounds?.right ?? window.innerWidth, window.innerWidth);
+  const topEdge = Math.max(bounds?.top ?? 0, 0);
+  const bottomEdge = Math.min(bounds?.bottom ?? window.innerHeight, window.innerHeight);
+  const above = triggerRect.top - topEdge;
+  const below = bottomEdge - triggerRect.bottom;
+  const popupWidth = Math.max(0, Math.min(320, rightEdge - leftEdge - 16));
+  const roomOnLeft = triggerRect.left - leftEdge;
+  const roomOnRight = rightEdge - triggerRect.right;
+  const verticalSide = below >= above ? "bottom" : "top";
+  if (below < 150 && above > below) return "top";
+  // Radix flips left/right, but cannot shift a right-facing card horizontally.
+  // Prefer a vertical card when neither horizontal side can fit inside evidence.
+  if (roomOnLeft < 170) return roomOnRight >= popupWidth + 8 ? "right" : verticalSide;
+  if (roomOnRight < 170) return roomOnLeft >= popupWidth + 8 ? "left" : verticalSide;
+  if (above < 150 && below > above) return "bottom";
+  return roomOnLeft >= popupWidth + 8 ? "left" : verticalSide;
+}
+
+function MatrixCell({ requirement, course, dot, showStatus, check, boundary, rankMissing }: {
+  requirement: "Mandatory" | "Recommended" | "Not required for this rank" | "Contract rank not captured";
   course: MatrixCourse | undefined;
   check: MatrixCheck;
   dot: Dot | undefined;
   showStatus: boolean;
+  boundary: HTMLDivElement | null;
+  rankMissing: boolean;
 }) {
   const hasRequirement = course?.obligation === "mandatory" || course?.obligation === "recommended";
   const relevantCourse = hasRequirement ? course : undefined;
   const relevantDot = hasRequirement ? dot : undefined;
-  const style = showStatus ? resolveEvidenceStyle(relevantCourse, relevantDot, check) : undefined;
+  const style = showStatus
+    ? rankMissing ? { color: "amber" as const, outline: true } : resolveEvidenceStyle(relevantCourse, relevantDot, check)
+    : undefined;
   const labels = hasRequirement ? evidenceText(relevantCourse, relevantDot, check) : [];
-  const meaning = [requirement, ...labels].join(" — ");
+  const missingRankText = "Contract rank was not captured for this assignment; requirement could not be checked.";
+  const meaning = rankMissing ? missingRankText : [requirement, ...labels].join(" — ");
+  const [placementSide, setPlacementSide] = useState<PlacementSide>("left");
+  const boundaryRect = boundary?.getBoundingClientRect();
+  const popupStyle = boundaryRect ? {
+    maxWidth: Math.max(0, Math.min(320, boundaryRect.width - 16)),
+    maxHeight: Math.max(0, boundaryRect.height - 16),
+    overflowY: "auto" as const,
+  } : undefined;
   const bgClass = requirement === "Mandatory" ? "bg-green-50"
     : requirement === "Recommended" ? "bg-blue-100" : "bg-white";
   return (
@@ -153,14 +198,25 @@ function MatrixCell({ requirement, course, dot, showStatus, check }: {
             <PopoverTrigger asChild>
               <button type="button" className="flex h-9 w-full items-center justify-center rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-700"
                 aria-label={meaning} data-testid={style ? "vessel-training-dot" : "vessel-training-cell-info"}
-                data-color={style?.color} data-outline={style?.outline}>
+                data-color={style?.color} data-outline={style?.outline}
+                onPointerMove={event => setPlacementSide(placementFor(event.currentTarget, boundary))}
+                onPointerEnter={event => setPlacementSide(placementFor(event.currentTarget, boundary))}
+                onMouseEnter={event => setPlacementSide(placementFor(event.currentTarget, boundary))}
+                onFocus={event => setPlacementSide(placementFor(event.currentTarget, boundary))}
+                onClick={event => setPlacementSide(placementFor(event.currentTarget, boundary))}>
                 {style && <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full border-2 ${evidenceDotClass(style)}`} />}
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent className="max-w-80 text-left">{meaning}</TooltipContent>
+          <TooltipContent side={placementSide} align={placementSide === "top" || placementSide === "bottom" ? "start" : "center"}
+            collisionBoundary={boundary ?? undefined} collisionPadding={8} style={popupStyle}
+            data-testid="vessel-training-tooltip" data-evidence-boundary="visible-evidence-region" data-preferred-side={placementSide}
+            className="max-w-[min(20rem,calc(100vw-1rem))] text-left">{meaning}</TooltipContent>
         </Tooltip>
-        <PopoverContent className="w-80 text-sm" role="status">{meaning}</PopoverContent>
+        <PopoverContent side={placementSide} align={placementSide === "top" || placementSide === "bottom" ? "start" : "center"}
+          collisionBoundary={boundary ?? undefined} collisionPadding={8} style={popupStyle}
+          data-testid="vessel-training-popover" data-evidence-boundary="visible-evidence-region" data-preferred-side={placementSide}
+          className="w-[min(20rem,calc(100vw-1rem))] text-sm" role="status">{meaning}</PopoverContent>
       </Popover>
     </div>
   );
@@ -170,6 +226,10 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
   const [selectedCrew, setSelectedCrew] = useState<OnboardCrew | null>(null);
   const [showMandatory, setShowMandatory] = useState(true);
   const [showRecommended, setShowRecommended] = useState(false);
+  const [evidenceBoundary, setEvidenceBoundary] = useState<HTMLDivElement | null>(null);
+  const scrollFrameRef = useRef<HTMLDivElement | null>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const [evidenceBounds, setEvidenceBounds] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const query = useQuery<VesselTrainingCompliance>({
     queryKey: ["vessel-training-compliance", vesselUuid],
     queryFn: async () => {
@@ -181,6 +241,38 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
     enabled: Boolean(vesselUuid),
     retry: false,
   });
+
+  useLayoutEffect(() => {
+    if (!query.data) return;
+    const updateEvidenceBounds = () => {
+      const frame = scrollFrameRef.current?.getBoundingClientRect();
+      const viewport = scrollViewportRef.current?.getBoundingClientRect();
+      const trainingColumn = scrollViewportRef.current?.querySelector<HTMLElement>('[data-testid="vessel-training-fixed-column"]')
+        ?.getBoundingClientRect();
+      if (!frame || !viewport) return;
+      const right = Math.min(frame.right, viewport.right, window.innerWidth);
+      const left = Math.min(right, Math.max(frame.left, viewport.left, trainingColumn?.right ?? viewport.left, 0));
+      const top = Math.max(frame.top, viewport.top, 0);
+      const bottom = Math.max(top, Math.min(frame.bottom, viewport.bottom, window.innerHeight));
+      const next = { top, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+      setEvidenceBounds(previous =>
+        previous.top === next.top && previous.left === next.left
+          && previous.width === next.width && previous.height === next.height ? previous : next);
+    };
+    updateEvidenceBounds();
+    const frame = scrollFrameRef.current;
+    const viewport = scrollViewportRef.current;
+    frame?.addEventListener("scroll", updateEvidenceBounds);
+    viewport?.addEventListener("scroll", updateEvidenceBounds);
+    window.addEventListener("scroll", updateEvidenceBounds, true);
+    window.addEventListener("resize", updateEvidenceBounds);
+    return () => {
+      frame?.removeEventListener("scroll", updateEvidenceBounds);
+      viewport?.removeEventListener("scroll", updateEvidenceBounds);
+      window.removeEventListener("scroll", updateEvidenceBounds, true);
+      window.removeEventListener("resize", updateEvidenceBounds);
+    };
+  }, [query.data]);
 
   if (!vesselUuid) return <p className="rounded-md border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">Select a vessel to view onboard training evidence.</p>;
   if (query.isLoading) return (
@@ -203,10 +295,12 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
   const payload = query.data;
   if (!payload) return null;
   const dotsByCrew = payload.crew.map(crew => new Map((crew.dots ?? []).map(dot => [dot.courseUuid, dot])));
-  const filteredRows = payload.rows.filter(row => payload.crew.some(crew => {
+  const filteredRows = payload.rows.filter(row => (showMandatory || showRecommended) && payload.crew.some(crew => {
+    if (!hasCapturedContractRank(crew)) return true;
     const course = crew.courses.find(item => item.courseUuid === row.courseUuid);
     return course?.obligation === "mandatory" ? showMandatory
-      : course?.obligation === "recommended" ? showRecommended : false;
+      : course?.obligation === "recommended" ? showRecommended
+        : false;
   }));
   const embeddedResult = selectedCrew ? {
     ...selectedCrew,
@@ -260,19 +354,22 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
             Choose Mandatory and/or Recommended to show requirement evidence.
           </p>
         )}
-        <div className="overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[calc(100vh-300px)] min-h-48 overflow-auto">
+        <div ref={scrollFrameRef} className="overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div ref={scrollViewportRef} className="relative max-h-[calc(100vh-300px)] min-h-48 overflow-auto">
+            <div ref={setEvidenceBoundary} aria-hidden="true" data-testid="vessel-training-evidence-boundary"
+              className="pointer-events-none fixed z-0"
+              style={{ top: evidenceBounds.top, left: evidenceBounds.left, width: evidenceBounds.width, height: evidenceBounds.height }} />
             <Table className="min-w-max">
               <TableHeader className="sticky top-0 z-20">
                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                   <TableHead className="sticky left-0 top-0 z-30 w-24 border-r border-white/20 bg-[#52baf3] text-xs text-white">Company ID</TableHead>
-                  <TableHead className="sticky left-24 top-0 z-30 w-72 border-r border-white/20 bg-[#52baf3] text-xs text-white">Training</TableHead>
+                  <TableHead data-testid="vessel-training-fixed-column" className="sticky left-24 top-0 z-30 w-72 border-r border-white/20 bg-[#52baf3] text-xs text-white">Training</TableHead>
                     {payload.crew.map((crew, index) => (
                       <TableHead key={`${crew.assignmentUuid}-${index}`} className="sticky top-0 z-20 w-[142px] min-w-[142px] max-w-[142px] bg-[#52baf3] px-2 text-center text-white">
-                      <div className="truncate text-xs font-semibold text-white">{sentenceCaseLabel(crew.context.contractRankLabel || "Captured rank not recorded")}</div>
-                      <button type="button" aria-label={crew.context.crewName || "Crew member"} title={crew.context.crewName || "Crew member"} className="mt-0.5 block max-w-full truncate text-[10px] font-medium underline decoration-white/60 underline-offset-2 hover:text-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                        <div className="truncate text-xs font-semibold text-white">{sentenceCaseLabel(crew.context.contractRankLabel || "Captured rank not recorded")}</div>
+                      <button type="button" aria-label={crew.context.crewName || "Crew member"} title={crew.context.crewName || "Crew member"} className="mx-auto mt-0.5 block max-w-full truncate text-center text-[10px] font-medium underline decoration-white/60 underline-offset-2 hover:text-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                         onClick={() => setSelectedCrew(crew)} data-testid={`onboard-training-details-${index}`}>
-                        {sentenceCaseLabel(crew.context.crewName || "Crew member")}
+                        {titleCaseName(crew.context.crewName || "Crew member")}
                       </button>
                     </TableHead>
                   ))}
@@ -303,12 +400,15 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
                       <TableCell key={`${crew.assignmentUuid}-${row.courseUuid}`} className="h-9 p-0 text-center">
                         {(() => {
                           const course = crew.courses.find(item => item.courseUuid === row.courseUuid);
-                          const requirement = course?.obligation === "mandatory" ? "Mandatory"
-                            : course?.obligation === "recommended" ? "Recommended" : "Not required for this rank";
-                          const showStatus = course?.obligation === "mandatory" ? showMandatory
-                            : course?.obligation === "recommended" ? showRecommended : false;
+                          const rankMissing = !hasCapturedContractRank(crew);
+                          const requirement = rankMissing ? "Contract rank not captured"
+                            : course?.obligation === "mandatory" ? "Mandatory"
+                              : course?.obligation === "recommended" ? "Recommended" : "Not required for this rank";
+                          const showStatus = rankMissing ? showMandatory || showRecommended
+                            : course?.obligation === "mandatory" ? showMandatory
+                              : course?.obligation === "recommended" ? showRecommended : false;
                           return <MatrixCell requirement={requirement} course={course} dot={dotsByCrew[index].get(row.courseUuid)} check={crew}
-                            showStatus={showStatus} />;
+                            showStatus={showStatus} boundary={evidenceBoundary} rankMissing={rankMissing} />;
                         })()}
                       </TableCell>
                     ))}
