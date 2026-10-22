@@ -315,23 +315,19 @@ export class AppraisalResultsService {
     if (crewMemberId) candidateIds.add(crewMemberId);
 
     // Try to resolve the crew member. The incoming value is usually an emp_no
-    // (from the Promotion form) but could also be a crew_uuid or numeric id.
+    // (from the Promotion form) but could also be a crew_uuid. The serial crew
+    // id is never used, either to resolve the crew or as a candidate key: it
+    // differs between ship and shore, so a value from the other server can
+    // point at a different crew member here.
     // Repo errors are intentionally allowed to propagate so real DB issues
     // surface as 5xx rather than silently undercounting.
     let crew = await crewMembersRepo.findByEmpNo(crewMemberId);
     if (!crew) {
       crew = await crewMembersRepo.findByUuid(crewMemberId);
     }
-    if (!crew) {
-      const numericId = Number(crewMemberId);
-      if (Number.isFinite(numericId) && numericId > 0) {
-        crew = await crewMembersRepo.findById(numericId);
-      }
-    }
     if (crew) {
       if (crew.empNo) candidateIds.add(crew.empNo);
       if (crew.crewUuid) candidateIds.add(crew.crewUuid);
-      if (crew.id != null) candidateIds.add(String(crew.id));
     }
 
     const appraisals = await appraisalResultsRepo.findByCrewMemberIds(

@@ -33,9 +33,10 @@ export class AppraisalResultsRepository {
   }
 
   // Historic data inconsistency: some appraisals store crew_member_id as the
-  // crew's emp_no, others as the crew_uuid (and rare cases as the numeric id).
-  // Callers that already know all the candidate identifiers for a crew member
-  // can use this method to fetch every matching appraisal in one query.
+  // crew's emp_no, others as the crew_uuid. Callers that already know all the
+  // candidate identifiers for a crew member can use this method to fetch every
+  // matching appraisal in one query. Pass only portable keys (emp_no,
+  // crew_uuid), never a serial id: serial ids differ between ship and shore.
   async findByCrewMemberIds(crewMemberIds: string[]): Promise<AppraisalResultV2[]> {
     if (crewMemberIds.length === 0) return [];
     const db = getDb();
