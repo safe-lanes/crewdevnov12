@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import AgGridTable from "./AccountsGridTable";
@@ -526,7 +527,9 @@ export default function PayslipsPage() {
         {hasFilter && data && (
           <Badge
             className={
-              data.isDraft ? "bg-amber-500 text-white" : "bg-green-600 text-white"
+              data.isDraft
+                ? "bg-amber-500 text-white"
+                : accountsStatusBadgeClass("green")
             }
             data-testid="badge-payslips-status"
           >

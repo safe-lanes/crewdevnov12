@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -431,15 +432,17 @@ export default function MonthlyTransactionsPage() {
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"
-            className={`text-xs ${
+            className={
               p.value === "rejected"
-                ? "border-red-300 bg-red-50 text-red-800"
+                ? accountsStatusBadgeClass("red")
                 : p.value === "accepted"
-                  ? "border-green-300 bg-green-50 text-green-800"
+                  ? accountsStatusBadgeClass("green")
                   : p.value === "submitted"
-                    ? "border-blue-300 bg-blue-50 text-blue-800"
-                    : ""
-            }`}
+                    ? accountsStatusBadgeClass("blue")
+                    : p.value === "draft"
+                      ? accountsStatusBadgeClass("grey")
+                      : "text-xs"
+            }
           >
             {p.value}
           </Badge>

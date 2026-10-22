@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -150,13 +151,13 @@ function previewSchedule(amount: string, recovery: string): string[] {
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "open":
-      return "border-blue-300 bg-blue-50 text-blue-800";
+      return accountsStatusBadgeClass("blue");
     case "fully-recovered":
-      return "border-green-300 bg-green-50 text-green-800";
+      return accountsStatusBadgeClass("green");
     case "cancelled":
-      return "border-gray-300 bg-gray-50 text-gray-600";
+      return accountsStatusBadgeClass("red");
     case "closed":
-      return "border-amber-300 bg-amber-50 text-amber-800";
+      return accountsStatusBadgeClass("yellow");
     default:
       return "";
   }

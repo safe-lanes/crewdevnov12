@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -53,11 +54,11 @@ const MODE_EXPLANATION: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  active: "bg-green-600 text-white",
-  draft: "bg-slate-500 text-white",
-  completed: "bg-blue-600 text-white",
-  settled: "bg-slate-700 text-white",
-  cancelled: "bg-red-600 text-white",
+  active: accountsStatusBadgeClass("green"),
+  draft: accountsStatusBadgeClass("grey"),
+  completed: accountsStatusBadgeClass("green"),
+  settled: accountsStatusBadgeClass("green"),
+  cancelled: accountsStatusBadgeClass("red"),
 };
 
 /** True when the row is a value/suppress override (Section D), not a

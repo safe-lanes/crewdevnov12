@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { usePermissions } from "@/contexts/PermissionsContext";
@@ -55,11 +56,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  submitted: "bg-amber-100 text-amber-800 border-amber-200",
-  approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  paid: "bg-blue-100 text-blue-800 border-blue-200",
-  locked: "bg-slate-800 text-white border-slate-800",
+  draft: accountsStatusBadgeClass("grey"),
+  submitted: accountsStatusBadgeClass("blue"),
+  approved: accountsStatusBadgeClass("green"),
+  paid: accountsStatusBadgeClass("green"),
+  locked: accountsStatusBadgeClass("amber"),
 };
 
 function statusBadge(status: string) {
@@ -254,7 +255,11 @@ export default function SettlementsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
-        cellRenderer: (p: any) => STATUS_LABEL[p.value] ?? p.value,
+        cellRenderer: (p: any) => (
+          <Badge variant="outline" className={STATUS_CLASS[p.value] ?? ""}>
+            {STATUS_LABEL[p.value] ?? p.value}
+          </Badge>
+        ),
       },
       {
         headerName: "Balance Paid",

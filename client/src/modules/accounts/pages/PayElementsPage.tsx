@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -386,6 +387,13 @@ export default function PayElementsPage() {
         cellRenderer: (p: any) => (
           <Badge
             variant={p.value === "active" ? "default" : "secondary"}
+            className={
+              p.value === "active"
+                ? accountsStatusBadgeClass("green")
+                : p.value === "inactive"
+                  ? accountsStatusBadgeClass("grey")
+                  : undefined
+            }
             data-testid={`status-element-${p.data?.code}`}
           >
             {labelOf(PAY_ELEMENT_STATUSES, p.value)}

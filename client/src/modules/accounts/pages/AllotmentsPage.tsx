@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -432,13 +433,15 @@ export default function AllotmentsPage({
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"
-            className={`text-xs ${
+            className={
               p.value === "active"
-                ? "border-green-300 bg-green-50 text-green-800"
+                ? accountsStatusBadgeClass("green")
                 : p.value === "suspended"
-                  ? "border-amber-300 bg-amber-50 text-amber-800"
-                  : "border-gray-300 bg-gray-50 text-gray-600"
-            }`}
+                  ? accountsStatusBadgeClass("red")
+                  : p.value === "ended"
+                    ? accountsStatusBadgeClass("yellow")
+                    : "text-xs border-gray-300 bg-gray-50 text-gray-600"
+            }
           >
             {p.value}
           </Badge>
