@@ -1008,7 +1008,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
     mutationFn: async (payload: { data: AppraisalFormData; status: string; existingUuid?: string | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
-      if (!crewMember?.id) {
+      // Use PUT for existing appraisals, POST for new ones
+      const idToUse = payload.existingUuid || appraisalUuid;
+
+      // The crew link is set once, when the appraisal is created. Existing
+      // appraisals keep their stored crew_member_id, even when it is blank.
+      if (!idToUse && !crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
 
@@ -1070,7 +1075,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
       // Transform form data to backend schema
       const appraisalPayload = {
-        crewMemberId: crewMember.id,
+        ...(idToUse ? {} : { crewMemberId: crewMember?.id }),
         formId: 1, // Default form ID
         appraisalType: payload.data.appraisalType,
         appraisalDate: new Date().toISOString().split('T')[0],
@@ -1083,8 +1088,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         auditUserUuid: getCrewUserId(),
       };
 
-      // Use PUT for existing appraisals, POST for new ones
-      const idToUse = payload.existingUuid || appraisalUuid;
       const method = idToUse ? 'PUT' : 'POST';
       const url = idToUse ? `/api/v2/appraisals/${idToUse}` : '/api/v2/appraisals';
       

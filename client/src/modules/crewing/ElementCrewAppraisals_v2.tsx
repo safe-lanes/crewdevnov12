@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useViewport } from "@/hooks/useViewport";
-import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
+import { ColDef, GridReadyEvent, GridApi, GridOptions, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { AppraisalForm } from "./AppraisalForm_v2";
@@ -473,7 +473,9 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       const showOverall = !isPreStage2 && !!appraisal.overallRating;
 
       return {
-        id: appraisal.crewMemberId || String(appraisal.id),
+        // Never fall back to the serial appraisal id: it is local to this
+        // server and would be saved back into crew_member_id on PUT.
+        id: appraisal.crewMemberId || "",
         employeeId: appraisal.crewMemberId || "",
         name: {
           first: firstName,
@@ -755,6 +757,12 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       cellClass: 'flex items-center justify-center'
     }
   ], []);
+
+  // Rows are keyed by appraisal_uuid: the crew id can be blank or shared by
+  // several appraisals, and the serial id differs between ship and shore.
+  const gridOptions = useMemo<Partial<GridOptions>>(() => ({
+    getRowId: (params) => params.data.appraisalUuid,
+  }), []);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -1170,6 +1178,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             <AgGridTable
               rowData={crewData}
               columnDefs={columnDefs}
+              gridOptions={gridOptions}
               onGridReady={onGridReady}
               context={{ handleEditClick, handleViewClick, handleDeleteClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing"), canActOnRank }}
               fillAvailableHeight={true}

@@ -1,1 +1,1 @@
-export { AppraisalResultsService, FormVersionPinError } from "./appraisalResultsService";
+export { AppraisalResultsService, FormVersionPinError, CrewReferenceError } from "./appraisalResultsService";

@@ -54,6 +54,13 @@ export class FormVersionPinError extends Error {
   }
 }
 
+export class CrewReferenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CrewReferenceError";
+  }
+}
+
 function statusRequiresAppraisalVersionPin(status: string | null | undefined): boolean {
   return APPRAISAL_PINNED_STATUSES.has((status ?? "").trim().toLowerCase());
 }
@@ -202,6 +209,21 @@ async function triggerAppraisalReviewNotification(
 }
 
 export class AppraisalResultsService {
+  // crew_member_id must hold a crew_uuid that exists in the crew pool. Local
+  // serial ids (of the appraisal or the crew) are not portable between ship
+  // and shore, so they are never accepted as a crew reference.
+  private async assertCrewReference(value: unknown): Promise<string> {
+    const crewUuid = value == null ? "" : String(value).trim();
+    if (!crewUuid) {
+      throw new CrewReferenceError("Cannot save this appraisal without a crew member.");
+    }
+    const crew = await crewMembersRepo.findByUuid(crewUuid);
+    if (!crew) {
+      throw new CrewReferenceError(`Crew member ${crewUuid} was not found.`);
+    }
+    return crewUuid;
+  }
+
   private async resolveRequiredAppraisalFormVersion(
     rank: string | null | undefined,
   ): Promise<{ formVersionId: number; formVersionUuid: string }> {
@@ -362,6 +384,8 @@ export class AppraisalResultsService {
       ? auditData.appraisalData
       : JSON.parse(auditData.appraisalData || "{}");
 
+    const crewMemberId = await this.assertCrewReference(auditData.crewMemberId);
+
     const appraisalUuid = uuidv4();
 
     // Appraisals are pinned at creation time. Never create a record that can
@@ -371,7 +395,7 @@ export class AppraisalResultsService {
 
     const created = await appraisalResultsRepo.createWithUuid({
       appraisalUuid,
-      crewMemberId: auditData.crewMemberId,
+      crewMemberId,
       formUuid: auditData.formId?.toString() || null,
       formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
       formVersionId,
@@ -439,7 +463,12 @@ export class AppraisalResultsService {
     }
 
     const updateFields: any = {};
-    if (auditData.crewMemberId !== undefined) updateFields.crewMemberId = auditData.crewMemberId;
+    // Only re-link the crew when a different, valid crew_uuid is sent. A blank
+    // value or the stored one (older rows may hold an emp_no) is left alone.
+    const incomingCrewId = auditData.crewMemberId == null ? "" : String(auditData.crewMemberId).trim();
+    if (incomingCrewId && incomingCrewId !== existing.crewMemberId) {
+      updateFields.crewMemberId = await this.assertCrewReference(incomingCrewId);
+    }
     if (auditData.formId !== undefined) {
       updateFields.formUuid = auditData.formId?.toString() || null;
       updateFields.formIdLegacy = typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null);
