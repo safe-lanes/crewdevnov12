@@ -3,6 +3,9 @@ import { getDb } from "../../db";
 import { apprReviewersV2 } from "../../../../shared/v2/appraisals/schema";
 import { v4 as uuidv4 } from "uuid";
 
+// A transaction (tx) or the default connection.
+type Executor = any;
+
 export class ApprReviewersRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, any[]>> {
     if (appraisalUuids.length === 0) return new Map();
@@ -30,8 +33,9 @@ export class ApprReviewersRepository {
     appraisalUuid: string,
     reviewers: { userUuid?: string; reviewerName?: string; designation?: string }[],
     auditUserUuid?: string | null,
+    executor: Executor = getDb(),
   ): Promise<void> {
-    const db = getDb();
+    const db = executor;
     const now = new Date();
 
     // Soft-delete all existing non-deleted rows for this appraisal

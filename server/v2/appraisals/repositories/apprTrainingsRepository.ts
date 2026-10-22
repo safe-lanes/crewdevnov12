@@ -4,6 +4,9 @@ import { apprTrainingsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { ApprTrainingV2 } from "../../../../shared/v2/appraisals/types";
 import { v4 as uuidv4 } from "uuid";
 
+// A transaction (tx) or the default connection.
+type Executor = any;
+
 export class ApprTrainingsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprTrainingV2[]>> {
     if (appraisalUuids.length === 0) return new Map();
@@ -24,8 +27,8 @@ export class ApprTrainingsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
-    const db = getDb();
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
+    const db = executor;
     const now = new Date();
 
     const existing = await db
@@ -37,52 +40,40 @@ export class ApprTrainingsRepository {
       ))
       .orderBy(apprTrainingsV2.sortOrder);
 
-    const updates: Promise<any>[] = [];
-
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (i < existing.length) {
-        updates.push(
-          db.update(apprTrainingsV2)
-            .set({
-              training: row.training || null,
-              evaluation: row.evaluation || null,
-              comment: row.comment || null,
-              // Preserve existing source unless the client explicitly sets it.
-              source: row.source || existing[i].source || "manual",
-              sortOrder: i,
-              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-              updatedAt: now,
-            })
-            .where(eq(apprTrainingsV2.id, existing[i].id))
-        );
-      } else {
-        updates.push(
-          db.insert(apprTrainingsV2).values({
-            trainingUuid: uuidv4(),
-            appraisalUuid,
+        await db.update(apprTrainingsV2)
+          .set({
             training: row.training || null,
             evaluation: row.evaluation || null,
             comment: row.comment || null,
-            source: row.source || "manual",
+            // Preserve existing source unless the client explicitly sets it.
+            source: row.source || existing[i].source || "manual",
             sortOrder: i,
-            createdByUuid: auditUserUuid || null,
-            updatedByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+            updatedAt: now,
           })
-        );
+          .where(eq(apprTrainingsV2.id, existing[i].id));
+      } else {
+        await db.insert(apprTrainingsV2).values({
+          trainingUuid: uuidv4(),
+          appraisalUuid,
+          training: row.training || null,
+          evaluation: row.evaluation || null,
+          comment: row.comment || null,
+          source: row.source || "manual",
+          sortOrder: i,
+          createdByUuid: auditUserUuid || null,
+          updatedByUuid: auditUserUuid || null,
+        });
       }
     }
 
     for (let i = rows.length; i < existing.length; i++) {
-      updates.push(
-        db.update(apprTrainingsV2)
-          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-          .where(eq(apprTrainingsV2.id, existing[i].id))
-      );
-    }
-
-    if (updates.length > 0) {
-      await Promise.all(updates);
+      await db.update(apprTrainingsV2)
+        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+        .where(eq(apprTrainingsV2.id, existing[i].id));
     }
   }
 }

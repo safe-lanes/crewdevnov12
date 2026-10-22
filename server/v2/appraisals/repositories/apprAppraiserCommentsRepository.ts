@@ -4,6 +4,9 @@ import { apprAppraiserCommentsV2 } from "../../../../shared/v2/appraisals/schema
 import type { ApprAppraiserCommentV2 } from "../../../../shared/v2/appraisals/types";
 import { v4 as uuidv4 } from "uuid";
 
+// A transaction (tx) or the default connection.
+type Executor = any;
+
 export class ApprAppraiserCommentsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprAppraiserCommentV2[]>> {
     if (appraisalUuids.length === 0) return new Map();
@@ -24,8 +27,8 @@ export class ApprAppraiserCommentsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
-    const db = getDb();
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
+    const db = executor;
     const now = new Date();
 
     const existing = await db
@@ -37,49 +40,37 @@ export class ApprAppraiserCommentsRepository {
       ))
       .orderBy(apprAppraiserCommentsV2.sortOrder);
 
-    const updates: Promise<any>[] = [];
-
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (i < existing.length) {
-        updates.push(
-          db.update(apprAppraiserCommentsV2)
-            .set({
-              name: row.name || null,
-              rank: row.rank || null,
-              comment: row.comment || null,
-              sortOrder: i,
-              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-              updatedAt: now,
-            })
-            .where(eq(apprAppraiserCommentsV2.id, existing[i].id))
-        );
-      } else {
-        updates.push(
-          db.insert(apprAppraiserCommentsV2).values({
-            appraiserCommentUuid: uuidv4(),
-            appraisalUuid,
+        await db.update(apprAppraiserCommentsV2)
+          .set({
             name: row.name || null,
             rank: row.rank || null,
             comment: row.comment || null,
             sortOrder: i,
-            createdByUuid: auditUserUuid || null,
-            updatedByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+            updatedAt: now,
           })
-        );
+          .where(eq(apprAppraiserCommentsV2.id, existing[i].id));
+      } else {
+        await db.insert(apprAppraiserCommentsV2).values({
+          appraiserCommentUuid: uuidv4(),
+          appraisalUuid,
+          name: row.name || null,
+          rank: row.rank || null,
+          comment: row.comment || null,
+          sortOrder: i,
+          createdByUuid: auditUserUuid || null,
+          updatedByUuid: auditUserUuid || null,
+        });
       }
     }
 
     for (let i = rows.length; i < existing.length; i++) {
-      updates.push(
-        db.update(apprAppraiserCommentsV2)
-          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-          .where(eq(apprAppraiserCommentsV2.id, existing[i].id))
-      );
-    }
-
-    if (updates.length > 0) {
-      await Promise.all(updates);
+      await db.update(apprAppraiserCommentsV2)
+        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+        .where(eq(apprAppraiserCommentsV2.id, existing[i].id));
     }
   }
 }

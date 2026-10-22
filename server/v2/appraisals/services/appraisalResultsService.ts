@@ -389,48 +389,52 @@ export class AppraisalResultsService {
     const { formVersionId, formVersionUuid } =
       await this.resolveRequiredAppraisalFormVersion(appraisalData?.seafarersRank);
 
-    const created = await appraisalResultsRepo.createWithUuid({
-      appraisalUuid,
-      crewMemberId,
-      formUuid: auditData.formId?.toString() || null,
-      formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
-      formVersionId,
-      formVersionUuid,
-      appraisalType: auditData.appraisalType || "",
-      appraisalDate: auditData.appraisalDate || new Date().toISOString(),
-      seafarersName: appraisalData.seafarersName || null,
-      seafarersRank: appraisalData.seafarersRank || null,
-      nationality: appraisalData.nationality || null,
-      vessel: appraisalData.vessel || null,
-      signOn: appraisalData.signOn || null,
-      appraisalPeriodFrom: appraisalData.appraisalPeriodFrom || null,
-      appraisalPeriodTo: appraisalData.appraisalPeriodTo || null,
-      personalityIndexCategory: appraisalData.personalityIndexCategory || null,
-      primaryAppraiser: appraisalData.primaryAppraiser || null,
-      competenceRating: auditData.competenceRating || null,
-      behavioralRating: auditData.behavioralRating || null,
-      overallRating: auditData.overallRating || null,
-      submittedBy: auditData.submittedBy || "Unknown",
-      status: auditData.status || "draft",
-      createdByUuid: auditData.createdByUuid || null,
-      updatedByUuid: auditData.updatedByUuid || null,
+    // The main row and all its sections commit together or not at all, so a
+    // failed save never leaves a half-created appraisal to be synced.
+    const auditUserUuid = auditData.createdByUuid || null;
+    const created = await getDb().transaction(async (tx: any) => {
+      const row = await appraisalResultsRepo.createWithUuid({
+        appraisalUuid,
+        crewMemberId,
+        formUuid: auditData.formId?.toString() || null,
+        formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
+        formVersionId,
+        formVersionUuid,
+        appraisalType: auditData.appraisalType || "",
+        appraisalDate: auditData.appraisalDate || new Date().toISOString(),
+        seafarersName: appraisalData.seafarersName || null,
+        seafarersRank: appraisalData.seafarersRank || null,
+        nationality: appraisalData.nationality || null,
+        vessel: appraisalData.vessel || null,
+        signOn: appraisalData.signOn || null,
+        appraisalPeriodFrom: appraisalData.appraisalPeriodFrom || null,
+        appraisalPeriodTo: appraisalData.appraisalPeriodTo || null,
+        personalityIndexCategory: appraisalData.personalityIndexCategory || null,
+        primaryAppraiser: appraisalData.primaryAppraiser || null,
+        competenceRating: auditData.competenceRating || null,
+        behavioralRating: auditData.behavioralRating || null,
+        overallRating: auditData.overallRating || null,
+        submittedBy: auditData.submittedBy || "Unknown",
+        status: auditData.status || "draft",
+        createdByUuid: auditData.createdByUuid || null,
+        updatedByUuid: auditData.updatedByUuid || null,
+      }, tx);
+
+      // Sequential: one transaction runs on one connection.
+      await trainingsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainings || [], auditUserUuid, tx);
+      await targetsRepo.syncForAppraisal(appraisalUuid, appraisalData.targets || [], auditUserUuid, tx);
+      await competenceAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid, tx);
+      await behaviouralAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments ? appraisalData.behaviouralAssessments || [] : [], auditUserUuid, tx);
+      await trainingNeedsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid, tx);
+      await recommendationsRepo.syncForAppraisal(appraisalUuid, appraisalData.recommendations || [], auditUserUuid, tx);
+      await appraiserCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid, tx);
+      await seafarerCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid, tx);
+      await officeReviewsRepo.syncForAppraisal(appraisalUuid, appraisalData.officeReviews || [], auditUserUuid, tx);
+      await trainingFollowupsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid, tx);
+      return row;
     });
 
-    const auditUserUuid = auditData.createdByUuid || null;
-    await Promise.all([
-      trainingsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainings || [], auditUserUuid),
-      targetsRepo.syncForAppraisal(appraisalUuid, appraisalData.targets || [], auditUserUuid),
-      competenceAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid),
-      behaviouralAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments ? appraisalData.behaviouralAssessments || [] : [], auditUserUuid),
-      trainingNeedsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid),
-      recommendationsRepo.syncForAppraisal(appraisalUuid, appraisalData.recommendations || [], auditUserUuid),
-      appraiserCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid),
-      seafarerCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid),
-      officeReviewsRepo.syncForAppraisal(appraisalUuid, appraisalData.officeReviews || [], auditUserUuid),
-      trainingFollowupsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid),
-    ]);
-
-    // Fire-and-forget: email any newly-added manual G1 reviewers (not assigned, not yet notified).
+    // Fire-and-forget, after commit: email any newly-added manual G1 reviewers (not assigned, not yet notified).
     void notifyNewManualG1Reviewers(
       appraisalUuid,
       appraisalData.seafarersName || '',
@@ -505,24 +509,28 @@ export class AppraisalResultsService {
       updateFields.formVersionUuid = resolvedPin.formVersionUuid;
     }
 
-    await appraisalResultsRepo.updateByAppraisalUuid(existing.appraisalUuid, updateFields);
+    // The main row and its sections are saved in one transaction.
+    await getDb().transaction(async (tx: any) => {
+      await appraisalResultsRepo.updateByAppraisalUuid(existing.appraisalUuid, updateFields, tx);
+
+      if (appraisalData) {
+        const auditUserUuid = auditData.updatedByUuid || null;
+        // Sequential: one transaction runs on one connection.
+        await trainingsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainings || [], auditUserUuid, tx);
+        await targetsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.targets || [], auditUserUuid, tx);
+        await competenceAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid, tx);
+        await behaviouralAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.behaviouralAssessments || [], auditUserUuid, tx);
+        await trainingNeedsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid, tx);
+        await recommendationsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.recommendations || [], auditUserUuid, tx);
+        await appraiserCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid, tx);
+        await seafarerCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid, tx);
+        await officeReviewsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.officeReviews || [], auditUserUuid, tx);
+        await trainingFollowupsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid, tx);
+      }
+    });
 
     if (appraisalData) {
-      const auditUserUuid = auditData.updatedByUuid || null;
-      await Promise.all([
-        trainingsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainings || [], auditUserUuid),
-        targetsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.targets || [], auditUserUuid),
-        competenceAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid),
-        behaviouralAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.behaviouralAssessments || [], auditUserUuid),
-        trainingNeedsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid),
-        recommendationsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.recommendations || [], auditUserUuid),
-        appraiserCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid),
-        seafarerCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid),
-        officeReviewsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.officeReviews || [], auditUserUuid),
-        trainingFollowupsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid),
-      ]);
-
-      // Fire-and-forget: email any newly-added manual G1 reviewers (not assigned, not yet notified).
+      // Fire-and-forget, after commit: email any newly-added manual G1 reviewers (not assigned, not yet notified).
       void notifyNewManualG1Reviewers(
         existing.appraisalUuid,
         appraisalData.seafarersName || existing.seafarersName || '',
@@ -675,59 +683,55 @@ export class AppraisalResultsService {
       stageUpdate.stage3SubmittedBy = submittedBy;
     }
 
-    await appraisalResultsRepo.updateByAppraisalUuid(appraisal.appraisalUuid, stageUpdate);
+    const reviewerList: { userUuid?: string; reviewerName?: string; designation?: string }[] =
+      stage === "stage2" && Array.isArray((data as any)?.reviewers) ? (data as any).reviewers : [];
 
-    if (stage === "stage1") {
-      await Promise.all([
-        trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainings || [], auditUserUuid),
-        targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || [], auditUserUuid),
-      ]);
-    } else if (stage === "stage2") {
-      // Task #500: persist the current B1 trainings (and targets) snapshot
-      // alongside the Stage-2 C-F writes. Only sync them when the payload
-      // includes them so legacy callers that omit `trainings`/`targets`
-      // leave existing persisted rows untouched.
-      const reviewerList: { userUuid?: string; reviewerName?: string; designation?: string }[] =
-        Array.isArray((data as any)?.reviewers) ? (data as any).reviewers : [];
+    // The stage status and that stage's sections are saved in one transaction.
+    // Writes run one after another: one transaction runs on one connection.
+    await getDb().transaction(async (tx: any) => {
+      await appraisalResultsRepo.updateByAppraisalUuid(appraisal.appraisalUuid, stageUpdate, tx);
 
-      const stage2Writes: Promise<unknown>[] = [
-        competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || [], auditUserUuid),
-        behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || [], auditUserUuid),
-        trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || [], auditUserUuid),
-        recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || [], auditUserUuid),
-        appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || [], auditUserUuid),
-        seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || [], auditUserUuid),
-        reviewersRepo.syncForAppraisal(appraisal.appraisalUuid, reviewerList, auditUserUuid),
-      ];
-      if (Array.isArray((data as any)?.trainings)) {
-        stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid));
+      if (stage === "stage1") {
+        await trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainings || [], auditUserUuid, tx);
+        await targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || [], auditUserUuid, tx);
+      } else if (stage === "stage2") {
+        await competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || [], auditUserUuid, tx);
+        await behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || [], auditUserUuid, tx);
+        await trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || [], auditUserUuid, tx);
+        await recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || [], auditUserUuid, tx);
+        await appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || [], auditUserUuid, tx);
+        await seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || [], auditUserUuid, tx);
+        await reviewersRepo.syncForAppraisal(appraisal.appraisalUuid, reviewerList, auditUserUuid, tx);
+        // Task #500: persist the current B1 trainings (and targets) snapshot
+        // alongside the Stage-2 C-F writes. Only sync them when the payload
+        // includes them so legacy callers that omit `trainings`/`targets`
+        // leave existing persisted rows untouched.
+        if (Array.isArray((data as any)?.trainings)) {
+          await trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid, tx);
+        }
+        if (Array.isArray((data as any)?.targets)) {
+          await targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets, auditUserUuid, tx);
+        }
+      } else if (stage === "stage3") {
+        await officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || [], auditUserUuid, tx);
+        await trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || [], auditUserUuid, tx);
+        // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
+        // Section G. If the client omits `trainings` we leave the existing
+        // persisted rows untouched.
+        if (Array.isArray((data as any)?.trainings)) {
+          await trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid, tx);
+        }
       }
-      if (Array.isArray((data as any)?.targets)) {
-        stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets, auditUserUuid));
-      }
-      await Promise.all(stage2Writes);
+    });
 
-      // Send review assignment notification emails to each assigned reviewer
-      if (reviewerList.length > 0) {
-        triggerAppraisalReviewNotification(
-          reviewerList,
-          appraisal.seafarersName || 'Seafarer',
-          appraisal.seafarersRank || 'N/A',
-          appraisal.appraisalUuid,
-        ).catch((e) => logEmailEvent('ERROR', '[Appraisals V2] Review notification error:', e?.message || e));
-      }
-    } else if (stage === "stage3") {
-      // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
-      // Section G. If the client omits `trainings` we leave the existing
-      // persisted rows untouched.
-      const stage3Writes: Promise<unknown>[] = [
-        officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || [], auditUserUuid),
-        trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || [], auditUserUuid),
-      ];
-      if (Array.isArray((data as any)?.trainings)) {
-        stage3Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid));
-      }
-      await Promise.all(stage3Writes);
+    // After commit: send review assignment notification emails to each assigned reviewer
+    if (reviewerList.length > 0) {
+      triggerAppraisalReviewNotification(
+        reviewerList,
+        appraisal.seafarersName || 'Seafarer',
+        appraisal.seafarersRank || 'N/A',
+        appraisal.appraisalUuid,
+      ).catch((e) => logEmailEvent('ERROR', '[Appraisals V2] Review notification error:', e?.message || e));
     }
 
     return this.getByUuid(appraisal.appraisalUuid);

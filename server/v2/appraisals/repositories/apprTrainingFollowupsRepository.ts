@@ -4,6 +4,9 @@ import { apprTrainingFollowupsV2 } from "../../../../shared/v2/appraisals/schema
 import type { ApprTrainingFollowupV2 } from "../../../../shared/v2/appraisals/types";
 import { v4 as uuidv4 } from "uuid";
 
+// A transaction (tx) or the default connection.
+type Executor = any;
+
 export class ApprTrainingFollowupsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprTrainingFollowupV2[]>> {
     if (appraisalUuids.length === 0) return new Map();
@@ -24,8 +27,8 @@ export class ApprTrainingFollowupsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
-    const db = getDb();
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
+    const db = executor;
     const now = new Date();
 
     const existing = await db
@@ -37,32 +40,11 @@ export class ApprTrainingFollowupsRepository {
       ))
       .orderBy(apprTrainingFollowupsV2.sortOrder);
 
-    const updates: Promise<any>[] = [];
-
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (i < existing.length) {
-        updates.push(
-          db.update(apprTrainingFollowupsV2)
-            .set({
-              training: row.training || null,
-              correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
-              identifiedByUuid: row.identifiedByUuid || null,
-              category: row.category || null,
-              status: row.status || null,
-              targetDate: row.targetDate || null,
-              comment: row.comment || null,
-              sortOrder: i,
-              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-              updatedAt: now,
-            })
-            .where(eq(apprTrainingFollowupsV2.id, existing[i].id))
-        );
-      } else {
-        updates.push(
-          db.insert(apprTrainingFollowupsV2).values({
-            trainingFollowupUuid: uuidv4(),
-            appraisalUuid,
+        await db.update(apprTrainingFollowupsV2)
+          .set({
             training: row.training || null,
             correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
             identifiedByUuid: row.identifiedByUuid || null,
@@ -71,23 +53,32 @@ export class ApprTrainingFollowupsRepository {
             targetDate: row.targetDate || null,
             comment: row.comment || null,
             sortOrder: i,
-            createdByUuid: auditUserUuid || null,
-            updatedByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+            updatedAt: now,
           })
-        );
+          .where(eq(apprTrainingFollowupsV2.id, existing[i].id));
+      } else {
+        await db.insert(apprTrainingFollowupsV2).values({
+          trainingFollowupUuid: uuidv4(),
+          appraisalUuid,
+          training: row.training || null,
+          correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
+          identifiedByUuid: row.identifiedByUuid || null,
+          category: row.category || null,
+          status: row.status || null,
+          targetDate: row.targetDate || null,
+          comment: row.comment || null,
+          sortOrder: i,
+          createdByUuid: auditUserUuid || null,
+          updatedByUuid: auditUserUuid || null,
+        });
       }
     }
 
     for (let i = rows.length; i < existing.length; i++) {
-      updates.push(
-        db.update(apprTrainingFollowupsV2)
-          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-          .where(eq(apprTrainingFollowupsV2.id, existing[i].id))
-      );
-    }
-
-    if (updates.length > 0) {
-      await Promise.all(updates);
+      await db.update(apprTrainingFollowupsV2)
+        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+        .where(eq(apprTrainingFollowupsV2.id, existing[i].id));
     }
   }
 }

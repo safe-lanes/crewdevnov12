@@ -4,6 +4,9 @@ import { appraisalResultsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { AppraisalResultV2, InsertAppraisalResultV2 } from "../../../../shared/v2/appraisals/types";
 import { v4 as uuidv4 } from "uuid";
 
+// A transaction (tx) or the default connection.
+type Executor = any;
+
 export class AppraisalResultsRepository {
   async findAll(): Promise<AppraisalResultV2[]> {
     const db = getDb();
@@ -59,18 +62,20 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
-  async createWithUuid(data: InsertAppraisalResultV2): Promise<AppraisalResultV2> {
-    const db = getDb();
-    const results = await db
+  async createWithUuid(data: InsertAppraisalResultV2, executor: Executor = getDb()): Promise<AppraisalResultV2> {
+    const results = await executor
       .insert(appraisalResultsV2)
       .values(data)
       .returning();
     return results[0];
   }
 
-  async updateByAppraisalUuid(uuid: string, data: Partial<InsertAppraisalResultV2>): Promise<AppraisalResultV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async updateByAppraisalUuid(
+    uuid: string,
+    data: Partial<InsertAppraisalResultV2>,
+    executor: Executor = getDb(),
+  ): Promise<AppraisalResultV2 | undefined> {
+    const results = await executor
       .update(appraisalResultsV2)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(appraisalResultsV2.appraisalUuid, uuid), eq(appraisalResultsV2.isDeleted, false)))
