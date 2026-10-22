@@ -6,6 +6,7 @@ import { AttachmentAccessError, authorizeAttachmentMenu, authorizeAttachmentSubj
 import { readOnboardAssignments, readOnboardCompliance, onboardDot } from "../../shared/training-compliance/onboard";
 import { contractEndDate } from "../../shared/training-compliance/dates";
 import { decorateTrainingCompliance } from "./trainingComplianceController";
+import { logUndeterminedTrainingMatrixCells } from "./trainingMatrixDiagnostics";
 
 /** One read-only snapshot, no dates/rank/revision supplied by the browser. */
 export async function getOnboardTrainingCompliance(req: Request, res: Response) {
@@ -47,6 +48,7 @@ export async function getOnboardTrainingCompliance(req: Request, res: Response) 
       return { referenceDate, twoMonthDate: contractEndDate(referenceDate, 2),
         matrixRevision: saved?.revision ?? null, rows, crew };
     }, { isolationLevel: "repeatable read", accessMode: "read only" });
+    logUndeterminedTrainingMatrixCells(parsed.data, result);
     res.setHeader("Cache-Control", "no-store");
     return res.json(result);
   } catch (error) {
