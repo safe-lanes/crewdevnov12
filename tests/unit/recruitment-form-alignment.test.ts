@@ -61,12 +61,12 @@ describe("Application-form-aligned Excel revision", () => {
   it("places general/contact/family fields in reading order and keeps vessel types beside Gender", () => {
     const sheet = createTemplateWorkbook(catalogs).worksheets[0];
     expect(["A6", "A8", "Q8", "A9", "A10", "Q10", "A11", "Q11", "A12", "Q12", "A13", "Q13", "A14", "Q14", "A15", "Q15", "A16"].map(cell => sheet.getCell(cell).text)).toEqual([
-      "Rank applied for", "First name *", "Middle name", "Family name", "Gender", "Vessel types applied for",
+      "Rank applied for", "First name *", "Middle name", "Family name", "Gender", "Vessel Type",
       "Nationality", "Present rank", "Date of birth", "Birth city", "Birth country", "Height (cm)",
       "Weight (kg)", "Native language", "English proficiency", "Foreign languages", "Manning agent",
     ]);
     expect(["A19", "Q19", "A20", "Q20", "A21", "Q21", "A22"].map(cell => sheet.getCell(cell).text))
-      .toEqual(["Country of residence", "Nearest airport", "Mobile", "Email", "Address line 1", "Address line 2", "Landline"]);
+      .toEqual(["Country of residence", "Nearest airport", "Mobile", "Email", "Address line 1", "Residential Address Line 2 (City, State, PIN)", "Contact Landline"]);
     expect(["A25", "Q25", "A26", "Q26", "A27", "Q27", "A28", "Q28"].map(cell => sheet.getCell(cell).text))
       .toEqual(["Marital status", "Dependent children", "Father's name", "Mother's name", "Spouse first name", "Spouse middle name", "Spouse family name", "Spouse birth date"]);
   });
@@ -127,7 +127,7 @@ describe("Application-form-aligned Excel revision", () => {
       const { book, set } = filled(version);
       set("sea", service, 1);
       set("address", { mobile: "0012345", countryOfResidenceUuid: "India" });
-      set("family", { maritalStatus: "Married" });
+      set("family", { maritalStatus: "Married", spouseFirstName: "Partner", spouseFamilyName: "Candidate" });
       set("children", { firstName: "Child" });
       set("nok", { firstName: "Contact", email: "contact@example.invalid" });
       set("documents", { documentName: "Passport", number: "00123" });

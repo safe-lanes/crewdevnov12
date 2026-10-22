@@ -62,7 +62,7 @@ describe("Recruitment template revision 6 fields and visa countries", () => {
     expect(sheet.getColumn(column).hidden).toBe(true);
     expect(catalogs.visaCountries.map((_, i) => sheet.getCell(`${column}${i + 2}`).text))
       .toEqual(catalogs.visaCountries.map(c => c.label));
-    expect(sheet.getCell("Q1").text).toContain("revision: 6");
+    expect(sheet.getCell("Q1").text).toContain(`revision: ${VERSION.match(/\/ (\d+)/)![1]}`);
   });
 
   it("has only application fields and correctly ordered Education columns without orphan boxes", () => {

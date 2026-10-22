@@ -87,7 +87,7 @@ describe("Recruitment Excel A2.1 database and manual documents", () => {
   ] as const)("rejects %s selections using the live server catalog", async (_case, value, entries) => {
     const parsed = await read([value], { live: { ...catalogs, travelDocuments: [...entries] } });
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors).toContainEqual(expect.objectContaining({ section: "A2.1", cell: "A48", field: "Document type", message: expect.stringMatching(/database|dropdown/i) }));
+    expect(parsed.errors).toContainEqual(expect.objectContaining({ section: "A2.1", cell: "A48", field: "Document", message: expect.stringMatching(/database|dropdown/i) }));
   });
 
   it("does not trust uploaded hidden catalog cells", async () => {

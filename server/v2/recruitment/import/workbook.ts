@@ -1,8 +1,9 @@
 import ExcelJS from "exceljs";
-import { VERSION, LEGACY_VERSION, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, inputRange, type Catalogs, type TemplateVersion } from "./contract";
+import { VERSION, FIELD_ALIGNMENT_VERSION, LEGACY_VERSION, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, inputRange, type Catalogs, type TemplateVersion } from "./contract";
 import { FORM_SHEET, FORM_LAST_ROW, PREVIOUS_FORM_LAST_ROW, FORM_GUIDELINE_START, FORM_SECTION_BANDS, LOOKUP_START_COLUMN, columnLetter } from "./formLayout";
 import { isRequiredLabel } from "./requirements";
-import { styleBox, requiredLabel, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
+import { styleBox, requiredLabel, CURRENT_LEGEND, FORM_LEGEND, PREVIOUS_LEGEND, FORM_COLORS, type BoxStyle } from "./workbookStyle";
+import { spouseHeadingFormula } from "./conditionalHeadings";
 import { certificateOption, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
 import { writeCertificateDefaults, certificateDefaultFormula, isCertificateDefault, AUTOFILL_CERTIFICATE_GUIDE } from "./certificateAutofill";
 export const DOCUMENT_SELECTION_GUIDE = `${AUTOFILL_CERTIFICATE_GUIDE} Document type: choose a database option or type a custom name.`;
@@ -14,7 +15,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   const lastRow = aligned ? FORM_LAST_ROW : PREVIOUS_FORM_LAST_ROW;
   const guidelines = aligned ? FORM_GUIDELINE_START : 229;
   const blocks = blocksForVersion(version);
-  const legendText = legacy ? PREVIOUS_LEGEND : FORM_LEGEND;
+  const legendText = version === VERSION ? CURRENT_LEGEND : legacy ? PREVIOUS_LEGEND : FORM_LEGEND;
   const book = new ExcelJS.Workbook();
   book.creator = "SAIL Recruitment";
   book.calcProperties.fullCalcOnLoad = true;
@@ -38,7 +39,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     return cell;
   }
   box("A1:P1", version, "meta");
-   box("Q1:AF1", `Template revision: ${version.match(/\/ (\d+)/)![1]} · Recruitment A1–A5`, "meta", true);
+  box("Q1:AF1", `Template revision: ${version.match(/\/ (\d+)/)![1]} · Recruitment A1–A5`, "meta", true);
   box("A2:AF3", "APPLICATION FOR EMPLOYMENT", "title", true);
   const legend = box("A4:AB4", legendText, "note", true);
   legend.value = { richText: [
@@ -59,7 +60,9 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     ["A228:AF228", "Guidelines for Filling and Uploading"],
   ]).forEach(([range, title]) => { box(range, title, "section", true); sheet.getRow(Number(range.match(/\d+/)![0])).height = 26; });
   if (aligned) box("A7:AB7", "File No, submitted date, age and service periods are assigned or calculated on import.", "note", true);
-  box(aligned ? "A29:AF29" : "A26:P26", legacy ? "Spouse first name and surname are required if Married." : "Spouse details are optional, including when Married.", "note", true);
+  box(aligned ? "A29:AF29" : "A26:P26", version === VERSION
+    ? "If Married: spouse first name and family name are required (*). Spouse middle name and date of birth are optional."
+    : legacy ? "Spouse first name and surname are required if Married." : "Spouse details are optional, including when Married.", "note", true);
   box(aligned ? "A140:AF140" : "A48:AF48", aligned
     ? "Enter the latest sea service first, then older services below. IMO Number is optional; periods are calculated on import."
     : "Enter the latest sea service first, then older services below. Each record has From above To; period is calculated.", "note", true);
@@ -78,7 +81,7 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   const ranges: Record<string, string> = {};
   Object.entries(catalogs).forEach(([name, entries], index) => {
     if (["travelDocuments", "foreignLanguages"].includes(name) && !usesDocumentCatalog(version)) return;
-    if (name === "visaCountries" && version !== VERSION) return;
+    if (name === "visaCountries" && version !== VERSION && version !== FIELD_ALIGNMENT_VERSION) return;
     const col = LOOKUP_START_COLUMN + index;
     const letter = columnLetter(col);
     const labels = [...new Set(entries.map(e => ["licenses", "training", "travelDocuments"].includes(name) ? certificateOption(e) : e.label))];
@@ -91,8 +94,17 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
   if (!legacy) writeCertificateDefaults(sheet, catalogs);
   for (const block of blocks) {
     block.fields.forEach((field, j) => {
-      box(block.placements[j].label,
-        isRequiredLabel(block.entity, field.key, legacy) ? requiredLabel(field.label) : field.label, "label", !!block.rows);
+      const heading = box(block.placements[j].label,
+        isRequiredLabel(block.entity, field.key, legacy, version !== VERSION) ? requiredLabel(field.label) : field.label, "label", !!block.rows);
+      const formula = spouseHeadingFormula(block, field, version);
+      if (formula) {
+        heading.value = { formula, result: field.label };
+        sheet.addConditionalFormatting({
+          ref: block.placements[j].label,
+          rules: [{ type: "expression", priority: 1, formulae: ['TRIM($F$25)="Married"'],
+            style: { font: { bold: true, color: { argb: FORM_COLORS.required } } } }],
+        });
+      }
     });
     if (block.rows && (legacy || block.entity !== "vesselTypes")) {
       sheet.getRow(block.start - (block.entity === "sea" && !aligned ? 2 : 1)).height = aligned && block.entity === "sea" ? 54 : 40;
@@ -140,6 +152,10 @@ export function createTemplateWorkbook(catalogs: Catalogs, version: TemplateVers
     sheet.getRow(aligned ? 10 : 5).height = 48;
     sheet.getRow(guidelines + 2).height = 44;
     sheet.getRow(guidelines + 3).height = 60;
+  }
+  if (version === VERSION) {
+    sheet.getRow(21).height = 48; // Wrap the full residential-address label.
+    sheet.getRow(29).height = 32;
   }
   return book;
 }
