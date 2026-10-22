@@ -6,7 +6,7 @@ import { generateTemplate, createTemplateWorkbook } from "../../server/v2/recrui
 import { BLOCKS, LEGACY_BLOCKS, LEGACY_VERSION, cellLocation, labelLocation } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint } from "../../server/v2/recruitment/import/persistence";
-import { FORM_COLORS, FORM_LEGEND, LEGACY_LEGEND } from "../../server/v2/recruitment/import/workbookStyle";
+import { FORM_COLORS, CURRENT_LEGEND, LEGACY_LEGEND } from "../../server/v2/recruitment/import/workbookStyle";
 import { isRequiredLabel } from "../../server/v2/recruitment/import/requirements";
 
 const catalogs = { countries: [], nationalities: [], languages: [], ranks: [], agents: [], vesselTypes: [] };
@@ -55,12 +55,11 @@ describe("Professional application workbook styling", () => {
     expect(sheet.getRow(107).height).toBeGreaterThanOrEqual(40);
     expect(sheet.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0, printArea: "A1:AF207" });
   });
-  it("marks actual required fields but leaves spouse and optional vessel box unstarred", async () => {
+  it("marks required fields, conditionally marks spouse names and leaves optional fields unstarred", async () => {
     const expected: Record<string, string[]> = {
       candidate: ["firstName"], documents: ["documentName"], visas: ["countryUuid", "visaType"],
       education: ["qualifications"], licenses: ["certificateDocument"], training: ["trainingCourse"],
       sea: ["vesselName", "vesselTypeUuid", "rank", "fromDate", "toDate"],
-      children: ["firstName"], additional: ["information"],
     };
     const sheet = (await workbook()).worksheets[0];
     for (const block of BLOCKS) block.fields.forEach((field, j) => {
@@ -71,10 +70,10 @@ describe("Professional application workbook styling", () => {
           { text: field.label, font: { color: { argb: FORM_COLORS.text } } },
           { text: " *", font: { color: { argb: FORM_COLORS.required } } },
         ] });
-      } else expect(cell.value).toBe(field.label);
+      } else expect(cell.text).toBe(field.label);
     });
-    expect(sheet.getCell("A4").text).toBe(FORM_LEGEND);
-    expect(sheet.getCell("A29").text).toBe("Spouse details are optional, including when Married.");
+    expect(sheet.getCell("A4").text).toBe(CURRENT_LEGEND);
+    expect(sheet.getCell("A29").text).toContain("If Married: spouse first name and family name are required");
     expect(sheet.getCell("A202").text).toContain("Only populated cells and rows are saved.");
     expect(sheet.getCell("A203").text).toContain("YYYY-MM-DD or DD-MMM-YYYY");
   });
@@ -111,9 +110,10 @@ describe("Professional application workbook styling", () => {
   it("accepts Excel flattening rich headings to their exact plain text", async () => {
     const book = await workbook();
     for (const block of BLOCKS) block.fields.forEach((_, j) => {
-      const cell = book.worksheets[0].getCell(labelLocation(block, j)); cell.value = cell.text;
+      const cell = book.worksheets[0].getCell(labelLocation(block, j));
+      if (cell.type !== ExcelJS.ValueType.Formula) cell.value = cell.text;
     });
-    book.worksheets[0].getCell("A4").value = FORM_LEGEND;
+    book.worksheets[0].getCell("A4").value = CURRENT_LEGEND;
     expect((await parse(book)).isValid).toBe(true);
   });
   it.each(["Changed *", "First name **", " First name *"])("rejects altered mandatory heading %s", async heading => {
@@ -134,12 +134,12 @@ describe("Professional application workbook styling", () => {
     book.worksheets[0].getCell("A8").value = value;
     await expect(parse(book)).rejects.toMatchObject({ code: "MODIFIED_HEADING" });
   });
-  it("accepts Married with blank spouse details and keeps unused tables empty", async () => {
+  it("rejects Married with blank spouse names and keeps unused tables empty", async () => {
     const book = await workbook();
     book.worksheets[0].getCell("F25").value = "Married";
     const parsed = await parse(book);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.isValid).toBe(true);
+    expect(parsed.errors.map(error => error.cell)).toEqual(["F27", "F28"]);
+    expect(parsed.isValid).toBe(false);
     expect(parsed.data.family).toEqual([{ maritalStatus: "Married", __row: "0" }]);
     expect(parsed.data.children).toEqual([]);
     expect(parsed.data.sea).toEqual([]);

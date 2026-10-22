@@ -5,12 +5,13 @@ export const LEGACY_VERSION = "Recruitment A1-A5 / 2 — Single sheet";
 export const PREVIOUS_VERSION = "Recruitment A1-A5 / 3 — Single sheet";
 export const ALIGNED_VERSION = "Recruitment A1-A5 / 4 — Single sheet";
 export const DOCUMENT_VERSION = "Recruitment A1-A5 / 5 — Single sheet";
-export const VERSION = "Recruitment A1-A5 / 6 — Single sheet";
-export type TemplateVersion = typeof VERSION | typeof DOCUMENT_VERSION | typeof ALIGNED_VERSION | typeof PREVIOUS_VERSION | typeof LEGACY_VERSION;
+export const FIELD_ALIGNMENT_VERSION = "Recruitment A1-A5 / 6 — Single sheet";
+export const VERSION = "Recruitment A1-A5 / 7 — Single sheet";
+export type TemplateVersion = typeof VERSION | typeof FIELD_ALIGNMENT_VERSION | typeof DOCUMENT_VERSION | typeof ALIGNED_VERSION | typeof PREVIOUS_VERSION | typeof LEGACY_VERSION;
 export const isTemplateVersion = (value: unknown): value is TemplateVersion =>
-  [VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION].some(version => version === value);
-export const usesAlignedLayout = (version: TemplateVersion) => version === VERSION || version === DOCUMENT_VERSION || version === ALIGNED_VERSION;
-export const usesDocumentCatalog = (version: TemplateVersion) => version === VERSION || version === DOCUMENT_VERSION;
+  [VERSION, FIELD_ALIGNMENT_VERSION, DOCUMENT_VERSION, ALIGNED_VERSION, PREVIOUS_VERSION, LEGACY_VERSION].some(version => version === value);
+export const usesAlignedLayout = (version: TemplateVersion) => version === VERSION || version === FIELD_ALIGNMENT_VERSION || version === DOCUMENT_VERSION || version === ALIGNED_VERSION;
+export const usesDocumentCatalog = (version: TemplateVersion) => version === VERSION || version === FIELD_ALIGNMENT_VERSION || version === DOCUMENT_VERSION;
 export type Field = { key: string; label: string; date?: boolean; catalog?: string; certificateCatalog?: "licenses" | "training"; documentCatalog?: "travelDocuments"; choices?: string[]; max?: number };
 export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
@@ -79,7 +80,7 @@ export const DOCUMENT_BLOCKS: Block[] = ALIGNED_BLOCKS.map(block => ({
     ? block.fields.map(field => field.key === "documentName" ? { ...field, documentCatalog: "travelDocuments" } : field)
     : block.fields,
 }));
-export const BLOCKS: Block[] = DOCUMENT_BLOCKS.map(block => ({
+export const FIELD_ALIGNMENT_BLOCKS: Block[] = DOCUMENT_BLOCKS.map(block => ({
   ...block, placements: FORM_LAYOUT[block.entity].placements,
   fields: block.fields
     .filter(field => !(["documents", "licenses", "training"].includes(block.entity) && field.key === "issuingCountryUuid")
@@ -90,8 +91,22 @@ export const BLOCKS: Block[] = DOCUMENT_BLOCKS.map(block => ({
         subjectsField: "Subjects/Field", qualifications: "Qualifications",
       } as Record<string, string>)[field.key] } : field),
 }));
+export const BLOCKS: Block[] = FIELD_ALIGNMENT_BLOCKS.map(block => ({
+  ...block,
+  placements: block.entity === "address" ? block.placements.map((placement, j) =>
+    block.fields[j].key === "addressLine2" ? { label: "Q21:X21", input: "Y21:AF21" } : placement) : block.placements,
+  fields: block.fields.map(field => {
+    const label = ({
+      "documents.documentName": "Document",
+      "address.addressLine2": "Residential Address Line 2 (City, State, PIN)",
+      "address.contactLandline": "Contact Landline",
+      "vesselTypes.vesselTypeUuid": "Vessel Type",
+    } as Record<string, string>)[`${block.entity}.${field.key}`];
+    return label ? { ...field, label } : field;
+  }),
+}));
 export function blocksForVersion(version: TemplateVersion): Block[] {
-  return version === LEGACY_VERSION ? LEGACY_BLOCKS : version === PREVIOUS_VERSION ? PREVIOUS_BLOCKS : version === ALIGNED_VERSION ? ALIGNED_BLOCKS : version === DOCUMENT_VERSION ? DOCUMENT_BLOCKS : BLOCKS;
+  return version === LEGACY_VERSION ? LEGACY_BLOCKS : version === PREVIOUS_VERSION ? PREVIOUS_BLOCKS : version === ALIGNED_VERSION ? ALIGNED_BLOCKS : version === DOCUMENT_VERSION ? DOCUMENT_BLOCKS : version === FIELD_ALIGNMENT_VERSION ? FIELD_ALIGNMENT_BLOCKS : BLOCKS;
 }
 export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
 export type CatalogEntry = { label: string; value: string; abbr?: string | null; requirement?: string | null };

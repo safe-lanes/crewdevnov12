@@ -92,9 +92,9 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(parsed.data.family[0].numDependentChildren).toBe("0");
     expect(parsed.data.additional[0].response).toBe("false");
   });
-  it("saves multiple vessel relationships in order and Married without any spouse details", async () => {
+  it("saves multiple vessel relationships in order and Married with required spouse names only", async () => {
     const parsed = await parse({
-      candidate: [{ firstName: "Import" }], family: [{ maritalStatus: "Married" }],
+      candidate: [{ firstName: "Import" }], family: [{ maritalStatus: "Married", spouseFirstName: "Partner", spouseFamilyName: "Test" }],
       vesselTypes: [{ vesselTypeUuid: "Bulk Carrier" }, { vesselTypeUuid: "Oil Tanker" }],
     });
     expect(parsed.errors).toEqual([]);
@@ -103,7 +103,8 @@ describe("Recruitment A1-A5 workbook", () => {
     const uuid = await persistCandidate(parsed, "actor-uuid");
     const family = fake.saved.find(saved => saved.table === "cand_family_info")!;
     expect(family.values).toMatchObject({ maritalStatus: "Married", recCanUuid: uuid });
-    expect(Object.keys(family.values).filter(key => key.startsWith("spouse"))).toEqual([]);
+    expect(family.values).toMatchObject({ spouseFirstName: "Partner", spouseFamilyName: "Test" });
+    expect(family.values).not.toHaveProperty("spouseDob");
     const vessels = fake.saved.filter(saved => saved.table === "cand_vessel_types_applied");
     expect(vessels.map(saved => [saved.values.vesselTypeUuid, saved.values.sortOrder])).toEqual([["vt-uuid", 0], ["oil-uuid", 1]]);
     expect(vessels.every(saved => saved.values.recCanUuid === uuid)).toBe(true);
@@ -211,7 +212,7 @@ describe("Recruitment A1-A5 workbook", () => {
     expect(parsed.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ sheet: FORM_SHEET, cell: "F8", field: "First name" }),
       expect.objectContaining({ sheet: FORM_SHEET, cell: "AA143", field: "From" }),
-      expect.objectContaining({ sheet: FORM_SHEET, cell: "V10", field: "Vessel types applied for" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "V10", field: "Vessel Type" }),
     ]));
   });
   it("rejects data in gaps or beyond any designated table rather than silently ignoring it", async () => {

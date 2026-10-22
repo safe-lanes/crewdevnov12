@@ -1,11 +1,12 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { LEGACY_VERSION, isTemplateVersion, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
+import { VERSION, LEGACY_VERSION, isTemplateVersion, usesAlignedLayout, usesDocumentCatalog, blocksForVersion, cellLocation, labelLocation, type Catalogs, type Parsed, type ImportError } from "./contract";
 import { FORM_SHEET, FORM_GUIDELINE_START, LOOKUP_START_COLUMN } from "./formLayout";
 import { createTemplateWorkbook, DOCUMENT_SELECTION_GUIDE } from "./workbook";
 import { WorkbookValidationError, unreadableWorkbook } from "./errors";
-import { isRequiredLabel, ROW_REQUIRED } from "./requirements";
-import { fixedText, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
+import { isRequiredLabel, ROW_REQUIRED, SPOUSE_REQUIRED } from "./requirements";
+import { fixedText, CURRENT_LEGEND, FORM_LEGEND, PREVIOUS_LEGEND, LEGACY_LEGEND } from "./workbookStyle";
+import { spouseHeadingFormula, matchesHeadingFormula } from "./conditionalHeadings";
 import { parseVesselTypes } from "./vesselTypes";
 import { resolveCertificate, CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE } from "./certificateCatalogs";
 import { certificateDefaultReader, isAutofillLookup, isCertificateDefault, AUTOFILL_CERTIFICATE_GUIDE } from "./certificateAutofill";
@@ -65,14 +66,16 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
   // and merged aliases must not be counted as extra populated cells.
   const fixed = new Set<string>();
   const labels = new Map(blocks.flatMap(block => block.fields.map((field, j) =>
-    [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key, legacy) }] as const)));
+    [labelLocation(block, j), { label: field.label, required: isRequiredLabel(block.entity, field.key, legacy, version !== VERSION),
+      formula: spouseHeadingFormula(block, field, version) }] as const)));
   expected.eachRow(row => row.eachCell(cell => {
     if (cell.type === ExcelJS.ValueType.Merge || inputs.has(cell.address) || isLookup(Number(cell.col)) || cell.value === null) return;
     fixed.add(cell.address);
     const actual = fixedText(sheet.getCell(cell.address).value);
     const label = labels.get(cell.address);
-    const valid = label ? actual === label.label || (label.required && actual === `${label.label} *`)
-      : cell.address === "A4" ? legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
+    const valid = label ? label.formula ? matchesHeadingFormula(sheet.getCell(cell.address).value, label.formula)
+      : actual === label.label || (label.required && actual === `${label.label} *`)
+      : cell.address === "A4" ? version === VERSION ? actual === CURRENT_LEGEND : legacy ? actual === PREVIOUS_LEGEND || actual === LEGACY_LEGEND : actual === FORM_LEGEND
         : cell.address === `A${usesAlignedLayout(version) ? FORM_GUIDELINE_START + 3 : 232}` ? [CERTIFICATE_GUIDE, PREVIOUS_CERTIFICATE_GUIDE, AUTOFILL_CERTIFICATE_GUIDE, ...(usesDocumentCatalog(version) ? [DOCUMENT_SELECTION_GUIDE] : [])].includes(actual!)
       : actual !== undefined && actual === fixedText(cell.value);
     if (!valid) throw new WorkbookValidationError("MODIFIED_HEADING", `Modified heading or instructions at ${cell.address}. Do not move or rename template fields.`);
@@ -169,6 +172,11 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
       const present = Object.keys(record).length > 0 || rowErrors.length > 0;
       if (!present) continue;
       for (const key of ROW_REQUIRED[block.entity] || []) if (!record[key]) report(key, "Required for a populated row.");
+      if (block.entity === "family" && record.maritalStatus === "Married") {
+        for (const key of SPOUSE_REQUIRED) if (!record[key]) {
+          report(key, `${key === "spouseFirstName" ? "Spouse first name" : "Spouse family name"} is required when Marital Status is Married.`);
+        }
+      }
       if (record.issued && record.expiry && record.expiry < record.issued) report("expiry", "Expiry cannot be earlier than issued date.");
       if (record.fromDate && record.toDate && record.toDate < record.fromDate) report("toDate", "End date cannot be earlier than start date.");
       // Keep workbook row identity for errors while ignoring empty rows.

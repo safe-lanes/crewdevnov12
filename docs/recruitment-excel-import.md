@@ -4,7 +4,13 @@ In Recruitment → In Progress, **Import Candidate** downloads the current singl
 
 All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Revision 6 aligns the editable columns with the Recruitment Application: it removes Issuing Country from A2.1 documents, A3.2 licenses and A3.3 training, removes Source from A2.2 visas, and orders Education as **Qualifications → Subjects/Field → School/College/University → Date of Completion**. Sea-service entries use one row each, with optional **IMO Number** immediately after Vessel Name, followed by Vessel Type, Deadweight, Engine Type/Power, Owner/Operator, Rank, From and To. Periods are calculated on import. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
 
-Single-sheet revisions **2, 3, 4 and 5 remain supported with their original field definitions and cell mappings**, including values in the now-removed inputs. Revisions 2 and 3 retain paired sea-service rows and do not have an IMO input; revision 4 supports IMO but keeps document names as unlinked text; revision 5 adds linked/manual document dropdowns. Previously filled revision 5 workbooks remain valid with or without the Foreign Languages dropdown. Download a fresh revision 6 template for the corrected fields and visa choices; do not copy encoded database choices into revisions before 5. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
+The current template is **revision 7**. Its labels match the application: **Document**, **Residential Address Line 2 (City, State, PIN)**, **Contact Landline**, and **Vessel Type**. The singular Vessel Type label retains multiple names separated by semicolons. The address label wraps in a wider box; its input is now Y21:AF21.
+
+Single-sheet revisions **2, 3, 4, 5 and 6 remain supported with their original field definitions, headings and cell mappings**, including values in the now-removed inputs. Revisions 2 and 3 retain paired sea-service rows and do not have an IMO input; revision 4 supports IMO but keeps document names as unlinked text; revision 5 adds linked/manual document dropdowns. Previously filled revision 5 workbooks remain valid with or without the Foreign Languages dropdown. Download a fresh revision 7 template for the current labels and required indicators; do not copy encoded database choices into revisions before 5. The old multi-sheet revision 1 is not accepted. Unsupported versions get an explicit redownload error; the importer never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
+
+Validation follows the current application rules for every supported revision: **Spouse First Name and Spouse Family Name are required only when Marital Status is Married**. Spouse middle name and DOB remain optional. Revision 7 uses standard IF/TRIM heading formulas to show spouse-name asterisks only when Married, with red conditional formatting and visible guidance; macros, add-ins and cell comments are not used. Only the two exact server-generated heading formulas are allowed, and their cached text is never trusted for validation. Ordinary input formulas remain forbidden.
+
+**Child First Name and A5.1 Information are optional**, including in populated rows. A child row with another supported value, or an additional-information row with only Response, is retained without inventing missing values. Empty rows are omitted. Older workbooks may still show the previous asterisks or optional-spouse instructions; they are read using their historical headings but validated against the corrected rules.
 
 - A1.1 General Particulars; A1.2 Address & Contact Info; A1.3 Family and NOK (including children).
 - A2.1 Travel & Identification Documents; A2.2 Visas.
@@ -55,6 +61,10 @@ With an existing login whose master-user row has the same numeric ID, download t
 Local automated tests use synthetic signed JWTs, isolated tenant database doubles and simulated persistence. They do not prove the external UAT deployment has been updated; the signed-in UAT checks above must follow its rollout.
 
 ## Verification
+
+- Required-field and label regressions: `npx vitest run tests/unit/recruitment-required-label-parity.test.ts`
+- Read-only live template/download/validation smoke (never executes imports): `node tests/e2e/recruitment-template-style.cjs`
+- Native conditional-heading recalculation: `LIBREOFFICE_BIN=/path/to/soffice npx tsx tests/e2e/recruitment-spouse-headings-native.ts`. This verifies actual LibreOffice recalculation and XLSX save/reopen, not Microsoft Excel desktop or Excel for the web.
 
 - Unit/regression: `npx vitest run tests/unit/recruitment-candidate-import.test.ts tests/unit/recruitment-import-request.test.ts tests/unit/recruitment-import-auth-transport.test.ts`
 - Browser smoke (running development workflow): `node tests/e2e/recruitment-import-smoke.cjs`

@@ -5,7 +5,7 @@ import { createTemplateWorkbook } from "../../server/v2/recruitment/import/workb
 import { VERSION, PREVIOUS_VERSION, LEGACY_VERSION, blocksForVersion, cellLocation, type Catalogs, type TemplateVersion } from "../../server/v2/recruitment/import/contract";
 import { parseWorkbook } from "../../server/v2/recruitment/import/parser";
 import { candidateFingerprint } from "../../server/v2/recruitment/import/persistence";
-import { FORM_LEGEND, PREVIOUS_LEGEND } from "../../server/v2/recruitment/import/workbookStyle";
+import { CURRENT_LEGEND, PREVIOUS_LEGEND } from "../../server/v2/recruitment/import/workbookStyle";
 
 vi.mock("../../server/v2/db", () => ({ getDb: vi.fn() }));
 const catalogs: Catalogs = {
@@ -25,7 +25,7 @@ describe("Recruitment layout versions and vessel-type list", () => {
     const book = form();
     const sheet = book.worksheets[0];
     expect(sheet.getCell("A1").value).toBe(VERSION);
-    expect(sheet.getCell("Q10").value).toBe("Vessel types applied for");
+    expect(sheet.getCell("Q10").value).toBe("Vessel Type");
     expect(sheet.getCell("V10").value).toBeNull();
     expect(sheet.getCell("V10").dataValidation).toMatchObject({ type: "list", showErrorMessage: false, allowBlank: true });
     expect(sheet.getCell("V10").dataValidation.formulae?.[0]).toMatch(/^\$[A-Z]+\$2:/);
@@ -88,17 +88,19 @@ describe("Recruitment layout versions and vessel-type list", () => {
     const parsed = await parse(book, { ...catalogs, vesselTypes: [...catalogs.vesselTypes, { label: "Vessel Type 1", value: "different-id" }] });
     expect(parsed.errors[0]).toMatchObject({ cell: "V10", message: expect.stringContaining("Ambiguous") });
   });
-  it.each([VERSION, PREVIOUS_VERSION, LEGACY_VERSION] as const)("spouse details are optional but supplied values validate in %s", async version => {
+  it.each([VERSION, PREVIOUS_VERSION, LEGACY_VERSION] as const)("Married requires spouse names and supplied values validate in %s", async version => {
     const book = form(version);
     const sheet = book.worksheets[0];
     const family = blocksForVersion(version).find(block => block.entity === "family")!;
     const cell = (key: string) => cellLocation(family, family.fields.findIndex(field => field.key === key), 0);
     sheet.getCell(cell("maritalStatus")).value = "Married";
     const empty = await parse(book);
-    expect(empty.errors).toEqual([]);
+    expect(empty.errors.map(error => error.cell)).toEqual([cell("spouseFirstName"), cell("spouseFamilyName")]);
     expect(empty.data.family).toEqual([{ maritalStatus: "Married", __row: "0" }]);
     sheet.getCell(cell("spouseFirstName")).value = "Partner";
-    expect((await parse(book)).isValid).toBe(true); // Partial spouse details are also optional.
+    expect((await parse(book)).errors.map(error => error.cell)).toEqual([cell("spouseFamilyName")]);
+    sheet.getCell(cell("spouseFamilyName")).value = "Candidate";
+    expect((await parse(book)).isValid).toBe(true);
     sheet.getCell(cell("spouseFirstName")).value = "123";
     sheet.getCell(cell("spouseDob")).value = "not a date";
     const invalid = await parse(book);
@@ -112,13 +114,15 @@ describe("Recruitment layout versions and vessel-type list", () => {
     old.worksheets[0].getCell("A22").note = "Required only when marital status is Married.";
     current.worksheets[0].getCell("F25").value = "Married";
     old.worksheets[0].getCell("V15").value = "Married";
+    current.worksheets[0].getCell("F27").value = old.worksheets[0].getCell("F22").value = "Partner";
+    current.worksheets[0].getCell("F28").value = old.worksheets[0].getCell("F24").value = "Candidate";
     const modern = await parse(current), legacy = await parse(old);
     expect(modern.isValid).toBe(true);
     expect(legacy.isValid).toBe(true);
     expect(legacy.summary).toEqual(modern.summary);
     expect(candidateFingerprint(legacy)).toBe(candidateFingerprint(modern));
     expect(old.worksheets[0].getCell("A4").text).toBe(PREVIOUS_LEGEND);
-    expect(current.worksheets[0].getCell("A4").text).toBe(FORM_LEGEND);
+    expect(current.worksheets[0].getCell("A4").text).toBe(CURRENT_LEGEND);
   });
   it("does not accept old layout cells as new inputs or allow version/merge spoofing", async () => {
     const book = form();

@@ -6,6 +6,7 @@ export const FORM_COLORS = {
   line: "FFBBC4CD", dotted: "FF9EAAB5", required: "FFC62828",
 } as const;
 export const FORM_LEGEND = "* Required; table fields only when a row is filled. Spouse fields are optional. Blank cells are not saved.";
+export const CURRENT_LEGEND = "* Required; table fields only when a row is filled. Spouse first/family names required only if Married. Blank cells are not saved.";
 export const PREVIOUS_LEGEND = "* Required; table fields only when a row is filled. Spouse fields only if Married. Blank cells are not saved.";
 export const LEGACY_LEGEND = "Note: First name is required. Fill white input boxes; blank cells are not saved.";
 export type BoxStyle = "input" | "label" | "section" | "title" | "note" | "meta";

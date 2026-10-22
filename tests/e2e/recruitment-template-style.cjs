@@ -27,7 +27,12 @@ async function main() {
     await workbook.xlsx.load(bytes);
     assert.equal(workbook.worksheets.length, 1);
     const sheet = workbook.getWorksheet("APPLICATION FORM");
-    assert.equal(sheet.getCell("A1").value, "Recruitment A1-A5 / 6 — Single sheet");
+    assert.equal(sheet.getCell("A1").value, "Recruitment A1-A5 / 7 — Single sheet");
+    assert.equal(sheet.getCell("Q21").text, "Residential Address Line 2 (City, State, PIN)");
+    assert.equal(sheet.getCell("A22").text, "Contact Landline");
+    assert.equal(sheet.getCell("A47").text, "Document *");
+    assert.equal(sheet.getCell("A31").text, "First name");
+    assert.equal(sheet.getCell("A184").text, "Information");
     const visaResponse = await page.request.get(`${base}/api/v2/masters/data/001/entries`);
     assert.equal(visaResponse.ok(), true);
     const visaChoices = mergeWithDefaultCountries(mapApiResponseToVisaCountries(await visaResponse.json()));
@@ -87,7 +92,7 @@ async function main() {
     assert.equal(sheet.getCell("A8").value.richText[1].font.color.argb, "FFC62828");
     assert.equal(sheet.getCell("A10").text, "Gender");
     assert.equal(sheet.getCell("A27").text, "Spouse first name");
-    assert.equal(sheet.getCell("Q10").text, "Vessel types applied for");
+    assert.equal(sheet.getCell("Q10").text, "Vessel Type");
     assert.equal(sheet.getCell("V10").value, null);
     assert.equal(Boolean(sheet.getCell("V10").dataValidation.showErrorMessage), false);
     assert.equal(sheet.getCell("A5").text, "A1.1 General Particulars");
@@ -97,7 +102,7 @@ async function main() {
     assert.equal(sheet.getCell("F8").border.bottom.style, "dotted");
     assert.equal(sheet.getCell("F8").value, null);
     assert.equal(sheet.getCell("A212").value, null);
-    assert.equal(sheet.getCell("A4").text.includes("Spouse fields are optional"), true);
+    assert.equal(sheet.getCell("A4").text.includes("required only if Married"), true);
     assert.equal(sheet.pageSetup.printArea, "A1:AF207");
     assert.equal(sheet.pageSetup.fitToHeight, 0);
     for (const address of ["H90", "L90", "H108", "L108"]) {
@@ -107,6 +112,17 @@ async function main() {
     // Validate a filled copy in memory, leaving the delivered example blank.
     sheet.getCell("F8").value = "Template Preview";
     sheet.getCell("F25").value = "Married";
+    const missingSpouseResponse = await page.request.post(`${base}/api/v2/recruitment/import/validate`, {
+      data: { fileName: "missing-spouse.xlsx", fileData: Buffer.from(await workbook.xlsx.writeBuffer()).toString("base64") },
+    });
+    assert.equal(missingSpouseResponse.ok(), true);
+    const missingSpouse = await missingSpouseResponse.json();
+    assert.equal(missingSpouse.isValid, false);
+    assert.deepEqual(missingSpouse.errors.map(error => error.cell), ["F27", "F28"]);
+    sheet.getCell("F27").value = "Partner";
+    sheet.getCell("F28").value = "Preview";
+    sheet.getCell("O32").value = "Child";
+    sheet.getCell("Q185").value = "Available";
     const lookup = /^\$([A-Z]+)\$2:\$[A-Z]+\$(\d+)$/.exec(sheet.getCell("V10").dataValidation.formulae[0]);
     assert.ok(lookup, "Vessel names must remain discoverable through the dropdown");
     const names = Array.from({ length: Number(lookup[2]) - 1 }, (_, i) => sheet.getCell(`${lookup[1]}${i + 2}`).text);
@@ -142,16 +158,17 @@ async function main() {
     const validation = await (await validated).json();
     assert.equal(validation.isValid, true);
     assert.deepEqual(validation.errors, []);
-    assert.equal(validation.summary.A1, 5, "Candidate + language details + Married family + two separate vessel records");
+    assert.equal(validation.summary.A1, 6, "Candidate + language details + Married family + two vessels + child without First Name");
     assert.equal(validation.summary.A3, 5, "Education plus two linked certificates and two custom certificate rows");
     assert.equal(validation.summary.A4, 1, "Sea service with optional IMO Number validates");
     assert.equal(validation.summary.A2, 4, "Database/manual documents plus master-bound and Schengen visas validate");
+    assert.equal(validation.summary.A5, 1, "Response-only additional-information row validates");
     await page.getByText("Ready to import", { exact: true }).waitFor();
     const after = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
     assert.deepEqual(after, before);
     assert.equal(executions, 0);
     await page.screenshot({ path: "/tmp/recruitment-template-style-dialog.png" });
-    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, orderedSubsections: true, seaServiceWithImo: true, noCellNotes: true, multipleVesselTypes: true, marriedWithoutSpouse: true, databaseAndManualCertificates: true, dependentAutofillFormulas: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
+    console.log(JSON.stringify({ success: true, downloadedPolishedTemplate: true, orderedSubsections: true, seaServiceWithImo: true, noCellNotes: true, multipleVesselTypes: true, marriedWithSpouseNamesOnly: true, databaseAndManualCertificates: true, dependentAutofillFormulas: true, blankExampleSaved: true, styledTemplateValidates: true, candidateDataUnchanged: true, importsExecuted: executions }));
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
