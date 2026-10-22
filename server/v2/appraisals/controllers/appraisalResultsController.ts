@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { AppraisalResultsService, FormVersionPinError, CrewReferenceError } from "../services";
+import { AppraisalResultsService, FormVersionPinError, CrewReferenceError, AppraisalIdConflictError } from "../services";
 
 const service = new AppraisalResultsService();
 
@@ -116,13 +116,22 @@ export class AppraisalResultsController {
 
   async create(req: Request, res: Response) {
     try {
+      // Optional client-chosen id: a repeat of the same create returns the
+      // appraisal it first made (200) instead of a duplicate (201).
+      const requestedUuid = req.body?.appraisalUuid;
+      if (requestedUuid != null && !appraisalUuidSchema.safeParse(requestedUuid).success) {
+        return res.status(400).json({ error: "Invalid appraisal id" });
+      }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.create({ ...req.body, auditUserUuid });
-      res.status(201).json(appraisal);
+      const { appraisal, created } = await service.create({ ...req.body, auditUserUuid });
+      res.status(created ? 201 : 200).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
       if (error instanceof FormVersionPinError || error instanceof CrewReferenceError) {
         return res.status(400).json({ error: error.message });
+      }
+      if (error instanceof AppraisalIdConflictError) {
+        return res.status(409).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to create appraisal" });
     }

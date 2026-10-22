@@ -26,6 +26,16 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
+  // Soft-deleted rows included: the appraisal_uuid unique constraint covers
+  // them too, so a create must know a deleted appraisal already owns the id.
+  async findByAppraisalUuidIncludingDeleted(uuid: string, executor: Executor = getDb()): Promise<AppraisalResultV2 | undefined> {
+    const results = await executor
+      .select()
+      .from(appraisalResultsV2)
+      .where(eq(appraisalResultsV2.appraisalUuid, uuid));
+    return results[0];
+  }
+
   async findByCrewMemberId(crewMemberId: string): Promise<AppraisalResultV2[]> {
     const db = getDb();
     return db
@@ -62,10 +72,13 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
-  async createWithUuid(data: InsertAppraisalResultV2, executor: Executor = getDb()): Promise<AppraisalResultV2> {
+  // Idempotent create: returns undefined when a row with this appraisal_uuid
+  // already exists (a retried or replayed create), and inserts nothing.
+  async createIfAbsent(data: InsertAppraisalResultV2, executor: Executor = getDb()): Promise<AppraisalResultV2 | undefined> {
     const results = await executor
       .insert(appraisalResultsV2)
       .values(data)
+      .onConflictDoNothing({ target: appraisalResultsV2.appraisalUuid })
       .returning();
     return results[0];
   }

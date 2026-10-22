@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { v4 as uuidv4 } from "uuid";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
@@ -393,6 +394,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
   const [g1ReviewPickerOpen, setG1ReviewPickerOpen] = useState(false);
   const [appraisalUuid, setAppraisalUuid] = useState<string | null>(propAppraisalUuid || null);
+  // Id for a new appraisal, chosen once per open form and sent with every
+  // create, so a repeated create returns the first appraisal instead of a
+  // duplicate. `uuid` (not crypto.randomUUID) also works over plain HTTP.
+  // appraisalUuid stays null until the server confirms the save.
+  const [newAppraisalUuid] = useState(() => uuidv4());
   // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
   // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
   // rows with the persisted (possibly empty) trainings array.
@@ -1075,7 +1081,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
       // Transform form data to backend schema
       const appraisalPayload = {
-        ...(idToUse ? {} : { crewMemberId: crewMember?.id }),
+        ...(idToUse ? {} : { crewMemberId: crewMember?.id, appraisalUuid: newAppraisalUuid }),
         formId: 1, // Default form ID
         appraisalType: payload.data.appraisalType,
         appraisalDate: new Date().toISOString().split('T')[0],
@@ -2767,7 +2773,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
-                  disabled={isPostStage3}
+                  disabled={saveAppraisalMutation.isPending || isPostStage3}
                   className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
                   data-testid="button-save-draft-header"
                 >
@@ -2778,7 +2784,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
-                  disabled={isPostStage3}
+                  disabled={saveAppraisalMutation.isPending || isPostStage3}
                   className="sm:hidden"
                   data-testid="button-save-draft-header-mobile"
                 >

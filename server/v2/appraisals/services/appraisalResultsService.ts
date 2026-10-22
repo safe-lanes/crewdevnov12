@@ -61,6 +61,13 @@ export class CrewReferenceError extends Error {
   }
 }
 
+export class AppraisalIdConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppraisalIdConflictError";
+  }
+}
+
 function statusRequiresAppraisalVersionPin(status: string | null | undefined): boolean {
   return APPRAISAL_PINNED_STATUSES.has((status ?? "").trim().toLowerCase());
 }
@@ -224,6 +231,21 @@ export class AppraisalResultsService {
     return crewUuid;
   }
 
+  // A create that names an appraisal_uuid which already exists is a retry or
+  // replay of an earlier create: return that appraisal instead of a new one.
+  private async resolveExistingCreate(appraisalUuid: string, crewMemberId: unknown) {
+    const existing = await appraisalResultsRepo.findByAppraisalUuidIncludingDeleted(appraisalUuid);
+    if (!existing) return null;
+    if (existing.isDeleted) {
+      throw new AppraisalIdConflictError("This appraisal was deleted and can't be created again.");
+    }
+    const requestedCrew = crewMemberId == null ? "" : String(crewMemberId).trim();
+    if (existing.crewMemberId !== requestedCrew) {
+      throw new AppraisalIdConflictError("This appraisal id is already used for another crew member.");
+    }
+    return this.getByUuid(appraisalUuid);
+  }
+
   private async resolveRequiredAppraisalFormVersion(
     rank: string | null | undefined,
   ): Promise<{ formVersionId: number; formVersionUuid: string }> {
@@ -374,15 +396,27 @@ export class AppraisalResultsService {
     return { count, rank, crewMemberId };
   }
 
-  async create(body: any) {
+  // The client names a new appraisal (appraisalUuid) so a retried or replayed
+  // create returns the first one instead of inserting a duplicate. Callers
+  // that send no id still get a server-generated one.
+  async create(body: any): Promise<{ appraisal: any; created: boolean }> {
     const auditData = applyAuditUser(body, true);
+    const requestedUuid: string | null = auditData.appraisalUuid || null;
+
+    // Checked before the crew and form lookups, so a repeat still succeeds
+    // after the crew or form has changed since the first save.
+    if (requestedUuid) {
+      const existing = await this.resolveExistingCreate(requestedUuid, auditData.crewMemberId);
+      if (existing) return { appraisal: existing, created: false };
+    }
+
     const appraisalData = typeof auditData.appraisalData === "object"
       ? auditData.appraisalData
       : JSON.parse(auditData.appraisalData || "{}");
 
     const crewMemberId = await this.assertCrewReference(auditData.crewMemberId);
 
-    const appraisalUuid = uuidv4();
+    const appraisalUuid = requestedUuid ?? uuidv4();
 
     // Appraisals are pinned at creation time. Never create a record that can
     // later become a submitted appraisal without a frozen form version.
@@ -393,7 +427,7 @@ export class AppraisalResultsService {
     // failed save never leaves a half-created appraisal to be synced.
     const auditUserUuid = auditData.createdByUuid || null;
     const created = await getDb().transaction(async (tx: any) => {
-      const row = await appraisalResultsRepo.createWithUuid({
+      const row = await appraisalResultsRepo.createIfAbsent({
         appraisalUuid,
         crewMemberId,
         formUuid: auditData.formId?.toString() || null,
@@ -420,6 +454,10 @@ export class AppraisalResultsService {
         updatedByUuid: auditData.updatedByUuid || null,
       }, tx);
 
+      // A parallel request with the same id inserted it first. Its sections
+      // are already saved, so write nothing here.
+      if (!row) return null;
+
       // Sequential: one transaction runs on one connection.
       await trainingsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainings || [], auditUserUuid, tx);
       await targetsRepo.syncForAppraisal(appraisalUuid, appraisalData.targets || [], auditUserUuid, tx);
@@ -434,6 +472,13 @@ export class AppraisalResultsService {
       return row;
     });
 
+    if (!created) {
+      // The winner has committed by now, so its row is visible.
+      const existing = await this.resolveExistingCreate(appraisalUuid, crewMemberId);
+      if (!existing) throw new Error(`Appraisal ${appraisalUuid} was neither created nor found.`);
+      return { appraisal: existing, created: false };
+    }
+
     // Fire-and-forget, after commit: email any newly-added manual G1 reviewers (not assigned, not yet notified).
     void notifyNewManualG1Reviewers(
       appraisalUuid,
@@ -441,7 +486,7 @@ export class AppraisalResultsService {
       appraisalData.seafarersRank || '',
     );
 
-    return this.getByUuid(created.appraisalUuid);
+    return { appraisal: await this.getByUuid(created.appraisalUuid), created: true };
   }
 
   async update(appraisalUuid: string, body: any) {
