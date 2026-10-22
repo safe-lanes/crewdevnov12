@@ -89,7 +89,7 @@ export default function SettlementsPage() {
   const mayCreate = canCreate(MENU);
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
-  const { getVesselName } = useVesselLookup();
+  const { vessels, getVesselName } = useVesselLookup();
 
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
   const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
@@ -158,7 +158,7 @@ export default function SettlementsPage() {
 
   const vesselOptions = useMemo(() => {
     const uuids = Array.from(
-      new Set([...settlements.map((s) => s.vesselUuid), vesselUuid].filter(Boolean)),
+      new Set([...settlements.map((s) => s.vesselUuid), vesselUuid, ...vessels.map((v) => v.entryId)].filter(Boolean)),
     ) as string[];
     const nameByUuid = new Map<string, string>();
     for (const s of settlements) {
@@ -171,12 +171,17 @@ export default function SettlementsPage() {
       const name = getVesselName(vesselUuid);
       if (name) nameByUuid.set(vesselUuid, name);
     }
+    for (const v of vessels) {
+      if (v.entryId && v.name && !nameByUuid.has(v.entryId)) {
+        nameByUuid.set(v.entryId, v.name);
+      }
+    }
     // Only offer vessels that resolve to a real name.
     return uuids
       .filter((u) => nameByUuid.has(u))
       .map((u) => ({ uuid: u, name: nameByUuid.get(u)! }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [settlements, getVesselName, vesselUuid]);
+  }, [settlements, getVesselName, vesselUuid, vessels]);
 
   const filteredRows = useMemo(
     () =>
