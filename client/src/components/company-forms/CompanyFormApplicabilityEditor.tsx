@@ -4,6 +4,7 @@ import type { VersionApplicability } from "@shared/v2/admin/applicability";
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
 import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { CompanyFormProblems } from "./CompanyFormProblems";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -524,7 +525,7 @@ export function CompanyFormApplicabilityEditor({
               policy={toPayload(draft)}
             />
           )}
-          {saveError && <p className="mt-3 text-sm text-[#a44738]" role="alert">{saveError}</p>}
+          {saveError && <CompanyFormProblems message={saveError} />}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">
             <p className="text-xs text-[#6a808b]">
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}
