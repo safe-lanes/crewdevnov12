@@ -1,5 +1,6 @@
 import { eq, and, inArray, isNull, asc } from "drizzle-orm";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 import {
   crewLicenses,
   crewLicensesAttachments,
@@ -115,12 +116,19 @@ export class CrewLicensesRepository {
 
   async update(
     licUuid: string,
-    data: Partial<InsertCrewLicense>
+    data: Partial<InsertCrewLicense>,
+    db = getDb()
   ): Promise<CrewLicense | undefined> {
-    const db = getDb();
+    let fields = data;
+    if (Object.prototype.hasOwnProperty.call(data, "crewUuid")) {
+      const [original] = await db.select({ crewUuid: crewLicenses.crewUuid })
+        .from(crewLicenses).where(eq(crewLicenses.licUuid, licUuid));
+      if (!original) return undefined;
+      fields = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Licence");
+    }
     const results = await db
       .update(crewLicenses)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...fields, updatedAt: new Date() })
       .where(eq(crewLicenses.licUuid, licUuid))
       .returning();
     return results[0];

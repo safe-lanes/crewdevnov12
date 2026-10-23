@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { CertificateOwnershipError, certificateUpdateFields } from "../utils/certificateOwnership";
 import { crewMedicalService } from "../services";
 import {
   insertCrewPreJoiningMedicalSchema,
@@ -101,7 +102,12 @@ export const crewMedicalController = {
   async updateMedical(req: Request, res: Response) {
     try {
       const { medUuid } = req.params;
+      if (Object.prototype.hasOwnProperty.call(req.body, "crewUuid")) {
+        const original = await crewMedicalService.getMedicalByUuid(medUuid);
+        certificateUpdateFields(req.body, original.crewUuid, "crewUuid", "Medical record");
+      }
       const validatedData = insertCrewPreJoiningMedicalSchema
+        .omit({ crewUuid: true })
         .partial()
         .parse(req.body);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
@@ -111,6 +117,9 @@ export const crewMedicalController = {
       );
       res.json(medical);
     } catch (error: any) {
+      if (error instanceof CertificateOwnershipError) {
+        return res.status(409).json({ error: error.code, message: error.message });
+      }
       if (error instanceof z.ZodError) {
         return res
           .status(400)
@@ -239,7 +248,12 @@ export const crewMedicalController = {
   async updateDoctorVisit(req: Request, res: Response) {
     try {
       const { visitUuid } = req.params;
+      if (Object.prototype.hasOwnProperty.call(req.body, "crewUuid")) {
+        const original = await crewMedicalService.getVisitByUuid(visitUuid);
+        certificateUpdateFields(req.body, original.crewUuid, "crewUuid", "Doctor visit");
+      }
       const validatedData = insertCrewDoctorVisitSchema
+        .omit({ crewUuid: true })
         .partial()
         .parse(req.body);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
@@ -249,6 +263,9 @@ export const crewMedicalController = {
       );
       res.json(visit);
     } catch (error: any) {
+      if (error instanceof CertificateOwnershipError) {
+        return res.status(409).json({ error: error.code, message: error.message });
+      }
       if (error instanceof z.ZodError) {
         return res
           .status(400)

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewMedicalRepository,
@@ -98,7 +99,8 @@ export const crewMedicalService = {
     medUuid: string,
     data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewPreJoiningMedical> {
-    await this.getMedicalByUuid(medUuid);
+    const original = await this.getMedicalByUuid(medUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Medical record");
 
     // Resolve vessel to UUID for F1 Pre Joining Medicals
     const resolvedData = await this.resolveMedicalMasterDataFields(data);
@@ -205,7 +207,8 @@ export const crewMedicalService = {
     visitUuid: string,
     data: Partial<InsertCrewDoctorVisit> & { auditUserUuid?: string | null }
   ): Promise<CrewDoctorVisit> {
-    await this.getVisitByUuid(visitUuid);
+    const original = await this.getVisitByUuid(visitUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Doctor visit");
     const dataWithAudit = applyAuditUser(data, false);
 
     const updated = await crewMedicalRepository.updateVisit(visitUuid, dataWithAudit);
@@ -356,11 +359,10 @@ export const crewMedicalService = {
         let medUuid: string;
 
         if (item.medUuid) {
-          const [updated] = await tx
-            .update(crewPreJoiningMedicals)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewPreJoiningMedicals.medUuid, item.medUuid))
-            .returning();
+          const updated = await crewMedicalRepository.updateMedical(
+            item.medUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Medical record ${item.medUuid} not found`);
           medUuid = item.medUuid;
           results.push(updated);
         } else {
@@ -437,11 +439,10 @@ export const crewMedicalService = {
         let visitUuid: string;
 
         if (item.visitUuid) {
-          const [updated] = await tx
-            .update(crewDoctorVisits)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewDoctorVisits.visitUuid, item.visitUuid))
-            .returning();
+          const updated = await crewMedicalRepository.updateVisit(
+            item.visitUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Doctor visit ${item.visitUuid} not found`);
           visitUuid = item.visitUuid;
           results.push(updated);
         } else {

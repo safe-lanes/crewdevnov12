@@ -169,7 +169,8 @@ export const crewCertificatesService = {
     licUuid: string,
     data: Partial<InsertCrewLicense> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewLicense> {
-    await this.getLicenseByUuid(licUuid);
+    const original = await this.getLicenseByUuid(licUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Licence");
 
     // Resolve issuing country (accept name or UUID)
     const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
@@ -282,11 +283,10 @@ export const crewCertificatesService = {
         let licUuid: string;
 
         if (item.licUuid) {
-          const [updated] = await tx
-            .update(crewLicenses)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewLicenses.licUuid, item.licUuid))
-            .returning();
+          const updated = await crewLicensesRepository.update(
+            item.licUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Licence ${item.licUuid} not found`);
           licUuid = item.licUuid;
           results.push(updated);
         } else {

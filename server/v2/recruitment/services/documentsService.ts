@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../../crew-pool/utils/certificateOwnership";
 import {
   documentsRepository,
   documentAttachmentsRepository,
@@ -457,6 +458,12 @@ export class DocumentsService {
   }
 
   async updateTrainingCourse(id: number, data: Partial<InsertTrainingCourse>, updatedByUuid?: string): Promise<CandTrainingCourse | undefined> {
+    if (Object.prototype.hasOwnProperty.call(data, "recCanUuid")) {
+      const [original] = await getDb().select({ recCanUuid: candTrainingCourses.recCanUuid })
+        .from(candTrainingCourses).where(eq(candTrainingCourses.id, id));
+      if (!original) return undefined;
+      data = certificateUpdateFields(data, original.recCanUuid, "recCanUuid", "Recruitment training record");
+    }
     return trainingCoursesRepository.update(id, { ...data, updatedByUuid });
   }
 
