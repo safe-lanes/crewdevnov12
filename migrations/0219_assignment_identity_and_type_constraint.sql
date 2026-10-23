@@ -1,5 +1,37 @@
--- The migration runner executes each file inside one transaction. Never
--- rewrite unexpected assignment history to make a constraint pass.
+-- The migration runner executes each file inside one transaction. Older crew
+-- list imports stored the roster role (Primary/Secondary) in this lifecycle
+-- column. Normalize those known aliases before enforcing the lifecycle values;
+-- genuinely unknown history still aborts the migration below.
+DO $$
+DECLARE normalized integer;
+BEGIN
+  WITH changed AS (
+    UPDATE crew_assignments
+       SET assignment_type = CASE lower(btrim(assignment_type))
+         WHEN 'primary' THEN 'OnBoard'
+         WHEN 'secondary' THEN 'Planned'
+         WHEN 'planned' THEN 'Planned'
+         WHEN 'onboard' THEN 'OnBoard'
+         WHEN 'onboard_m' THEN 'OnBoard_M'
+         WHEN 'cancelled' THEN 'Cancelled'
+       END
+     WHERE lower(btrim(assignment_type)) IN
+       ('primary', 'secondary', 'planned', 'onboard', 'onboard_m', 'cancelled')
+       AND assignment_type IS DISTINCT FROM CASE lower(btrim(assignment_type))
+         WHEN 'primary' THEN 'OnBoard'
+         WHEN 'secondary' THEN 'Planned'
+         WHEN 'planned' THEN 'Planned'
+         WHEN 'onboard' THEN 'OnBoard'
+         WHEN 'onboard_m' THEN 'OnBoard_M'
+         WHEN 'cancelled' THEN 'Cancelled'
+       END
+    RETURNING 1
+  )
+  SELECT count(*) INTO normalized FROM changed;
+
+  RAISE NOTICE 'Normalized % legacy crew assignment types', normalized;
+END $$;
+
 DO $$
 DECLARE inventory text;
 DECLARE invalid text;
