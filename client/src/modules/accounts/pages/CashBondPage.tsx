@@ -475,12 +475,12 @@ export function AdvancesTab({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
               >
-                <SelectTrigger data-testid="select-advance-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-advance-crew">
                   <SelectValue
                     placeholder={
                       vesselUuid
@@ -497,16 +497,24 @@ export function AdvancesTab({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Amount</Label>
+              <Label>Amount <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
                 data-testid="input-advance-amount"
+                className={errors.amount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.amount}
               />
+              {errors.amount && (
+                <p className="text-xs text-red-500" role="alert">{errors.amount}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
@@ -548,14 +556,19 @@ export function AdvancesTab({
               />
             </div>
             <div className="space-y-1">
-              <Label>Recovery per Month</Label>
+              <Label>Recovery per Month <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.recoveryAmount}
                 onChange={(e) => set("recoveryAmount", e.target.value)}
                 data-testid="input-advance-recovery"
+                className={errors.recoveryAmount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.recoveryAmount}
               />
+              {errors.recoveryAmount && (
+                <p className="text-xs text-red-500" role="alert">{errors.recoveryAmount}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
               <Label>Approved by (optional)</Label>
@@ -1254,13 +1267,13 @@ export function BondTab({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
                 disabled={!!editing}
               >
-                <SelectTrigger data-testid="select-bond-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-bond-crew">
                   <SelectValue placeholder="Select crew member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1271,35 +1284,53 @@ export function BondTab({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
-              <Label>Item</Label>
+              <Label>Item <span className="text-red-500">*</span></Label>
               <Input
                 value={form.itemName}
                 onChange={(e) => set("itemName", e.target.value)}
                 placeholder="Cigarettes, toiletries…"
                 data-testid="input-bond-item"
+                className={errors.itemName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.itemName}
               />
+              {errors.itemName && (
+                <p className="text-xs text-red-500" role="alert">{errors.itemName}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Qty</Label>
+              <Label>Qty <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.quantity}
                 onChange={(e) => setQtyPrice(e.target.value, form.unitPrice)}
                 data-testid="input-bond-qty"
+                className={errors.quantity ? "border-red-500" : undefined}
+                aria-invalid={!!errors.quantity}
               />
+              {errors.quantity && (
+                <p className="text-xs text-red-500" role="alert">{errors.quantity}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Unit Price</Label>
+              <Label>Unit Price <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.unitPrice}
                 onChange={(e) => setQtyPrice(form.quantity, e.target.value)}
                 data-testid="input-bond-unit-price"
+                className={errors.unitPrice ? "border-red-500" : undefined}
+                aria-invalid={!!errors.unitPrice}
               />
+              {errors.unitPrice && (
+                <p className="text-xs text-red-500" role="alert">{errors.unitPrice}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Total</Label>
