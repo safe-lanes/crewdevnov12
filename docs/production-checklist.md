@@ -1,3 +1,13 @@
+# Company Form unfinished-draft migration rollback
+
+Migration `0266_company_form_unfinished_drafts.sql` allows incomplete Company Form
+drafts while retaining database completeness protection for released versions.
+Once unfinished drafts exist, this migration cannot be rolled back until those
+drafts are completed or removed through an authorised workflow. The rollback in
+`migrations/rollback/0266_company_form_unfinished_drafts.sql` must refuse rather
+than alter drafts: it validates the original constraints in one transaction
+before removing any new guard. It never repairs, fills or deletes data.
+
 # Production checklist
 
 For the parent developers. These are checks and outstanding work, not a declaration that production is ready. Test counts below refer to the last code verification on 23-Oct-2026 at `963354b290912081f797cd0868740aca13e8600b`, not a new suite run for this documentation-only update. No item below is implemented or enabled by adding it here.

@@ -94,7 +94,7 @@ function toPayload(draft: PolicyDraft): ApplicabilityDraft {
     mode: draft.mode,
     obligation: draft.obligation,
     effectiveKind: draft.effectiveKind,
-    ...(draft.effectiveKind === "specific_date" ? { specificDate: draft.specificDate } : {}),
+    ...(draft.effectiveKind === "specific_date" && draft.specificDate ? { specificDate: draft.specificDate } : {}),
     ...(draft.mode === "conditional"
       ? {
           sets: draft.sets.map((set) => ({
@@ -245,7 +245,6 @@ export function CompanyFormApplicabilityEditor({
     if (!isDirty) return true;
     if (
       !conditionSetsValid
-      || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)
     ) {
       setSaveError("Complete every condition and choose an effective date before saving.");
       return false;

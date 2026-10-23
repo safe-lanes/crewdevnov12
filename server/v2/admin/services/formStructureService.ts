@@ -1,5 +1,6 @@
 import {
   formStructureInputSchema,
+  companyFormDraftStructureInputSchema,
   type FormStructureInput,
   type FormStructureOptionInput,
   type FormStructureOptionSetInput,
@@ -7,6 +8,9 @@ import {
   type FormStructureSectionInput,
 } from "../../../../shared/v2/forms-engine/schema";
 import { getDb } from "../../db";
+import { sql } from "drizzle-orm";
+import { sanitizeComparisonHtml } from "../../../../shared/v2/forms-engine/contentSanitizer";
+import { getSystemField } from "../../../../shared/v2/forms-engine/systemFields";
 import { formStructureRepository } from "../repositories/formStructureRepository";
 
 /*
@@ -14,8 +18,8 @@ import { formStructureRepository } from "../repositories/formStructureRepository
  * HTTP callers are already parsed by the controller; integration callers are
  * normalized here so defaults such as option_sets and layout_preference exist.
  */
-function normalizeStructureInput(input: FormStructureInput): FormStructureInput {
-  return formStructureInputSchema.parse(input);
+function normalizeStructureInput(input: FormStructureInput, companyDraft = false): FormStructureInput {
+  return (companyDraft ? companyFormDraftStructureInputSchema : formStructureInputSchema).parse(input);
 }
 
 export class FormStructureServiceError extends Error {
@@ -346,6 +350,35 @@ function mapReplacementError(error: any): never {
   throw error;
 }
 
+// Always read persisted data inside the release transaction, including when
+// the browser has no unsaved changes. Never depend on a preceding PUT.
+export async function validatePersistedCompanyFormStructure(fvUuid: string, subjectType: string | null, tx: any) {
+  const parts = await tx.execute(sql`SELECT form_part_uuid FROM frm_form_parts
+    WHERE form_version_uuid=${fvUuid} AND is_deleted=false`);
+  for (const part of parts.rows) {
+    const tree = await formStructureRepository.readTree(fvUuid, part.form_part_uuid, tx);
+    const parsed = formStructureInputSchema.safeParse(treeResponse(fvUuid, part.form_part_uuid, tree));
+    if (!parsed.success) throw new FormStructureServiceError("Invalid form structure");
+    const input = parsed.data;
+    for (const set of input.option_sets) {
+      if (set.option_set_name !== null && set.option_set_name !== undefined) {
+        if (!set.option_set_name.trim()) throw new FormStructureServiceError("Named option sets need a name");
+        if (!set.options.length) throw new FormStructureServiceError("Named option sets need at least one option");
+      }
+    }
+    for (const section of input.sections) for (const question of section.questions) {
+      if (question.response_type === "system_field" && !getSystemField(subjectType, question.system_field_key))
+        throw new FormStructureServiceError("Unknown System field key for this Company Form subject");
+      if (question.response_type === "content" &&
+        !sanitizeComparisonHtml(question.content_html || "").replace(/<[^>]*>/g, "").trim())
+        throw new FormStructureServiceError("Content point body is required after sanitization");
+      if ((question.response_type === "single_select" || question.response_type === "multi_select") && !question.options.length)
+        throw new FormStructureServiceError("Invalid form structure");
+    }
+    await validateReplacement(input, fvUuid)(tree, tx);
+  }
+}
+
 export const formStructureService = {
   async getStructure(fvUuid: string, partUuid: string) {
     const context = await formStructureRepository.findContext(fvUuid, partUuid);
@@ -363,9 +396,9 @@ export const formStructureService = {
     input: FormStructureInput,
     auditUserUuid: string | null,
   ) {
-    input = normalizeStructureInput(input);
     const context = await formStructureRepository.findContext(fvUuid, partUuid);
     if (!context) throw new FormStructureServiceError("Form version or form part not found", 404);
+    input = normalizeStructureInput(input, context.category === "dynamic");
     if (context.formUuid !== context.part.formUuid) {
       throw new FormStructureServiceError(`Form part ${partUuid} does not belong to the same form as version ${fvUuid}`);
     }
@@ -407,7 +440,8 @@ export const formStructureService = {
       const responses = await getDb().transaction(async (tx: any) => {
         const saved = [];
         for (const { partUuid, structure } of parts) {
-          const normalizedStructure = normalizeStructureInput(structure);
+          const context = await formStructureRepository.findContext(fvUuid, partUuid);
+          const normalizedStructure = normalizeStructureInput(structure, context?.category === "dynamic");
           const tree = await formStructureRepository.replaceTree(
             fvUuid,
             partUuid,

@@ -1431,34 +1431,34 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const validateTrees = (): string | null => {
     for (const part of configurableParts) {
       const namedSets = namedOptionSetsFor(part.formPartUuid);
-      if (namedSets.some((set) => !set.option_set_name?.trim())) return "Named option sets need a name";
-      if (namedSets.some((set) => set.options.length === 0)) return "Named option sets need at least one option";
-      if (namedSets.some((set) => set.options.some((option) => !option.option_label.trim()))) {
+      if (!isCompanyForm && namedSets.some((set) => !set.option_set_name?.trim())) return "Named option sets need a name";
+      if (!isCompanyForm && namedSets.some((set) => set.options.length === 0)) return "Named option sets need at least one option";
+      if (!isCompanyForm && namedSets.some((set) => set.options.some((option) => !option.option_label.trim()))) {
         return "Named option-set option labels cannot be empty";
       }
       for (const section of trees[part.formPartUuid] || []) {
-        if (!section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
-        if (section.responsible_mode === "role" && !section.responsible_role_uuid) {
+        if (!isCompanyForm && !section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
+        if (!isCompanyForm && section.responsible_mode === "role" && !section.responsible_role_uuid) {
           return `${sectionDisplay(section)}: select a responsible role`;
         }
-        if (section.responsible_mode === "department" && !section.responsible_department) {
+        if (!isCompanyForm && section.responsible_mode === "department" && !section.responsible_department) {
           return `${sectionDisplay(section)}: select a responsible department`;
         }
         for (const question of section.questions) {
-          if (question.response_type === "system_field" && !systemFields.some((field) => field.key === question.system_field_key)) {
+          if (question.response_type === "system_field" && (!isCompanyForm || question.system_field_key) && !systemFields.some((field) => field.key === question.system_field_key)) {
             return "Select a valid system field";
           }
-          if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
-          if (question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
+          if (!isCompanyForm && !question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
+          if (!isCompanyForm && question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
             return "Content point body is required";
           }
-          if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
+          if (!isCompanyForm && (question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
             return `${pointDisplay(question)}: add at least one option`;
           }
           if (question.option_set_uuid && !optionSetFor(part.formPartUuid, question.option_set_uuid)) {
             return `${pointDisplay(question)}: selected option set is unavailable`;
           }
-          if (question.options.some((option) => !option.option_label.trim())) {
+          if (!isCompanyForm && question.options.some((option) => !option.option_label.trim())) {
             return `${pointDisplay(question)}: option labels cannot be empty`;
           }
         }
