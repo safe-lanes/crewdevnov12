@@ -176,6 +176,35 @@ describe("onboard matrix exact provenance and shared read-only evidence", () => 
     expect(await fingerprint(pools[0])).toBe(before);
     expect(observed.at(-1)).toEqual(["on", "repeatable read"]);
   });
+  it("trials a different relief date in a read-only snapshot and clearing restores actual dates", async () => {
+    await makeOnboard();
+    const before = await fingerprint(pools[0]);
+    const actual = await onboardDisplay();
+    const trial = await onboardDisplay({ trialReliefDate: "2026-11-30" });
+    expect(trial.code).toBe(200);
+    expect(trial.payload.trialReliefDate).toBe("2026-11-30");
+    expect(trial.payload.crew[0]).toMatchObject({
+      plannedReliefDate: "2090-06-01", effectiveReliefDate: "2026-11-30",
+      contractEnd: "2026-11-30",
+      courses: [{ state: "Valid", urgencyWindows: expect.any(Array) }],
+      dots: [{ color: "green", label: "Valid" }],
+    });
+    expect(actual.payload.crew[0].courses[0].state).toBe("Expires during contract");
+    expect(trial.payload.crew[0].courses[0].urgencyWindows)
+      .toEqual(actual.payload.crew[0].courses[0].urgencyWindows);
+    expect(await fingerprint(pools[0])).toBe(before);
+    expect(observed.at(-1)).toEqual(["on", "repeatable read"]);
+    const cleared = await onboardDisplay();
+    expect(cleared.payload.trialReliefDate).toBeNull();
+    expect(cleared.payload.crew[0].contractEnd).toBe(actual.payload.crew[0].contractEnd);
+    expect(cleared.payload.crew[0].dots).toEqual(actual.payload.crew[0].dots);
+  });
+  it.each([
+    { trialReliefDate: "2026-02-30" }, { trialReliefDate: "2026-2-01" },
+    { trialReliefDate: "not-a-date" }, { trialReliefDate: "2026-11-30", rank: "forged" },
+  ])("refuses malformed trial dates and additional authority inputs: %j", async query => {
+    expect((await onboardDisplay(query)).code).toBe(400);
+  });
   it("excludes planned, signed-off and deleted assignments", async () => {
     expect((await onboardDisplay()).payload.crew).toEqual([]);
     await makeOnboard();

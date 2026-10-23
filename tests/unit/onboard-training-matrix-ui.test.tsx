@@ -15,6 +15,7 @@ const crew = () => ({
   referenceKind: "on_board",
   joiningDate: "2026-10-21",
   plannedReliefDate: "2027-04-21",
+  effectiveReliefDate: "2027-04-21",
   contractEnd: "2027-04-21",
   contractEndStatus: "set",
   contractEndSource: "planned_relief",
@@ -36,6 +37,7 @@ const crew = () => ({
     category: "A. Statutory",
     categoryOrder: 0,
     matrixOrder: 0,
+      urgencyWindows: [],
   }],
   dots: [{ courseUuid: "course", color: "red", outline: true, label: "Not held", reasons: ["Not held"] }],
   summary: { mandatory: { status: "gap", count: 1 }, recommended: { status: "valid", count: 0 } },
@@ -56,6 +58,7 @@ beforeEach(() => {
   payload = {
     referenceDate: "2026-10-21",
     twoMonthDate: "2026-12-21",
+    trialReliefDate: null,
     matrixRevision: "R0",
     rows: [{ companyTrainingId: 1, courseUuid: "course", companyId: "SA001", name: "Required A", category: "A. Statutory" }],
     crew: [crew()],
@@ -104,6 +107,124 @@ describe("server-computed onboard matrix presentation", () => {
     expect(status.textContent).toContain("Expires during contract");
     expect(status.textContent).toContain("Certificate was expired at joining.");
     expect(status.textContent).not.toContain("Expires within 2 months");
+  });
+
+  it("unions selected urgency windows, leaves dot colours untouched, and does not refetch for chip-only changes", async () => {
+    const expiringCourse = {
+      ...crew().courses[0],
+      courseUuid: "expiring-course",
+      name: "Expiring course",
+      urgencyWindows: ["Expired"],
+      state: "Expires during contract",
+      displayStatus: "Expires during contract",
+    };
+    payload.rows.push({
+      companyTrainingId: 2,
+      courseUuid: "expiring-course",
+      companyId: "SA002",
+      name: "Expiring course",
+      category: "A. Statutory",
+    });
+    payload.crew[0].courses[0].urgencyWindows = ["3M"];
+    payload.crew[0].courses.push(expiringCourse);
+    payload.crew[0].dots.push({
+      courseUuid: "expiring-course",
+      color: "amber",
+      outline: false,
+      label: "Expires before planned relief",
+      reasons: ["Expires before planned relief"],
+    });
+    mount();
+    const originalDot = await screen.findByRole("button", { name: /Mandatory — Not held/ });
+    expect(screen.getByText("Expiring course")).toBeTruthy();
+    expect(screen.getByText("Show cells matching any selected window. None selected shows everything.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "3M" }));
+    await waitFor(() => expect(screen.queryByText("Expiring course")).toBeNull());
+    expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("true");
+    const dotAfterChipFilter = screen.getByRole("button", { name: /Mandatory — Not held/ });
+    expect(dotAfterChipFilter.getAttribute("data-color")).toBe(originalDot.getAttribute("data-color"));
+    fireEvent.click(screen.getByRole("button", { name: "Expired" }));
+    expect(screen.getByText("Expiring course")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Expired" }).getAttribute("aria-pressed")).toBe("true");
+    expect(apiRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("requests the trial date on the existing GET key and one-click clear restores actual dates", async () => {
+    vi.mocked(apiRequest).mockImplementation(async (_method, url) => {
+      const trial = url.includes("trialReliefDate=");
+      const responsePayload = structuredClone(payload);
+      responsePayload.trialReliefDate = trial ? "2027-05-21" : null;
+      if (trial) {
+        responsePayload.crew[0].effectiveReliefDate = "2027-05-21";
+        responsePayload.crew[0].courses[0].state = "Expires during contract";
+        responsePayload.crew[0].courses[0].displayStatus = "Expires during contract";
+        responsePayload.crew[0].dots[0] = {
+          courseUuid: "course",
+          color: "amber",
+          outline: false,
+          label: "Expires before planned relief",
+          reasons: ["Expires before planned relief"],
+        };
+      }
+      return new Response(JSON.stringify(responsePayload));
+    });
+    mount();
+    await screen.findByRole("button", { name: "TEST ONLY Matrix" });
+    const input = screen.getByLabelText("Check against a different relief date");
+    fireEvent.change(input, { target: { value: "2027-05-21" } });
+    expect(await screen.findByText("Trial date active — no changes saved")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Mandatory — Expires during contract/ })).toBeTruthy();
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(apiRequest).mock.calls[1]).toEqual([
+      "GET",
+      "/api/v2/vessel/vessel/training-compliance?trialReliefDate=2027-05-21",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear trial date" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(3));
+    expect(vi.mocked(apiRequest).mock.calls[2]).toEqual(["GET", "/api/v2/vessel/vessel/training-compliance"]);
+    expect(await screen.findByRole("button", { name: "Mandatory — Not held" })).toBeTruthy();
+    expect(payload.crew[0].plannedReliefDate).toBe("2027-04-21");
+    expect(screen.queryByText("Trial date active — no changes saved")).toBeNull();
+  });
+
+  it("does not leave actual-date dots visible while a trial-date response is pending", async () => {
+    let resolveTrial: ((response: Response) => void) | undefined;
+    vi.mocked(apiRequest).mockImplementation((_method, url) => {
+      if (url.includes("trialReliefDate=")) {
+        return new Promise<Response>(resolve => { resolveTrial = resolve; });
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload)));
+    });
+    mount();
+    expect(await screen.findByRole("button", { name: "Mandatory — Not held" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Check against a different relief date"), {
+      target: { value: "2027-05-21" },
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Mandatory — Not held" })).toBeNull());
+    expect(screen.getByText("Trial date active — no changes saved")).toBeTruthy();
+    resolveTrial?.(new Response(JSON.stringify({ ...structuredClone(payload), trialReliefDate: "2027-05-21" })));
+    await screen.findByRole("button", { name: "Mandatory — Not held" });
+  });
+
+  it("keeps trial clear available after a request error and retries without exposing response text", async () => {
+    vi.mocked(apiRequest).mockImplementationOnce(async () => new Response(JSON.stringify(payload)))
+      .mockRejectedValueOnce(new Error('500 {"sql":"private trial failure"}'))
+      .mockImplementationOnce(async () => new Response(JSON.stringify(payload)));
+    mount();
+    await screen.findByRole("button", { name: "TEST ONLY Matrix" });
+    fireEvent.change(screen.getByLabelText("Check against a different relief date"), {
+      target: { value: "2027-05-21" },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Onboard training compliance could not be loaded.");
+    expect(screen.getByRole("button", { name: "Clear trial date" })).toBeTruthy();
+    expect(screen.queryByText(/private trial failure/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
+    await screen.findByRole("button", { name: "Clear trial date" });
+    expect(apiRequest).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole("button", { name: "Clear trial date" }));
+    expect(await screen.findByRole("button", { name: "TEST ONLY Matrix" })).toBeTruthy();
   });
 
   it("applies red-hollow precedence over contract expiry and incomplete evidence", async () => {

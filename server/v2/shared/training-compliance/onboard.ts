@@ -13,6 +13,22 @@ export type OnboardAssignment = CanonicalReliever & {
   plannedReliefDate: string | null; planningCount: number; crewName: string;
 };
 
+export const EXPIRY_WINDOWS = ["3M", "2M", "1M", "Expired"] as const;
+export type ExpiryWindow = typeof EXPIRY_WINDOWS[number];
+
+/** Today-relative urgency, independent of any contract end. Inclusive civil dates
+ * and clamped calendar-month boundaries are shared with the original 2M overlay. */
+export function certificateExpiryWindows(expiryValue: string | null, todayValue: string): ExpiryWindow[] {
+  const expiry = civilDate(expiryValue), today = civilDate(todayValue);
+  if (!expiry || !today) return [];
+  if (expiry < today) return ["Expired"];
+  return ([["3M", 3], ["2M", 2], ["1M", 1]] as const)
+    .filter(([, months]) => {
+      const boundary = contractEndDate(today, months);
+      return boundary !== null && expiry <= boundary;
+    }).map(([window]) => window);
+}
+
 /** Only exact assignment provenance; never rank/crew/date guesses. */
 export async function readOnboardAssignments(db: ReturnType<typeof getDb>, vesselUuid: string) {
   return (await db.execute(sql`SELECT a.assign_uuid AS "assignmentUuid",a.crew_uuid AS "crewUuid",
@@ -63,10 +79,9 @@ export function onboardDot(course: CourseResult, check: ComplianceResult, today:
     return { ...base, color: "green", label: "Valid, no expiry", reasons: ["Valid, no expiry"] };
   const reasons: string[] = [];
   if (course.state === "Expires during contract") reasons.push("Expires before planned relief");
-  const expiry = civilDate(course.chosenCertificate?.expiry ?? null);
-  const boundary = contractEndDate(today, 2);
   if ((!check.contractEnd || course.state === "Expires during contract")
-    && expiry && boundary && expiry >= today && expiry <= boundary) reasons.push("Expires within 2 months");
+    && certificateExpiryWindows(course.chosenCertificate?.expiry ?? null, today).includes("2M"))
+    reasons.push("Expires within 2 months");
   return { ...base, color: reasons.length ? "amber" : "green", label: reasons[0] ?? "Valid",
     reasons: reasons.length ? reasons : ["Valid"] };
 }

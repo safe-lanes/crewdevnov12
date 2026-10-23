@@ -3,16 +3,21 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../../db";
 import { AttachmentAccessError, authorizeAttachmentMenu, authorizeAttachmentSubject } from "../../shared/attachmentAccess";
-import { readOnboardAssignments, readOnboardCompliance, onboardDot } from "../../shared/training-compliance/onboard";
-import { contractEndDate } from "../../shared/training-compliance/dates";
+import { readOnboardAssignments, readOnboardCompliance, onboardDot, certificateExpiryWindows } from "../../shared/training-compliance/onboard";
+import { civilDate, contractEndDate } from "../../shared/training-compliance/dates";
 import { decorateTrainingCompliance } from "./trainingComplianceController";
 import { logUndeterminedTrainingMatrixCells } from "./trainingMatrixDiagnostics";
 
-/** One read-only snapshot, no dates/rank/revision supplied by the browser. */
+/** One read-only snapshot. The only browser input is a labelled, non-persisted
+ * trial end date; reference date, captured rank and revision stay server-owned. */
 export async function getOnboardTrainingCompliance(req: Request, res: Response) {
   const parsed = z.string().uuid().safeParse(req.params.vesselUuid);
-  if (!parsed.success || Object.keys(req.query ?? {}).length)
-    return res.status(400).json({ message: "Choose a vessel and reload its Training Matrix." });
+  const options = z.object({ trialReliefDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => civilDate(value) !== null).optional() })
+    .strict().safeParse(req.query ?? {});
+  if (!parsed.success || !options.success)
+    return res.status(400).json({ message: "Choose a vessel and a valid trial relief date, then retry the Training Matrix." });
+  const trialReliefDate = options.data.trialReliefDate ?? null;
   try {
     await authorizeAttachmentMenu(req, "Crew Database");
     await authorizeAttachmentSubject(req, "Vessel", parsed.data, "vessel");
@@ -22,12 +27,18 @@ export async function getOnboardTrainingCompliance(req: Request, res: Response) 
       const crew = [];
       for (const assignment of assignments) {
         await authorizeAttachmentSubject(req, "Crew Database", assignment.crewUuid);
-        const { check, matrix } = await readOnboardCompliance(db, assignment, referenceDate);
+        // A copied input only: no assignment or planning write exists on this GET.
+        const effectiveReliefDate = trialReliefDate ?? assignment.plannedReliefDate;
+        const { check, matrix } = await readOnboardCompliance(db,
+          { ...assignment, plannedReliefDate: effectiveReliefDate }, referenceDate);
         const details = await decorateTrainingCompliance(db, assignment, check, matrix);
         const dots = check.courses.map(course => onboardDot(course, check, referenceDate));
         crew.push({ ...details, referenceKind: "on_board", plannedReliefDate: assignment.plannedReliefDate,
+          effectiveReliefDate,
           dots, courses: details.courses.map(course => ({
-            ...course, displayStatus: dots.find(dot => dot.courseUuid === course.courseUuid)?.reasons.join("; ") ?? "Incomplete",
+            ...course,
+            urgencyWindows: certificateExpiryWindows(course.chosenCertificate?.expiry ?? null, referenceDate),
+            displayStatus: dots.find(dot => dot.courseUuid === course.courseUuid)?.reasons.join("; ") ?? "Incomplete",
           })) });
       }
       const saved = (await db.execute(sql`SELECT revision,revision_data AS data FROM adm_training_matrix_vessel_revisions_v2
@@ -45,7 +56,7 @@ export async function getOnboardTrainingCompliance(req: Request, res: Response) 
         LEFT JOIN adm_company_training_groups_v2 g ON g.code=c.group_code AND NOT g.is_deleted
         WHERE c.id=ANY(${sql.param(ids)}::integer[]) AND NOT c.is_deleted AND NOT m.is_deleted
         ORDER BY nullif(c.group_code,'') COLLATE "C" ASC NULLS LAST,coalesce(c.sort_order,0),c.id`)).rows;
-      return { referenceDate, twoMonthDate: contractEndDate(referenceDate, 2),
+      return { referenceDate, twoMonthDate: contractEndDate(referenceDate, 2), trialReliefDate,
         matrixRevision: saved?.revision ?? null, rows, crew };
     }, { isolationLevel: "repeatable read", accessMode: "read only" });
     logUndeterminedTrainingMatrixCells(parsed.data, result);

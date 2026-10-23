@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { TrainingMatrixCompliance, type TrainingComplianceResponse } from "./TrainingMatrixCompliance";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DueInChips, type DueInWindow } from "@/components/common/DueInChips";
 
 type Dot = {
   courseUuid: string;
@@ -15,6 +16,7 @@ type Dot = {
   label: string;
   reasons: string[];
 };
+type UrgencyWindow = DueInWindow;
 
 type MatrixRow = {
   companyTrainingId: number;
@@ -24,15 +26,18 @@ type MatrixRow = {
   category: string;
 };
 
-type OnboardCrew = TrainingComplianceResponse & {
+type OnboardCrew = Omit<TrainingComplianceResponse, "courses"> & {
+  courses: Array<TrainingComplianceResponse["courses"][number] & { urgencyWindows: UrgencyWindow[] }>;
   referenceKind: "on_board";
   plannedReliefDate: string | null;
+  effectiveReliefDate: string | null;
   dots: Dot[];
 };
 
 type VesselTrainingCompliance = {
   referenceDate: string;
   twoMonthDate: string;
+  trialReliefDate: string | null;
   matrixRevision: string | null;
   rows: MatrixRow[];
   crew: OnboardCrew[];
@@ -49,7 +54,7 @@ const vocabulary = (value: string) => value
   .replace(/\bExpired\b(?! at joining)/g, "Expired at joining");
 
 type EvidenceStyle = { color: "green" | "amber" | "red"; outline: boolean };
-type MatrixCourse = TrainingComplianceResponse["courses"][number];
+type MatrixCourse = OnboardCrew["courses"][number];
 type MatrixCheck = Pick<OnboardCrew, "status" | "issues">;
 
 const matrixVocabulary = (value: string) => value
@@ -163,7 +168,7 @@ function placementFor(trigger: HTMLElement, boundary: HTMLElement | null): Place
   return roomOnLeft >= popupWidth + 8 ? "left" : verticalSide;
 }
 
-function MatrixCell({ requirement, course, dot, showStatus, check, boundary, rankMissing }: {
+function MatrixCell({ requirement, course, dot, showStatus, check, boundary, rankMissing, hideCell = false }: {
   requirement: "Mandatory" | "Recommended" | "Not required for this rank" | "Contract rank not captured";
   course: MatrixCourse | undefined;
   check: MatrixCheck;
@@ -171,6 +176,7 @@ function MatrixCell({ requirement, course, dot, showStatus, check, boundary, ran
   showStatus: boolean;
   boundary: HTMLDivElement | null;
   rankMissing: boolean;
+  hideCell?: boolean;
 }) {
   const hasRequirement = course?.obligation === "mandatory" || course?.obligation === "recommended";
   const relevantCourse = hasRequirement ? course : undefined;
@@ -190,6 +196,7 @@ function MatrixCell({ requirement, course, dot, showStatus, check, boundary, ran
   } : undefined;
   const bgClass = requirement === "Mandatory" ? "bg-green-50"
     : requirement === "Recommended" ? "bg-blue-100" : "bg-white";
+  if (hideCell) return <div className={`flex h-9 min-w-[142px] items-center justify-center ${bgClass}`} aria-hidden="true" />;
   return (
     <div className={`flex h-9 min-w-[142px] items-center justify-center ${bgClass}`}>
       <Popover>
@@ -222,18 +229,66 @@ function MatrixCell({ requirement, course, dot, showStatus, check, boundary, ran
   );
 }
 
+function TrialAndUrgencyControls({ trialDate, setTrialDate, selectedWindows, toggleWindow }: {
+  trialDate: string;
+  setTrialDate: (value: string) => void;
+  selectedWindows: UrgencyWindow[];
+  toggleWindow: (value: UrgencyWindow) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1">
+        <DueInChips
+          className="flex flex-wrap items-center gap-2"
+          overdueLabel="Expired"
+          selected={selectedWindows}
+          onToggle={toggleWindow}
+        />
+        <p className="text-xs text-slate-600">Show cells matching any selected window. None selected shows everything.</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <label htmlFor="training-trial-relief-date" className="font-medium text-slate-700">
+          Check against a different relief date
+        </label>
+        <input
+          id="training-trial-relief-date"
+          type="date"
+          value={trialDate}
+          onChange={event => setTrialDate(event.currentTarget.value)}
+          className="h-9 rounded border border-slate-300 bg-white px-2 text-sm text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
+          aria-label="Check against a different relief date"
+        />
+        {trialDate && (
+          <>
+            <span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900" role="status">
+              Trial date active — no changes saved
+            </span>
+            <button type="button" onClick={() => setTrialDate("")}
+              className="rounded px-2 py-1 text-xs font-semibold text-sky-800 underline underline-offset-2 hover:text-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">
+              Clear trial date
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function VesselTrainingMatrix({ vesselUuid }: Props) {
-  const [selectedCrew, setSelectedCrew] = useState<OnboardCrew | null>(null);
+  const [selectedCrewUuid, setSelectedCrewUuid] = useState<string | null>(null);
   const [showMandatory, setShowMandatory] = useState(true);
   const [showRecommended, setShowRecommended] = useState(false);
+  const [trialDate, setTrialDate] = useState("");
+  const [selectedWindows, setSelectedWindows] = useState<UrgencyWindow[]>([]);
   const [evidenceBoundary, setEvidenceBoundary] = useState<HTMLDivElement | null>(null);
   const scrollFrameRef = useRef<HTMLDivElement | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const [evidenceBounds, setEvidenceBounds] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const query = useQuery<VesselTrainingCompliance>({
-    queryKey: ["vessel-training-compliance", vesselUuid],
+    queryKey: ["vessel-training-compliance", vesselUuid, trialDate || null],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/v2/vessel/${encodeURIComponent(vesselUuid!)}/training-compliance`);
+      const queryString = trialDate ? `?trialReliefDate=${encodeURIComponent(trialDate)}` : "";
+      const response = await apiRequest("GET", `/api/v2/vessel/${encodeURIComponent(vesselUuid!)}/training-compliance${queryString}`);
       const payload = await response.json();
       if (!Array.isArray(payload?.rows) || !Array.isArray(payload?.crew)) throw new Error("Training Matrix unavailable");
       return payload as VesselTrainingCompliance;
@@ -274,30 +329,61 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
     };
   }, [query.data]);
 
+  const toggleUrgencyWindow = (window: UrgencyWindow) => setSelectedWindows(current =>
+    current.includes(window) ? current.filter(item => item !== window) : [...current, window]);
+  const controls = (
+    <TrialAndUrgencyControls trialDate={trialDate} selectedWindows={selectedWindows}
+      setTrialDate={value => {
+        setSelectedCrewUuid(null);
+        setTrialDate(value);
+      }}
+      toggleWindow={toggleUrgencyWindow} />
+  );
   if (!vesselUuid) return <p className="rounded-md border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">Select a vessel to view onboard training evidence.</p>;
   if (query.isLoading) return (
     <div className="space-y-3" aria-label="Loading onboard training compliance">
+      {controls}
       <div className="h-12 animate-pulse rounded bg-slate-200" />
       <div className="h-24 animate-pulse rounded bg-slate-100" />
       <div className="h-64 animate-pulse rounded bg-slate-100" />
     </div>
   );
   if (query.isError) return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
-      <AlertCircle className="h-4 w-4" aria-hidden="true" />
-      <span>Onboard training compliance could not be loaded.</span>
-      <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()}>
-        <RotateCw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> Retry
-      </Button>
+    <div className="space-y-3">
+      {controls}
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+        <AlertCircle className="h-4 w-4" aria-hidden="true" />
+        <span>Onboard training compliance could not be loaded.</span>
+        <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()}>
+          <RotateCw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> Retry
+        </Button>
+      </div>
     </div>
   );
 
   const payload = query.data;
   if (!payload) return null;
+  const responseMatchesTrial = (payload.trialReliefDate ?? null) === (trialDate || null);
+  if (!responseMatchesTrial || (Boolean(trialDate) && query.isFetching)) {
+    return (
+      <div className="space-y-3" aria-label="Loading onboard training compliance">
+        {controls}
+        <div className="h-12 animate-pulse rounded bg-slate-200" />
+        <div className="h-24 animate-pulse rounded bg-slate-100" />
+        <div className="h-64 animate-pulse rounded bg-slate-100" />
+      </div>
+    );
+  }
+  const selectedCrew = selectedCrewUuid
+    ? payload.crew.find(crew => crew.assignmentUuid === selectedCrewUuid) ?? null
+    : null;
   const dotsByCrew = payload.crew.map(crew => new Map((crew.dots ?? []).map(dot => [dot.courseUuid, dot])));
   const filteredRows = payload.rows.filter(row => (showMandatory || showRecommended) && payload.crew.some(crew => {
-    if (!hasCapturedContractRank(crew)) return true;
     const course = crew.courses.find(item => item.courseUuid === row.courseUuid);
+    const urgencyMatches = selectedWindows.length === 0
+      || Boolean(course?.urgencyWindows?.some((window: UrgencyWindow) => selectedWindows.includes(window)));
+    if (!urgencyMatches) return false;
+    if (!hasCapturedContractRank(crew)) return selectedWindows.length === 0;
     return course?.obligation === "mandatory" ? showMandatory
       : course?.obligation === "recommended" ? showRecommended
         : false;
@@ -320,6 +406,7 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
   return (
     <TooltipProvider delayDuration={150}>
       <section className="space-y-4">
+        {controls}
         <div className="overflow-x-auto rounded-md border border-slate-200 bg-slate-50 px-3 py-2" aria-label="Training compliance legend">
           <div className="flex w-max min-w-full items-center gap-4 whitespace-nowrap text-[11px]">
             <span role="group" aria-label="Requirement filters" className="inline-flex items-center gap-2">
@@ -368,7 +455,7 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
                       <TableHead key={`${crew.assignmentUuid}-${index}`} className="sticky top-0 z-20 w-[142px] min-w-[142px] max-w-[142px] bg-[#52baf3] px-2 text-center text-white">
                         <div className="truncate text-xs font-semibold text-white">{sentenceCaseLabel(crew.context.contractRankLabel || "Captured rank not recorded")}</div>
                       <button type="button" aria-label={crew.context.crewName || "Crew member"} title={crew.context.crewName || "Crew member"} className="mx-auto mt-0.5 block max-w-full truncate text-center text-[10px] font-medium underline decoration-white/60 underline-offset-2 hover:text-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                        onClick={() => setSelectedCrew(crew)} data-testid={`onboard-training-details-${index}`}>
+                        onClick={() => setSelectedCrewUuid(crew.assignmentUuid)} data-testid={`onboard-training-details-${index}`}>
                         {titleCaseName(crew.context.crewName || "Crew member")}
                       </button>
                     </TableHead>
@@ -398,9 +485,11 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
                     </TableCell>
                     {payload.crew.map((crew, index) => (
                       <TableCell key={`${crew.assignmentUuid}-${row.courseUuid}`} className="h-9 p-0 text-center">
-                        {(() => {
+                         {(() => {
                           const course = crew.courses.find(item => item.courseUuid === row.courseUuid);
                           const rankMissing = !hasCapturedContractRank(crew);
+                           const urgencyMatches = selectedWindows.length === 0
+                             || Boolean(course?.urgencyWindows?.some(window => selectedWindows.includes(window)));
                           const requirement = rankMissing ? "Contract rank not captured"
                             : course?.obligation === "mandatory" ? "Mandatory"
                               : course?.obligation === "recommended" ? "Recommended" : "Not required for this rank";
@@ -408,7 +497,8 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
                             : course?.obligation === "mandatory" ? showMandatory
                               : course?.obligation === "recommended" ? showRecommended : false;
                           return <MatrixCell requirement={requirement} course={course} dot={dotsByCrew[index].get(row.courseUuid)} check={crew}
-                            showStatus={showStatus} boundary={evidenceBoundary} rankMissing={rankMissing} />;
+                             showStatus={showStatus && urgencyMatches} boundary={evidenceBoundary} rankMissing={rankMissing}
+                             hideCell={!urgencyMatches} />;
                         })()}
                       </TableCell>
                     ))}
@@ -423,14 +513,19 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
           </div>
         </div>
         <p className="text-xs leading-relaxed text-slate-500">
-          Evidence is evaluated against the server-recorded reference date and each assignment’s planned relief date. Matrix revision: {payload.matrixRevision ?? "Not available"}.
+          Evidence is evaluated against the server-recorded reference date and each assignment’s planned relief date. {trialDate
+            ? "This trial uses the server-evaluated effective relief date; actual planned relief dates remain unchanged."
+            : null} Matrix revision: {payload.matrixRevision ?? "Not available"}.
         </p>
       </section>
-      {selectedCrew && (
+      {selectedCrew && responseMatchesTrial && (
         <TrainingMatrixCompliance
-          embeddedResult={embeddedResult ?? undefined}
+          embeddedResult={embeddedResult ? {
+            ...embeddedResult,
+            contractEnd: selectedCrew.effectiveReliefDate ?? selectedCrew.contractEnd,
+          } : undefined}
           open={Boolean(selectedCrew)}
-          onDetailsClose={() => setSelectedCrew(null)}
+          onDetailsClose={() => setSelectedCrewUuid(null)}
         />
       )}
     </TooltipProvider>
