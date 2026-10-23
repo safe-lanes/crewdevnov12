@@ -53,7 +53,7 @@ import {
   parseApiError,
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
-import { formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
@@ -331,7 +331,13 @@ export function AdvancesTab({
       { headerName: "Crew", field: "crewName", flex: 2, minWidth: 150 },
       { headerName: "Rank", field: "rank", width: 90 },
       { headerName: "Vessel", field: "vesselName", flex: 1, minWidth: 110 },
-      { headerName: "Date", field: "requestDate", width: 110 },
+      {
+        headerName: "Date",
+        field: "requestDate",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
       {
         headerName: "Amount",
         field: "amount",
@@ -1127,7 +1133,13 @@ export function BondTab({
         valueFormatter: (p) =>
           formatMoney(p.value ?? p.data.totalPrice ?? "0"),
       },
-      { headerName: "Sale Date", field: "saleDate", width: 110 },
+      {
+        headerName: "Sale Date",
+        field: "saleDate",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
       {
         headerName: "Actions",
         width: 110,

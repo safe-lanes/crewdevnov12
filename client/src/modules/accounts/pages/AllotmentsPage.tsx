@@ -45,7 +45,7 @@ import {
   parseApiError,
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
-import { formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
@@ -440,8 +440,20 @@ export default function AllotmentsPage({
       },
       { headerName: "Ccy", field: "currency", width: 70 },
       { headerName: "Priority", field: "priority", width: 90 },
-      { headerName: "Valid From", field: "validFrom", width: 110 },
-      { headerName: "Valid To", field: "validTo", width: 110 },
+      {
+        headerName: "Valid From",
+        field: "validFrom",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
+      {
+        headerName: "Valid To",
+        field: "validTo",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
       {
         headerName: "KYC",
         field: "kycComplete",
