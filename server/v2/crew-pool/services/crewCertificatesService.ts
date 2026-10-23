@@ -28,6 +28,7 @@ import type {
 } from "../../../../shared/v2/crew-pool/types";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 
 /**
  * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
@@ -375,7 +376,7 @@ export const crewCertificatesService = {
     data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
     const original = await this.getTrainingByUuid(trainUuid);
-    const dataWithAudit = applyAuditUser(data, false);
+    const dataWithAudit = applyAuditUser(certificateUpdateFields(data, original.crewUuid), false);
 
     const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
     return getDb().transaction(async (tx: any) => {
@@ -469,11 +470,10 @@ export const crewCertificatesService = {
         let trainUuid: string;
 
         if (item.trainUuid) {
-          const [updated] = await tx
-            .update(crewTrainingCourses)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewTrainingCourses.trainUuid, item.trainUuid))
-            .returning();
+          const updated = await crewTrainingRepository.update(
+            item.trainUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Training ${item.trainUuid} not found`);
           trainUuid = item.trainUuid;
           results.push(updated);
         } else {
