@@ -1,5 +1,10 @@
 # Training Matrix — expiry urgency and trial relief date
 
+> Presentation follow-up: the controls now share a compact bar and the displayed
+> overdue chip is **O/D**, still using the internal `Expired` filter value.
+> See [control-bar measurements and evidence](control-bar-presentation.md).
+> The verification results below record the original urgency/trial implementation.
+
 ## Delivered behaviour
 
 Vessel → Training Matrix now has two independent controls above the existing

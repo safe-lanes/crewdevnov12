@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { VesselTrainingMatrix } from "../../client/src/modules/vessel/components/VesselTrainingMatrix";
 import { apiRequest } from "../../client/src/lib/queryClient";
+import { DueInChips } from "../../client/src/components/common/DueInChips";
 
 vi.mock("../../client/src/lib/queryClient", () => ({ apiRequest: vi.fn() }));
 
@@ -137,18 +138,58 @@ describe("server-computed onboard matrix presentation", () => {
     mount();
     const originalDot = await screen.findByRole("button", { name: /Mandatory — Not held/ });
     expect(screen.getByText("Expiring course")).toBeTruthy();
-    expect(screen.getByText("Show cells matching any selected window. None selected shows everything.")).toBeTruthy();
+    expect(screen.queryByText("Show cells matching any selected window. None selected shows everything.")).toBeNull();
     expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "3M" }));
     await waitFor(() => expect(screen.queryByText("Expiring course")).toBeNull());
     expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("true");
     const dotAfterChipFilter = screen.getByRole("button", { name: /Mandatory — Not held/ });
     expect(dotAfterChipFilter.getAttribute("data-color")).toBe(originalDot.getAttribute("data-color"));
-    fireEvent.click(screen.getByRole("button", { name: "Expired" }));
+    fireEvent.click(screen.getByRole("button", { name: "O/D" }));
     expect(screen.getByText("Expiring course")).toBeTruthy();
     expect(screen.getByRole("button", { name: "3M" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Expired" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "O/D" }).getAttribute("aria-pressed")).toBe("true");
     expect(apiRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows compact O/D and Due in explanations on hover and tap without changing the Expired filter value", async () => {
+    mount();
+    await screen.findByRole("button", { name: "TEST ONLY Matrix" });
+
+    const dueLabel = screen.getByRole("button", { name: "Due in:" });
+    fireEvent.click(dueLabel);
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Show cells matching any selected window. None selected shows everything.",
+    );
+    fireEvent.click(dueLabel);
+    fireEvent.pointerLeave(dueLabel, { pointerType: "mouse" });
+
+    const overdue = screen.getByRole("button", { name: "O/D" });
+    expect(overdue.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.pointerMove(overdue, { pointerType: "mouse" });
+    await waitFor(() => expect(screen.getAllByRole("tooltip").some(
+      tooltip => tooltip.textContent === "Overdue — expired as of today",
+    )).toBe(true));
+    fireEvent.click(overdue);
+    expect(overdue.getAttribute("aria-pressed")).toBe("true");
+    expect(await screen.findByRole("status")).toHaveTextContent("Overdue — expired as of today");
+  });
+
+  it("keeps shared D&A chip sizing unchanged unless compact mode is explicitly enabled", () => {
+    const { rerender } = render(<DueInChips />);
+    const defaultChip = screen.getByText("3M");
+    expect(defaultChip.className).toContain("text-sm");
+    expect(defaultChip.className).toContain("px-3");
+
+    const onToggle = vi.fn();
+    rerender(<DueInChips compact className="flex gap-2" selected={[]} onToggle={onToggle} />);
+    const compactChip = screen.getByRole("button", { name: "3M" });
+    expect(compactChip.className).toContain("text-[11px]");
+    expect(compactChip.className).toContain("px-2");
+    const overdue = screen.getByRole("button", { name: "O/D" });
+    expect(overdue.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(overdue);
+    expect(onToggle).toHaveBeenCalledWith("Expired");
   });
 
   it("requests the trial date on the existing GET key and one-click clear restores actual dates", async () => {

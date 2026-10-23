@@ -229,25 +229,32 @@ function MatrixCell({ requirement, course, dot, showStatus, check, boundary, ran
   );
 }
 
-function TrialAndUrgencyControls({ trialDate, setTrialDate, selectedWindows, toggleWindow }: {
+function TrialAndUrgencyControls({ trialDate, setTrialDate, selectedWindows, toggleWindow, showMandatory, showRecommended, toggleMandatory, toggleRecommended }: {
   trialDate: string;
   setTrialDate: (value: string) => void;
   selectedWindows: UrgencyWindow[];
   toggleWindow: (value: UrgencyWindow) => void;
+  showMandatory: boolean;
+  showRecommended: boolean;
+  toggleMandatory: () => void;
+  toggleRecommended: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="space-y-1">
+    <TooltipProvider delayDuration={150}>
+    <div aria-label="Training compliance legend" className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[11px]">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <DueInChips
           className="flex flex-wrap items-center gap-2"
-          overdueLabel="Expired"
+          overdueLabel="O/D"
           selected={selectedWindows}
           onToggle={toggleWindow}
+          compact
+          helperText="Show cells matching any selected window. None selected shows everything."
         />
-        <p className="text-xs text-slate-600">Show cells matching any selected window. None selected shows everything.</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="training-trial-relief-date" className="font-medium text-slate-700">
+      <span className="hidden h-5 border-l border-slate-300 sm:block" aria-hidden="true" />
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <label htmlFor="training-trial-relief-date" className="font-semibold text-slate-700">
           Check against a different relief date
         </label>
         <input
@@ -255,22 +262,51 @@ function TrialAndUrgencyControls({ trialDate, setTrialDate, selectedWindows, tog
           type="date"
           value={trialDate}
           onChange={event => setTrialDate(event.currentTarget.value)}
-          className="h-9 rounded border border-slate-300 bg-white px-2 text-sm text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
+          className="h-6 rounded border border-slate-300 bg-white px-2 text-[11px] leading-normal text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
           aria-label="Check against a different relief date"
         />
         {trialDate && (
           <>
-            <span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900" role="status">
+            <span className="rounded bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900" role="status">
               Trial date active — no changes saved
             </span>
             <button type="button" onClick={() => setTrialDate("")}
-              className="rounded px-2 py-1 text-xs font-semibold text-sky-800 underline underline-offset-2 hover:text-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">
+              className="rounded px-2 py-1 text-[11px] font-bold text-sky-800 underline underline-offset-2 hover:text-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">
               Clear trial date
             </button>
           </>
         )}
       </div>
+      <span className="hidden h-5 border-l border-slate-300 sm:block" aria-hidden="true" />
+      <span role="group" aria-label="Requirement filters" className="inline-flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-slate-700">Requirement:</span>
+        <button type="button" aria-pressed={showMandatory} onClick={toggleMandatory}
+          className={`rounded px-2 py-1 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 ${showMandatory ? "bg-green-100 text-green-900" : "bg-white text-slate-600"}`}>
+          Mandatory
+        </button>
+        <button type="button" aria-pressed={showRecommended} onClick={toggleRecommended}
+          className={`rounded px-2 py-1 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 ${showRecommended ? "bg-blue-100 text-blue-900" : "bg-white text-slate-600"}`}>
+          Recommended
+        </button>
+      </span>
+      <span className="hidden h-5 border-l border-slate-300 sm:block" aria-hidden="true" />
+      <span role="group" aria-label="Evidence states" className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-semibold text-slate-700">Evidence:</span>
+        {[
+          { label: "Valid", className: "border-[#16A34A] bg-[#16A34A]" },
+          { label: "Expires during contract", className: "border-[#F59E0B] bg-[#F59E0B]" },
+          { label: "Expired at joining", className: "border-[#DC2626] bg-[#DC2626]" },
+          { label: "Not held", className: "border-[#DC2626] bg-transparent" },
+          { label: "Expiry not recorded", className: "border-[#F59E0B] bg-transparent" },
+        ].map(item => (
+          <span key={item.label} className="inline-flex items-center gap-1.5 text-slate-700">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full border-2 ${item.className}`} aria-hidden="true" />
+            {item.label}
+          </span>
+        ))}
+      </span>
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -337,7 +373,11 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
         setSelectedCrewUuid(null);
         setTrialDate(value);
       }}
-      toggleWindow={toggleUrgencyWindow} />
+      toggleWindow={toggleUrgencyWindow}
+      showMandatory={showMandatory}
+      showRecommended={showRecommended}
+      toggleMandatory={() => setShowMandatory(value => !value)}
+      toggleRecommended={() => setShowRecommended(value => !value)} />
   );
   if (!vesselUuid) return <p className="rounded-md border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">Select a vessel to view onboard training evidence.</p>;
   if (query.isLoading) return (
@@ -407,35 +447,6 @@ export function VesselTrainingMatrix({ vesselUuid }: Props) {
     <TooltipProvider delayDuration={150}>
       <section className="space-y-4">
         {controls}
-        <div className="overflow-x-auto rounded-md border border-slate-200 bg-slate-50 px-3 py-2" aria-label="Training compliance legend">
-          <div className="flex w-max min-w-full items-center gap-4 whitespace-nowrap text-[11px]">
-            <span role="group" aria-label="Requirement filters" className="inline-flex items-center gap-2">
-              <span className="font-semibold text-slate-700">Requirement:</span>
-              <button type="button" aria-pressed={showMandatory} onClick={() => setShowMandatory(value => !value)}
-                className={`rounded px-2 py-1 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 ${showMandatory ? "bg-green-100 text-green-900" : "bg-white text-slate-600"}`}>
-                Mandatory
-              </button>
-              <button type="button" aria-pressed={showRecommended} onClick={() => setShowRecommended(value => !value)}
-                className={`rounded px-2 py-1 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 ${showRecommended ? "bg-blue-100 text-blue-900" : "bg-white text-slate-600"}`}>
-                Recommended
-              </button>
-            </span>
-            <span className="h-4 border-l border-slate-300" aria-hidden="true" />
-            <span className="font-semibold text-slate-700">Evidence:</span>
-            {[
-              { label: "Valid", className: "border-[#16A34A] bg-[#16A34A]" },
-              { label: "Expires during contract", className: "border-[#F59E0B] bg-[#F59E0B]" },
-              { label: "Expired at joining", className: "border-[#DC2626] bg-[#DC2626]" },
-              { label: "Not held", className: "border-[#DC2626] bg-transparent" },
-              { label: "Expiry not recorded", className: "border-[#F59E0B] bg-transparent" },
-            ].map(item => (
-              <span key={item.label} className="inline-flex items-center gap-1.5 text-slate-700">
-                <span className={`inline-block h-2.5 w-2.5 rounded-full border-2 ${item.className}`} aria-hidden="true" />
-                {item.label}
-              </span>
-            ))}
-          </div>
-        </div>
         {!showMandatory && !showRecommended && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
             Choose Mandatory and/or Recommended to show requirement evidence.
