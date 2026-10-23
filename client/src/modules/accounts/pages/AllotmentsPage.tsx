@@ -87,7 +87,7 @@ const emptyForm: AllotmentForm = {
 
 type AllotmentDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className"
 >;
 
 function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateInputProps) {
@@ -110,7 +110,7 @@ function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateIn
       <FormattedDateInput
         {...props}
         mode="date"
-        className="min-w-0 border-input text-base md:text-sm"
+        className={`min-w-0 ${props.className || "border-input"} text-base md:text-sm`}
         acceptCalendarInputEvents
         retainInvalidDraftOnBlur
         onDraftValidityChange={onDraftValidityChange}
@@ -199,6 +199,7 @@ export default function AllotmentsPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<AllotmentForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dateFormVersion, setDateFormVersion] = useState(0);
   const validFromIsValid = useRef(true);
@@ -222,6 +223,7 @@ export default function AllotmentsPage({
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
     setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
@@ -229,6 +231,7 @@ export default function AllotmentsPage({
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
     resetDateInput();
     setEditing(row);
     setForm({
@@ -262,20 +265,47 @@ export default function AllotmentsPage({
     }
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editing && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  for (const [key, label] of [
+    ["beneficiaryName", "Payee Name"],
+    ["bankName", "Bank Name"],
+    ["accountNumber", "Account Number"],
+    ["ibanSwift", "IBAN/SWIFT"],
+  ] as const) {
+    if (!form[key].trim()) {
+      requiredErrors[key] = `${label} is required.`;
+    }
+  }
+  if (!form.value) {
+    requiredErrors.value =
+      form.allotmentType === "percentage"
+        ? "Percent is required."
+        : "Amount is required.";
+  }
+  if (!form.validFrom) {
+    requiredErrors.validFrom = "Valid From is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
     if (!editing && (!vesselUuid || !period || !crew)) {
       toast({
         title: "Missing crew",
         description: "Select a vessel and period on the main screen, then choose a crew member from that vessel.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form.beneficiaryName.trim() || !form.value || !form.validFrom) {
-      toast({
-        title: "Missing fields",
-        description: "Payee name, amount and valid-from are required.",
         variant: "destructive",
       });
       return;
@@ -671,13 +701,13 @@ export default function AllotmentsPage({
             {!editing && (
               <>
                 <div className="space-y-1">
-                  <Label>Crew</Label>
+                  <Label>Crew <span className="text-red-500">*</span></Label>
                   <Select
                     value={form.crewUuid}
                     onValueChange={(v) => set("crewUuid", v)}
                     disabled={!vesselUuid || !period}
                   >
-                    <SelectTrigger data-testid="select-allotment-crew">
+                    <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-allotment-crew">
                       <SelectValue placeholder="Select crew member" />
                     </SelectTrigger>
                     <SelectContent>
@@ -688,6 +718,9 @@ export default function AllotmentsPage({
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.crewUuid && (
+                    <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+                  )}
                 </div>
               </>
             )}
@@ -697,12 +730,17 @@ export default function AllotmentsPage({
               </div>
             )}
             <div className="space-y-1">
-              <Label>Payee Name</Label>
+              <Label>Payee Name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.beneficiaryName}
                 onChange={(e) => set("beneficiaryName", e.target.value)}
                 data-testid="input-allotment-payee"
+                className={errors.beneficiaryName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.beneficiaryName}
               />
+              {errors.beneficiaryName && (
+                <p className="text-xs text-red-500" role="alert">{errors.beneficiaryName}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Relationship</Label>
@@ -731,6 +769,7 @@ export default function AllotmentsPage({
             <div className="space-y-1">
               <Label>
                 {form.allotmentType === "percentage" ? "Percent" : "Amount"}
+                {" "}<span className="text-red-500">*</span>
               </Label>
               <Input
                 type="number"
@@ -738,7 +777,12 @@ export default function AllotmentsPage({
                 value={form.value}
                 onChange={(e) => set("value", e.target.value)}
                 data-testid="input-allotment-value"
+                className={errors.value ? "border-red-500" : undefined}
+                aria-invalid={!!errors.value}
               />
+              {errors.value && (
+                <p className="text-xs text-red-500" role="alert">{errors.value}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
@@ -777,28 +821,43 @@ export default function AllotmentsPage({
               />
             </div>
             <div className="space-y-1">
-              <Label>Bank Name</Label>
+              <Label>Bank Name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.bankName}
                 onChange={(e) => set("bankName", e.target.value)}
                 data-testid="input-allotment-bank"
+                className={errors.bankName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.bankName}
               />
+              {errors.bankName && (
+                <p className="text-xs text-red-500" role="alert">{errors.bankName}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Account Number</Label>
+              <Label>Account Number <span className="text-red-500">*</span></Label>
               <Input
                 value={form.accountNumber}
                 onChange={(e) => set("accountNumber", e.target.value)}
                 data-testid="input-allotment-account"
+                className={errors.accountNumber ? "border-red-500" : undefined}
+                aria-invalid={!!errors.accountNumber}
               />
+              {errors.accountNumber && (
+                <p className="text-xs text-red-500" role="alert">{errors.accountNumber}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>IBAN / SWIFT</Label>
+              <Label>IBAN / SWIFT <span className="text-red-500">*</span></Label>
               <Input
                 value={form.ibanSwift}
                 onChange={(e) => set("ibanSwift", e.target.value)}
                 data-testid="input-allotment-iban"
+                className={errors.ibanSwift ? "border-red-500" : undefined}
+                aria-invalid={!!errors.ibanSwift}
               />
+              {errors.ibanSwift && (
+                <p className="text-xs text-red-500" role="alert">{errors.ibanSwift}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Bank Country</Label>
@@ -809,7 +868,7 @@ export default function AllotmentsPage({
               />
             </div>
             <div className="space-y-1">
-              <Label>Valid From</Label>
+              <Label>Valid From <span className="text-red-500">*</span></Label>
               <AllotmentDateInput
                 key={dateFormVersion}
                 value={form.validFrom}
@@ -818,7 +877,11 @@ export default function AllotmentsPage({
                   validFromIsValid.current = valid;
                 }}
                 data-testid="input-allotment-valid-from"
+                className={errors.validFrom ? "border-red-500" : undefined}
               />
+              {errors.validFrom && (
+                <p className="text-xs text-red-500" role="alert">{errors.validFrom}</p>
+              )}
               {validFromOrderError && (
                 <p role="alert" className="text-sm text-destructive">
                   {validFromOrderError}

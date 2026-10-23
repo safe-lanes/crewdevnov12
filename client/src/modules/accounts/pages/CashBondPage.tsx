@@ -193,6 +193,7 @@ export function AdvancesTab({
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<AdvanceForm>(emptyAdvanceForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dateFormVersion, setDateFormVersion] = useState(0);
   const requestDateIsValid = useRef(true);
@@ -213,20 +214,34 @@ export function AdvancesTab({
 
   const schedule = previewSchedule(form.amount, form.recoveryAmount);
 
+  const requiredErrors: Record<string, string> = {};
+  if (!form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.amount) {
+    requiredErrors.amount = "Amount is required.";
+  }
+  if (!form.recoveryAmount) {
+    requiredErrors.recoveryAmount = "Monthly Deduction is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
     if (!crew) {
       toast({
         title: "Missing crew",
         description: "Select a vessel/period above, then a crew member.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form.amount || !form.recoveryAmount) {
-      toast({
-        title: "Missing fields",
-        description: "Amount and monthly recovery are required.",
         variant: "destructive",
       });
       return;
@@ -425,6 +440,7 @@ export function AdvancesTab({
           <Button
             size="sm"
             onClick={() => {
+              setValidationAttempted(false);
               requestDateIsValid.current = true;
               setDateFormVersion((version) => version + 1);
               setForm({
@@ -899,6 +915,7 @@ export function BondTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<BondForm>(emptyBondForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dateFormVersion, setDateFormVersion] = useState(0);
   const saleDateIsValid = useRef(true);
@@ -938,6 +955,7 @@ export function BondTab({
   };
 
   const openCreate = () => {
+    setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
     setForm({
@@ -948,6 +966,7 @@ export function BondTab({
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
     resetDateInput();
     setEditing(row);
     setForm({
@@ -963,19 +982,28 @@ export function BondTab({
     setDialogOpen(true);
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editing && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.itemName.trim()) {
+    requiredErrors.itemName = "Item is required.";
+  }
+  if (!String(form.quantity ?? "").trim()) {
+    requiredErrors.quantity = "Quantity is required.";
+  }
+  if (!String(form.unitPrice ?? "").trim()) {
+    requiredErrors.unitPrice = "Unit Price is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
-    if (!editing && !form.crewUuid) {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
       toast({
-        title: "Missing crew",
-        description: "Select a crew member.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form.itemName.trim()) {
-      toast({
-        title: "Missing item",
-        description: "Item name is required.",
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
         variant: "destructive",
       });
       return;

@@ -144,6 +144,7 @@ export default function MonthlyTransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<TxnForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -207,12 +208,14 @@ export default function MonthlyTransactionsPage() {
   };
 
   const openCreate = () => {
+    setValidationAttempted(false);
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
     setEditingUuid(row.txnUuid);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -226,20 +229,34 @@ export default function MonthlyTransactionsPage() {
     setDialogOpen(true);
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editingUuid && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.payElementUuid) {
+    requiredErrors.payElementUuid = "Pay Element is required.";
+  }
+  if (!form.amount) {
+    requiredErrors.amount = "Amount is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     const review = crewByUuid.get(form.crewUuid);
     if (!editingUuid && !review?.engagement) {
       toast({
         title: "No engagement",
         description: "Selected crew has no engagement for this period.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form.payElementUuid || !form.amount) {
-      toast({
-        title: "Missing fields",
-        description: "Pay element and amount are required.",
         variant: "destructive",
       });
       return;
@@ -666,13 +683,13 @@ export default function MonthlyTransactionsPage() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
                 disabled={!!editingUuid}
               >
-                <SelectTrigger data-testid="select-txn-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-txn-crew">
                   <SelectValue placeholder="Select crew member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -683,15 +700,18 @@ export default function MonthlyTransactionsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
-              <Label>Pay Element</Label>
+              <Label>Pay Element <span className="text-red-500">*</span></Label>
               <Select
                 value={form.payElementUuid}
                 onValueChange={(v) => set("payElementUuid", v)}
                 disabled={!!editingUuid}
               >
-                <SelectTrigger data-testid="select-txn-element">
+                <SelectTrigger className={errors.payElementUuid ? "border-red-500" : undefined} aria-invalid={!!errors.payElementUuid} data-testid="select-txn-element">
                   <SelectValue placeholder="Select pay element" />
                 </SelectTrigger>
                 <SelectContent>
@@ -706,6 +726,9 @@ export default function MonthlyTransactionsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.payElementUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.payElementUuid}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Qty</Label>
@@ -728,14 +751,19 @@ export default function MonthlyTransactionsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Amount *</Label>
+              <Label>Amount <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
                 data-testid="input-txn-amount"
+                className={errors.amount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.amount}
               />
+              {errors.amount && (
+                <p className="text-xs text-red-500" role="alert">{errors.amount}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
