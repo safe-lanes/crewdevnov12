@@ -2,10 +2,22 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { apprBehaviouralAssessmentsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { ApprBehaviouralAssessmentV2 } from "../../../../shared/v2/appraisals/types";
-import { v4 as uuidv4 } from "uuid";
+import type { AppraisalSectionChanges } from "../../../../shared/v2/appraisals/appraisalChanges";
+import { syncChildRows, textField, type ChildTableConfig } from "./childRowSync";
 
 // A transaction (tx) or the default connection.
 type Executor = any;
+
+const ROWS: ChildTableConfig = {
+  table: apprBehaviouralAssessmentsV2,
+  uuidKey: "behaviouralUuid",
+  fields: [
+    textField("assessmentCriteria"),
+    { column: "weight", from: ["weight"], normalize: (r) => (r.weight != null ? Number(r.weight) : null) },
+    textField("effectiveness"),
+    textField("comment"),
+  ],
+};
 
 export class ApprBehaviouralAssessmentsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprBehaviouralAssessmentV2[]>> {
@@ -27,52 +39,14 @@ export class ApprBehaviouralAssessmentsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
-    const db = executor;
-    const now = new Date();
+  // The whole section (create, stage submits): rows matched by uuid, live rows
+  // missing from `rows` are soft-deleted, unchanged rows are not written.
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
+  }
 
-    const existing = await db
-      .select()
-      .from(apprBehaviouralAssessmentsV2)
-      .where(and(
-        eq(apprBehaviouralAssessmentsV2.appraisalUuid, appraisalUuid),
-        eq(apprBehaviouralAssessmentsV2.isDeleted, false)
-      ))
-      .orderBy(apprBehaviouralAssessmentsV2.sortOrder);
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (i < existing.length) {
-        await db.update(apprBehaviouralAssessmentsV2)
-          .set({
-            assessmentCriteria: row.assessmentCriteria || null,
-            weight: row.weight != null ? Number(row.weight) : null,
-            effectiveness: row.effectiveness || null,
-            comment: row.comment || null,
-            sortOrder: i,
-            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-            updatedAt: now,
-          })
-          .where(eq(apprBehaviouralAssessmentsV2.id, existing[i].id));
-      } else {
-        await db.insert(apprBehaviouralAssessmentsV2).values({
-          behaviouralUuid: uuidv4(),
-          appraisalUuid,
-          assessmentCriteria: row.assessmentCriteria || null,
-          weight: row.weight != null ? Number(row.weight) : null,
-          effectiveness: row.effectiveness || null,
-          comment: row.comment || null,
-          sortOrder: i,
-          createdByUuid: auditUserUuid || null,
-          updatedByUuid: auditUserUuid || null,
-        });
-      }
-    }
-
-    for (let i = rows.length; i < existing.length; i++) {
-      await db.update(apprBehaviouralAssessmentsV2)
-        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-        .where(eq(apprBehaviouralAssessmentsV2.id, existing[i].id));
-    }
+  // A save-draft change set: only the given rows and deletions are written.
+  async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
 }

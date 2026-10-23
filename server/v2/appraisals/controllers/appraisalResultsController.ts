@@ -1,8 +1,37 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppraisalResultsService, FormVersionPinError, CrewReferenceError, AppraisalIdConflictError } from "../services";
+import { AppraisalRowOwnershipError } from "../repositories/childRowSync";
+import { getActor } from "../../accounts/controllers/_auth";
+import {
+  HEADER_FIELDS,
+  PART_G_SECTIONS,
+  SECTION_KEYS,
+  type AppraisalChanges,
+} from "../../../../shared/v2/appraisals/appraisalChanges";
 
 const service = new AppraisalResultsService();
+
+const PART_G_SHIP_ERROR = "Part G is for office use only. Ship users cannot change it.";
+
+const rowUuidSchema = z.string().min(1).max(64);
+
+const sectionChangesSchema = z.object({
+  rows: z.array(z.object({ uuid: rowUuidSchema }).passthrough()),
+  deleted: z.array(rowUuidSchema).optional(),
+});
+
+// Save draft: only what the user changed since the form was loaded.
+const saveDraftSchema = z.object({
+  changes: z.object({
+    header: z.object(
+      Object.fromEntries(HEADER_FIELDS.map((f) => [f, z.string().nullable().optional()])),
+    ).strict().optional(),
+    sections: z.object(
+      Object.fromEntries(SECTION_KEYS.map((k) => [k, sectionChangesSchema.optional()])),
+    ).strict().optional(),
+  }),
+});
 
 const stage1SubmissionSchema = z.object({
   data: z.object({
@@ -127,7 +156,7 @@ export class AppraisalResultsController {
       res.status(created ? 201 : 200).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -141,15 +170,28 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      // A browser still running the old page sends the whole form with rows
+      // keyed by position; saving that would rewrite every row.
+      if (req.body?.changes === undefined && req.body?.appraisalData !== undefined) {
+        return res.status(400).json({ error: "This page is out of date. Please reload it and save again." });
+      }
+      const parsed = saveDraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid appraisal changes", details: parsed.error.issues });
+      }
+      const changes = parsed.data.changes as AppraisalChanges;
+      if (getActor(req).vesselUser && PART_G_SECTIONS.some((k) => changes.sections?.[k])) {
+        return res.status(403).json({ error: PART_G_SHIP_ERROR });
+      }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.update(appraisalUuid, { ...req.body, auditUserUuid });
+      const appraisal = await service.update(appraisalUuid, { changes, auditUserUuid });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
       res.json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to update appraisal:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to update appraisal" });
@@ -188,7 +230,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 1 submission error:", error);
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 1" });
@@ -218,7 +260,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 2 submission error:", error);
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 2" });
@@ -229,6 +271,10 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      // Stage 3 only writes Part G, which is office-owned.
+      if (getActor(req).vesselUser) {
+        return res.status(403).json({ error: PART_G_SHIP_ERROR });
+      }
       const validationResult = stage3SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
@@ -242,7 +288,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 3 submission error:", error);
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 3" });

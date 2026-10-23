@@ -1,0 +1,98 @@
+// Save-draft change set for an appraisal (APD-16).
+//
+// The client sends only what the user changed since the form was loaded, and
+// the server writes only that: untouched rows and fields are never rewritten,
+// so a stale copy of the form cannot overwrite someone else's edits. Child rows
+// are identified by their row uuid, never by list position.
+
+export const SECTION_KEYS = [
+  "trainings",
+  "targets",
+  "competenceAssessments",
+  "behaviouralAssessments",
+  "trainingNeeds",
+  "recommendations",
+  "appraiserComments",
+  "seafarerComments",
+  "officeReviews",
+  "trainingFollowups",
+] as const;
+
+export type AppraisalSectionKey = (typeof SECTION_KEYS)[number];
+
+// Part G (G1 office reviews, G2 training follow-ups) is office-owned: ship
+// users may not write it.
+export const PART_G_SECTIONS: readonly AppraisalSectionKey[] = ["officeReviews", "trainingFollowups"];
+
+// The editable fields of each section's rows, as the client names them.
+export const SECTION_FIELDS: Record<AppraisalSectionKey, readonly string[]> = {
+  trainings: ["training", "evaluation", "comment", "source"],
+  targets: ["targetSetting", "evaluation", "comment"],
+  competenceAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],
+  behaviouralAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],
+  trainingNeeds: ["training", "correspondingInDB", "identifiedByUuid", "comment", "addedFromDB"],
+  recommendations: ["question", "answer", "comment"],
+  appraiserComments: ["name", "rank", "comment"],
+  seafarerComments: ["name", "rank", "comment"],
+  officeReviews: ["name", "position", "feedback", "userUuid", "isAssigned"],
+  trainingFollowups: ["training", "correspondingInDB", "identifiedByUuid", "category", "status", "targetDate", "comment"],
+};
+
+// Part A fields, stored on the main appraisal row (appraisal_results_v2).
+export const PART_A_FIELDS = [
+  "seafarersName",
+  "seafarersRank",
+  "nationality",
+  "vessel",
+  "signOn",
+  "appraisalPeriodFrom",
+  "appraisalPeriodTo",
+  "personalityIndexCategory",
+  "primaryAppraiser",
+] as const;
+
+// Every main-row field a save draft may change.
+export const HEADER_FIELDS = [
+  ...PART_A_FIELDS,
+  "appraisalType",
+  "appraisalDate",
+  "competenceRating",
+  "behavioralRating",
+  "overallRating",
+  "status",
+] as const;
+
+export type AppraisalHeaderField = (typeof HEADER_FIELDS)[number];
+
+// A row of a section. An existing row carries its uuid and only the fields
+// that changed; a new row carries its (client-generated) uuid and all fields.
+export type AppraisalChangeRow = { uuid: string } & Record<string, unknown>;
+
+export interface AppraisalSectionChanges {
+  rows: AppraisalChangeRow[];
+  // Uuids of rows the user removed.
+  deleted?: string[];
+}
+
+export interface AppraisalChanges {
+  header?: Partial<Record<AppraisalHeaderField, string | null>>;
+  sections?: Partial<Record<AppraisalSectionKey, AppraisalSectionChanges>>;
+}
+
+function normalizeForCompare(v: unknown): string | null {
+  if (v === null || v === undefined || v === "") return null;
+  if (v instanceof Date) return String(v.getTime());
+  return String(v);
+}
+
+// Field equality used to decide whether a value really changed. null,
+// undefined and "" are the same (the server stores "" as null), and numbers
+// equal their string form.
+export function sameValue(a: unknown, b: unknown): boolean {
+  return normalizeForCompare(a) === normalizeForCompare(b);
+}
+
+export function isEmptyChanges(changes: AppraisalChanges): boolean {
+  return Object.keys(changes.header ?? {}).length === 0
+    && Object.keys(changes.sections ?? {}).length === 0;
+}

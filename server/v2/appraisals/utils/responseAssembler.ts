@@ -39,6 +39,7 @@ export function assembleV1Response(
     primaryAppraiser: appraisal.primaryAppraiser,
     trainings: trainings.map((t, i) => ({
       id: String(i + 1),
+      uuid: t.trainingUuid,
       training: s(t.training),
       evaluation: s(t.evaluation),
       comment: s(t.comment),
@@ -46,12 +47,14 @@ export function assembleV1Response(
     })),
     targets: targets.map((t, i) => ({
       id: String(i + 1),
+      uuid: t.targetUuid,
       targetSetting: s(t.targetSetting),
       evaluation: s(t.evaluation),
       comment: s(t.comment),
     })),
     competenceAssessments: competenceAssessments.map((ca, i) => ({
       id: String(i + 1),
+      uuid: ca.competenceUuid,
       assessmentCriteria: s(ca.assessmentCriteria),
       weight: ca.weight,
       effectiveness: s(ca.effectiveness),
@@ -59,6 +62,7 @@ export function assembleV1Response(
     })),
     behaviouralAssessments: behaviouralAssessments.map((ba, i) => ({
       id: String(i + 1),
+      uuid: ba.behaviouralUuid,
       assessmentCriteria: s(ba.assessmentCriteria),
       weight: ba.weight,
       effectiveness: s(ba.effectiveness),
@@ -66,6 +70,7 @@ export function assembleV1Response(
     })),
     trainingNeeds: trainingNeeds.map((tn, i) => ({
       id: String(i + 1),
+      uuid: tn.trainingNeedUuid,
       training: s(tn.training),
       correspondingInDB: s(tn.correspondingInDb),
       identifiedByUuid: s((tn as any).identifiedByUuid),
@@ -74,24 +79,28 @@ export function assembleV1Response(
     })),
     recommendations: recommendations.map((r, i) => ({
       id: String(i + 1),
+      uuid: r.recommendationUuid,
       question: s(r.question),
       answer: s(r.answer),
       comment: s(r.comment),
     })),
     appraiserComments: appraiserComments.map((ac, i) => ({
       id: String(i + 1),
+      uuid: ac.appraiserCommentUuid,
       name: s(ac.name),
       rank: s(ac.rank),
       comment: s(ac.comment),
     })),
     seafarerComments: seafarerComments.map((sc, i) => ({
       id: String(i + 1),
+      uuid: sc.seafarerCommentUuid,
       name: s(sc.name),
       rank: s(sc.rank),
       comment: s(sc.comment),
     })),
     officeReviews: officeReviews.map((or, i) => ({
       id: String(i + 1),
+      uuid: or.officeReviewUuid,
       name: s(or.name),
       position: s(or.position),
       feedback: s(or.feedback),
@@ -100,6 +109,7 @@ export function assembleV1Response(
     })),
     trainingFollowups: trainingFollowups.map((tf, i) => ({
       id: String(i + 1),
+      uuid: tf.trainingFollowupUuid,
       training: s(tf.training),
       correspondingInDB: s(tf.correspondingInDb),
       identifiedByUuid: s((tf as any).identifiedByUuid),

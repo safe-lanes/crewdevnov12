@@ -23,6 +23,14 @@ import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { sendEmail, logEmailEvent } from "../../shared/emailService";
 import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
 import { apprOfficeReviewsV2 } from "../../../../shared/v2/appraisals/schema";
+import {
+  HEADER_FIELDS,
+  PART_A_FIELDS,
+  SECTION_KEYS,
+  sameValue,
+  type AppraisalChanges,
+  type AppraisalSectionKey,
+} from "../../../../shared/v2/appraisals/appraisalChanges";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -37,6 +45,9 @@ const officeReviewsRepo = new ApprOfficeReviewsRepository();
 const trainingFollowupsRepo = new ApprTrainingFollowupsRepository();
 const reviewersRepo = new ApprReviewersRepository();
 const crewMembersRepo = new CrewMembersRepository();
+
+// Main-row columns that are NOT NULL: a save draft can change but never clear them.
+const REQUIRED_HEADER_FIELDS = new Set<string>(["appraisalType", "appraisalDate", "status"]);
 
 const APPRAISAL_PINNED_STATUSES = new Set([
   "preliminary",
@@ -489,63 +500,32 @@ export class AppraisalResultsService {
     return { appraisal: await this.getByUuid(created.appraisalUuid), created: true };
   }
 
-  async update(appraisalUuid: string, body: any) {
+  // Save draft. `changes` holds only what the user changed since the form was
+  // loaded (APD-16), so only those fields of those rows are written: a stale
+  // copy of the form cannot overwrite someone else's edits. Child rows are
+  // matched by uuid, sections that are not sent are left alone, and a save
+  // with no real change writes nothing at all.
+  async update(appraisalUuid: string, body: { changes: AppraisalChanges; auditUserUuid?: string | null }) {
     const existing = await appraisalResultsRepo.findByAppraisalUuid(appraisalUuid);
     if (!existing) return null;
 
-    const auditData = applyAuditUser(body);
-    const appraisalData = auditData.appraisalData
-      ? (typeof auditData.appraisalData === "object"
-        ? auditData.appraisalData
-        : JSON.parse(auditData.appraisalData || "{}"))
-      : null;
+    const auditUserUuid = body.auditUserUuid || null;
+    const header = body.changes.header ?? {};
+    const sections = body.changes.sections ?? {};
 
-    if (appraisalData?.competenceAssessments) {
-      console.log('[DEBUG] competence comments in PUT payload:', appraisalData.competenceAssessments.map((c: any) => ({ id: c.id, comment: c.comment })));
-    }
-    if (appraisalData?.behaviouralAssessments) {
-      console.log('[DEBUG] behavioural comments in PUT payload:', appraisalData.behaviouralAssessments.map((b: any) => ({ id: b.id, comment: b.comment })));
-    }
-
-    const updateFields: any = {};
-    // Only re-link the crew when a different, valid crew_uuid is sent. A blank
-    // value or the stored one (older rows may hold an emp_no) is left alone.
-    const incomingCrewId = auditData.crewMemberId == null ? "" : String(auditData.crewMemberId).trim();
-    if (incomingCrewId && incomingCrewId !== existing.crewMemberId) {
-      updateFields.crewMemberId = await this.assertCrewReference(incomingCrewId);
-    }
-    if (auditData.formId !== undefined) {
-      updateFields.formUuid = auditData.formId?.toString() || null;
-      updateFields.formIdLegacy = typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null);
-    }
-    if (auditData.appraisalType !== undefined) updateFields.appraisalType = auditData.appraisalType;
-    if (auditData.appraisalDate !== undefined) updateFields.appraisalDate = auditData.appraisalDate;
-    if (auditData.competenceRating !== undefined) updateFields.competenceRating = auditData.competenceRating;
-    if (auditData.behavioralRating !== undefined) updateFields.behavioralRating = auditData.behavioralRating;
-    if (auditData.overallRating !== undefined) updateFields.overallRating = auditData.overallRating;
-    if (auditData.submittedBy !== undefined) updateFields.submittedBy = auditData.submittedBy;
-    if (auditData.status !== undefined) updateFields.status = auditData.status;
-    if (auditData.updatedByUuid) updateFields.updatedByUuid = auditData.updatedByUuid;
-
-    if (appraisalData) {
-      updateFields.seafarersName = appraisalData.seafarersName || null;
-      updateFields.seafarersRank = appraisalData.seafarersRank || null;
-      updateFields.nationality = appraisalData.nationality || null;
-      updateFields.vessel = appraisalData.vessel || null;
-      updateFields.signOn = appraisalData.signOn || null;
-      updateFields.appraisalPeriodFrom = appraisalData.appraisalPeriodFrom || null;
-      updateFields.appraisalPeriodTo = appraisalData.appraisalPeriodTo || null;
-      updateFields.personalityIndexCategory = appraisalData.personalityIndexCategory || null;
-      updateFields.primaryAppraiser = appraisalData.primaryAppraiser || null;
+    const updateFields: Record<string, unknown> = {};
+    for (const field of HEADER_FIELDS) {
+      if (!(field in header)) continue;
+      let value = header[field];
+      if ((PART_A_FIELDS as readonly string[]).includes(field)) value = value || null;
+      // Required columns: an empty value never clears them.
+      else if (REQUIRED_HEADER_FIELDS.has(field) && !value) continue;
+      if (!sameValue((existing as any)[field], value)) updateFields[field] = value;
     }
 
-    const effectiveStatus = auditData.status !== undefined
-      ? auditData.status
-      : existing.status;
-    const effectiveRank = appraisalData?.seafarersRank ?? existing.seafarersRank;
     const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
-      status: effectiveStatus,
-      rank: effectiveRank,
+      status: (updateFields.status as string | undefined) ?? existing.status,
+      rank: header.seafarersRank ?? existing.seafarersRank,
       formVersionId: existing.formVersionId,
       formVersionUuid: existing.formVersionUuid,
     });
@@ -554,32 +534,43 @@ export class AppraisalResultsService {
       updateFields.formVersionUuid = resolvedPin.formVersionUuid;
     }
 
+    const sectionRepos: Record<AppraisalSectionKey, { applyChanges: typeof trainingsRepo.applyChanges }> = {
+      trainings: trainingsRepo,
+      targets: targetsRepo,
+      competenceAssessments: competenceAssessmentsRepo,
+      behaviouralAssessments: behaviouralAssessmentsRepo,
+      trainingNeeds: trainingNeedsRepo,
+      recommendations: recommendationsRepo,
+      appraiserComments: appraiserCommentsRepo,
+      seafarerComments: seafarerCommentsRepo,
+      officeReviews: officeReviewsRepo,
+      trainingFollowups: trainingFollowupsRepo,
+    };
+
     // The main row and its sections are saved in one transaction.
     await getDb().transaction(async (tx: any) => {
-      await appraisalResultsRepo.updateByAppraisalUuid(existing.appraisalUuid, updateFields, tx);
-
-      if (appraisalData) {
-        const auditUserUuid = auditData.updatedByUuid || null;
-        // Sequential: one transaction runs on one connection.
-        await trainingsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainings || [], auditUserUuid, tx);
-        await targetsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.targets || [], auditUserUuid, tx);
-        await competenceAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid, tx);
-        await behaviouralAssessmentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.behaviouralAssessments || [], auditUserUuid, tx);
-        await trainingNeedsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid, tx);
-        await recommendationsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.recommendations || [], auditUserUuid, tx);
-        await appraiserCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid, tx);
-        await seafarerCommentsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid, tx);
-        await officeReviewsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.officeReviews || [], auditUserUuid, tx);
-        await trainingFollowupsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid, tx);
+      let rowsWritten = 0;
+      // Sequential: one transaction runs on one connection.
+      for (const key of SECTION_KEYS) {
+        const section = sections[key];
+        if (section) {
+          rowsWritten += await sectionRepos[key].applyChanges(existing.appraisalUuid, section, auditUserUuid ?? undefined, tx);
+        }
       }
+
+      // Any UPDATE stamps updated_at, so the main row is written only when the
+      // appraisal really changed.
+      if (Object.keys(updateFields).length === 0 && rowsWritten === 0) return;
+      if (auditUserUuid) updateFields.updatedByUuid = auditUserUuid;
+      await appraisalResultsRepo.updateByAppraisalUuid(existing.appraisalUuid, updateFields, tx);
     });
 
-    if (appraisalData) {
+    if (sections.officeReviews) {
       // Fire-and-forget, after commit: email any newly-added manual G1 reviewers (not assigned, not yet notified).
       void notifyNewManualG1Reviewers(
         existing.appraisalUuid,
-        appraisalData.seafarersName || existing.seafarersName || '',
-        appraisalData.seafarersRank || existing.seafarersRank || '',
+        header.seafarersName || existing.seafarersName || '',
+        header.seafarersRank || existing.seafarersRank || '',
       );
     }
 

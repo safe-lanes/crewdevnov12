@@ -2,10 +2,23 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { apprTrainingsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { ApprTrainingV2 } from "../../../../shared/v2/appraisals/types";
-import { v4 as uuidv4 } from "uuid";
+import type { AppraisalSectionChanges } from "../../../../shared/v2/appraisals/appraisalChanges";
+import { syncChildRows, textField, type ChildTableConfig } from "./childRowSync";
 
 // A transaction (tx) or the default connection.
 type Executor = any;
+
+const ROWS: ChildTableConfig = {
+  table: apprTrainingsV2,
+  uuidKey: "trainingUuid",
+  fields: [
+    textField("training"),
+    textField("evaluation"),
+    textField("comment"),
+    // An empty source keeps the stored one; a new row then gets the column default ("manual").
+    { column: "source", from: ["source"], normalize: (r) => r.source || undefined },
+  ],
+};
 
 export class ApprTrainingsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprTrainingV2[]>> {
@@ -27,53 +40,14 @@ export class ApprTrainingsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
-    const db = executor;
-    const now = new Date();
+  // The whole section (create, stage submits): rows matched by uuid, live rows
+  // missing from `rows` are soft-deleted, unchanged rows are not written.
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
+  }
 
-    const existing = await db
-      .select()
-      .from(apprTrainingsV2)
-      .where(and(
-        eq(apprTrainingsV2.appraisalUuid, appraisalUuid),
-        eq(apprTrainingsV2.isDeleted, false)
-      ))
-      .orderBy(apprTrainingsV2.sortOrder);
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (i < existing.length) {
-        await db.update(apprTrainingsV2)
-          .set({
-            training: row.training || null,
-            evaluation: row.evaluation || null,
-            comment: row.comment || null,
-            // Preserve existing source unless the client explicitly sets it.
-            source: row.source || existing[i].source || "manual",
-            sortOrder: i,
-            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-            updatedAt: now,
-          })
-          .where(eq(apprTrainingsV2.id, existing[i].id));
-      } else {
-        await db.insert(apprTrainingsV2).values({
-          trainingUuid: uuidv4(),
-          appraisalUuid,
-          training: row.training || null,
-          evaluation: row.evaluation || null,
-          comment: row.comment || null,
-          source: row.source || "manual",
-          sortOrder: i,
-          createdByUuid: auditUserUuid || null,
-          updatedByUuid: auditUserUuid || null,
-        });
-      }
-    }
-
-    for (let i = rows.length; i < existing.length; i++) {
-      await db.update(apprTrainingsV2)
-        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-        .where(eq(apprTrainingsV2.id, existing[i].id));
-    }
+  // A save-draft change set: only the given rows and deletions are written.
+  async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
 }

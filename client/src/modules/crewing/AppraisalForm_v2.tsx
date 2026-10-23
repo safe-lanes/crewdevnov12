@@ -9,6 +9,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
+import { buildAppraisalChanges, snapshotFromServer, type AppraisalSnapshot } from "./appraisalChanges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,7 @@ const NATIONALITIES = [
 // Full schemas with evaluation required (for Stage 2+)
 const trainingSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   training: z.string().min(1, "Training name is required"),
   evaluation: z.string().min(1, "Evaluation is required"),
   comment: z.string().optional(),
@@ -65,6 +68,7 @@ const trainingSchema = z.object({
 
 const targetSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   targetSetting: z.string().min(1, "Target setting is required"),
   evaluation: z.string().min(1, "Evaluation is required"),
   comment: z.string().optional(),
@@ -73,6 +77,7 @@ const targetSchema = z.object({
 // Stage 1 schemas with evaluation optional and training/target optional (blank Part B allowed)
 const trainingStage1Schema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   training: z.string().optional(),
   evaluation: z.string().optional(),
   comment: z.string().optional(),
@@ -80,6 +85,7 @@ const trainingStage1Schema = z.object({
 
 const targetStage1Schema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   targetSetting: z.string().optional(),
   evaluation: z.string().optional(),
   comment: z.string().optional(),
@@ -101,6 +107,7 @@ const targetStage1SubmitSchema = targetStage1Schema.extend({
 // Competence Assessment schema
 const competenceAssessmentSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   assessmentCriteria: z.string(),
   weight: z.number(),
   effectiveness: z.string().min(1, "Effectiveness rating is required"),
@@ -110,6 +117,7 @@ const competenceAssessmentSchema = z.object({
 // Behavioural Assessment schema
 const behaviouralAssessmentSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   assessmentCriteria: z.string(),
   weight: z.number(),
   effectiveness: z.string().min(1, "Effectiveness rating is required"),
@@ -119,6 +127,7 @@ const behaviouralAssessmentSchema = z.object({
 // Training Needs schema
 const trainingNeedsSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
   addedFromDB: z.boolean().optional(),
@@ -132,6 +141,7 @@ const trainingNeedsSchema = z.object({
 // For draft saves, answer can be empty; for stage2 validation, a valid answer is required
 const recommendationSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   question: z.string(),
   answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
   comment: z.string().optional(),
@@ -140,6 +150,7 @@ const recommendationSchema = z.object({
 // Strict version for Stage 2 validation - requires Yes/No/NA answer
 const recommendationStage2Schema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   question: z.string(),
   answer: z.enum(["Yes", "No", "NA"], { errorMap: () => ({ message: "Please select Yes, No, or NA" }) }),
   comment: z.string().optional(),
@@ -147,6 +158,7 @@ const recommendationStage2Schema = z.object({
 
 const appraiserCommentSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   name: z.string(),
   rank: z.string(),
   comment: z.string(),
@@ -154,6 +166,7 @@ const appraiserCommentSchema = z.object({
 
 const seafarerCommentSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   name: z.string(),
   rank: z.string(),
   comment: z.string(),
@@ -162,6 +175,7 @@ const seafarerCommentSchema = z.object({
 // Part G schemas
 const officeReviewSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   name: z.string(),
   position: z.string(),
   feedback: z.string(),
@@ -175,6 +189,7 @@ const officeReviewSchema = z.object({
 
 const trainingFollowupSchema = z.object({
   id: z.string(),
+  uuid: z.string().optional(),
   training: z.string(),
   correspondingInDB: z.string(),
   identifiedByUuid: z.string().optional(),
@@ -349,7 +364,9 @@ interface AppraisalFormProps {
 }
 
 export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalUuid: propAppraisalUuid, initialStatus = 'draft', onClose }) => {
-  const { permissions, canView } = usePermissions();
+  const { permissions, canView, userType } = usePermissions();
+  // Part G is office-owned: a ship user's save never sends it.
+  const isShipUser = userType === 'Ship';
 
   const apSectionMenuMap: Record<string, string> = {
     A: 'AP Seafarer Info',
@@ -399,6 +416,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // duplicate. `uuid` (not crypto.randomUUID) also works over plain HTTP.
   // appraisalUuid stays null until the server confirms the save.
   const [newAppraisalUuid] = useState(() => uuidv4());
+  // The appraisal as the server held it when the form last loaded it. A save
+  // draft sends only what differs from it (APD-16), so fields and rows the user
+  // did not touch are never rewritten.
+  const baselineRef = useRef<AppraisalSnapshot | null>(null);
   // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
   // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
   // rows with the persisted (possibly empty) trainings array.
@@ -687,7 +708,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     };
 
     const existingRows = (form.getValues('trainings') || []) as Array<{
-      id: string; training: string; evaluation: string; comment?: string; source?: string;
+      id: string; uuid?: string; training: string; evaluation: string; comment?: string; source?: string;
     }>;
     const manualRowsRaw = existingRows.filter(r => r.source !== 'auto');
     const existingAutoRows = existingRows.filter(r => r.source === 'auto');
@@ -749,6 +770,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         autoCommentReassignments.push({ newId: id, priorId });
         return {
           id,
+          // Keep the stored row's uuid so a save updates that row.
+          uuid: prior?.uuid,
           training: trainingName,
           evaluation: prior?.evaluation || '',
           comment,
@@ -1079,12 +1102,52 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
         : null;
 
-      // Transform form data to backend schema
+      const appraisalDate = new Date().toISOString().split('T')[0];
+
+      if (idToUse) {
+        // Existing appraisal: send only what changed since the form loaded it.
+        const baseline = baselineRef.current;
+        if (!baseline) {
+          throw new Error('The appraisal is still loading. Please try again in a moment.');
+        }
+        const changes = buildAppraisalChanges(
+          baseline,
+          {
+            header: {
+              ...Object.fromEntries(PART_A_FIELDS.map(f => [f, (payload.data as any)[f]])),
+              appraisalType: payload.data.appraisalType,
+              competenceRating: competenceScore,
+              behavioralRating: behavioralScore,
+              overallRating: overallScore,
+              status: payload.status,
+            },
+            sections: payload.data as any,
+          },
+          { skipSections: isShipUser ? PART_G_SECTIONS : [] },
+        );
+        if (isEmptyChanges(changes)) {
+          return { unchanged: true };
+        }
+        // "Last Appraisal Date" moves only when the appraisal really changed.
+        changes.header = { ...changes.header, appraisalDate };
+
+        const url = `/api/v2/appraisals/${idToUse}`;
+        console.log(`📤 PUT ${url}:`, changes);
+        const response = await apiRequest('PUT', url, { changes, auditUserUuid: getCrewUserId() });
+        const result = await response.json();
+        console.log('✅ Appraisal saved successfully:', result);
+        return result;
+      }
+
+      // New appraisal: create it with the whole form.
       const appraisalPayload = {
-        ...(idToUse ? {} : { crewMemberId: crewMember?.id, appraisalUuid: newAppraisalUuid }),
+        crewMemberId: crewMember?.id,
+        appraisalUuid: newAppraisalUuid,
         formId: 1, // Default form ID
         appraisalType: payload.data.appraisalType,
-        appraisalDate: new Date().toISOString().split('T')[0],
+        appraisalDate,
+        // Includes Part G's rank-config defaults. A create never overwrites
+        // existing rows (a repeat create writes nothing), so ship users may send it.
         appraisalData: payload.data, // Send as object - backend handles JSON.stringify
         competenceRating: competenceScore,
         behavioralRating: behavioralScore,
@@ -1094,17 +1157,24 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         auditUserUuid: getCrewUserId(),
       };
 
-      const method = idToUse ? 'PUT' : 'POST';
-      const url = idToUse ? `/api/v2/appraisals/${idToUse}` : '/api/v2/appraisals';
-      
-      console.log(`📤 ${method} ${url}:`, appraisalPayload);
-      const response = await apiRequest(method, url, appraisalPayload);
+      const url = '/api/v2/appraisals';
+      console.log(`📤 POST ${url}:`, appraisalPayload);
+      const response = await apiRequest('POST', url, appraisalPayload);
       const result = await response.json();
       console.log('✅ Appraisal saved successfully:', result);
       return result;
     },
     onSuccess: (data, variables) => {
       console.log('🎉 Mutation onSuccess called', data);
+      if (data?.unchanged) {
+        if (!variables.silent) {
+          toast({ title: 'No Changes', description: 'There are no changes to save.' });
+        }
+        if (variables.closeAfter) {
+          onClose();
+        }
+        return;
+      }
       if (data && data.appraisalUuid) {
         setAppraisalUuid(data.appraisalUuid);
         queryClient.setQueryData([`/api/v2/appraisals/${data.appraisalUuid}`], data);
@@ -1288,6 +1358,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         const parsedData = typeof existingAppraisal.appraisalData === 'string' 
           ? JSON.parse(existingAppraisal.appraisalData) 
           : existingAppraisal.appraisalData;
+
+        // Taken before any of the client-side adjustments below, so those
+        // (e.g. seeded G1 rows) count as changes on the next save.
+        baselineRef.current = snapshotFromServer(existingAppraisal, parsedData);
         
         // Reset form with existing data
         form.reset(parsedData);
@@ -1998,7 +2072,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       rank: seafarerRank || c.rank,
     }));
 
-    return {
+    return assignRowUuids({
       ...data,
       // Persist the vessel as its master-data UUID so the appraisal always
       // reflects the vessel's CURRENT name (resolved at display). If the form
@@ -2018,7 +2092,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       trainingFollowups: updatedTrainingFollowups,
       appraiserComments: updatedAppraiserComments,
       seafarerComments: updatedSeafarerComments,
-    };
+    });
+  };
+
+  // Gives each row that has no uuid yet (added since the form loaded) a new
+  // one, and stores it on the form's row too, so a retried save sends the same
+  // uuid instead of inserting the row twice. Rows are matched by `id`.
+  const assignRowUuids = (data: AppraisalFormData): AppraisalFormData => {
+    const result: any = { ...data };
+    for (const key of SECTION_KEYS) {
+      const rows: any[] = (data as any)[key] ?? [];
+      if (!rows.some(r => !r.uuid)) continue;
+      const assigned = new Map<string, string>();
+      result[key] = rows.map(r => {
+        if (r.uuid) return r;
+        const uuid = uuidv4();
+        assigned.set(r.id, uuid);
+        return { ...r, uuid };
+      });
+      const formRows: any[] = (form.getValues as any)(key) ?? [];
+      (form.setValue as any)(
+        key,
+        formRows.map(r => (!r.uuid && assigned.has(r.id) ? { ...r, uuid: assigned.get(r.id) } : r)),
+        { shouldDirty: false },
+      );
+    }
+    return result;
   };
 
   // Load comments from form data into useState hooks when form is populated

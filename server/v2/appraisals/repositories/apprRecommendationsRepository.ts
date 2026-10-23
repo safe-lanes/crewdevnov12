@@ -2,10 +2,21 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { apprRecommendationsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { ApprRecommendationV2 } from "../../../../shared/v2/appraisals/types";
-import { v4 as uuidv4 } from "uuid";
+import type { AppraisalSectionChanges } from "../../../../shared/v2/appraisals/appraisalChanges";
+import { syncChildRows, textField, type ChildTableConfig } from "./childRowSync";
 
 // A transaction (tx) or the default connection.
 type Executor = any;
+
+const ROWS: ChildTableConfig = {
+  table: apprRecommendationsV2,
+  uuidKey: "recommendationUuid",
+  fields: [
+    textField("question"),
+    textField("answer"),
+    textField("comment"),
+  ],
+};
 
 export class ApprRecommendationsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprRecommendationV2[]>> {
@@ -27,50 +38,14 @@ export class ApprRecommendationsRepository {
     return map;
   }
 
-  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<void> {
-    const db = executor;
-    const now = new Date();
+  // The whole section (create, stage submits): rows matched by uuid, live rows
+  // missing from `rows` are soft-deleted, unchanged rows are not written.
+  async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
+  }
 
-    const existing = await db
-      .select()
-      .from(apprRecommendationsV2)
-      .where(and(
-        eq(apprRecommendationsV2.appraisalUuid, appraisalUuid),
-        eq(apprRecommendationsV2.isDeleted, false)
-      ))
-      .orderBy(apprRecommendationsV2.sortOrder);
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (i < existing.length) {
-        await db.update(apprRecommendationsV2)
-          .set({
-            question: row.question || null,
-            answer: row.answer || null,
-            comment: row.comment || null,
-            sortOrder: i,
-            updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
-            updatedAt: now,
-          })
-          .where(eq(apprRecommendationsV2.id, existing[i].id));
-      } else {
-        await db.insert(apprRecommendationsV2).values({
-          recommendationUuid: uuidv4(),
-          appraisalUuid,
-          question: row.question || null,
-          answer: row.answer || null,
-          comment: row.comment || null,
-          sortOrder: i,
-          createdByUuid: auditUserUuid || null,
-          updatedByUuid: auditUserUuid || null,
-        });
-      }
-    }
-
-    for (let i = rows.length; i < existing.length; i++) {
-      await db.update(apprRecommendationsV2)
-        .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
-        .where(eq(apprRecommendationsV2.id, existing[i].id));
-    }
+  // A save-draft change set: only the given rows and deletions are written.
+  async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
+    return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
 }
