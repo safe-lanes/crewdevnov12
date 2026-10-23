@@ -1684,7 +1684,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
     // Get form data with synced comments from useState hooks
     const syncedData = getFormDataWithSyncedComments();
-    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft', closeAfter: false });
+    // Keep the current status: this is a save, not a move back to draft (APD-17).
+    saveAppraisalMutation.mutate({ data: syncedData, status: appraisalStatus, closeAfter: false });
   };
 
   const handleSaveDraft = () => {

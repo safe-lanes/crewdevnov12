@@ -31,6 +31,10 @@ import {
   type AppraisalChanges,
   type AppraisalSectionKey,
 } from "../../../../shared/v2/appraisals/appraisalChanges";
+import {
+  isAppraisalStatusRegression,
+  normalizeAppraisalStatus,
+} from "../../../../shared/v2/appraisals/appraisalStatus";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -520,6 +524,9 @@ export class AppraisalResultsService {
       if ((PART_A_FIELDS as readonly string[]).includes(field)) value = value || null;
       // Required columns: an empty value never clears them.
       else if (REQUIRED_HEADER_FIELDS.has(field) && !value) continue;
+      // APD-17: status only moves forward, as in submitStage. A lower status
+      // (a stale form, or a sync replay) is ignored; the rest of the save applies.
+      if (field === "status" && isAppraisalStatusRegression(existing.status, value)) continue;
       if (!sameValue((existing as any)[field], value)) updateFields[field] = value;
     }
 
@@ -624,31 +631,16 @@ export class AppraisalResultsService {
     // `stage3_submitted` as equivalents of `submitted`/`reviewed` so existing
     // consumers (UI status checks, role-based filtering) keep working without
     // a coordinated rewrite. Server still emits the canonical short names.
-    const STATUS_ORDER: Record<string, number> = {
-      draft: 0,
-      preliminary: 1,
-      submitted: 2,
-      stage2_submitted: 2,
-      pending_review: 2,
-      reviewed: 3,
-      stage3_submitted: 3,
-    };
-    const normalize = (s: string | null | undefined) =>
-      (s ?? "").trim().toLowerCase();
-    const rank = (s: string | null | undefined) => {
-      const key = normalize(s);
-      return key in STATUS_ORDER ? STATUS_ORDER[key] : -1;
-    };
+    // The order is shared with save draft (APD-17).
     // Stage 2 now advances to `pending_review` (awaiting office review)
     // rather than `submitted`, so the form locks and reviewers get notified.
     const nominalForStage =
       stage === "stage1" ? "preliminary"
       : stage === "stage2" ? "pending_review"
       : "reviewed";
-    const currentNormalized = normalize(appraisal.status);
-    const newStatus = rank(nominalForStage) >= rank(currentNormalized)
-      ? nominalForStage
-      : (currentNormalized in STATUS_ORDER ? currentNormalized : nominalForStage);
+    const newStatus = isAppraisalStatusRegression(appraisal.status, nominalForStage)
+      ? normalizeAppraisalStatus(appraisal.status)
+      : nominalForStage;
     const rankForVersionResolution = stage === "stage1"
       ? data.seafarersRank
       : appraisal.seafarersRank;
