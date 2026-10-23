@@ -1,10 +1,12 @@
 import { useMemo, useState, useCallback } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { ColDef, SelectionChangedEvent } from "ag-grid-community";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -28,11 +30,11 @@ const STATUS_OPTIONS = [
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-  active: "bg-green-600 text-white",
-  draft: "bg-slate-500 text-white",
-  completed: "bg-blue-600 text-white",
-  settled: "bg-slate-700 text-white",
-  cancelled: "bg-red-600 text-white",
+  active: accountsStatusBadgeClass("green"),
+  draft: accountsStatusBadgeClass("grey"),
+  completed: accountsStatusBadgeClass("green"),
+  settled: accountsStatusBadgeClass("green"),
+  cancelled: accountsStatusBadgeClass("red"),
 };
 
 /**
@@ -40,11 +42,16 @@ const STATUS_BADGE: Record<string, string> = {
  * Payroll Run "Sync from Crewing" step, never by hand, so there is no
  * create button here.
  */
-export default function ContractsListPage() {
+export default function ContractsListPage({
+  vesselFilter,
+  onVesselFilterChange: setVesselFilter,
+}: {
+  vesselFilter: string;
+  onVesselFilterChange: (value: string) => void;
+}) {
   const [, setLocation] = useLocation();
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
-  const [vesselFilter, setVesselFilter] = useState("__all__");
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("__all__");
   const [selectedUuids, setSelectedUuids] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const { toast } = useToast();
@@ -194,6 +201,7 @@ export default function ContractsListPage() {
         headerName: "Status",
         field: "status",
         width: 120,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge className={STATUS_BADGE[p.value] ?? "bg-slate-500 text-white"}>
             {p.value}
@@ -214,10 +222,16 @@ export default function ContractsListPage() {
             Contracts are created by the Payroll Run sync, not here.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="select-contracts-vessel" className="text-xs text-gray-600">
+            Vessel
+          </Label>
           <Select value={vesselFilter} onValueChange={setVesselFilter}>
             <SelectTrigger
-              className="w-[220px]"
+              id="select-contracts-vessel"
+              className="h-8 w-[220px] text-xs"
               data-testid="select-contracts-vessel"
             >
               <SelectValue
@@ -233,9 +247,15 @@ export default function ContractsListPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="select-contracts-status" className="text-xs text-gray-600">
+            Status
+          </Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
-              className="w-[160px]"
+              id="select-contracts-status"
+              className="h-8 w-[160px] text-xs"
               data-testid="select-contracts-status"
             >
               <SelectValue placeholder="Status" />
@@ -249,6 +269,18 @@ export default function ContractsListPage() {
             </SelectContent>
           </Select>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            setVesselFilter("__all__");
+            setStatusFilter("__all__");
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
       </div>
 
       {/* Bulk action bar — visible when unconfirmed rows are selected */}

@@ -1,4 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
+  assertPromotionDateDrafts,
+  PromotionCalendarInputEventsContext,
+  type PromotionDateDrafts,
+} from '@/components/promotion-review-parts/PromotionDateInput';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
@@ -246,6 +251,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   type SaveMutationAction = 'draft' | 'submit-b' | 'submit-c';
   type SaveMutationVariables = { data: any; action: SaveMutationAction };
+
+  const dateDraftsRef = useRef<PromotionDateDrafts>(new Map());
+  const validateDatePayload = useCallback((data: Parameters<typeof assertPromotionDateDrafts>[0]) => {
+    try {
+      assertPromotionDateDrafts(data, dateDraftsRef.current);
+      return true;
+    } catch (error) {
+      toast({ title: "Invalid Date", description: error instanceof Error ? error.message : "Enter a valid date, or clear the field.", variant: "destructive" });
+      return false;
+    }
+  }, [toast]);
 
   const saveMutation = useMutation({
     mutationFn: async ({ data }: SaveMutationVariables) => {
@@ -850,6 +866,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       (isCompletedPromotion && !!selectedPosition)
     );
 
+  useEffect(() => {
+    const keys = new Set(['promotion', ...cesTests.map(row => `ces:${row.id}`), ...approvers.map(row => `approver:${row.id}`)]);
+    for (const key of dateDraftsRef.current.keys()) {
+      if (!keys.has(key)) dateDraftsRef.current.delete(key);
+    }
+  }, [cesTests, approvers]);
+
   const [showChecklistForm, setShowChecklistForm] = useState(promotionData?.initialSection === 'checklist');
 
   const defaultValues: PromotionReviewFormData = {
@@ -1216,8 +1239,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       reviewData.approvalData = JSON.stringify(approversToPersist);
       reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
     }
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation, validateTrainingNames, approvers, selectedApproversForSubmission]);
+  }, [validateDatePayload, collectFormData, saveMutation, validateTrainingNames, approvers, selectedApproversForSubmission]);
 
   const handleSaveDraftB = useCallback(() => {
     const reviewData = collectFormData({
@@ -1225,8 +1249,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: '',
       partCNotes: '',
     }, 'b');
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation]);
+  }, [validateDatePayload, collectFormData, saveMutation]);
 
   const handleSaveDraftC = useCallback(() => {
     const reviewData = collectFormData({
@@ -1234,8 +1259,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: '',
       partCNotes: '',
     }, 'c');
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation]);
+  }, [validateDatePayload, collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
     const partAStatusNorm = ((existingReviewData as any)?.status || 'draft').toString().trim().toLowerCase();
@@ -1279,8 +1305,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partCNotes: '',
     }, 'b');
     reviewData.status = 'approved';
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
-  }, [collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast, existingReviewData, promotionData]);
+  }, [validateDatePayload, collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast, existingReviewData, promotionData]);
 
   const handleSubmitPartC = useCallback(() => {
     // A promotion can only be marked Completed when Part B recorded a "Yes"
@@ -1343,8 +1370,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partCNotes: '',
     }, 'c');
     reviewData.status = 'completed';
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
-  }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast, isOnboardPromotion, isLoadingCurrentVesselRanks, isCurrentVesselRanksError, requiresPositionSelection, selectedPosition]);
+  }, [validateDatePayload, collectFormData, saveMutation, promotionConfirmed, promotionDate, toast, isOnboardPromotion, isLoadingCurrentVesselRanks, isCurrentVesselRanksError, requiresPositionSelection, selectedPosition]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     if (!validateTrainingNames()) {
@@ -1356,6 +1384,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       reviewData.approvalData = JSON.stringify(approversToPersist);
       reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
     }
+    if (!validateDatePayload(reviewData)) return;
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
 
@@ -1688,9 +1717,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
-    setIsSubmittingForApproval(true);
-    setSelectedApproversForSubmission(resolvedApprovers);
-    
     const currentDate = new Date().toISOString().split('T')[0];
     
     const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => {
@@ -1711,8 +1737,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const preservedNonPartA = approvers.filter(a => !a.isFromPartA);
     const mergedApprovers: Approver[] = [...newApprovers, ...preservedNonPartA];
 
-    setApprovers(mergedApprovers);
-    
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1722,6 +1746,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     reviewData.approvalData = JSON.stringify(mergedApprovers);
     reviewData.selectedApproversForSubmission = JSON.stringify(resolvedApprovers);
     reviewData.status = 'submitted';
+
+    if (!validateDatePayload(reviewData)) return;
+    setIsSubmittingForApproval(true);
+    setSelectedApproversForSubmission(resolvedApprovers);
+    setApprovers(mergedApprovers);
     
     const approverCount = selectedApproversForSubmission.length;
     
@@ -1758,7 +1787,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames]);
+  }, [validateDatePayload, selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1766,6 +1795,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const cesTestsSection = useMemo(() => (
     <PartACesTests
+      dateDrafts={dateDraftsRef.current}
       cesTests={cesTests}
       onUpdateCesTest={updateCesTest}
       onDeleteCesTest={deleteCesTest}
@@ -1810,8 +1840,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [existingReviewData, promotionFormLockLive]);
 
+  const calendarReviewStatus = (
+    existingReviewData?.status || 'draft'
+  ).toString().trim().toLowerCase();
+
+  const acceptPromotionCalendarInputEvents =
+    !isLoadingReview &&
+    ['draft', 'in progress', 'in_progress'].includes(calendarReviewStatus);
+
   return (
     <div className="promotion-review-form">
+      <PromotionCalendarInputEventsContext.Provider
+        value={acceptPromotionCalendarInputEvents}
+      >
       <BaseSubmoduleForm
         title="Promotion Review Form"
         sections={sections}
@@ -2086,6 +2127,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             )}
             <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
             <PartBApproval
+                dateDrafts={dateDraftsRef.current}
               approvers={approvers}
               onAddApprover={addApprover}
               onDeleteApprover={deleteApprover}
@@ -2133,6 +2175,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             )}
             <div className={(isShipUser || lockState.lockPartCPriorJoining) ? 'opacity-60 pointer-events-none' : undefined}>
             <PartCExecution
+              dateDrafts={dateDraftsRef.current}
               promotionDate={promotionDate}
               onSetPromotionDate={setPromotionDate}
               currentUserDisplay={currentUserDisplay}
@@ -2150,6 +2193,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         );
       }}
       </BaseSubmoduleForm>
+      </PromotionCalendarInputEventsContext.Provider>
 
       {showChecklistForm && (
         <PromotionChecklistForm 

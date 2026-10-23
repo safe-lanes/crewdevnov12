@@ -56,7 +56,7 @@ function ReportGridDateInput({ date, onDateChange }: CustomDateProps): JSX.Eleme
   return (
     <FormattedDateInput
       value={value}
-      placeholder="DD-MMM-YYYY"
+      placeholder="DD-MMM-YYYY or DD-MM-YYYY"
       onChange={(e) => onDateChange(e.target.value ? new Date(e.target.value + "T00:00:00") : null)}
     />
   );

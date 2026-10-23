@@ -4,6 +4,7 @@ export interface D3Identity {
   companyId?: string;
   trainUuid?: string;
   matrixDefault?: boolean;
+  trainingCourse?: string;
 }
 
 export interface D3Master {
@@ -28,9 +29,13 @@ export function d3CourseKey(
   );
 }
 
+export function d3TrainingName(value?: string): string {
+  return (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 export function d3RankId(
   value: string,
-  ranks: readonly { id: number | string; rank: string }[],
+  ranks: readonly { id: number | string; rank: string; label?: string }[],
   normalize: (rank: string) => string,
 ): number | null {
   if (!value.trim()) return null;
@@ -47,7 +52,18 @@ export function d3RankId(
           normalize(value).trim().toLowerCase(),
       );
 
-  const ids = [...new Set(candidates.map(rank => Number(rank.id)))];
+  // Preserve existing name matches, including ambiguous ones. Only use
+  // configured display labels when no master-name candidate was found.
+  const resolvedCandidates = candidates.length
+    ? candidates
+    : ranks.filter(
+        rank =>
+          rank.label?.trim() &&
+          normalize(rank.label).trim().toLowerCase() ===
+          normalize(value).trim().toLowerCase(),
+      );
+
+  const ids = [...new Set(resolvedCandidates.map(rank => Number(rank.id)))];
 
   return ids.length === 1 && Number.isFinite(ids[0]) ? ids[0] : null;
 }
@@ -67,6 +83,9 @@ export function missingD3Defaults(
   const existing = new Set(
     rows.map(row => d3CourseKey(row, masters)).filter(Boolean),
   );
+  const existingNames = new Set(
+    rows.map(row => d3TrainingName(row.trainingCourse)).filter(Boolean),
+  );
   const rowIds = new Set(rows.map(row => row.id));
 
   const required = new Set(
@@ -80,17 +99,20 @@ export function missingD3Defaults(
   );
 
   return masters.flatMap((master, index) => {
+    const name = d3TrainingName(master.trainingLabel);
     if (
       !required.has(Number(master.id)) ||
       !master.companyId ||
       !master.trainingLabel ||
       existing.has(master.companyId) ||
+      (name && existingNames.has(name)) ||
       suppressed.has(master.companyId)
     ) {
       return [];
     }
 
     existing.add(master.companyId);
+    if (name) existingNames.add(name);
 
     let id = prefix + master.id;
     for (let suffix = 1; rowIds.has(id); suffix++) {

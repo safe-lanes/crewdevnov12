@@ -15,6 +15,8 @@ describe("formatted date parsing", () => {
     ["26-02-1980", "1980-02-26"],
     ["1-2-2026", "2026-02-01"],
     ["29-Feb-2024", "2024-02-29"],
+    ["26/02/2026", "2026-02-26"],
+    ["26/Feb/2026", "2026-02-26"],
   ])("normalizes %s to %s", (input, expected) => {
     expect(parseManualDate(input)).toBe(expected);
   });
@@ -26,7 +28,6 @@ describe("formatted date parsing", () => {
     "15-13-2026",
     "26-Feb-80",
     "2026-02-26",
-    "26/02/2026",
     "26-Fe-2026",
   ])("rejects invalid or unsupported input %s", (input) => {
     expect(parseManualDate(input)).toBeNull();

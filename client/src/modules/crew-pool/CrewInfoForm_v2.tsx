@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RuleAwareDateInput } from '@/modules/recruitment/RuleAwareDateInput';
 import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ import {
   createD3CreateRegistry,
   loadD3Handoff,
   d3CourseKey,
+  d3TrainingName,
   d3RankId,
   missingD3Defaults,
   mergeD3LocalRows,
@@ -921,6 +923,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isNextAvailabilityDraftValid, setIsNextAvailabilityDraftValid] = useState(false);
   const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
   const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -2670,11 +2673,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         ),
       );
 
+      const existingNames = new Set(
+        existingCourses.map(course => d3TrainingName(course.trainingCourse)).filter(Boolean),
+      );
+
       const missingTemplates = selectedTemplates.filter(template => {
         const key = d3CourseKey(template, d3IdentityMasters);
+        const name = d3TrainingName(template.name);
 
         if (key && existingKeys.has(key)) return false;
+        if (name && existingNames.has(name)) return false;
         if (key) existingKeys.add(key);
+        if (name) existingNames.add(name);
 
         return true;
       });
@@ -4406,7 +4416,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
             {isEditing ? (
-              <FormattedDateInput
+              <RuleAwareDateInput
                 value={formData.dateOfBirth}
                 onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
                 onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
@@ -5213,7 +5223,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={doc.issued}
                     onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
@@ -5223,7 +5233,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={doc.expiry}
                     onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
@@ -5341,7 +5351,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={visa.issued}
                     onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
@@ -5351,7 +5361,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={visa.expiry}
                     onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
@@ -5629,7 +5639,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={license.issued}
                     onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
@@ -5639,7 +5649,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={license.expiry}
                     onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
@@ -5864,7 +5874,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={course.issued}
                       disabled={Boolean(
                         course.matrixDefault &&
@@ -5878,7 +5888,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={course.expiry}
                       disabled={Boolean(
                         course.matrixDefault &&
@@ -9452,8 +9462,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const today = new Date();
   const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+  const canSaveNextAvailability = Boolean(tempNextAvailability)
+    && isNextAvailabilityDraftValid
+    && tempNextAvailability >= todayDateString;
+
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
+    if (!canSaveNextAvailability) return;
     // V2: Use crewUuid as the primary identifier
     const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId && tempNextAvailability) {
@@ -9759,7 +9774,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   key={member.crewUuid || member.id}
                   value={member.crewUuid || member.id}
                 >
-                  {member.firstName} {member.familyName}
+                  {[member.firstName, member.middleName, member.familyName]
+                    .map((part) => (part ?? '').trim())
+                    .filter(Boolean)
+                    .join(' ')}
                 </option>
               ))}
             </select>
@@ -9794,11 +9812,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="bg-white rounded-lg w-full max-w-none 2xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-            <Button variant="ghost" size="icon" onClick={handleD3Close} data-testid="button-close">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2 lg:gap-4">
+            <Button variant="ghost" size="icon" onClick={handleD3Close} data-testid="button-close" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 type="button"
                 onClick={(e) => {
@@ -9812,14 +9830,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   setShowCrewDropdown(!showCrewDropdown);
                 }}
                 ref={dropdownButtonRef}
-                className="flex items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
+                className="flex max-w-full items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
                 data-testid="button-crew-dropdown"
               >
-                <span>
+                <span className="truncate">
                   {crewMember
-                    ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
-                    : (formData.firstName || formData.familyName)
-                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim() + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
+                    ? [crewMember.firstName, crewMember.middleName, crewMember.familyName]
+                        .map((part) => (part ?? '').trim())
+                        .filter(Boolean)
+                        .join(' ') + `, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
+                    : [formData.firstName, formData.middleName, formData.familyName]
+                        .some((part) => (part ?? '').trim().length > 0)
+                      ? [formData.firstName, formData.middleName, formData.familyName]
+                          .map((part) => (part ?? '').trim())
+                          .filter(Boolean)
+                          .join(' ') + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
                       : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
@@ -9853,7 +9878,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <div className="flex justify-between items-center">
                             <div>
                               <div className="font-medium">
-                                {member.firstName} {member.familyName}
+                                {[member.firstName, member.middleName, member.familyName]
+                                  .map((part) => (part ?? '').trim())
+                                  .filter(Boolean)
+                                  .join(' ')}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {normalizeRank(member.presentRank || '') || member.presentRank} • {member.empNo}
@@ -9876,7 +9904,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               )}
             </div>
           </div>
-          <div className="flex gap-1 sm:gap-2">
+          <div className="flex shrink-0 gap-1 sm:gap-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -10449,6 +10477,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
               min={todayDateString}
+              minDateErrorMessage="Next Availability Date cannot be before today"
+              onDraftValidityChange={setIsNextAvailabilityDraftValid}
               data-testid="input-next-availability"
             />
           </div>
@@ -10456,7 +10486,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button variant="outline" onClick={() => setIsNextAvailabilityEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+            <Button onClick={handleUpdateNextAvailability} disabled={!canSaveNextAvailability}>
               Save
             </Button>
           </DialogFooter>
@@ -10503,6 +10533,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
         existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter((id): id is string => Boolean(id))}
+        existingCourseNames={formData.trainingCourses.map(c => c.trainingCourse)}
       />
       
       {/* Travel Document Selection Dialog - Add from Database */}

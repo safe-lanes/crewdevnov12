@@ -1,9 +1,9 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormattedDateInput } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -51,7 +51,9 @@ export default function FleetSummaryPage() {
     setVesselUuid: setSharedVesselUuid,
     period,
     setPeriod,
+    resetFilters,
   } = useVesselPeriod();
+  const [periodInputKey, setPeriodInputKey] = useState(0);
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
   // Shared store keeps "" for "no specific vessel"; this page shows that as
@@ -153,7 +155,7 @@ export default function FleetSummaryPage() {
           <Label className="text-xs text-gray-600">Vessel</Label>
           <Select value={vesselUuid} onValueChange={setVesselUuid}>
             <SelectTrigger
-              className="h-9 w-64 bg-white"
+              className="h-8 w-64 text-xs"
               data-testid="select-fleet-vessel"
             >
               <SelectValue
@@ -170,16 +172,44 @@ export default function FleetSummaryPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div
+          className="space-y-1"
+          onBlur={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            const input =
+              event.currentTarget.querySelector<HTMLInputElement>(
+                'input[type="text"]',
+              );
+            if (
+              input &&
+              (!input.value.trim() || input.dataset.monthValid === "false")
+            ) {
+              setPeriodInputKey((key) => key + 1);
+            }
+          }}
+        >
           <Label className="text-xs text-gray-600">Period</Label>
-          <Input
-            type="month"
+          <FormattedDateInput
+            key={periodInputKey}
+            mode="month"
             value={period}
             onChange={(e) => e.target.value && setPeriod(e.target.value)}
-            className="h-9 w-44 bg-white"
+            className="h-8 w-44 bg-transparent text-xs md:text-xs"
             data-testid="input-fleet-period"
           />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            resetFilters();
+            setPeriodInputKey((key) => key + 1);
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
         <div className="ml-auto">
           <Button
             size="sm"

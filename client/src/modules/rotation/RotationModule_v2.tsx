@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Filter, ChevronDown, Calendar as CalendarIcon, Search as SearchIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { DueCrewTable_v2 } from './DueCrewTable_v2';
 import { RotationPlanTable_v2 } from './RotationPlanTable_v2';
 import { ApprovalTable_v2 } from './ApprovalTable_v2';
@@ -65,24 +66,48 @@ function ApprovalScreenV2() {
     const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
 
     const [draftRange, setDraftRange] = useState<ApprovalDateRange>({ start: undefined, end: undefined });
+    const [dateFromDraftValid, setDateFromDraftValid] = useState(true);
+    const [dateToDraftValid, setDateToDraftValid] = useState(true);
+    const [approvalInputRevision, setApprovalInputRevision] = useState(0);
+    const [dateFromDraftText, setDateFromDraftText] = useState("");
+    const [dateToDraftText, setDateToDraftText] = useState("");
 
-    // 'yyyy-MM-dd' from a native date input -> local Date (no timezone shift; same as Dashboard)
+    // Canonical date-only value -> local Date, without UTC date shifting.
     const parseDateInput = (value: string): Date | undefined => {
-        if (!value) return undefined;
-        const [year, month, day] = value.split('-').map(Number);
-        if (!year || !month || !day) return undefined;
-        return new Date(year, month - 1, day);
+        if (!formatIsoDate(value)) return undefined;
+        return parse(value, "yyyy-MM-dd", new Date());
     };
 
     const openDateRangeDialog = (open: boolean) => {
-        if (open) setDraftRange(dateRange);   // pre-fill draft with what's applied
+        if (open && !dateRangeDialogOpen) {
+            setDraftRange(dateRange);
+            setDateFromDraftText(
+                dateRange.start
+                    ? formatIsoDate(format(dateRange.start, "yyyy-MM-dd"))
+                    : ""
+            );
+            setDateToDraftText(
+                dateRange.end
+                    ? formatIsoDate(format(dateRange.end, "yyyy-MM-dd"))
+                    : ""
+            );
+            setDateFromDraftValid(true);
+            setDateToDraftValid(true);
+            setApprovalInputRevision(revision => revision + 1);
+        }
         setDateRangeDialogOpen(open);
     };
 
-    const isDraftValid = !!draftRange.start && !!draftRange.end && draftRange.start <= draftRange.end;
+    const isDraftValid =
+        dateFromDraftValid &&
+        dateToDraftValid &&
+        !!draftRange.start &&
+        !!draftRange.end &&
+        draftRange.start <= draftRange.end;
 
     const handleApplyDateRange = () => {
-        setDateRange(draftRange);             // commit — table filters NOW
+        if (!isDraftValid) return;
+        setDateRange(draftRange);
         setDateRangeDialogOpen(false);
     };
 
@@ -98,6 +123,11 @@ function ApprovalScreenV2() {
             end: undefined
         });
         setDraftRange({ start: undefined, end: undefined });
+        setDateFromDraftText("");
+        setDateToDraftText("");
+        setDateFromDraftValid(true);
+        setDateToDraftValid(true);
+        setApprovalInputRevision(revision => revision + 1);
     };
 
     const toggleVessel = (vesselId: string) => {
@@ -123,20 +153,42 @@ function ApprovalScreenV2() {
     const dateRangePopoverContent = (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                     <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
-                    <Input type="date"
+                    <FormattedDateInput
+                        key={`from-${approvalInputRevision}`}
                         value={draftRange.start ? format(draftRange.start, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => setDraftRange(prev => ({ ...prev, start: parseDateInput(e.target.value) }))}
-                        className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                        initialDraft={dateFromDraftText}
+                        onDraftChange={setDateFromDraftText}
+                        onChange={(event) => {
+                            const value = event.target.value;
+                            if (value && !formatIsoDate(value)) return;
+                            setDraftRange(prev => ({
+                                ...prev,
+                                start: parseDateInput(value),
+                            }));
+                        }}
+                        onDraftValidityChange={setDateFromDraftValid}
+                        className="w-full min-w-0 text-xs h-9 bg-white dark:bg-neutral-900"
                         data-testid="date-from-approval-v2" />
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                     <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
-                    <Input type="date"
+                    <FormattedDateInput
+                        key={`to-${approvalInputRevision}`}
                         value={draftRange.end ? format(draftRange.end, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => setDraftRange(prev => ({ ...prev, end: parseDateInput(e.target.value) }))}
-                        className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                        initialDraft={dateToDraftText}
+                        onDraftChange={setDateToDraftText}
+                        onChange={(event) => {
+                            const value = event.target.value;
+                            if (value && !formatIsoDate(value)) return;
+                            setDraftRange(prev => ({
+                                ...prev,
+                                end: parseDateInput(value),
+                            }));
+                        }}
+                        onDraftValidityChange={setDateToDraftValid}
+                        className="w-full min-w-0 text-xs h-9 bg-white dark:bg-neutral-900"
                         data-testid="date-to-approval-v2" />
                 </div>
             </div>

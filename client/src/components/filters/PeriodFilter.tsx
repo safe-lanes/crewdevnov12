@@ -2,12 +2,16 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Calendar, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FormattedDateInput } from '@/components/ui/formatted-date-input';
+import {
+  FormattedDateInput,
+  parseManualDate,
+} from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import type { MonthDraft } from '@/components/ui/formatted-month-input';
 
 // Parse a native date input value ('yyyy-MM-dd') into a local Date (no timezone shift).
 function parseDateInput(value: string): Date | undefined {
@@ -33,13 +37,23 @@ interface PeriodFilterProps {
   onChange: (value: PeriodFilterValue) => void;
   className?: string;
   rangeMode?: 'date' | 'month';
+  useSharedMonthSelector?: boolean;
+  acceptCalendarInputEvents?: boolean;
   placeholder?: string;
 }
 
-export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', placeholder }: PeriodFilterProps) => {
+export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', useSharedMonthSelector = false, acceptCalendarInputEvents = false, placeholder }: PeriodFilterProps) => {
   const [open, setOpen] = useState(false);
+  const fullDateRangeRef = useRef<HTMLDivElement>(null);
+  const [dateRangeError, setDateRangeError] = useState<string | null>(null);
   const monthFromRef = useRef<HTMLInputElement>(null);
   const monthToRef = useRef<HTMLInputElement>(null);
+  const monthRangeRef = useRef<HTMLDivElement>(null);
+  const monthDrafts = useRef<{ from?: MonthDraft; to?: MonthDraft }>({});
+
+  useEffect(() => {
+    if (useSharedMonthSelector) monthDrafts.current = {};
+  }, [value, useSharedMonthSelector]);
   const [mode, setMode] = useState<'year-period' | 'date-range'>(
     value?.mode === 'date-range' ? 'date-range' : 'year-period'
   );
@@ -93,8 +107,13 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
       setSelectedMonth(currentMonth);
       setDateFrom(undefined);
       setDateTo(undefined);
+      if (useSharedMonthSelector) monthDrafts.current = {};
     }
-  }, [value, currentYear, currentMonth]);
+  }, [value, currentYear, currentMonth, useSharedMonthSelector]);
+
+  useEffect(() => {
+    setDateRangeError(null);
+  }, [open, mode, rangeMode, value]);
 
   const handleQuarterClick = (quarter: 1 | 2 | 3 | 4) => {
     if (selectedQuarter === quarter) {
@@ -115,6 +134,42 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
   };
 
   const handleApply = () => {
+    if (mode === 'date-range' && rangeMode === 'month' && useSharedMonthSelector) {
+      const inputs = monthRangeRef.current?.querySelectorAll<HTMLInputElement>('input[data-month-valid]');
+      if (!inputs || inputs.length !== 2) {
+        setDateRangeError('Unable to check the months. Please close and reopen the filter.');
+        return;
+      }
+      const invalidInput = Array.from(inputs).find((input) => input.dataset.monthValid === 'false');
+      if (invalidInput) {
+        setDateRangeError('Correct the invalid month before applying.');
+        invalidInput.focus();
+        return;
+      }
+    }
+    if (mode === 'date-range' && rangeMode === 'date') {
+      const inputs =
+        fullDateRangeRef.current?.querySelectorAll<HTMLInputElement>(
+          'input[type="text"]',
+        );
+      if (!inputs || inputs.length !== 2) {
+        setDateRangeError(
+          'Unable to check the dates. Please close and reopen the filter.',
+        );
+        return;
+      }
+      const invalidInput = Array.from(inputs).find(
+        (input) =>
+          input.value.trim() !== '' &&
+          parseManualDate(input.value) === null,
+      );
+      if (invalidInput) {
+        setDateRangeError('Correct the invalid date before applying.');
+        invalidInput.focus();
+        return;
+      }
+    }
+    setDateRangeError(null);
     if (mode === 'year-period') {
       if (selectedQuarter !== null) {
         onChange({
@@ -164,7 +219,8 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
     }
     
     if (value.mode === 'date-range' && value.dateFrom && value.dateTo) {
-      return `${format(value.dateFrom, 'dd/MM/yy')} - ${format(value.dateTo, 'dd/MM/yy')}`;
+      const rangeFormat = rangeMode === 'month' ? 'MMM-yyyy' : 'dd-MMM-yyyy';
+      return `${format(value.dateFrom, rangeFormat)} - ${format(value.dateTo, rangeFormat)}`;
     }
 
     if (placeholder) return placeholder;
@@ -176,7 +232,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={`h-8 ${placeholder ? 'w-48' : 'w-40'} justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
+          className={`h-8 ${value?.mode === 'date-range' && value.dateFrom && value.dateTo ? (rangeMode === 'month' ? 'w-48' : 'w-64') : (placeholder ? 'w-48' : 'w-40')} justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
           data-testid="period-filter-trigger"
         >
           <span>{getDisplayText()}</span>
@@ -261,7 +317,49 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
           )}
 
           {/* Date Range Mode */}
-          {mode === 'date-range' && rangeMode === 'month' && (
+          {mode === 'date-range' && rangeMode === 'month' && useSharedMonthSelector && (
+            <div ref={monthRangeRef} onChangeCapture={() => setDateRangeError(null)}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">From Month</Label>
+                  <FormattedDateInput
+                    mode="month"
+                    value={dateFrom ? format(dateFrom, 'yyyy-MM') : ''}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split('-').map(Number);
+                      setDateFrom(y && m ? new Date(y, m - 1, 1) : undefined);
+                    }}
+                    initialMonthDraft={monthDrafts.current.from}
+                    onMonthDraftChange={(draft) => { monthDrafts.current.from = draft; }}
+                    placeholder="MMM-YYYY or MM-YYYY"
+                    className="h-9 text-xs"
+                    data-testid="month-from-trigger"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">To Month</Label>
+                  <FormattedDateInput
+                    mode="month"
+                    value={dateTo ? format(dateTo, 'yyyy-MM') : ''}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split('-').map(Number);
+                      setDateTo(y && m ? new Date(y, m, 0) : undefined);
+                    }}
+                    initialMonthDraft={monthDrafts.current.to}
+                    onMonthDraftChange={(draft) => { monthDrafts.current.to = draft; }}
+                    placeholder="MMM-YYYY or MM-YYYY"
+                    className="h-9 text-xs"
+                    data-testid="month-to-trigger"
+                  />
+                </div>
+              </div>
+              {dateRangeError && (
+                <p role="alert" className="mt-2 text-xs text-red-500">{dateRangeError}</p>
+              )}
+            </div>
+          )}
+
+          {mode === 'date-range' && rangeMode === 'month' && !useSharedMonthSelector && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">From Month</Label>
@@ -326,54 +424,50 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
           )}
 
           {mode === 'date-range' && rangeMode === 'date' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
-                {placeholder ? (
+            <div
+              ref={fullDateRangeRef}
+              onChangeCapture={() => setDateRangeError(null)}
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">
+                    Date From
+                  </Label>
                   <FormattedDateInput
+                    acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                    placeholder="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="date-from-trigger"
                   />
-                ) : (
-                  <Input
-                    type="date"
-                    value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
-                    onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                    data-testid="date-from-trigger"
-                  />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
-                {placeholder ? (
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">
+                    Date To
+                  </Label>
                   <FormattedDateInput
+                    acceptCalendarInputEvents={acceptCalendarInputEvents}
                     value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                    placeholder="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                     className="h-9 text-xs"
                     data-testid="date-to-trigger"
                   />
-                ) : (
-                  <Input
-                    type="date"
-                    value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
-                    onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                    data-testid="date-to-trigger"
-                  />
-                )}
+                </div>
               </div>
+              {dateRangeError && (
+                <p role="alert" className="mt-2 text-xs text-red-500">
+                  {dateRangeError}
+                </p>
+              )}
             </div>
           )}
 
           {/* Apply Button */}
           <div className="flex justify-end pt-2">
             <Button
+              type="button"
               onClick={handleApply}
               className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-8"
               data-testid="button-apply-period-filter"

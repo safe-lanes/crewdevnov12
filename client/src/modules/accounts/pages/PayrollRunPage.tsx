@@ -5,7 +5,7 @@ import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -154,7 +154,7 @@ export default function PayrollRunPage() {
   const mayEdit = canEdit(MENU);
   const isOfficeUser = (userType ?? "").toLowerCase() !== "ship";
 
-  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   const hasFilter = !!vesselUuid && !!period;
 
   const reviewKey = [
@@ -679,6 +679,11 @@ export default function PayrollRunPage() {
         onVesselChange={setVesselUuid}
         onPeriodChange={(p) => {
           setPeriod(p);
+          setRunWarnings(null);
+          setSyncResult(null);
+        }}
+        onClear={() => {
+          resetFilters();
           setRunWarnings(null);
           setSyncResult(null);
         }}

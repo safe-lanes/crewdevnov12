@@ -19,13 +19,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    formatIsoDate,
+    parseManualDate,
+} from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
@@ -152,6 +155,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
     const [plannedConfirmedDateOpen, setPlannedConfirmedDateOpen] = useState(false);
     const [travelStartDateOpen, setTravelStartDateOpen] = useState(false);
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
     const [clearReason, setClearReason] = useState('');
@@ -342,6 +349,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
             let saveResult: any;
@@ -581,6 +589,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return;
         }
         
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
+
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
@@ -672,6 +682,78 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             }
         }
     }, [watchedSignOnStatus]);
+
+    const datePickerFormOwner = React.useId();
+    const getPickerDay = (date: Date | undefined): string | undefined => {
+        if (!date || Number.isNaN(date.getTime())) return undefined;
+        return format(date, "yyyy-MM-dd");
+    };
+    const getInputDate = (value?: string): string => {
+        if (!value) return "";
+        if (formatIsoDate(value)) return value;
+        return getPickerDay(parseDateString(value)) || "";
+    };
+    const renderDateSelector = (
+        field: {
+            name: string;
+            value?: string;
+            onChange: (value: string) => void;
+        },
+        min?: string,
+        max?: string,
+    ) => (
+        <FormControl>
+            <div
+                className="col-span-2 min-w-0"
+                ref={(node) => {
+                    const calendarInput =
+                        node?.querySelector<HTMLInputElement>('input[type="date"]');
+                    if (calendarInput) {
+                        calendarInput.setAttribute("form", datePickerFormOwner);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    if (
+                        event.key === "Enter" &&
+                        event.target instanceof HTMLInputElement &&
+                        event.target.type === "text"
+                    ) {
+                        event.preventDefault();
+                    }
+                }}
+            >
+                <VesselDateInput
+                    value={getInputDate(field.value)}
+                    disabled={!isRelieverAssigned}
+                    min={min}
+                    max={max}
+                    className={
+                        !isRelieverAssigned
+                            ? "bg-gray-100 cursor-not-allowed"
+                            : undefined
+                    }
+                    retainInvalidDraftOnBlur={field.name === "relieverSignOnDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "relieverSignOnDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
+                    data-testid={`input-${field.name}`}
+                    onChange={(event) => {
+                        const value = event.target.value;
+                        if (!value || !formatIsoDate(value)) return;
+                        if (min && value < min) return;
+                        if (max && value > max) return;
+                        field.onChange(value);
+                    }}
+                />
+            </div>
+        </FormControl>
+    );
 
     return (
         <>
@@ -949,34 +1031,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Planned / Confirmed Date:</FormLabel>
-                                        <Popover open={plannedConfirmedDateOpen} onOpenChange={setPlannedConfirmedDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-planned-confirmed-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setPlannedConfirmedDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        {renderDateSelector(field)}
                                     </div>
                                 </FormItem>
                             )}
@@ -989,34 +1044,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Travel Start Date:</FormLabel>
-                                        <Popover open={travelStartDateOpen} onOpenChange={setTravelStartDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-travel-start-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setTravelStartDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        {renderDateSelector(field)}
                                     </div>
                                 </FormItem>
                             )}
@@ -1029,39 +1057,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
-                                        <Popover open={joiningDateOpen} onOpenChange={setJoiningDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-joining-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setJoiningDateOpen(false);
-                                                        }
-                                                    }}
-                                                    disabled={
-                                                        (watchedSignOnStatus === "Signed On")
-                                                            ? (() => { const today = new Date(); today.setHours(0, 0, 0, 0); return { after: today }; })()
-                                                            : undefined
-                                                    }
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign On date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                undefined,
+                                                watchedSignOnStatus === "Signed On"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                 </FormItem>
                             )}
@@ -1202,7 +1209,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
+                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict || (!unassignChecked && watchedSignOnStatus === "Signed On" && futureDateDraft.blocked)}
                                 data-testid="button-submit-relief"
                             >
                                 {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Save"}

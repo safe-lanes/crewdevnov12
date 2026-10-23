@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Printer } from "lucide-react";
@@ -463,7 +464,7 @@ export default function PayslipsPage() {
         field: "engagementUuid",
         width: 130,
         sortable: false,
-        cellRenderer: (p: any) => (
+        cellRenderer: (p: any) => p.node.rowPinned === "bottom" ? null : (
           <Button
             size="sm"
             variant="outline"
@@ -526,7 +527,9 @@ export default function PayslipsPage() {
         {hasFilter && data && (
           <Badge
             className={
-              data.isDraft ? "bg-amber-500 text-white" : "bg-green-600 text-white"
+              data.isDraft
+                ? "bg-amber-500 text-white"
+                : accountsStatusBadgeClass("green")
             }
             data-testid="badge-payslips-status"
           >
@@ -542,31 +545,32 @@ export default function PayslipsPage() {
             period={period}
             onVesselChange={setVesselUuid}
             onPeriodChange={setPeriod}
-          >
-            <div className="ml-auto flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={exportExcel}
-                disabled={rows.length === 0}
-                data-testid="button-export-payslips"
-              >
-                <Download size={14} className="mr-1" /> Export
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setView({ mode: "all" });
-                  setTimeout(() => window.print(), 400);
-                }}
-                disabled={payslips.length === 0}
-                data-testid="button-print-all-payslips"
-              >
-                <Printer size={14} className="mr-1" /> Print all
-              </Button>
-            </div>
-          </VesselPeriodBar>
+            actions={
+              <div className="ml-auto flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportExcel}
+                  disabled={rows.length === 0}
+                  data-testid="button-export-payslips"
+                >
+                  <Download size={14} className="mr-1" /> Export
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setView({ mode: "all" });
+                    setTimeout(() => window.print(), 400);
+                  }}
+                  disabled={payslips.length === 0}
+                  data-testid="button-print-all-payslips"
+                >
+                  <Printer size={14} className="mr-1" /> Print all
+                </Button>
+              </div>
+            }
+          />
 
           {!hasFilter && (
             <div

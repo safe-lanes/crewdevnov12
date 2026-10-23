@@ -34,8 +34,17 @@ function toCents(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < "0001-01-01") {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().slice(0, 10) === value
+  );
 }
 
 function currentPeriod(): string {
@@ -240,6 +249,20 @@ export const allotmentsService = {
     if (data.status && !VALID_STATUSES.has(data.status)) {
       throw coded("VALIDATION", "status must be active, suspended or ended");
     }
+    const nextValidTo =
+      data.validTo === undefined ? existing.validTo : data.validTo;
+
+    if (
+      typeof data.validFrom === "string" &&
+      data.validFrom !== existing.validFrom &&
+      nextValidTo &&
+      data.validFrom > nextValidTo
+    ) {
+      throw coded(
+        "VALIDATION",
+        "Valid From cannot be later than Valid To.",
+      );
+    }
     const updated = await allotmentsRepository.update(
       allotmentUuid,
       applyAuditUser(data, false),
@@ -288,7 +311,7 @@ export const allotmentsService = {
     return updated!;
   },
 
-  /** End an allotment: sets valid_to (default today) and status ended. */
+  /** Save the inclusive end date without changing the underlying lifecycle status. */
   async end(
     allotmentUuid: string,
     validTo?: string,
@@ -298,18 +321,37 @@ export const allotmentsService = {
     if (existing.status === "ended") {
       throw coded("CONFLICT", "Allotment is already ended");
     }
+
+    if (!validTo) {
+      throw coded("VALIDATION", "Valid To is required.");
+    }
+
+    if (!isIsoDate(validTo)) {
+      throw coded("VALIDATION", "Enter a valid Valid To date.");
+    }
+
+    if (existing.validFrom && validTo < existing.validFrom) {
+      throw coded(
+        "VALIDATION",
+        "Valid To cannot be earlier than Valid From.",
+      );
+    }
+
     const updated = await allotmentsRepository.update(
       allotmentUuid,
       applyAuditUser(
         {
-          status: "ended",
-          validTo: validTo ?? existing.validTo ?? todayIso(),
+          validTo,
           auditUserUuid,
         },
         false,
       ),
     );
-    return updated!;
+    if (!updated) {
+      throw new Error(`Failed to update allotment: ${allotmentUuid}`);
+    }
+
+    return updated;
   },
 
   async delete(allotmentUuid: string): Promise<void> {

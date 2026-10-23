@@ -384,7 +384,7 @@ describe("exceptional unlinked reliever clear", () => {
 });
 
 describe("reliever assignment cancellation on planning unassign", () => {
-  it("enforces the three canonical assignment types and NOT NULL in the database", async () => {
+  it("enforces supported assignment types and NOT NULL in the database", async () => {
     const constraint = await db.query(
       `SELECT pg_get_constraintdef(oid) definition FROM pg_constraint
         WHERE conrelid = 'crew_assignments'::regclass
@@ -392,6 +392,7 @@ describe("reliever assignment cancellation on planning unassign", () => {
     );
     expect(constraint.rows[0]?.definition).toContain("'Planned'");
     expect(constraint.rows[0]?.definition).toContain("'OnBoard'");
+    expect(constraint.rows[0]?.definition).toContain("'OnBoard_M'");
     expect(constraint.rows[0]?.definition).toContain("'Cancelled'");
     for (const type of ["Legacy", null]) {
       await db.query("BEGIN");

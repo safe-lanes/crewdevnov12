@@ -34,6 +34,7 @@ import type {
   AccMonthlyTransactionV2,
   AccAllotmentV2,
   AccAdvanceV2,
+  AccWageLedgerV2,
   AccCalculationRunV2,
   AccPortageBillV2,
   AccSettlementV2,
@@ -76,6 +77,8 @@ interface CalcContext {
   allotmentsByCrew: Map<string, AccAllotmentV2[]>;
 
   advancesByCrew: Map<string, AccAdvanceV2[]>;
+
+  closedAdvanceLinesByEngagement: Map<string, AccWageLedgerV2[]>;
   /** advance_uuid -> cents recovered in periods strictly before this run. */
 
   advancePriorRecoveredCents: Map<string, number>;
@@ -1039,6 +1042,7 @@ async function buildContext(
     txns,
     allotments,
     advances,
+    closedAdvanceLines,
     priorRecoveryLines,
     nationalityByCrew,
   ] = await Promise.all([
@@ -1050,6 +1054,7 @@ async function buildContext(
     reads.findAcceptedTxns(engagementUuids, month.period),
     reads.findActiveAllotments(crewUuids),
     reads.findAdvanceRecoveries(crewUuids, month.period),
+    reads.findClosedAdvancePayrollLines(engagementUuids, month.period),
     reads.findPriorRecoveryLines(crewUuids, month.period),
     reads.findCrewNationalities(crewUuids),
   ]);
@@ -1122,6 +1127,9 @@ async function buildContext(
     txnsByEngagement: groupBy(txns, (t) => t.engagementUuid),
     allotmentsByCrew: groupBy(allotments, (a) => a.crewUuid),
     advancesByCrew: groupBy(advances, (a) => a.crewUuid),
+    closedAdvanceLinesByEngagement: groupBy(
+      closedAdvanceLines, (line) => line.engagementUuid,
+    ),
     advancePriorRecoveredCents,
     nationalityByCrew,
     nationalityNames,
@@ -1570,12 +1578,53 @@ function calcEngagement(
   // outstanding = advance amount − Σ recovery lines posted in periods
   // strictly BEFORE this run (deterministic across replacement re-runs of
   // an unlocked month). Fully recovered ⇒ no line.
+  // Reuse posted amounts only for closed Office Advances in this payroll.
+  // Service-date checks above still apply; preview-only lines are not copied.
+  const historicalAdvances = (
+    ctx.closedAdvanceLinesByEngagement.get(engagement.engagementUuid) ?? []
+  ).filter(
+    (line) =>
+      line.crewUuid === engagement.crewUuid &&
+      line.vesselUuid === engagement.vesselUuid,
+  );
+  const preservedAdvanceUuids = new Set(
+    historicalAdvances.map((line) => line.sourceUuid),
+  );
+  for (const line of historicalAdvances) {
+    lines.push({
+      engagementUuid: line.engagementUuid,
+      crewUuid: line.crewUuid,
+      vesselUuid: line.vesselUuid,
+      period: line.period,
+      periodFrom: line.periodFrom,
+      periodTo: line.periodTo,
+      daysBasis: line.daysBasis,
+      daysServed: line.daysServed,
+      rankId: line.rankId,
+      payElementUuid: line.payElementUuid,
+      elementType: line.elementType,
+      elementCode: line.elementCode,
+      paymentTiming: line.paymentTiming,
+      qty: line.qty,
+      rate: line.rate,
+      amount: line.amount,
+      currency: line.currency,
+      fxRate: line.fxRate,
+      amountFunctional: line.amountFunctional,
+      sourceType: line.sourceType,
+      sourceUuid: line.sourceUuid,
+      calcSnapshot: line.calcSnapshot as EngineLine["calcSnapshot"],
+      isAdjustment: line.isAdjustment,
+      adjustsLedgerUuid: line.adjustsLedgerUuid,
+    });
+  }
   const advances = (ctx.advancesByCrew.get(engagement.crewUuid) ?? [])
     .filter(
       (a) => !a.engagementUuid || a.engagementUuid === engagement.engagementUuid,
     )
     .sort((a, b) => a.advanceUuid.localeCompare(b.advanceUuid));
   for (const advance of advances) {
+    if (preservedAdvanceUuids.has(advance.advanceUuid)) continue;
     const el =
       (advance.recoveryPayElementUuid
         ? ctx.elements.get(advance.recoveryPayElementUuid)

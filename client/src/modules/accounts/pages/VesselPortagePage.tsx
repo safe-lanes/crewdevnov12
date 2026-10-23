@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +50,7 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 import EntryGrid, {
   type EntryColumn,
@@ -166,7 +167,7 @@ export default function VesselPortagePage() {
   const isVessel = userType === "Ship";
   const fixedVesselUuid = isVessel ? (getVesselIds()[0] ?? "") : "";
 
-  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   useEffect(() => {
     if (isVessel && fixedVesselUuid) setVesselUuid(fixedVesselUuid);
   }, [isVessel, fixedVesselUuid]);
@@ -940,6 +941,33 @@ export default function VesselPortagePage() {
     setVesselUuid(v);
   };
 
+  const clearFiltersInFlight = useRef(false);
+  const handleClearFilters = async () => {
+    if (clearFiltersInFlight.current) return;
+    const defaultVessel = isVessel ? fixedVesselUuid : "";
+    if (vesselUuid === defaultVessel && period === currentPeriod()) return;
+    clearFiltersInFlight.current = true;
+    try {
+      if (totalDirty > 0) {
+        const ok = await saveAllDirty({ silent: true });
+        if (!ok) {
+          toast({
+            title: "Filters not cleared",
+            description:
+              "Unsaved entries could not be saved. Fix the issue (or clear the cells) before clearing filters.",
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({ title: "Changes auto-saved" });
+      }
+      resetFilters(defaultVessel);
+      setSubmitWarnings(null);
+    } finally {
+      clearFiltersInFlight.current = false;
+    }
+  };
+
   // Auto-save on in-app navigation away (component unmount).
   const latestSaveAll = useRef(saveAllDirty);
   const latestTotalDirty = useRef(totalDirty);
@@ -979,13 +1007,14 @@ export default function VesselPortagePage() {
   // ---- date-column management (dated tabs) ---------------------------------
   const [addDateFor, setAddDateFor] = useState<string | null>(null);
   const [newDate, setNewDate] = useState("");
+  const [newDateValid, setNewDateValid] = useState(true);
   const [deleteDateFor, setDeleteDateFor] = useState<{
     tabId: string;
     date: string;
   } | null>(null);
 
   const confirmAddDate = () => {
-    if (!addDateFor || !newDate) return;
+    if (!addDateFor || !newDate || !newDateValid) return;
     setAddedDates((d) => ({
       ...d,
       [addDateFor]: Array.from(new Set([...(d[addDateFor] ?? []), newDate])),
@@ -1072,6 +1101,7 @@ export default function VesselPortagePage() {
   const [lineOpen, setLineOpen] = useState(false);
   const [lineEditing, setLineEditing] = useState<any | null>(null);
   const [lineForm, setLineForm] = useState<CtmLineForm>(emptyLineForm);
+  const [lineDateValid, setLineDateValid] = useState(true);
   const [lineSaving, setLineSaving] = useState(false);
   const [lineDeleteTarget, setLineDeleteTarget] = useState<any | null>(null);
 
@@ -1081,10 +1111,12 @@ export default function VesselPortagePage() {
   const openLineCreate = () => {
     setLineEditing(null);
     setLineForm(emptyLineForm);
+    setLineDateValid(true);
     setLineOpen(true);
   };
   const openLineEdit = (line: any) => {
     setLineEditing(line);
+    setLineDateValid(true);
     setLineForm({
       lineDate: line.lineDate ?? "",
       lineType: line.lineType ?? "expense",
@@ -1104,6 +1136,7 @@ export default function VesselPortagePage() {
       });
       return;
     }
+    if (!lineDateValid) return;
     setLineSaving(true);
     try {
       const body = {
@@ -1165,7 +1198,6 @@ export default function VesselPortagePage() {
       .autoCreate(vesselUuid, period)
       .then((result) => {
         const created = result?.created?.length ?? 0;
-        const errors = result?.errors?.length ?? 0;
         if (created > 0) {
           queryClient.invalidateQueries({
             queryKey: [
@@ -1174,16 +1206,6 @@ export default function VesselPortagePage() {
           });
           toast({
             title: `${created} engagement${created === 1 ? "" : "s"} created from Crewing`,
-          });
-        }
-        if (errors > 0) {
-          toast({
-            title: `${errors} crew member${errors === 1 ? "" : "s"} could not be engaged`,
-            description: (result.errors ?? [])
-              .slice(0, 3)
-              .map((e: any) => e.reason)
-              .join("; "),
-            variant: "destructive",
           });
         }
       })
@@ -1196,15 +1218,23 @@ export default function VesselPortagePage() {
   // ---- vessel-editable sign-off date (task #179 part 4) --------------------
   const [signOffTarget, setSignOffTarget] = useState<any | null>(null);
   const [signOffDate, setSignOffDate] = useState("");
+  const [signOffDateValid, setSignOffDateValid] = useState(true);
+  const [signOffSession, setSignOffSession] = useState(0);
   const [signOffSaving, setSignOffSaving] = useState(false);
 
   const openSignOff = (row: any) => {
     setSignOffTarget(row);
     setSignOffDate(row.engagement?.endDate ?? "");
+    setSignOffDateValid(true);
+    setSignOffSession((session) => session + 1);
   };
 
   const saveSignOff = async () => {
-    if (!signOffTarget?.engagement || !signOffDate) return;
+    if (
+      !signOffTarget?.engagement ||
+      !signOffDate ||
+      !signOffDateValid
+    ) return;
     setSignOffSaving(true);
     try {
       await accountsApiV2.engagements.setSignOff(
@@ -1379,6 +1409,7 @@ export default function VesselPortagePage() {
             onClick={() => {
               setAddDateFor(tab.id);
               setNewDate("");
+              setNewDateValid(true);
             }}
             data-testid={`button-add-date-${tab.id}`}
           >
@@ -1472,6 +1503,7 @@ export default function VesselPortagePage() {
         period={period}
         onVesselChange={isVessel ? () => {} : handleVesselChange}
         onPeriodChange={handlePeriodChange}
+        onClear={handleClearFilters}
       />
 
       {!hasFilter && (
@@ -1999,10 +2031,10 @@ export default function VesselPortagePage() {
           </DialogHeader>
           <div className="space-y-1">
             <Label>Date</Label>
-            <Input
-              type="date"
+            <FormattedDateInput
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
+              onDraftValidityChange={setNewDateValid}
               data-testid="input-new-date-column"
             />
           </div>
@@ -2012,7 +2044,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={confirmAddDate}
-              disabled={!newDate}
+              disabled={!newDate || !newDateValid}
               data-testid="button-confirm-add-date"
             >
               Add
@@ -2062,10 +2094,11 @@ export default function VesselPortagePage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Date</Label>
-              <Input
-                type="date"
+              <FormattedDateInput
                 value={lineForm.lineDate}
+                initialDraft={formatIsoDate(lineForm.lineDate) || lineForm.lineDate}
                 onChange={(e) => setLf("lineDate", e.target.value)}
+                onDraftValidityChange={setLineDateValid}
                 data-testid="input-line-date"
               />
             </div>
@@ -2133,7 +2166,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={saveLine}
-              disabled={lineSaving}
+              disabled={lineSaving || !lineDateValid}
               data-testid="button-save-ctm-line"
             >
               {lineSaving ? "Saving…" : "Save"}
@@ -2189,11 +2222,22 @@ export default function VesselPortagePage() {
               sign-off date.
             </p>
             <Label htmlFor="signoff-date">Sign-off date</Label>
-            <Input
-              id="signoff-date"
-              type="date"
+            <FormattedDateInput
+              key={signOffSession}
+              ref={(node) => {
+                const input = node?.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+                if (input) {
+                  input.id = "signoff-date";
+                  input.removeAttribute("aria-label");
+                }
+              }}
               value={signOffDate}
+              initialDraft={formatIsoDate(signOffDate) || signOffDate}
               onChange={(e) => setSignOffDate(e.target.value)}
+              onDraftValidityChange={setSignOffDateValid}
+              acceptCalendarInputEvents
               data-testid="input-signoff-date"
             />
           </div>
@@ -2203,7 +2247,7 @@ export default function VesselPortagePage() {
             </Button>
             <Button
               onClick={saveSignOff}
-              disabled={signOffSaving || !signOffDate}
+              disabled={signOffSaving || !signOffDate || !signOffDateValid}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-save-signoff"
             >

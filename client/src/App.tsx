@@ -6,6 +6,7 @@ import { Switch, Route } from "wouter";
 import { lazy, Suspense } from "react";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
+import { SailAssistantMount } from "./components/SailAssistantMount";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
@@ -93,6 +94,7 @@ function AuthenticatedApp() {
           <div className={`bg-transparent flex flex-row justify-center w-full h-screen${tenantError ? " pointer-events-none opacity-50" : ""}`} data-testid="app-root">
             <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
               <HeaderComponent />
+              <SailAssistantMount />
               <Suspense fallback={<PageLoader />}>
                 <Switch>
                   <Route path="/">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getBuiltInVesselTabElementUuids } from "@shared/v2/accounts/vesselEntryTabBindings";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -151,6 +152,7 @@ export default function TenantConfigPage() {
       (e.status === "active" || e.status === "inactive") &&
       (e.calcMethod === "manual_entry" || e.calcMethod === "rate_times_qty"),
   );
+  const builtInElementUuids = getBuiltInVesselTabElementUuids(payElements);
 
   const setSlot = (
     slot: "extraTab1" | "extraTab2",
@@ -432,9 +434,15 @@ export default function TenantConfigPage() {
                             <SelectItem
                               key={e.payElementUuid}
                               value={e.payElementUuid}
-                              disabled={e.status === "inactive"}
+                              disabled={
+                                e.status === "inactive" ||
+                                builtInElementUuids.has(e.payElementUuid)
+                              }
                             >
                               {e.code} — {e.name}
+                              {builtInElementUuids.has(e.payElementUuid)
+                                ? " (Already selected in Vessel Portage)"
+                                : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
