@@ -260,6 +260,30 @@ Legacy fixture-building scripts refuse new crew, assignments, vessels, forms or
 versions instead of creating another set; reuse or explicitly prepare an existing
 registered fixture. This does not modify existing released development rules.
 
+## Lifecycle of provisioned fixtures
+
+Some fixture provisioning scripts insert assignments directly as `OnBoard`,
+rather than taking them through Deploy and sign-on. For example,
+`scripts/prepare-attachment-display-fixtures.mjs:82–85` inserts the assignment
+directly. Such a fixture can lack the captured contract rank and published
+training-matrix context that the real lifecycle establishes. There have been
+three separate false-alarm investigations caused by this distinction.
+
+Before investigating missing training requirements or an incomplete check,
+inspect how the registered fixture was provisioned and whether its exact
+assignment has the canonical contract rank and published matrix context.
+Do not infer these from present rank, a rank-name match or another assignment.
+For lifecycle/compliance acceptance evidence, use an existing registered fixture
+that actually went through the required operations, or explicitly prepare and
+register the missing synthetic context in a separately authorised fixture run.
+An attachment-display fixture is not automatically a valid Deploy/compliance
+fixture. Otherwise a missing fixture prerequisite can be mistaken for a product
+defect and repeatedly investigated.
+
+This is a documentation warning, not a change to provisioning scripts, existing
+fixtures, application logic or enforcement. Automated fixtures and teardown
+remain confined to the registered isolated test database.
+
 # Retained Company Form regression fixtures
 
 ## Applicability window presentation evidence
