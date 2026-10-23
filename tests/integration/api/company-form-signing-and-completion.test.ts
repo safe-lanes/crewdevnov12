@@ -135,9 +135,10 @@ async function createVersion(input: {
   await db.query(
     `INSERT INTO adm_form_versions_v2
        (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-     VALUES ($1, $2, $3, '2026-01-01', 'released', 'before_joining', false, NOW())`,
+     VALUES ($1, $2, $3, '2026-01-01', 'draft', 'before_joining', false, NOW())`,
     [versionUuid, input.formId, input.versionNo],
   );
+  await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [versionUuid]);
 
   const partUuid = uuid();
   const signSectionUuid = uuid();

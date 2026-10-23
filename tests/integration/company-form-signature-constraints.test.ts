@@ -46,7 +46,11 @@ async function expectConstraintFailure(
 ) {
   await client.query("SAVEPOINT expected_check_failure");
   try {
-    await expect(client.query(query, values)).rejects.toThrow(constraintName);
+    await expect(client.query(query, values)).rejects.toMatchObject(
+      constraintName === "Invalid form structure"
+        ? { code: "23514", message: constraintName }
+        : { code: "23514", constraint: constraintName },
+    );
   } finally {
     await client.query("ROLLBACK TO SAVEPOINT expected_check_failure");
     await client.query("RELEASE SAVEPOINT expected_check_failure");
@@ -226,7 +230,10 @@ describe.sequential("company form responsibility and signature constraints", () 
         client,
         sectionInsert,
         [uuid(), formVersionUuid, formPartUuid, uuid(), mode, role, department],
-        "chk_frm_sections_responsible_target",
+        (mode === "role" && role === null && department === null)
+          || (mode === "department" && role === null && !department?.trim())
+          ? "Invalid form structure"
+          : "chk_frm_sections_responsible_target",
       );
       await invalidResponsibility("role", null, null);
       await invalidResponsibility("role", roleUuid, "Operations");

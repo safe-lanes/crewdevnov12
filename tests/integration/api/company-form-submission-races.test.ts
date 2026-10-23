@@ -161,9 +161,10 @@ describe.sequential("Company Form submission concurrency boundaries", () => {
       INSERT INTO adm_form_versions_v2(
         fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at
       )
-      SELECT $1, id, '01', '2026-01-01', 'released', 'before_joining', false, NOW()
+      SELECT $1, id, '01', '2026-01-01', 'draft', 'before_joining', false, NOW()
       FROM adm_forms_v2 WHERE form_uuid = $2
     `, [versionUuid, formUuid]);
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [versionUuid]);
 
     partUuid = uuid();
     sectionUuid = uuid();

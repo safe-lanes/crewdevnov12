@@ -180,8 +180,9 @@ describe.sequential("Company Form version line", () => {
     // must never add one, but it cannot turn an omitted filter into IS NULL.
     const [legacy] = await db.insert(admFormVersionsV2).values({
       fvUuid: uuidv4(), formId: company.id, rankGroupId: legacyGroup.id,
-      versionNo: "99", versionDate: "26-Sep-2026", status: "released", stageKey: "before_joining",
+      versionNo: "99", versionDate: "26-Sep-2026", status: "draft", stageKey: "before_joining",
     }).returning();
+    await db.update(admFormVersionsV2).set({ status: "released" }).where(eq(admFormVersionsV2.id, legacy.id));
 
     const first = await createVersion(company.id);
     expect(first.status).toBe(200);

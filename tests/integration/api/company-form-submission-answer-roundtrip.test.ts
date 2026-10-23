@@ -220,9 +220,10 @@ describe.sequential("Company Form answer round-trip through the client mapper", 
     await db.query(
       `INSERT INTO adm_form_versions_v2
          (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       VALUES ($1, $2, '01', '2026-01-01', 'released', 'before_joining', false, NOW())`,
+       VALUES ($1, $2, '01', '2026-01-01', 'draft', 'before_joining', false, NOW())`,
       [formVersionUuid, form.rows[0].id],
     );
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [formVersionUuid]);
     await db.query(
       `INSERT INTO frm_form_parts
          (form_part_uuid, form_uuid, form_version_uuid, part_code, part_title,

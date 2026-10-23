@@ -170,6 +170,59 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor release workflow", () => {
+  it("turns comments off with a notice when changing a point to a system field", async () => {
+    setup();
+    apiRequestMock.mockImplementation(async (_method: string, url: string) => response(
+      url.endsWith("/structure") ? structureResponse() : [],
+    ));
+    queryResults.set("/api/v2/admin/forms/99/versions", [{ ...draft, rankGroupId: null }]);
+    permissionState.permissions = [{ menuName: "Forms", canview: true, canedit: true }];
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    const trigger = editor.querySelector<HTMLElement>('[data-testid="select-response-type-1-1"]')!;
+    Object.assign(trigger, { hasPointerCapture: () => false, releasePointerCapture: () => undefined });
+    act(() => trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" })));
+    await flushAsyncWork();
+    click(Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'))
+      .find(option => option.textContent === "System Field")!);
+    await flushAsyncWork();
+    const comment = editor.querySelector<HTMLElement>('[data-testid="checkbox-point-comment-1-1"]')!;
+    expect(comment).not.toBeNull();
+    expect(comment.getAttribute("data-state")).toBe("unchecked");
+    expect(comment.hasAttribute("disabled")).toBe(true);
+    expect(comment.parentElement?.title).toBe("System fields display a value the system already holds and cannot take a comment.");
+    expect(toastMock).toHaveBeenCalledWith({
+      title: "Comments turned off",
+      description: "System fields display a value the system already holds and cannot take a comment.",
+    });
+  });
+
+  it("opens legacy released system fields safely in builder and preview without saving or releasing them", async () => {
+    const legacy = structureResponse();
+    Object.assign(legacy.sections[0].questions[0], {
+      response_type: "system_field", system_field_key: "rank", comment_enabled: true,
+      question_text: "Rank",
+    });
+    setup(legacy);
+    apiRequestMock.mockImplementation(async (_method: string, url: string) => response(
+      url.endsWith("/structure") ? legacy : [],
+    ));
+    queryResults.set("/api/v2/admin/forms/99/versions", [{ ...released, rankGroupId: null }]);
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    const comment = editor.querySelector<HTMLElement>('[data-testid="checkbox-point-comment-1-1"]')!;
+    expect(comment).not.toBeNull();
+    expect(comment.hasAttribute("disabled")).toBe(true);
+    expect(comment.getAttribute("data-state")).toBe("unchecked");
+    click(editor.querySelector<HTMLElement>('[data-testid="button-preview-mode"]')!);
+    await flushAsyncWork();
+    expect(document.body.querySelector('[data-testid="configured-form-preview"]')).not.toBeNull();
+    expect(apiRequestMock.mock.calls.filter(([method]) => ["PUT", "POST", "DELETE"].includes(method))).toEqual([]);
+    expect(legacy.sections[0].questions[0].comment_enabled).toBe(true);
+  });
+
   it("renders while versions have not loaded and no stage selection exists", () => {
     setup();
     queryResults.set("/api/v2/admin/forms/99/versions", []);

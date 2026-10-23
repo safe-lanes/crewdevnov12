@@ -100,9 +100,10 @@ describe.sequential("Office void versus trusted Master writes", () => {
     );
     await db.query(
       `INSERT INTO adm_form_versions_v2 (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       VALUES ($1, $2, '01', '2026-10-03', 'released', 'on_board', false, NOW())`,
+       VALUES ($1, $2, '01', '2026-10-03', 'draft', 'on_board', false, NOW())`,
       [versionUuid, form.rows[0].id],
     );
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [versionUuid]);
     await db.query(
       `INSERT INTO frm_form_parts (form_part_uuid, form_uuid, form_version_uuid, part_code, part_title, part_type, is_deleted)
        VALUES ($1, $2, $3, 'RACE', 'Race', 'configurable', false)`, [partUuid, formUuid, versionUuid],

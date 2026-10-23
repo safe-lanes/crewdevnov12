@@ -1088,6 +1088,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const changeResponseType = (partUuid: string, sectionIndex: number, questionIndex: number, responseType: string) => {
     const previousQuestion = trees[partUuid]?.[sectionIndex]?.questions[questionIndex];
     const previousSet = optionSetFor(partUuid, previousQuestion?.option_set_uuid);
+    if (responseType === "system_field" && previousQuestion?.comment_enabled) {
+      toast({
+        title: "Comments turned off",
+        description: "System fields display a value the system already holds and cannot take a comment.",
+      });
+    }
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
       if (responseType === "system_field") {
         const field = systemFields[0];
@@ -2618,13 +2624,16 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
-                                      {question.response_type === "content" || question.response_type === "system_field" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
+                                      {question.response_type === "content" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
+                                     {question.response_type !== "system_field" && (
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
                                        <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory
                                      </label>
-                                     <label className="flex items-center gap-2 text-xs text-gray-700">
-                                       <Checkbox checked={question.comment_enabled} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                     )}
+                                     <label className="flex items-center gap-2 text-xs text-gray-700"
+                                       title={question.response_type === "system_field" ? "System fields display a value the system already holds and cannot take a comment." : undefined}>
+                                       <Checkbox checked={question.response_type === "system_field" ? false : question.comment_enabled} disabled={!canModify || question.response_type === "system_field"} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Comment enabled
                                      </label>
                                      </>}

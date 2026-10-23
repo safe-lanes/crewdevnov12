@@ -124,13 +124,33 @@ describe("Company Form draft completeness is checked on every release",() => {
     unsupported.sections[0].questions[0].response_type="unsupported";
     expect((await save(f,unsupported)).status).toBe(400);
   });
+  it("refuses comments on system fields in single-part and bulk draft writes without changing saved data", async () => {
+    const f = await fixture(), t = tree();
+    t.sections[0].signature_seafarer_required = true;
+    t.sections[0].questions = [{
+      question_code: "RANK", question_text: "Rank", response_type: "system_field",
+      system_field_key: "rank", comment_enabled: false,
+    }];
+    expect((await save(f, t)).status).toBe(200);
+    const before = (await pool.query(`SELECT q.* FROM frm_questions q JOIN frm_sections s USING(section_uuid)
+      WHERE s.form_version_uuid=$1`, [f.v.fvUuid])).rows;
+    t.sections[0].questions[0].comment_enabled = true;
+    for (const bulk of [false, true]) expect((await save(f, t, bulk)).status).toBe(400);
+    expect((await pool.query(`SELECT q.* FROM frm_questions q JOIN frm_sections s USING(section_uuid)
+      WHERE s.form_version_uuid=$1`, [f.v.fvUuid])).rows).toEqual(before);
+    expect(before[0].comment_enabled).toBe(false);
+    expect((await release(f)).status).toBe(200);
+  });
   it("copy-version service keeps unfinished data, independently identified, and release still refuses",async () => {
     const source=await fixture(),t=tree();
-    const created=await call("post",`/forms/${source.f.id}/versions`,{
-      versionNo:"01",versionDate:"23-Oct-2026",configuration:"{}",stageKey:"before_joining",
-    });
-    expect(created.status,JSON.stringify(created.body)).toBe(200);
-    const target={f:source.f,v:created.body,part:""};
+    // The public endpoint correctly reuses an existing draft. The lower-level
+    // copy/import path needs an independent destination, created as a draft.
+    const targetVersion=(await pool.query(`INSERT INTO adm_form_versions_v2
+      (fv_uuid,form_id,version_no,version_date,configuration,status,stage_key)
+      VALUES($1,$2,'01','23-Oct-2026','{}','draft','before_joining')
+      RETURNING id,fv_uuid AS "fvUuid"`,[uuid(),source.f.id])).rows[0];
+    const target={f:source.f,v:targetVersion,part:""};
+    expect(target.v.fvUuid).not.toBe(source.v.fvUuid);
     t.sections[0].responsible_mode="role";
     t.sections[0].questions=[{question_code:"FIELD",question_text:"",response_type:"system_field",comment_enabled:false}];
     expect((await save(source,t)).status).toBe(200);
