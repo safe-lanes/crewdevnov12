@@ -26,6 +26,27 @@ export type AppraisalSectionKey = (typeof SECTION_KEYS)[number];
 // users may not write it.
 export const PART_G_SECTIONS: readonly AppraisalSectionKey[] = ["officeReviews", "trainingFollowups"];
 
+// The sections each stage submit saves, in one transaction with the stage
+// status (APD-29). B1 trainings go with Stage 2 and 3 (Task #500), B1 targets
+// with Stage 2. The stage request schemas are built from this list, so a
+// section the service saves is never stripped by validation.
+export const STAGE_SECTIONS = {
+  stage1: ["trainings", "targets"],
+  stage2: [
+    "competenceAssessments",
+    "behaviouralAssessments",
+    "trainingNeeds",
+    "recommendations",
+    "appraiserComments",
+    "seafarerComments",
+    "trainings",
+    "targets",
+  ],
+  stage3: ["officeReviews", "trainingFollowups", "trainings"],
+} as const satisfies Record<"stage1" | "stage2" | "stage3", readonly AppraisalSectionKey[]>;
+
+export type AppraisalStage = keyof typeof STAGE_SECTIONS;
+
 // The editable fields of each section's rows, as the client names them.
 export const SECTION_FIELDS: Record<AppraisalSectionKey, readonly string[]> = {
   trainings: ["training", "evaluation", "comment", "source"],

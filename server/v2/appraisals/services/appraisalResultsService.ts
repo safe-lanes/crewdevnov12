@@ -714,7 +714,8 @@ export class AppraisalResultsService {
     const reviewerList: { userUuid?: string; reviewerName?: string; designation?: string }[] =
       stage === "stage2" && Array.isArray((data as any)?.reviewers) ? (data as any).reviewers : [];
 
-    // The stage status and that stage's sections are saved in one transaction.
+    // The stage status and that stage's sections (STAGE_SECTIONS in
+    // shared/v2/appraisals/appraisalChanges.ts) are saved in one transaction.
     // Writes run one after another: one transaction runs on one connection.
     await getDb().transaction(async (tx: any) => {
       await appraisalResultsRepo.updateByAppraisalUuid(appraisal.appraisalUuid, stageUpdate, tx);

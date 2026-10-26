@@ -7,7 +7,9 @@ import {
   HEADER_FIELDS,
   PART_G_SECTIONS,
   SECTION_KEYS,
+  STAGE_SECTIONS,
   type AppraisalChanges,
+  type AppraisalStage,
 } from "../../../../shared/v2/appraisals/appraisalChanges";
 
 const service = new AppraisalResultsService();
@@ -33,6 +35,15 @@ const saveDraftSchema = z.object({
   }),
 });
 
+// A stage submit's section arrays, one per key in STAGE_SECTIONS (APD-29).
+// z.object drops keys it does not list, so every section the service saves for
+// a stage must be listed here, or it never reaches the service.
+function stageSectionsShape<S extends AppraisalStage>(stage: S) {
+  return Object.fromEntries(
+    STAGE_SECTIONS[stage].map((k) => [k, z.array(z.any()).optional()]),
+  ) as Record<(typeof STAGE_SECTIONS)[S][number], z.ZodOptional<z.ZodArray<z.ZodAny>>>;
+}
+
 const stage1SubmissionSchema = z.object({
   data: z.object({
     seafarersName: z.string().min(1),
@@ -45,20 +56,14 @@ const stage1SubmissionSchema = z.object({
     appraisalPeriodTo: z.string().optional(),
     personalityIndexCategory: z.string().optional(),
     primaryAppraiser: z.string().optional(),
-    trainings: z.array(z.any()).optional(),
-    targets: z.array(z.any()).optional(),
+    ...stageSectionsShape("stage1"),
   }),
   submittedBy: z.string().optional(),
 });
 
 const stage2SubmissionSchema = z.object({
   data: z.object({
-    competenceAssessments: z.array(z.any()).optional(),
-    behaviouralAssessments: z.array(z.any()).optional(),
-    trainingNeeds: z.array(z.any()).optional(),
-    recommendations: z.array(z.any()).optional(),
-    appraiserComments: z.array(z.any()).optional(),
-    seafarerComments: z.array(z.any()).optional(),
+    ...stageSectionsShape("stage2"),
     reviewers: z.array(z.object({
       userUuid: z.string().optional(),
       reviewerName: z.string().optional(),
@@ -72,10 +77,7 @@ const stage2SubmissionSchema = z.object({
 });
 
 const stage3SubmissionSchema = z.object({
-  data: z.object({
-    officeReviews: z.array(z.any()).optional(),
-    trainingFollowups: z.array(z.any()).optional(),
-  }),
+  data: z.object(stageSectionsShape("stage3")),
   submittedBy: z.string().optional(),
 });
 
