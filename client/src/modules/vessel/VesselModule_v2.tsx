@@ -1,7 +1,7 @@
 import {
-    FormattedDateInput,
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./components/VesselDateInput";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
@@ -72,6 +72,7 @@ import type { VesselPlanningV2, CreatePlanningInput, UpdatePlanningInput } from 
 import { OnBoardStatusEditDialog_v2 } from './components/OnBoardStatusEditDialog_v2';
 import { ReliefStatusEditDialog_v2 } from './components/ReliefStatusEditDialog_v2';
 import { GroupSignOnDialog_v2 } from './components/GroupSignOnDialog_v2';
+import { VesselTrainingMatrix } from './components/VesselTrainingMatrix';
 
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     if (!licenses || licenses.length === 0) return false;
@@ -308,106 +309,6 @@ const usePorts = () => {
     });
 };
 
-const useCompanyTrainings = () => {
-    return useQuery<any[]>({
-        queryKey: ['/api/v2/admin/company-trainings'],
-        queryFn: async () => {
-            const response = await fetch('/api/v2/admin/company-trainings');
-            if (!response.ok) throw new Error('Failed to fetch company trainings');
-            return response.json();
-        },
-    });
-};
-
-const useCompanyTrainingGroups = () => {
-    return useQuery<any[]>({
-        queryKey: ['/api/v2/admin/company-training-groups'],
-        queryFn: async () => {
-            const response = await fetch('/api/v2/admin/company-training-groups');
-            if (!response.ok) throw new Error('Failed to fetch company training groups');
-            return response.json();
-        },
-    });
-};
-
-const useCompanyTrainingRequirements = () => {
-    return useQuery<any[]>({
-        queryKey: ['/api/v2/admin/company-training-requirements'],
-        queryFn: async () => {
-            const response = await fetch('/api/v2/admin/company-training-requirements');
-            if (!response.ok) throw new Error('Failed to fetch company training requirements');
-            return response.json();
-        },
-    });
-};
-
-const useTrainingMatrixVesselRevisions = (vesselId: string | null) => {
-    return useQuery<any[]>({
-        queryKey: ['/api/v2/admin/training-matrix-vessel-revisions/by-vessel', vesselId],
-        queryFn: async () => {
-            if (!vesselId) return [];
-            const response = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
-            if (!response.ok) throw new Error('Failed to fetch training matrix vessel revisions');
-            return response.json();
-        },
-        enabled: !!vesselId,
-    });
-};
-
-const useTrainingMatrixVesselDraft = (vesselId: string | null) => {
-    return useQuery<any[]>({
-        queryKey: ['/api/v2/admin/training-matrix-vessel-drafts/by-vessel', vesselId],
-        queryFn: async () => {
-            if (!vesselId) return [];
-            const response = await fetch(`/api/v2/admin/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
-            if (!response.ok) throw new Error('Failed to fetch training matrix vessel draft');
-            return response.json();
-        },
-        enabled: !!vesselId,
-    });
-};
-
-interface CrewTrainingV2 {
-    role: string;
-    crewUuid: string;
-    trainings: {
-        courseId: string;
-        trainingCourse: string;
-        abbr: string;
-        expiry: string | null;
-    }[];
-}
-
-const useVesselCrewTrainingsV2 = (vesselUuid: string | null) => {
-    return useQuery<CrewTrainingV2[]>({
-        queryKey: ['/api/v2/vessel/training', vesselUuid],
-        queryFn: async () => {
-            if (!vesselUuid) return [];
-            const response = await fetch(`/api/v2/vessel/training/${vesselUuid}`);
-            if (!response.ok) throw new Error('Failed to fetch V2 crew trainings');
-            return response.json();
-        },
-        enabled: !!vesselUuid,
-    });
-};
-
-const getTrainingExpiryStatus = (expiryDate: string | null): 'green' | 'yellow' | 'red' | null => {
-    if (!expiryDate) return null;
-    
-    const expiry = new Date(expiryDate);
-    const today = new Date();
-    const twoMonthsFromNow = new Date();
-    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
-    
-    if (expiry < today) {
-        return 'red';
-    } else if (expiry < twoMonthsFromNow) {
-        return 'yellow';
-    } else {
-        return 'green';
-    }
-};
-
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
     try {
@@ -494,8 +395,9 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
     if (editing) {
         return (
             <div className="w-32">
-                <FormattedDateInput
+                <VesselDateInput
                     ref={inputRef}
+                    onTemporaryClearAbandoned={() => setEditing(false)}
                     retainInvalidDraftOnBlur
                     value={planning.travelEndDate || ""}
                     min={minDate}
@@ -977,160 +879,6 @@ export function VesselModule_v2(): JSX.Element {
     }, [vesselPlanning, filterCrewWithVariants]);
     
     const { data: allAppraisals = [] } = useAppraisals();
-    
-    const { data: companyTrainings = [] } = useCompanyTrainings();
-    const { data: companyTrainingGroups = [] } = useCompanyTrainingGroups();
-    const { data: companyTrainingRequirements = [] } = useCompanyTrainingRequirements();
-    const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
-    const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
-    
-    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselId || null);
-    
-    const crewTrainingLookupByRole = useMemo(() => {
-        const numericIdToCompanyId = new Map<string, string>();
-        const abbrToCompanyId = new Map<string, string>();
-        companyTrainings.forEach((ct: any) => {
-            if (ct.id && ct.companyId) {
-                numericIdToCompanyId.set(String(ct.id), ct.companyId);
-            }
-            if (ct.abr && ct.companyId) {
-                abbrToCompanyId.set(ct.abr, ct.companyId);
-            }
-        });
-
-        const lookup = new Map<string, Map<string, string>>();
-        
-        for (const crewTraining of crewTrainingsV2) {
-            const roleKey = crewTraining.role;
-            if (!roleKey) continue;
-            
-            const trainingMap = lookup.get(roleKey) || new Map<string, string>();
-            for (const training of crewTraining.trainings) {
-                if (!training.expiry) continue;
-
-                if (training.courseId) {
-                    trainingMap.set(training.courseId, training.expiry);
-                    const resolved = numericIdToCompanyId.get(training.courseId);
-                    if (resolved) {
-                        trainingMap.set(resolved, training.expiry);
-                    }
-                }
-                if (training.abbr) {
-                    trainingMap.set(training.abbr, training.expiry);
-                    const resolved = abbrToCompanyId.get(training.abbr);
-                    if (resolved) {
-                        trainingMap.set(resolved, training.expiry);
-                    }
-                }
-            }
-            
-            if (!lookup.has(roleKey)) {
-                lookup.set(roleKey, trainingMap);
-            }
-        }
-        
-        return lookup;
-    }, [crewTrainingsV2, companyTrainings]);
-    
-    const applicableTrainingIds = useMemo(() => {
-        const ids = new Set<number>();
-        const latestRevision = [...trainingMatrixRevisions].sort(
-            (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )[0];
-        if (latestRevision) {
-            const dataField = latestRevision.revisionData || latestRevision.revision_data;
-            if (dataField) {
-                try {
-                    const parsed = typeof dataField === 'string' ? JSON.parse(dataField) : dataField;
-                    if (parsed?.applicableTrainingIds && Array.isArray(parsed.applicableTrainingIds)) {
-                        parsed.applicableTrainingIds.forEach((id: number) => ids.add(id));
-                    }
-                } catch (e) {
-                }
-            }
-        }
-        return ids;
-    }, [trainingMatrixRevisions]);
-    
-    const groupedTrainingsForMatrix = useMemo(() => {
-        const applicableTrainings = companyTrainings.filter((training: any) => 
-            applicableTrainingIds.has(training.id)
-        );
-        const groupLabelMap = new Map<string, string>();
-        companyTrainingGroups.forEach((group: any) => {
-            if (group.code && group.label) {
-                groupLabelMap.set(group.code, group.label);
-            }
-        });
-        const grouped: { groupCode: string; groupLabel: string; trainings: any[] }[] = [];
-        const groupMap = new Map<string, any[]>();
-        const noGroupTrainings: any[] = [];
-        applicableTrainings.forEach((training: any) => {
-            if (training.groupCode) {
-                if (!groupMap.has(training.groupCode)) {
-                    groupMap.set(training.groupCode, []);
-                }
-                groupMap.get(training.groupCode)!.push(training);
-            } else {
-                noGroupTrainings.push(training);
-            }
-        });
-        const sortedGroupCodes = Array.from(groupMap.keys()).sort();
-        sortedGroupCodes.forEach(code => {
-            const trainings = groupMap.get(code) || [];
-            trainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
-            grouped.push({
-                groupCode: code,
-                groupLabel: groupLabelMap.get(code) || code,
-                trainings
-            });
-        });
-        if (noGroupTrainings.length > 0) {
-            noGroupTrainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
-            grouped.push({
-                groupCode: '',
-                groupLabel: 'Unassigned',
-                trainings: noGroupTrainings
-            });
-        }
-        return grouped;
-    }, [companyTrainings, companyTrainingGroups, applicableTrainingIds]);
-    
-    const trainingRequirementsLookup = useMemo(() => {
-        const lookup = new Map<string, string>();
-        companyTrainingRequirements.forEach((req: any) => {
-            if (req.companyTrainingId && req.rankId && req.status) {
-                lookup.set(`${req.companyTrainingId}-${req.rankId}`, req.status);
-            }
-        });
-        return lookup;
-    }, [companyTrainingRequirements]);
-    
-    const getTrainingRequirementStatus = (trainingId: number, vesselPosition: any): string | null => {
-        let lookupRankId: number | null = null;
-        if (vesselPosition.isRoleRow && vesselPosition.originalRankId) {
-            lookupRankId = parseInt(vesselPosition.originalRankId, 10);
-        } else if (vesselPosition.id) {
-            lookupRankId = parseInt(vesselPosition.id, 10);
-        } else if (vesselPosition.rankId) {
-            lookupRankId = typeof vesselPosition.rankId === 'number' ? vesselPosition.rankId : parseInt(vesselPosition.rankId, 10);
-        }
-        if (!lookupRankId || isNaN(lookupRankId)) return null;
-        return trainingRequirementsLookup.get(`${trainingId}-${lookupRankId}`) || null;
-    };
-    
-    const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): 'green' | 'yellow' | 'red' | null => {
-        const roleKey = vesselPosition.displayRole || vesselPosition.role || vesselPosition.rank || '';
-        if (!roleKey) return null;
-        
-        const crewTrainings = crewTrainingLookupByRole.get(roleKey);
-        if (!crewTrainings) return null;
-        
-        const expiryDate = crewTrainings.get(trainingCompanyId);
-        if (!expiryDate) return null;
-        
-        return getTrainingExpiryStatus(expiryDate);
-    };
     
     const updatePlanningMutation = useUpdatePlanningV2();
     const archivePlanningMutation = useArchivePlanningV2();
@@ -2245,162 +1993,7 @@ export function VesselModule_v2(): JSX.Element {
                         </TabsContent>
 
                         <TabsContent value="training-matrix" className="mt-0">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-6 text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-20 h-5 bg-[#F0FDF4] border border-gray-300 flex items-center justify-center">
-                                            Mandatory
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-24 h-5 bg-blue-100 border border-gray-300 flex items-center justify-center">
-                                            Recommended
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                        <span>Valid</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                        <span>Expiring in 2 months</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                        <span>Expired</span>
-                                    </div>
-                                </div>
-                                {(() => {
-                                    const filteredRanks = vesselRanks.filter((rank: any) => {
-                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
-                                        const hasVariantSuffix = fullRankName?.includes('_');
-                                        if (hasVariantSuffix) return true;
-                                        const hasVariants = vesselRanks.some((other: any) => {
-                                            const otherName = other.displayRole || other.role || other.rank;
-                                            return other.rankId === rank.rankId && otherName?.includes('_');
-                                        });
-                                        return !hasVariants;
-                                    });
-                                    const hasApplicableTrainings = groupedTrainingsForMatrix.length > 0 && 
-                                        groupedTrainingsForMatrix.some(group => group.trainings.length > 0);
-                                    return (
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <div className="overflow-auto h-[calc(100vh-300px)] w-full relative">
-                                        <Table className="min-w-max relative">
-                                            <TableHeader>
-                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                    <TableHead className="text-white text-xs font-normal w-24 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
-                                                        Company ID
-                                                    </TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-96 sticky left-24 z-40 bg-[#52baf3] border-r border-white/20">
-                                                        Training Label
-                                                    </TableHead>
-                                                    {filteredRanks.length > 0 ? (
-                                                        filteredRanks.map((rank: any, index: number) => (
-                                                            <TableHead 
-                                                                key={rank.id || index} 
-                                                                className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]"
-                                                                data-testid={`header-rank-${index}`}
-                                                            >
-                                                                {rank.displayRole || rank.role || rank.rank}
-                                                            </TableHead>
-                                                        ))
-                                                    ) : (
-                                                        <TableHead className="text-white text-xs font-normal text-center">
-                                                            No Ranks
-                                                        </TableHead>
-                                                    )}
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {ranksLoading ? (
-                                                    <TableRow>
-                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
-                                                            Loading vessel positions...
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ) : filteredRanks.length === 0 ? (
-                                                    <TableRow>
-                                                        <TableCell colSpan={3} className="text-center text-xs text-gray-500 py-8">
-                                                            {NO_RANKS_CONFIGURED_MESSAGE}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ) : !hasApplicableTrainings ? (
-                                                    <TableRow>
-                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
-                                                            No trainings configured for this vessel. Configure trainings in Admin &gt; Training Matrix &gt; Vessel.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ) : (
-                                                    <>
-                                                        {groupedTrainingsForMatrix.map((group, groupIndex) => (
-                                                            <React.Fragment key={group.groupCode || `unassigned-${groupIndex}`}>
-                                                                <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                                    <TableCell 
-                                                                        colSpan={2 + filteredRanks.length} 
-                                                                        className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100"
-                                                                    >
-                                                                        {group.groupCode ? `${group.groupCode}. ${group.groupLabel}` : group.groupLabel}
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                                {group.trainings.map((training: any) => (
-                                                                    <TableRow key={training.id} className="hover:bg-gray-50 border-b border-gray-200">
-                                                                        <TableCell 
-                                                                            className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
-                                                                            data-testid={`cell-company-id-${training.id}`}
-                                                                        >
-                                                                            {training.companyId}
-                                                                        </TableCell>
-                                                                        <TableCell 
-                                                                            className="text-xs text-gray-700 sticky left-24 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
-                                                                            data-testid={`cell-training-label-${training.id}`}
-                                                                        >
-                                                                            {training.trainingLabel}
-                                                                        </TableCell>
-                                                                        {filteredRanks.map((rank: any, rankIndex: number) => {
-                                                                            const status = getTrainingRequirementStatus(training.id, rank);
-                                                                            const complianceStatus = getCrewTrainingComplianceStatus(training.companyId, rank);
-                                                                            let bgColor = 'bg-white';
-                                                                            if (status === 'M') {
-                                                                                bgColor = 'bg-[#F0FDF4]';
-                                                                            } else if (status === 'R') {
-                                                                                bgColor = 'bg-blue-100';
-                                                                            }
-                                                                            let dotColor = '';
-                                                                            if (complianceStatus === 'green') {
-                                                                                dotColor = 'bg-green-500';
-                                                                            } else if (complianceStatus === 'yellow') {
-                                                                                dotColor = 'bg-yellow-500';
-                                                                            } else if (complianceStatus === 'red') {
-                                                                                dotColor = 'bg-red-500';
-                                                                            }
-                                                                            return (
-                                                                                <TableCell 
-                                                                                    key={rank.id || rankIndex}
-                                                                                    className={`text-xs text-center border-b border-gray-200 ${bgColor}`}
-                                                                                    data-testid={`cell-training-${training.id}-rank-${rankIndex}`}
-                                                                                >
-                                                                                    {complianceStatus && (
-                                                                                        <div className="flex items-center justify-center">
-                                                                                            <div className={`w-3 h-3 rounded-full ${dotColor}`}></div>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </TableCell>
-                                                                            );
-                                                                        })}
-                                                                    </TableRow>
-                                                                ))}
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                                    );
-                                })()}
-                            </div>
+                            <VesselTrainingMatrix vesselUuid={selectedVessel?.vesselId || null} />
                         </TabsContent>
 
                         <TabsContent value="officer-matrix" className="mt-0">

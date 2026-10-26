@@ -139,6 +139,7 @@ export const admTrainingMasterV2 = pgTable("adm_training_master_v2", {
   tmUuid: text("tm_uuid").notNull().unique(),
   trainingId: text("training_id").notNull().unique(),
   trainingName: text("training_name").notNull(),
+  certificateExpires: boolean("certificate_expires").notNull().default(true),
   category: text("category").notNull(),
   trainingGroup: text("training_group").notNull(),
   requirementReference: text("requirement_reference"),

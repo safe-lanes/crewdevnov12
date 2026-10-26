@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { NoAccessPage } from "@/components/ProtectedRoute";
@@ -21,6 +21,22 @@ import GlExportPage from "./pages/GlExportPage";
 import FleetSummaryPage from "./pages/FleetSummaryPage";
 
 import { PAGE_META, pageFromPath, contractUuidFromPath } from "./pageMeta";
+
+function ContractsSection({
+  engagementUuid,
+}: {
+  engagementUuid?: string;
+}) {
+  const [vesselFilter, setVesselFilter] = useState("__all__");
+  return engagementUuid ? (
+    <ContractDetailPage engagementUuid={engagementUuid} />
+  ) : (
+    <ContractsListPage
+      vesselFilter={vesselFilter}
+      onVesselFilterChange={setVesselFilter}
+    />
+  );
+}
 
 export function AccountsModule() {
   const [location, setLocation] = useLocation();
@@ -88,11 +104,7 @@ export function AccountsModule() {
         return <AllotmentsCashPage />;
       case "contracts": {
         const uuid = contractUuidFromPath(location);
-        return uuid ? (
-          <ContractDetailPage engagementUuid={uuid} />
-        ) : (
-          <ContractsListPage />
-        );
+        return <ContractsSection engagementUuid={uuid} />;
       }
       case "payslips":
         return <PayslipsPage />;

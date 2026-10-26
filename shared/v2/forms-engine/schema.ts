@@ -371,26 +371,26 @@ export const insertFrmSectionSignatureSchema = createInsertSchema(frmSectionSign
 
 const rowUuidSchema = z.string().uuid();
 
-export const formStructureOptionInputSchema = z.object({
+const optionInput = (complete: boolean) => z.object({
   option_uuid: rowUuidSchema.optional(),
-  option_label: z.string().trim().min(1).max(500),
+  option_label: z.string().trim().min(complete ? 1 : 0).max(500),
   option_value: z.string().trim().min(1).max(500),
   sort_order: z.number().int().nonnegative().optional(),
 }).strict();
 
-export const formStructureOptionSetInputSchema = z.object({
+const optionSetInput = (complete: boolean) => z.object({
   option_set_uuid: rowUuidSchema.optional(),
   option_set_name: z.string().trim().max(500).nullable().optional(),
   low_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   high_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   sort_order: z.number().int().nonnegative().optional(),
-  options: z.array(formStructureOptionInputSchema).default([]),
+  options: z.array(optionInput(complete)).default([]),
 }).strict();
 
-export const formStructureQuestionInputSchema = z.object({
+const questionInput = (complete: boolean) => z.object({
   question_uuid: rowUuidSchema.optional(),
   question_code: z.string().trim().min(1).max(100),
-  question_text: z.string().trim().min(1).max(2000),
+  question_text: z.string().trim().min(complete ? 1 : 0).max(2000),
   content_html: z.string().max(250000).nullable().optional(),
   system_field_key: z.string().trim().min(1).max(100).nullable().optional(),
   response_type: z.enum(QUESTION_RESPONSE_TYPES),
@@ -403,10 +403,10 @@ export const formStructureQuestionInputSchema = z.object({
   low_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   high_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   sort_order: z.number().int().nonnegative().optional(),
-  options: z.array(formStructureOptionInputSchema).default([]),
+  options: z.array(optionInput(complete)).default([]),
 }).strict().superRefine((question, ctx) => {
   if (question.response_type === "system_field") {
-    if (!question.system_field_key) {
+    if (complete && !question.system_field_key) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "System field key is required" });
     }
     if (question.is_mandatory || question.comment_enabled) {
@@ -418,7 +418,7 @@ export const formStructureQuestionInputSchema = z.object({
   } else if (question.system_field_key) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "Only System fields may contain a field key" });
   }
-  if (question.response_type === "content" && !question.content_html?.trim()) {
+  if (complete && question.response_type === "content" && !question.content_html?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Content point HTML is required" });
   }
   if (question.response_type === "content" && question.question_text.length > 200) {
@@ -437,10 +437,10 @@ export const formStructureQuestionInputSchema = z.object({
   }
 });
 
-export const formStructureSectionInputSchema = z.object({
+const sectionInput = (complete: boolean) => z.object({
   section_uuid: rowUuidSchema.optional(),
   section_code: z.string().trim().min(1).max(100),
-  section_title: z.string().trim().min(1).max(500),
+  section_title: z.string().trim().min(complete ? 1 : 0).max(500),
   applicable_vessel_types: z.array(rowUuidSchema).default([]),
   responsible_mode: z.enum(RESPONSIBLE_MODES).default("not_applicable"),
   responsible_role_uuid: rowUuidSchema.nullable().optional(),
@@ -454,13 +454,13 @@ export const formStructureSectionInputSchema = z.object({
   layout_preference: z.enum(SECTION_LAYOUT_PREFERENCES).default("auto"),
   effectiveLayout: z.enum(["list", "matrix"]).optional(),
   sort_order: z.number().int().nonnegative().optional(),
-  questions: z.array(formStructureQuestionInputSchema).default([]),
+  questions: z.array(questionInput(complete)).default([]),
 }).strict().superRefine((section, ctx) => {
   for (let index = 0; index < section.questions.length; index++) {
     const question = section.questions[index];
     const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
     if (
-      needsOptions &&
+      complete && needsOptions &&
       question.options.length === 0 &&
       !question.option_set_uuid &&
       !section.default_option_set_uuid
@@ -473,7 +473,7 @@ export const formStructureSectionInputSchema = z.object({
     }
   }
   if (section.responsible_mode === "role") {
-    if (!section.responsible_role_uuid) {
+    if (complete && !section.responsible_role_uuid) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["responsible_role_uuid"],
@@ -488,7 +488,7 @@ export const formStructureSectionInputSchema = z.object({
       });
     }
   } else if (section.responsible_mode === "department") {
-    if (!section.responsible_department) {
+    if (complete && !section.responsible_department) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["responsible_department"],
@@ -511,12 +511,21 @@ export const formStructureSectionInputSchema = z.object({
   }
 });
 
-export const formStructureInputSchema = z.object({
+const structureInput = (complete: boolean) => z.object({
   form_version_uuid: rowUuidSchema.optional(),
   form_part_uuid: rowUuidSchema.optional(),
-  option_sets: z.array(formStructureOptionSetInputSchema).default([]),
-  sections: z.array(formStructureSectionInputSchema),
+  option_sets: z.array(optionSetInput(complete)).default([]),
+  sections: z.array(sectionInput(complete)),
 }).strict();
+
+export const formStructureOptionInputSchema = optionInput(true);
+export const formStructureOptionSetInputSchema = optionSetInput(true);
+export const formStructureQuestionInputSchema = questionInput(true);
+export const formStructureSectionInputSchema = sectionInput(true);
+export const formStructureInputSchema = structureInput(true);
+// Only Company Form draft writes may use this shape. Standard Forms continue
+// through the complete schema; release always checks the persisted tree.
+export const companyFormDraftStructureInputSchema = structureInput(false);
 
 export type FormStructureOptionInput = z.infer<typeof formStructureOptionInputSchema>;
 export type FormStructureOptionSetInput = z.infer<typeof formStructureOptionSetInputSchema>;

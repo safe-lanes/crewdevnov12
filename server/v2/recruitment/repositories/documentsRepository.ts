@@ -1,5 +1,6 @@
 import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../../crew-pool/utils/certificateOwnership";
 import {
   candDocuments,
   candDocumentsAttachments,
@@ -383,7 +384,14 @@ export class TrainingCoursesRepository {
 
   async update(id: number, data: Partial<InsertTrainingCourse>): Promise<CandTrainingCourse | undefined> {
     const db = getDb();
-    const results = await db.update(candTrainingCourses).set({ ...data, updatedAt: new Date() }).where(eq(candTrainingCourses.id, id)).returning();
+    let fields = data;
+    if (Object.prototype.hasOwnProperty.call(data, "recCanUuid")) {
+      const [original] = await db.select({ recCanUuid: candTrainingCourses.recCanUuid })
+        .from(candTrainingCourses).where(eq(candTrainingCourses.id, id));
+      if (!original) return undefined;
+      fields = certificateUpdateFields(data, original.recCanUuid, "recCanUuid", "Recruitment training record");
+    }
+    const results = await db.update(candTrainingCourses).set({ ...fields, updatedAt: new Date() }).where(eq(candTrainingCourses.id, id)).returning();
     return results[0];
   }
 

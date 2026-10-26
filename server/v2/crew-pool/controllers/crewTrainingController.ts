@@ -12,6 +12,7 @@ import {
 } from "../../shared/serveAttachmentHelper.js";
 import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
 import { crewTrainingCourses } from "@shared/v2/crew-pool/schema";
+import { CertificateOwnershipError, certificateUpdateFields } from "../utils/certificateOwnership";
 
 function normalizeForServe(att: {
   fileName?: string | null;
@@ -103,7 +104,12 @@ export const crewTrainingController = {
   async update(req: Request, res: Response) {
     try {
       const { trainUuid } = req.params;
+      if (Object.prototype.hasOwnProperty.call(req.body, "crewUuid")) {
+        const original = await crewCertificatesService.getTrainingByUuid(trainUuid);
+        certificateUpdateFields(req.body, original.crewUuid);
+      }
       const validatedData = insertCrewTrainingCourseSchema
+        .omit({ crewUuid: true })
         .partial()
         .parse(req.body);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
@@ -113,6 +119,9 @@ export const crewTrainingController = {
       );
       res.json(training);
     } catch (error: any) {
+      if (error instanceof CertificateOwnershipError) {
+        return res.status(409).json({ error: error.code, message: error.message });
+      }
       if (error instanceof z.ZodError) {
         return res
           .status(400)

@@ -1,0 +1,204 @@
+# Attachment security: main-preview UI verification
+
+20-Oct-2026. **All requested Office attachment families and both vessel
+screen cases are now verified using the approved development personas.**
+Slice 2 has not been started.
+
+## Authorised follow-up: missing examples prepared and checked
+
+All 27 new fixture records and the authorised role grant are registered at
+the top of `docs/company-form-regression-fixtures.md`. Preparation reuses
+stable UUIDs, only fixture subjects, the existing fixture-only vessel and one
+additional explicitly fixture-only vessel. Original Standard Forms are unchanged.
+
+As the same limited **Crewing Manager** persona, actual screen clicks now pass:
+
+| Previously missing family | Screen action and evidence |
+| --- | --- |
+| Crew document | Registered own-vessel profile → C → attachment → Preview; `slice1-office-document.json`, raw 200 image/png and visible image popup |
+| Licence | Same profile → D → licence attachment → Preview; `slice1-office-license.json`, raw 200 and visible image popup |
+| Medical | Same profile → F → medical attachment → Preview; `slice1-office-medical.json`, raw 200 and visible image popup |
+| Interview signature | Fixture candidate → Screening → B6 Yes (local display choice) → saved Interview → Interview part; `slice1-office-interview-signature.json`, saved officer image loaded at natural width 850, raw 200 |
+| Promotion | Fixture review → Checklist progress → B1.1 attachment → Preview; `slice1-office-promotion-file.json`, raw 200 and visible image popup |
+| Drug & Alcohol | Fixture periodic test → Attachment(s) → Preview; `slice1-office-da-file.json`, raw 200 and visible image popup |
+| Recruitment document | Fixture candidate → A2 → document attachment → Preview; `slice1-office-recruit-document.json`, raw 200 and visible image popup |
+| Recruitment screening | Same candidate → Screening → B1 Attachment(s) → Preview; `slice1-office-screening-file.json`, raw 200 and visible image popup |
+
+The Office checks found no display regression. The previous Briefing,
+Debriefing, D3, Planning and Company Form passes remain applicable.
+These are UI evidence, not direct API checks.
+
+The fixture vessel role is exclusively used by registered user 412002.
+Crew Database View, Crew Pool View and CP Travel ID Documents View were enabled
+with explicit approval through the audited Access Control API.
+All have Create/Edit/Delete false; audit events 21, 25 and 29 record the
+server-derived actor and View changes. All three grants are recorded in the
+fixture register. No further grants were needed.
+
+After the section grant, a genuine View-only display failure was reproduced:
+the Part C document appeared, but the attachment action was hidden under Edit.
+The fix exposes the saved document's attachment action to viewers and supplies
+a read-only attachment dialog. Upload, removal and record deletion remain
+unavailable without Edit; no server authorization or ownership check changed.
+
+The other-vessel link previously silently returned to the scoped list.
+It now explains that the crew record is unavailable or outside the user's
+permitted vessels, without exposing whether an inaccessible record exists.
+
+| Vessel screen case | Result |
+| --- | --- |
+| Own crew document, Part C → attachment → Preview | `slice1-vessel-own-view-only.json`: saved image loaded at width 850; authenticated browser file request 200 image/png; image popup captured. No upload/remove controls. |
+| Other vessel's registered crew/document entry | `slice1-vessel-other-refused.json`: “Cannot open crew record” with plain explanatory text; only own-vessel crew remains visible. No foreign profile or attachment request is exposed. This is a UI-entry denial, not a claimed raw-file HTTP 403. |
+
+Two regression tests cover read-only preview/download controls with no upload
+or removal, and preservation of existing editing controls for default callers.
+
+The original through-screen inventory is retained below for traceability;
+the follow-up tables above describe current coverage.
+
+## Authentication boundary
+
+The user approved development personas for UI-only evidence. Office and vessel
+requests use the application's normal `devPersona` / `getDevPersonaToken` path.
+The verifier does not intercept API requests, inject Authorization headers,
+call file APIs directly, replace responses, or substitute an app server.
+
+In `server/middleware/authMiddleware.ts`, the development branch constructs
+the actor and calls `withVesselScope`; it does not bypass the attachment
+routers. The attachment guards still resolve persisted active roles, check
+View grants, load the attachment's parent, reject deleted/orphaned records and
+check trusted vessel membership. Company Forms still resolve their principal
+and authorize `read_asset`. No new attachment guard has an AUTH_BYPASS branch.
+
+Thus these journeys exercise the same new grant/ownership/vessel checks in
+this development tenant. They do **not** establish normal JWT authentication,
+parent handoff or production tenant binding. Normal parent Office and vessel
+sign-in is explicitly required in `docs/production-checklist.md`, item 4,
+committed separately as `3476c1b43ecab99cc3c03ddf2812ade80dcc4d34`.
+
+## Personas and grant changes
+
+- **Office:** existing user 3, **Crewing Manager**, parent role UUID
+  `408d9fe9-1d0f-11f1-925d-5419ffd80f01`. Of 81 menu grants, 65 enable View
+  and 16 do not: this is not an all-grants or administrator persona.
+  Crew Pool, Crew Database, Recruitment, Vessel, Planning, Handover,
+  Promotions, Drugs Alcohol and Forms all allow View/Create/Edit/Delete.
+  Company Forms View, Fill in, Witness, Sign representative and Void are
+  allowed; Void completed is false and Override checklist is not granted.
+- **Vessel:** existing registered user 412002, **PDF Layout Review Vessel**,
+  parent role UUID `a4120000-0000-4000-8000-000000000052`. Persisted membership
+  points to fixture-only vessel UUID
+  `a4120000-0000-4000-8000-000000000001`. Company Forms View, Fill in and
+  Witness are allowed; Sign representative, Void, Void completed and
+   Override checklist are false. The only added menu grants are View on
+   Crew Pool, Crew Database and CP Travel ID Documents; their Create/Edit/Delete
+   values are false. Vessel View and all other missing menu grants remain absent.
+
+Office grants, role assignments and vessel memberships were unchanged. The built-in
+Vessel User persona was not substituted: it also lacks Crew Pool/Crew Database
+View and has no persisted vessel membership.
+
+## Original through-screen inventory — superseded by the follow-up above
+
+These entries record the earlier, incomplete run, before the additional
+fixtures and approved grants. They are not the current acceptance status.
+All successful file requests below originated from clicks in the screen.
+Network records are observations of those browser actions, not API probes.
+Evidence is under ignored `generated-artifacts/attachment-display/`.
+
+| Screen / requested file | Result |
+| --- | --- |
+| Crew profile, D3 certificate | **Pass.** Uploaded the one authorised synthetic certificate to the already registered joining fixture, saved the profile, reopened it, opened D3's attachment window and clicked Preview. Thumbnail loaded at natural width 850; authenticated raw image returned 200 and Preview opened a popup. |
+| Briefing, completed form | **Pass.** Crew profile → G1 → existing completed Briefing → Briefing Points. Saved officer signature images loaded; all three signature byte requests returned 200 image/png. |
+| Debriefing, completed form | **Pass.** Crew profile → G2 → existing completed Debriefing → Debriefing Points. Both officer images and the witnessed seafarer image loaded; all three raw image requests returned 200. |
+| Planning attachment | **Pass.** Vessel 04 → Crew List → Show Archived → archived Master row → Handover View → Preview. Existing attachment `5f5ceee0-8c2b-44ec-ad8a-2860b81ee3ee` opened a popup with a UI-triggered 200 application/pdf. Its archived parent is `081543ec-40d9-4bc2-8fe6-0fcf270ba23b`; neither was changed. |
+| Company Form signature images | **Pass.** Registered joining fixture → G3 → retained completed sample `d5d3bc08-e5ab-4890-a83e-685f22604580`. Both saved images loaded through authenticated raw requests. |
+| Company Form PDF copy | **Pass.** The same completed form shows `CF-2026-000003`; clicking Print copy opened its stored PDF, 200 application/pdf. |
+| Crew profile document | **Not verified:** zero non-deleted `crew_documents_attachments` rows. |
+| Crew profile licence | **Not verified:** zero non-deleted `crew_licenses_attachments` rows. |
+| Crew profile medical | **Not verified:** zero non-deleted `crew_medical_attachments` rows. |
+| Interview signatures | **Not verified:** no attachment-backed saved signatures linked to a non-deleted Interview submission. |
+| Promotion attachment | **Not verified:** zero non-deleted `promo_checklist_attachments_v2` rows. No inline data URLs/fileData keys in active review records. |
+| Drug & Alcohol attachment | **Not verified:** zero non-deleted `da_attachments_v2` rows. No inline data URLs/fileData keys in active test records. |
+| Recruitment document and screening attachment | **Not verified:** all 14 candidate/screening attachment tables are empty. Candidate-level legacy data URLs exist only in `uploaded_photo`; portraits are not substitutes for either requested file. |
+| Vessel persona, own fixture crew document | **Blocked by grants, not a display regression.** Crew Pool shows a plain Access Restricted page requesting administrator access. No file check can be certified. |
+| Vessel persona, another crew record | The same plain module refusal appears, with no broken screen. **This is not evidence of an ownership-specific refusal:** both requests are denied before document access because Crew Pool View is absent. |
+
+No attachment display regression was reproduced in the successful journeys.
+The unavailable cases are explicitly unverified, not inferred passes.
+No application display code was changed.
+
+The retained legacy Planning attachment lacks filename/date metadata; its
+list displays an epoch date. The PDF itself opens. This metadata issue was
+not changed or represented as an attachment authorization regression.
+
+## Fixture changes
+
+Only the authorised D3 example was added. Exact course and attachment UUIDs
+and the required fixture-only Date of Recruitment prerequisite are registered
+at the top of `docs/company-form-regression-fixtures.md`. No real seafarer's
+profile was saved. No new crew, assignment, vessel, form or released rule was
+created. Subsequent checks reuse the registered certificate.
+
+## Grant inventory: absence is not permission to change it
+
+Crew files and Briefing/Debriefing signatures require Crew Database View.
+Interview and Recruitment files require Recruitment View; Promotion requires
+Promotions View; D&A requires Drugs Alcohol View; Planning bytes require
+Planning View. Navigation can additionally require Crew Pool, Vessel or
+Handover View. Company Form assets require Company Forms View plus normal
+subject/vessel scope.
+
+The following read-only inventory covers active, non-deleted parent roles.
+It reports absence, **not** a recommendation to broaden a role.
+“All eight” means Crew Pool, Crew Database, Recruitment, Promotions, Vessel,
+Planning, Handover and Drugs Alcohol View.
+
+| Roles | Missing View grants among those eight |
+| --- | --- |
+| Admin; Crewing Executive; Crewing Manager; DPA; Marine Superintendent; Sail Admin; Super Admin; Technical Superintendent | None |
+| Auditors; Crew OB; Crew OL; Crewing Support2; External 1–5; PDF Layout Review Vessel; Top Management; User; Vessel User 2–10 | All eight |
+| Crewing Support; Marine Support Technical Suppport Crewing Support; Top Management - View | Promotions, Handover, Drugs Alcohol |
+| Marine Dept - View | Recruitment, Promotions, Planning, Handover, Drugs Alcohol |
+| Marine Support Technical Suppport | Recruitment, Promotions, Vessel, Planning, Handover, Drugs Alcohol |
+| Master | Crew Pool, Recruitment, Promotions, Planning, Handover, Drugs Alcohol |
+| Technical Dept - View | Recruitment, Planning, Handover, Drugs Alcohol |
+| Vessel Admin; Vessel User | Crew Pool, Crew Database, Recruitment |
+
+Company Forms View is absent for Auditors, Crewing Support2, External 1–5,
+Top Management and User. It is present for the other active roles in this
+inventory, but does not itself grant Crew Pool navigation or vessel membership.
+
+## Evidence tooling and gates
+
+`scripts/verify-attachment-display.mjs` uses installed Chromium and the main
+preview origin. It records screenshots, image load state, browser failures,
+UI-originated raw/PDF responses and preview popups. A step/popup failure exits
+nonzero. Browser profiles and all outputs remain outside Git.
+
+Cold contexts intermittently failed to fetch real Vite dependency modules
+before React mounted. These transport failures were recorded separately;
+the verifier retries the real page once and uses a persistent profile per
+persona. It does not replace modules or suppress permission failures.
+
+Fresh gates after the display fixes:
+
+- Full suite: **1,384 passed / 162 failed / 67 pending**, 1,613 tests in
+  166 files. This meets the approved ceiling; it is not a green full suite.
+- Company Forms: **648 passed, zero failed or skipped, 96 files**. Verified
+  from the actual full-run results for every suite discovered by the existing
+  Company Forms gate, not from a second run or the full suite's global status.
+- Attachment security: **101 passed**, zero failed.
+- New read-only component regression tests: **2 passed**.
+- TypeScript: **222 diagnostics**, within the standing ceiling.
+
+Raw reports are `generated-artifacts/attachment-display/full-suite.json`,
+`closing-gates.json` and `typescript.log`. Closing main-preview process/HEAD
+chronology is recorded after the final commit in
+`generated-artifacts/attachment-display/closing-main-preview.json`; closing
+journeys use labels beginning `closing-`.
+
+All requested development-persona UI cases are covered. Parent-authenticated
+verification remains a production checklist item, not a claimed pass here.
+Slice 2 is not built; its proposed plan is
+`docs/pre-joining-training-matrix-slice-2-plan.md`.

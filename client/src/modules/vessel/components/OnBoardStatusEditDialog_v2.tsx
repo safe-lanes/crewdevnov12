@@ -9,9 +9,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-    FormattedDateInput,
     formatIsoDate,
+    parseManualDate,
 } from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -87,8 +89,15 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const { toast } = useToast();
     const { userType, permissions } = usePermissions();
     const queryClient = useQueryClient();
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const { getVesselName } = useVesselLookup();
     const [signoffFormsOpen, setSignoffFormsOpen] = useState(false);
+    const [signOffDateOpen, setSignOffDateOpen] = useState(false);
+    const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
+    const [travelEndDateOpen, setTravelEndDateOpen] = useState(false);
     const [reviewedAssignUuid, setReviewedAssignUuid] = useState('');
     const [evidenceNote, setEvidenceNote] = useState('');
     const [reconciling, setReconciling] = useState(false);
@@ -201,10 +210,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             setDeferringRelief(false);
         }
     };
-
+    
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
-
+    
     // Look up port name for signOnPort display - only use UUID field, not name field
     const signOnPortUuid = planningData?.joiningPortUuid;
     const { data: signOnPortData } = useQuery<{ portUuid: string; name: string; country: string | null } | null>({
@@ -218,12 +227,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         enabled: !!signOnPortUuid && open,
         staleTime: 300000,
     });
-
+    
     // Use fetched port name first, then fall back to pre-joined name from planningData
-    const signOnPortDisplayName = signOnPortData?.name
+    const signOnPortDisplayName = signOnPortData?.name 
         ? `${signOnPortData.name}${signOnPortData.country ? ` (${signOnPortData.country})` : ''}`
         : planningData?.joiningPortName || planningData?.joiningPort || '-';
-
+    
     const form = useForm<OnBoardStatusFormData>({
         resolver: zodResolver(onBoardStatusFormSchema),
         defaultValues: {
@@ -323,11 +332,11 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             }
         }
     }, [watchedReliefStatus]);
-
+    
     const calculatedReliefDue = React.useMemo(() => {
         const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
         if (!signOnDate || !watchedContractPeriod) return null;
-
+        
         try {
             let baseDate: Date;
             if (signOnDate.match(/^\d{4}-\d{2}-\d{2}/)) {
@@ -337,7 +346,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 if (isNaN(parsed.getTime())) return null;
                 baseDate = parsed;
             }
-
+            
             const reliefDate = addMonths(baseDate, watchedContractPeriod);
             return format(reliefDate, 'yyyy-MM-dd');
         } catch {
@@ -346,7 +355,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     }, [planningData?.signOnDate, planningData?.joiningDate, watchedContractPeriod]);
 
     const RELIEVER_FIELDS_TO_EXCLUDE = [
-        'relieverCrewId', 'relieverCrewName', 'relieverJoiningDate',
+        'relieverCrewId', 'relieverCrewName', 'relieverJoiningDate', 
         'relieverJoiningPort', 'relieverStatus', 'relieverNationality',
         'relieverContractPeriodMonths', 'relieverContractEndRangeStartMonths', 'relieverContractEndRangeEndMonths',
         'joiningStatus', 'deploymentChecklistCompleted', 'applicableDocsChecked',
@@ -354,7 +363,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         'travelEndDate',
         'createdAt', 'updatedAt'
     ];
-
+    
     const filterOutRelieverFields = (data: Record<string, any>): Record<string, any> => {
         return Object.fromEntries(
             Object.entries(data).filter(([key]) => {
@@ -366,6 +375,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     };
 
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
+        if (data.reliefStatus === "Signed Off" && futureDateDraft.blocked) return;
         try {
             // Safety guard: a post-handover ex-primary (secondary + handOverDate)
             // must never re-trigger a takeover swap, even if form state carries
@@ -411,7 +421,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 new Date(data.takeOverDate) < new Date(planningData.signOnDate)) {
                 throw new Error("Take Over Date cannot be earlier than the secondary crew's Sign On Date");
             }
-
+            
             let computedReliefDue: string | null = null;
             const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
             if (signOnDate && data.contractPeriodMonths) {
@@ -429,15 +439,15 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 } catch {
                 }
             }
-
+            
             const dataWithReliefDue = computedReliefDue ? { ...data, reliefDue: computedReliefDue } : data;
-
+            
             const allPlanningResponse = await vesselApiV2.getVesselPlanning(vesselUuid);
             const allPlanning = allPlanningResponse || [];
-
+            
             if (isSignOff && planningData?.planUuid) {
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
-
+                
                 await apiRequest('POST', `/api/v2/vessel/planning/${planningData.planUuid}/sign-off`, {
                     signOffDate: data.signOffDate,
                     signOffReason: data.signOffReason,
@@ -445,23 +455,23 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     travelEndDate: data.travelEndDate || undefined,
                 });
             } else if (isTakeover && planningData?.crewStatus === "secondary") {
-                let primaryCrew = allPlanning.find((p: any) =>
-                    p.rankId === rankId &&
-                    p.crewStatus === "primary" &&
+                let primaryCrew = allPlanning.find((p: any) => 
+                    p.rankId === rankId && 
+                    p.crewStatus === "primary" && 
                     !p.isArchived &&
                     p.planUuid !== planningData?.planUuid
                 );
-
+                
                 if (!primaryCrew) {
-                    primaryCrew = allPlanning.find((p: any) =>
-                        p.vesselUuid === vesselUuid &&
-                        p.rank === rank &&
-                        p.crewStatus === "primary" &&
+                    primaryCrew = allPlanning.find((p: any) => 
+                        p.vesselUuid === vesselUuid && 
+                        p.rank === rank && 
+                        p.crewStatus === "primary" && 
                         !p.isArchived &&
                         p.planUuid !== planningData?.planUuid
                     );
                 }
-
+                
                 if (primaryCrew) {
                     if (primaryCrew.reliefStatus === "Signed Off" && primaryCrew.signOffDate) {
                         await apiRequest('POST', `/api/v2/vessel/planning/${primaryCrew.planUuid}/sign-off`, {
@@ -476,12 +486,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         });
                     }
                 }
-
+                
                 const cleanPlanningDataForTakeover = filterOutRelieverFields(planningData || {});
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
-
+                
                 const signOnDateForPromotion = cleanFormData.signOnDate || cleanPlanningDataForTakeover.signOnDate;
-
+                
                 await updatePlanningV2.mutateAsync({
                     planUuid: planningData.planUuid,
                     data: {
@@ -494,29 +504,29 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     }
                 });
             } else if (isTakeover && planningData?.crewStatus === "primary") {
-                let secondaryCrew = allPlanning.find((p: any) =>
-                    p.rankId === rankId &&
-                    p.crewStatus === "secondary" &&
+                let secondaryCrew = allPlanning.find((p: any) => 
+                    p.rankId === rankId && 
+                    p.crewStatus === "secondary" && 
                     !p.isArchived &&
                     p.planUuid !== planningData?.planUuid
                 );
-
+                
                 if (!secondaryCrew) {
-                    secondaryCrew = allPlanning.find((p: any) =>
-                        p.vesselUuid === vesselUuid &&
-                        p.rank === rank &&
-                        p.crewStatus === "secondary" &&
+                    secondaryCrew = allPlanning.find((p: any) => 
+                        p.vesselUuid === vesselUuid && 
+                        p.rank === rank && 
+                        p.crewStatus === "secondary" && 
                         !p.isArchived &&
                         p.planUuid !== planningData?.planUuid
                     );
                 }
-
+                
                 if (!secondaryCrew) {
                     throw new Error("No secondary crew (reliever) found for this rank. Take over requires a secondary crew member.");
                 }
-
+                
                 const secondarySignOnDate = secondaryCrew.signOnDate || secondaryCrew.relieverSignOnDate;
-
+                
                 await vesselApiV2.updatePlanning(secondaryCrew.planUuid, {
                     crewStatus: "primary",
                     signOnDate: secondarySignOnDate,
@@ -526,7 +536,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     contractEndRangeStartMonths: secondaryCrew.contractEndRangeStartMonths || secondaryCrew.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
                 });
-
+                
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 await updatePlanningV2.mutateAsync({
                     planUuid: planningData.planUuid,
@@ -538,7 +548,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 });
             } else {
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
-
+                
                 if (planningData?.planUuid) {
                     await updatePlanningV2.mutateAsync({
                         planUuid: planningData.planUuid,
@@ -574,7 +584,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     });
                 }
             }
-
+            
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/training', vesselUuid] });
@@ -583,7 +593,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             if (planningData?.crewUuid) {
                 queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', planningData.crewUuid, 'dashboard'] });
             }
-
+            
             toast({
                 title: "Success",
                 description: "On board status saved successfully",
@@ -591,9 +601,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             onOpenChange(false);
         } catch (error: any) {
             console.error('On board status save error:', error);
-            const errorMessage = error instanceof Error ? error.message :
-                typeof error === 'string' ? error :
-                    error?.message || "Failed to save on board status";
+            const errorMessage = error instanceof Error ? error.message : 
+                                 typeof error === 'string' ? error :
+                                 error?.message || "Failed to save on board status";
             toast({
                 title: "Error",
                 description: errorMessage,
@@ -686,11 +696,21 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     }
                 }}
             >
-                <FormattedDateInput
+                <VesselDateInput
                     value={getInputDate(field.value)}
                     disabled={!isOnboardCrewAssigned}
                     min={min}
                     max={max}
+                    retainInvalidDraftOnBlur={field.name === "signOffDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "signOffDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
                     data-testid={`input-${field.name}`}
                     onChange={(event) => {
                         const value = event.target.value;
@@ -708,385 +728,389 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 
     return (
         <>
-            <Dialog open={open && !signoffFormsOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
-                            Rank: {rank}
-                        </DialogTitle>
-                    </DialogHeader>
+        <Dialog open={open && !signoffFormsOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
+                        Rank: {rank}
+                    </DialogTitle>
+                </DialogHeader>
 
-                    {isOnboardCrewAssigned && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            data-testid="button-open-signoff-forms"
-                            disabled={!signoffFormsReady}
-                            onClick={() => setSignoffFormsOpen(true)}
-                        >
-                            Sign-off forms
-                        </Button>
-                    )}
-                    {isOnboardCrewAssigned && !signoffFormsReady && (
-                        <p className="text-sm text-amber-900" role={signoffRequirements.isError ? "alert" : "status"}>
-                            Available once Relief Status is Planned or Confirmed.
-                        </p>
-                    )}
+                {isOnboardCrewAssigned && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        data-testid="button-open-signoff-forms"
+                        disabled={!signoffFormsReady}
+                        onClick={() => setSignoffFormsOpen(true)}
+                    >
+                        Sign-off forms
+                    </Button>
+                )}
+                {isOnboardCrewAssigned && !signoffFormsReady && (
+                    <p className="text-sm text-amber-900" role={signoffRequirements.isError ? "alert" : "status"}>
+                        Available once Relief Status is Planned or Confirmed.
+                    </p>
+                )}
 
-                    {!isOnboardCrewAssigned && (
-                        <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
-                            No onboard crew available. Crew must first complete Sign On from Reliever section.
-                        </p>
-                    )}
+                {!isOnboardCrewAssigned && (
+                    <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
+                        No onboard crew available. Crew must first complete Sign On from Reliever section.
+                    </p>
+                )}
 
-                    {canDeferRelief && (
-                        <section className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4" data-testid="defer-relief-action">
-                            <div>
-                                <h3 className="font-semibold text-amber-950">Defer relief</h3>
-                                <p className="mt-1 text-sm text-amber-900">Record why this incumbent crew member is not ready to be relieved. This does not unassign the reliever.</p>
-                            </div>
-                            {reliefDeferred ? (
-                                <p role="status" className="text-sm font-medium text-emerald-900">Relief deferral recorded. The reliever assignment remains in place.</p>
-                            ) : (
-                                <>
-                                    <label className="block text-sm font-medium text-slate-800" htmlFor="defer-relief-reason">
-                                        Written reason <span aria-hidden="true">*</span>
-                                        <textarea
-                                            id="defer-relief-reason"
-                                            className="mt-1 min-h-24 w-full rounded-md border border-amber-300 bg-white p-2 text-sm"
-                                            maxLength={2000}
-                                            required
-                                            value={deferReason}
-                                            onChange={(event) => setDeferReason(event.target.value)}
-                                            placeholder="Explain why relief is being deferred."
-                                            disabled={deferringRelief}
-                                        />
-                                    </label>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        data-testid="button-defer-relief"
-                                        disabled={!deferReason.trim() || deferringRelief}
-                                        onClick={() => void deferRelief()}
-                                    >
-                                        {deferringRelief ? 'Recording…' : 'Defer relief'}
-                                    </Button>
-                                    {deferReliefError && <p role="alert" className="text-sm text-destructive">{deferReliefError}</p>}
-                                </>
-                            )}
-                        </section>
-                    )}
-
-                    {needsIncumbentLink && (
-                        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm" data-testid="incumbent-assignment-unlinked">
-                            <p className="font-semibold text-amber-900">Onboard assignment needs verification</p>
-                            <p>Sign-off and assignment details cannot be updated until an administrator reviews and links the exact assignment record. No assignment will be selected automatically.</p>
-                            {!isAdmin ? (
-                                <p>Ask an administrator to verify this crew member's assignment.</p>
-                            ) : (
-                                <>
-                                    <p>Compare the crew's voyage documents with each record below. Planning sign-on: {reconciliation?.planningSignOnDate || 'not recorded'}.</p>
-                                    {loadingReconciliation && <p>Loading assignment records…</p>}
-                                    {reconciliationError && <p className="text-red-700">Could not load assignments. Reload before reviewing.</p>}
-                                    {!loadingReconciliation && !reconciliationError && reconciliation?.candidates.length === 0 && (
-                                        <p>No current OnBoard assignment matches this crew and vessel. Do not link an unrelated record.</p>
-                                    )}
-                                    {reconciliation?.candidates.map(candidate => (
-                                        <label key={candidate.assignUuid} className="block rounded border bg-white p-2 cursor-pointer">
-                                            <input type="radio" name="reviewed-incumbent-assignment"
-                                                checked={reviewedAssignUuid === candidate.assignUuid}
-                                                onChange={() => setReviewedAssignUuid(candidate.assignUuid)} />
-                                            <span className="ml-2">Assignment {candidate.assignUuid}</span>
-                                            <span className="block ml-5 text-xs text-gray-600">
-                                                Signed on: {candidate.signOnDate || 'not recorded'} · Relief due: {candidate.reliefDue || 'not recorded'} · Contract: {candidate.contractPeriod || 'not recorded'}
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="block">
-                                        Evidence for selecting this exact assignment
-                                        <textarea className="mt-1 w-full rounded border p-2" rows={2} maxLength={2000}
-                                            placeholder="State which voyage document or verified record confirms this assignment."
-                                            value={evidenceNote} onChange={e => setEvidenceNote(e.target.value)} />
-                                    </label>
-                                    <Button type="button" variant="outline" onClick={reconcileIncumbent}
-                                        disabled={!reviewedAssignUuid || evidenceNote.trim().length < 20 || reconciling}>
-                                        Verify selected assignment
-                                    </Button>
-                                </>
-                            )}
+                {canDeferRelief && (
+                    <section className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4" data-testid="defer-relief-action">
+                        <div>
+                            <h3 className="font-semibold text-amber-950">Defer relief</h3>
+                            <p className="mt-1 text-sm text-amber-900">Record why this incumbent crew member is not ready to be relieved. This does not unassign the reliever.</p>
                         </div>
-                    )}
+                        {reliefDeferred ? (
+                            <p role="status" className="text-sm font-medium text-emerald-900">Relief deferral recorded. The reliever assignment remains in place.</p>
+                        ) : (
+                            <>
+                                <label className="block text-sm font-medium text-slate-800" htmlFor="defer-relief-reason">
+                                    Written reason <span aria-hidden="true">*</span>
+                                    <textarea
+                                        id="defer-relief-reason"
+                                        className="mt-1 min-h-24 w-full rounded-md border border-amber-300 bg-white p-2 text-sm"
+                                        maxLength={2000}
+                                        required
+                                        value={deferReason}
+                                        onChange={(event) => setDeferReason(event.target.value)}
+                                        placeholder="Explain why relief is being deferred."
+                                        disabled={deferringRelief}
+                                    />
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    data-testid="button-defer-relief"
+                                    disabled={!deferReason.trim() || deferringRelief}
+                                    onClick={() => void deferRelief()}
+                                >
+                                    {deferringRelief ? 'Recording…' : 'Defer relief'}
+                                </Button>
+                                {deferReliefError && <p role="alert" className="text-sm text-destructive">{deferReliefError}</p>}
+                            </>
+                        )}
+                    </section>
+                )}
 
-                    <Form {...form}>
-                        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Name:</span>
-                                <span className="text-sm text-gray-900">{planningData?.crewName || planningData?.onBoardCrewName || '-'}</span>
+                {needsIncumbentLink && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm" data-testid="incumbent-assignment-unlinked">
+                        <p className="font-semibold text-amber-900">Onboard assignment needs verification</p>
+                        <p>Sign-off and assignment details cannot be updated until an administrator reviews and links the exact assignment record. No assignment will be selected automatically.</p>
+                        {!isAdmin ? (
+                            <p>Ask an administrator to verify this crew member's assignment.</p>
+                        ) : (
+                            <>
+                                <p>Compare the crew's voyage documents with each record below. Planning sign-on: {reconciliation?.planningSignOnDate || 'not recorded'}.</p>
+                                {loadingReconciliation && <p>Loading assignment records…</p>}
+                                {reconciliationError && <p className="text-red-700">Could not load assignments. Reload before reviewing.</p>}
+                                {!loadingReconciliation && !reconciliationError && reconciliation?.candidates.length === 0 && (
+                                    <p>No current OnBoard assignment matches this crew and vessel. Do not link an unrelated record.</p>
+                                )}
+                                {reconciliation?.candidates.map(candidate => (
+                                    <label key={candidate.assignUuid} className="block rounded border bg-white p-2 cursor-pointer">
+                                        <input type="radio" name="reviewed-incumbent-assignment"
+                                            checked={reviewedAssignUuid === candidate.assignUuid}
+                                            onChange={() => setReviewedAssignUuid(candidate.assignUuid)} />
+                                        <span className="ml-2">Assignment {candidate.assignUuid}</span>
+                                        <span className="block ml-5 text-xs text-gray-600">
+                                            Signed on: {candidate.signOnDate || 'not recorded'} · Relief due: {candidate.reliefDue || 'not recorded'} · Contract: {candidate.contractPeriod || 'not recorded'}
+                                        </span>
+                                    </label>
+                                ))}
+                                <label className="block">
+                                    Evidence for selecting this exact assignment
+                                    <textarea className="mt-1 w-full rounded border p-2" rows={2} maxLength={2000}
+                                        placeholder="State which voyage document or verified record confirms this assignment."
+                                        value={evidenceNote} onChange={e => setEvidenceNote(e.target.value)} />
+                                </label>
+                                <Button type="button" variant="outline" onClick={reconcileIncumbent}
+                                    disabled={!reviewedAssignUuid || evidenceNote.trim().length < 20 || reconciling}>
+                                    Verify selected assignment
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                <Form {...form}>
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Name:</span>
+                            <span className="text-sm text-gray-900">{planningData?.crewName || planningData?.onBoardCrewName || '-'}</span>
+                        </div>
+
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Nationality:</span>
+                            <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || '-'}</span>
+                        </div>
+
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Sign On Date:</span>
+                            <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-900">{planningData?.signOnDate ? formatDisplayDate(planningData.signOnDate) : '-'}</span>
                             </div>
+                        </div>
 
-                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Nationality:</span>
-                                <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || '-'}</span>
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Sign On Port:</span>
+                            <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                <span className="text-sm text-gray-900">{signOnPortDisplayName}</span>
                             </div>
+                        </div>
 
+                        {showReadOnlyTakeoverOnPrimary && isOnboardCrewAssigned && (
                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Sign On Date:</span>
+                                <span className="text-sm text-gray-700">Take Over Date:</span>
                                 <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
                                     <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
-                                    <span className="text-sm text-gray-900">{planningData?.signOnDate ? formatDisplayDate(planningData.signOnDate) : '-'}</span>
+                                    <span className="text-sm text-gray-900" data-testid="text-take-over-date-readonly">
+                                        {planningData?.takeOverDate ? formatDisplayDate(planningData.takeOverDate) : '-'}
+                                    </span>
                                 </div>
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Sign On Port:</span>
-                                <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
-                                    <span className="text-sm text-gray-900">{signOnPortDisplayName}</span>
-                                </div>
-                            </div>
-
-                            {showReadOnlyTakeoverOnPrimary && isOnboardCrewAssigned && (
-                                <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                    <span className="text-sm text-gray-700">Take Over Date:</span>
-                                    <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
-                                        <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
-                                        <span className="text-sm text-gray-900" data-testid="text-take-over-date-readonly">
-                                            {planningData?.takeOverDate ? formatDisplayDate(planningData.takeOverDate) : '-'}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {showEditableTakeover && isOnboardCrewAssigned && (
-                                <>
-                                    <FormField
-                                        control={form.control}
-                                        name="takeOverDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                                            <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
-                                                            {renderDateSelector(
-                                                                field,
-                                                                getPickerDay(parseDate(planningData?.signOnDate || "")),
-                                                            )}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="right" align="start" className="max-w-xs">
-                                                        <ol className="list-decimal space-y-1 pl-4 text-xs">
-                                                            <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
-                                                            <li>This step is to record the official handover / Takeover in the system.</li>
-                                                        </ol>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="takeOverConfirmation"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                                            <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
-                                                            <FormControl>
-                                                                <div className="flex items-center">
-                                                                    <Checkbox
-                                                                        checked={field.value || false}
-                                                                        onCheckedChange={field.onChange}
-                                                                        data-testid="checkbox-take-over-confirmation"
-                                                                    />
-                                                                </div>
-                                                            </FormControl>
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="right" align="start" className="max-w-xs">
-                                                        <ol className="list-decimal space-y-1 pl-4 text-xs">
-                                                            <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
-                                                            <li>This step is to record the official handover / Takeover in the system.</li>
-                                                        </ol>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </>
-                            )}
-
-                            <div className="border border-[#16569e] rounded-md p-4 space-y-4">
+                        {showEditableTakeover && isOnboardCrewAssigned && (
+                            <>
                                 <FormField
                                     control={form.control}
-                                    name="contractPeriodMonths"
+                                    name="takeOverDate"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
-                                                <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        type="number"
-                                                        min={1}
-                                                        className="bg-white"
-                                                        data-testid="input-contract-period-onboard"
-                                                        value={field.value ?? ''}
-                                                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                        disabled={!isOnboardCrewAssigned}
-                                                    />
-                                                </FormControl>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
+                                                {renderDateSelector(
+                                                    field,
+                                                    getPickerDay(parseDate(planningData?.signOnDate || "")),
+                                                )}
                                             </div>
-                                            <FormMessage />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
 
                                 <FormField
                                     control={form.control}
-                                    name="contractEndRangeStartMonths"
+                                    name="takeOverConfirmation"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
-                                                <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        type="number"
-                                                        min={1}
-                                                        className="bg-white"
-                                                        data-testid="input-contract-range-start-onboard"
-                                                        value={field.value ?? ''}
-                                                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                        disabled={!isOnboardCrewAssigned}
-                                                    />
+                                                    <div className="flex items-center">
+                                                        <Checkbox 
+                                                            checked={field.value || false}
+                                                            onCheckedChange={field.onChange}
+                                                            data-testid="checkbox-take-over-confirmation"
+                                                        />
+                                                    </div>
                                                 </FormControl>
                                             </div>
-                                            <FormMessage />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
+                            </>
+                        )}
 
-                                <FormField
-                                    control={form.control}
-                                    name="contractEndRangeEndMonths"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
-                                                <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        type="number"
-                                                        min={1}
-                                                        className="bg-white"
-                                                        data-testid="input-contract-range-end-onboard"
-                                                        value={field.value ?? ''}
-                                                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                                        disabled={!isOnboardCrewAssigned}
-                                                    />
-                                                </FormControl>
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Relief Due:</span>
-                                <span className="text-sm text-gray-900">
-                                    {calculatedReliefDue
-                                        ? formatDisplayDate(calculatedReliefDue)
-                                        : (planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '-')}
-                                </span>
-                            </div>
-
+                        <div className="border border-[#16569e] rounded-md p-4 space-y-4">
                             <FormField
                                 control={form.control}
-                                name="reliefStatus"
+                                name="contractPeriodMonths"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                                    <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
-                                                    <FormControl>
-                                                        <Select
-                                                            onValueChange={field.onChange}
-                                                            value={field.value || undefined}
-                                                            data-testid="select-relief-status"
-                                                            disabled={!isOnboardCrewAssigned}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select Status" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Proposed">Proposed</SelectItem>
-                                                                <SelectItem value="Planned">Planned</SelectItem>
-                                                                <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                                                <SelectItem value="Signed Off">Signed Off</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </FormControl>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right" align="start" className="max-w-xs">
-                                                <ol className="list-decimal space-y-1 pl-4 text-xs">
-                                                    <li>Selecting 'Signed Off' status will sign off the crew member and remove from the 'On Board Status' section. Archived record will be visible in Vessel &gt; Crew List &gt; Show Archived.</li>
-                                                    <li>Before 'Signing Off' ensure the Takeover date is entered in the Taking Over Crew member's Popup (Not Mandatory). This populates the 'Handover date' here.</li>
-                                                </ol>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    min={1}
+                                                    className="bg-white"
+                                                    data-testid="input-contract-period-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
 
-                            {watchedReliefStatus === "Signed Off" && (
-                                <FormField
-                                    control={form.control}
-                                    name="signOffReason"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                                <FormLabel className="text-sm text-gray-700">Reason</FormLabel>
-                                                <FormControl>
-                                                    <Select
-                                                        onValueChange={field.onChange}
-                                                        value={field.value || undefined}
-                                                        data-testid="select-sign-off-reason"
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select Reason" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {SIGN_OFF_REASONS.map((reason) => (
-                                                                <SelectItem key={reason} value={reason}>
-                                                                    {reason}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormControl>
-                                            </div>
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-
-                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                <span className="text-sm text-gray-700">Hand Over Date:</span>
-                                <span className="text-sm text-gray-900">{planningData?.handOverDate ? formatDisplayDate(planningData.handOverDate) : '-'}</span>
-                            </div>
+                            <FormField
+                                control={form.control}
+                                name="contractEndRangeStartMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    min={1}
+                                                    className="bg-white"
+                                                    data-testid="input-contract-range-start-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}
-                                name="signOffDate"
+                                name="contractEndRangeEndMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    min={1}
+                                                    className="bg-white"
+                                                    data-testid="input-contract-range-end-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Relief Due:</span>
+                            <span className="text-sm text-gray-900">
+                                {calculatedReliefDue 
+                                    ? formatDisplayDate(calculatedReliefDue) 
+                                    : (planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '-')}
+                            </span>
+                        </div>
+
+                        <FormField
+                            control={form.control}
+                            name="reliefStatus"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
+                                        <FormControl>
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-relief-status"
+                                                disabled={!isOnboardCrewAssigned}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Proposed">Proposed</SelectItem>
+                                                    <SelectItem value="Planned">Planned</SelectItem>
+                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                    <SelectItem value="Signed Off">Signed Off</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="start" className="max-w-xs">
+                                            <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                <li>Selecting 'Signed Off' status will sign off the crew member and remove from the 'On Board Status' section. Archived record will be visible in Vessel &gt; Crew List &gt; Show Archived.</li>
+                                                <li>Before 'Signing Off' ensure the Takeover date is entered in the Taking Over Crew member's Popup (Not Mandatory). This populates the 'Handover date' here.</li>
+                                            </ol>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </FormItem>
+                            )}
+                        />
+
+                        {watchedReliefStatus === "Signed Off" && (
+                            <FormField
+                                control={form.control}
+                                name="signOffReason"
                                 render={({ field }) => (
                                     <FormItem>
                                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                            <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
+                                            <FormLabel className="text-sm text-gray-700">Reason</FormLabel>
+                                            <FormControl>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value || undefined} 
+                                                    data-testid="select-sign-off-reason"
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select Reason" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {SIGN_OFF_REASONS.map((reason) => (
+                                                            <SelectItem key={reason} value={reason}>
+                                                                {reason}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Hand Over Date:</span>
+                            <span className="text-sm text-gray-900">{planningData?.handOverDate ? formatDisplayDate(planningData.handOverDate) : '-'}</span>
+                        </div>
+
+                        <FormField
+                            control={form.control}
+                            name="signOffDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign Off date should not be a future date"
+                                        >
                                             {renderDateSelector(
                                                 field,
                                                 getPickerDay(parseDate(form.getValues("signOnDate") || "")),
@@ -1094,83 +1118,84 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     ? format(new Date(), "yyyy-MM-dd")
                                                     : undefined,
                                             )}
-                                        </div>
-                                        <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="signOffPort"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                            <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
-                                            <FormControl>
-                                                <SearchablePortCombobox
-                                                    value={field.value as string}
-                                                    onValueChange={field.onChange}
-                                                    placeholder="Search port..."
-                                                    data-testid="select-sign-off-port"
-                                                    disabled={!isOnboardCrewAssigned}
-                                                />
-                                            </FormControl>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="travelEndDate"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                            <FormLabel className="text-sm text-gray-700">Travel End Date</FormLabel>
-                                            {renderDateSelector(
-                                                field,
-                                                getPickerDay(parseDate(form.getValues("signOffDate") || "")),
-                                            )}
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="flex justify-end gap-2 pt-4">
-                                <Button
-                                    type="submit"
-                                    className="bg-green-600 hover:bg-green-700"
-                                    disabled={!isOnboardCrewAssigned || needsIncumbentLink || updatePlanningV2.isPending || createPlanningV2.isPending}
-                                    data-testid="button-submit-onboard"
-                                >
-                                    Submit
-                                </Button>
-                            </div>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-            <Dialog open={open && signoffFormsOpen} onOpenChange={(value) => {
-                if (!value) setSignoffFormsOpen(false);
-            }}>
-                <DialogContent className="w-[1200px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>At-sign-off Company Forms</DialogTitle>
-                    </DialogHeader>
-                    {signoffFormsOpen && open && (
-                        <SignoffCompanyForms
-                            planUuid={planningData?.planUuid || ""}
-                            assignmentUuid={planningData?.crewAssignUuid || verifiedAssignUuid || ''}
-                            crewUuid={planningData?.crewUuid || ''}
-                            vesselUuid={vesselUuid}
+                                        </VesselFutureDateMessage>
+                                    </div>
+                                    <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
+                                </FormItem>
+                            )}
                         />
-                    )}
-                    <Button type="button" variant="outline" onClick={() => setSignoffFormsOpen(false)}>
-                        Back to On Board Status
-                    </Button>
-                </DialogContent>
-            </Dialog>
+
+                        <FormField
+                            control={form.control}
+                            name="signOffPort"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
+                                        <FormControl>
+                                            <SearchablePortCombobox
+                                                value={field.value as string}
+                                                onValueChange={field.onChange}
+                                                placeholder="Search port..."
+                                                data-testid="select-sign-off-port"
+                                                disabled={!isOnboardCrewAssigned}
+                                            />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="travelEndDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Travel End Date</FormLabel>
+                                        {renderDateSelector(
+                                            field,
+                                            getPickerDay(parseDate(form.getValues("signOffDate") || "")),
+                                        )}
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button 
+                                type="submit"
+                                className="bg-green-600 hover:bg-green-700"
+                                disabled={!isOnboardCrewAssigned || needsIncumbentLink || updatePlanningV2.isPending || createPlanningV2.isPending || (watchedReliefStatus === "Signed Off" && futureDateDraft.blocked)}
+                                data-testid="button-submit-onboard"
+                            >
+                                Submit
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={open && signoffFormsOpen} onOpenChange={(value) => {
+            if (!value) setSignoffFormsOpen(false);
+        }}>
+            <DialogContent className="w-[1200px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>At-sign-off Company Forms</DialogTitle>
+                </DialogHeader>
+                {signoffFormsOpen && open && (
+                    <SignoffCompanyForms
+                        planUuid={planningData?.planUuid || ""}
+                        assignmentUuid={planningData?.crewAssignUuid || verifiedAssignUuid || ''}
+                        crewUuid={planningData?.crewUuid || ''}
+                        vesselUuid={vesselUuid}
+                    />
+                )}
+                <Button type="button" variant="outline" onClick={() => setSignoffFormsOpen(false)}>
+                    Back to On Board Status
+                </Button>
+            </DialogContent>
+        </Dialog>
         </>
     );
 };

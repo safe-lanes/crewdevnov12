@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Database } from 'lucide-react';
+import { d3TrainingName } from './utils/d3MatrixDefaults';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 
 // Company Training type from /api/company-trainings
@@ -31,6 +32,7 @@ interface TrainingCourseSelectionDialogProps {
   onClose: () => void;
   onConfirm: (selectedTemplates: TrainingCourseTemplate[]) => void;
   existingCourseIds?: string[];
+  existingCourseNames?: string[];
 }
 
 export function TrainingCourseSelectionDialog({
@@ -38,6 +40,7 @@ export function TrainingCourseSelectionDialog({
   onClose,
   onConfirm,
   existingCourseIds = [],
+  existingCourseNames = [],
 }: TrainingCourseSelectionDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,6 +77,10 @@ export function TrainingCourseSelectionDialog({
     return new Set(existingCourseIds);
   }, [existingCourseIds]);
 
+  const alreadyAddedNames = useMemo(() => {
+    return new Set(existingCourseNames.map(d3TrainingName).filter(Boolean));
+  }, [existingCourseNames]);
+
   const handleToggle = (id: string) => {
     setSelectedIds(prev => {
       const newSet = new Set(prev);
@@ -87,7 +94,8 @@ export function TrainingCourseSelectionDialog({
   };
 
   const isTemplateAlreadyAdded = (t: TrainingCourseTemplate) =>
-    alreadyAddedIds.has(t.id) || (!!t.companyId && alreadyAddedIds.has(t.companyId));
+    alreadyAddedIds.has(t.id) || (!!t.companyId && alreadyAddedIds.has(t.companyId)) ||
+    alreadyAddedNames.has(d3TrainingName(t.name));
 
   const handleSelectAll = () => {
     const allIds = filteredTemplates

@@ -228,8 +228,8 @@ export const accountsApiV2 = {
       req("PATCH", `${ACCOUNTS_BASE}/advances/${uuid}`, data),
     cancel: (uuid: string) =>
       req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/cancel`),
-    close: (uuid: string, remark: string) =>
-      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/close`, { remark }),
+    close: (uuid: string, remark: string, writeOffPeriod: string) =>
+      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/close`, { remark, writeOffPeriod }),
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/advances/${uuid}`),
   },

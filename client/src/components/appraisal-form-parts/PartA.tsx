@@ -208,6 +208,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                     <FormControl>
                       <AppraisalDateInput
                         {...field}
+                        clearBeforeMin
                         min={signOnValue || undefined}
                         className="bg-[#ffffff]"
                         data-testid="input-period-from"

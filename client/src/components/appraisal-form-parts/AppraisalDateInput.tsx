@@ -10,6 +10,7 @@ type Props = {
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   min?: string;
   rejectBeforeMin?: boolean;
+  clearBeforeMin?: boolean;
   readOnly?: boolean;
   disabled?: boolean;
   tabIndex?: number;
@@ -287,6 +288,16 @@ export const AppraisalDateInput = React.forwardRef<HTMLInputElement, Props>(
             return;
           }
           const next = parseManualDate(input.value);
+          if (
+            next &&
+            props.clearBeforeMin &&
+            props.min &&
+            nativeDate(props.min) &&
+            Number(next.replace(/-/g, "")) < Number(props.min.replace(/-/g, ""))
+          ) {
+            input.value = "";
+            return;
+          }
           if (
             next &&
             props.rejectBeforeMin &&

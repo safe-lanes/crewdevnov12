@@ -1,11 +1,13 @@
 import { useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -41,6 +43,7 @@ import { ACCOUNTS_BASE, accountsApiV2 } from "../api/accountsApiV2";
 import { formatDate, formatMoney, unknownVesselLabel } from "../accountsFormat";
 import { formatPeriod } from "./VesselPeriodBar";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Settlements";
 
@@ -53,11 +56,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  submitted: "bg-amber-100 text-amber-800 border-amber-200",
-  approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  paid: "bg-blue-100 text-blue-800 border-blue-200",
-  locked: "bg-slate-800 text-white border-slate-800",
+  draft: accountsStatusBadgeClass("grey"),
+  submitted: accountsStatusBadgeClass("blue"),
+  approved: accountsStatusBadgeClass("green"),
+  paid: accountsStatusBadgeClass("green"),
+  locked: accountsStatusBadgeClass("amber"),
 };
 
 function statusBadge(status: string) {
@@ -87,10 +90,14 @@ export default function SettlementsPage() {
   const mayCreate = canCreate(MENU);
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
-  const { getVesselName } = useVesselLookup();
+  const { vessels, getVesselName } = useVesselLookup();
 
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
-  const [filterVessel, setFilterVessel] = useState("all");
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
+  const [periodInputKey, setPeriodInputKey] = useState(0);
+  const filterVessel = vesselUuid || "all";
+  const setFilterVessel = (value: string) =>
+    setVesselUuid(value === "all" ? "" : value);
   const [filterStatus, setFilterStatus] = useState("all");
   const [newOpen, setNewOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -99,6 +106,8 @@ export default function SettlementsPage() {
   const [paidDate, setPaidDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
+  const paidDateDraft = useRef<string | undefined>(undefined);
+  const paidDateValid = useRef(true);
   const [paymentReference, setPaymentReference] = useState("");
   const [paidRemarks, setPaidRemarks] = useState("");
   const [remarksDraft, setRemarksDraft] = useState("");
@@ -150,7 +159,7 @@ export default function SettlementsPage() {
 
   const vesselOptions = useMemo(() => {
     const uuids = Array.from(
-      new Set(settlements.map((s) => s.vesselUuid).filter(Boolean)),
+      new Set([...settlements.map((s) => s.vesselUuid), vesselUuid, ...vessels.map((v) => v.entryId)].filter(Boolean)),
     ) as string[];
     const nameByUuid = new Map<string, string>();
     for (const s of settlements) {
@@ -159,21 +168,31 @@ export default function SettlementsPage() {
         if (name) nameByUuid.set(s.vesselUuid, name);
       }
     }
+    if (vesselUuid && !nameByUuid.has(vesselUuid)) {
+      const name = getVesselName(vesselUuid);
+      if (name) nameByUuid.set(vesselUuid, name);
+    }
+    for (const v of vessels) {
+      if (v.entryId && v.name && !nameByUuid.has(v.entryId)) {
+        nameByUuid.set(v.entryId, v.name);
+      }
+    }
     // Only offer vessels that resolve to a real name.
     return uuids
       .filter((u) => nameByUuid.has(u))
       .map((u) => ({ uuid: u, name: nameByUuid.get(u)! }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [settlements, getVesselName]);
+  }, [settlements, getVesselName, vesselUuid, vessels]);
 
   const filteredRows = useMemo(
     () =>
       settlements.filter(
         (s) =>
           (filterVessel === "all" || s.vesselUuid === filterVessel) &&
+          s.period === period &&
           (filterStatus === "all" || s.status === filterStatus),
       ),
-    [settlements, filterVessel, filterStatus],
+    [settlements, filterVessel, period, filterStatus],
   );
 
   const gridApiRef = useRef<GridApi | null>(null);
@@ -236,7 +255,12 @@ export default function SettlementsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
-        cellRenderer: (p: any) => STATUS_LABEL[p.value] ?? p.value,
+        cellClass: "accounts-status-badge-cell",
+        cellRenderer: (p: any) => (
+          <Badge variant="outline" className={STATUS_CLASS[p.value] ?? ""}>
+            {STATUS_LABEL[p.value] ?? p.value}
+          </Badge>
+        ),
       },
       {
         headerName: "Balance Paid",
@@ -359,13 +383,17 @@ export default function SettlementsPage() {
   });
 
   const markPaidMut = useMutation({
-    mutationFn: () =>
-      accountsApiV2.settlements.markPaid(
+    mutationFn: () => {
+      if (!paidDateValid.current) {
+        throw new Error("Enter a valid Paid date before marking the settlement paid.");
+      }
+      return accountsApiV2.settlements.markPaid(
         selectedUuid!,
         paidDate,
         paymentReference.trim() || null,
         paidRemarks.trim() || undefined,
-      ),
+      );
+    },
     onSuccess: () => {
       refresh();
       setPaidOpen(false);
@@ -455,6 +483,7 @@ export default function SettlementsPage() {
               size="sm"
               variant="outline"
               onClick={exportExcel}
+              disabled={filteredRows.length === 0}
               data-testid="button-export-settlements"
             >
               <Download size={14} className="mr-1" /> Export
@@ -472,39 +501,90 @@ export default function SettlementsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={filterVessel} onValueChange={setFilterVessel}>
-            <SelectTrigger
-              className="w-[200px] h-9"
-              data-testid="select-filter-vessel"
-            >
-              <SelectValue placeholder="All vessels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All vessels</SelectItem>
-              {vesselOptions.map((v) => (
-                <SelectItem key={v.uuid} value={v.uuid}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger
-              className="w-[160px] h-9"
-              data-testid="select-filter-status"
-            >
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, label]) => (
-                <SelectItem key={k} value={k}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="select-filter-vessel" className="text-xs text-gray-600">
+              Vessel
+            </Label>
+            <Select value={filterVessel} onValueChange={setFilterVessel}>
+              <SelectTrigger
+                id="select-filter-vessel"
+                className="w-[200px] h-8 text-xs"
+                data-testid="select-filter-vessel"
+              >
+                <SelectValue placeholder="All vessels" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All vessels</SelectItem>
+                {vesselOptions.map((v) => (
+                  <SelectItem key={v.uuid} value={v.uuid}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div
+            className="space-y-1"
+            onBlur={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget)) return;
+              const input =
+                event.currentTarget.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+              if (
+                input &&
+                (!input.value.trim() || input.dataset.monthValid === "false")
+              ) {
+                setPeriodInputKey((key) => key + 1);
+              }
+            }}
+          >
+            <Label className="text-xs text-gray-600">Period</Label>
+            <FormattedDateInput
+              key={periodInputKey}
+              mode="month"
+              value={period}
+              onChange={(e) => e.target.value && setPeriod(e.target.value)}
+              className="h-8 w-44 bg-transparent text-xs md:text-xs"
+              data-testid="input-period"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="select-filter-status" className="text-xs text-gray-600">
+              Status
+            </Label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger
+                id="select-filter-status"
+                className="w-[160px] h-8 text-xs"
+                data-testid="select-filter-status"
+              >
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {Object.entries(STATUS_LABEL).map(([k, label]) => (
+                  <SelectItem key={k} value={k}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+            onClick={() => {
+              resetFilters();
+              setPeriodInputKey((key) => key + 1);
+              setFilterStatus("all");
+            }}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
         </div>
 
         {listLoading ? (
@@ -1155,12 +1235,34 @@ export default function SettlementsPage() {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Paid date</Label>
-              <Input
-                type="date"
-                value={paidDate}
-                onChange={(e) => setPaidDate(e.target.value)}
-                data-testid="input-paid-date"
-              />
+              <div
+                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}
+                onBlurCapture={(event) => {
+                  const input = event.target;
+                  if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+                  if (!input.validity.valid || input.value === paidDate) return;
+                  if (input.value !== "" && !formatIsoDate(input.value)) return;
+                  input.dispatchEvent(new Event("input", { bubbles: true }));
+                }}
+              >
+                <div aria-hidden="true" style={{ gridArea: "1 / 1", paddingTop: 36, visibility: "hidden", pointerEvents: "none" }}>
+                  <p className="mt-1 text-xs leading-4">Incorrect date/date format</p>
+                </div>
+                <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
+                  <FormattedDateInput
+                    mode="date"
+                    value={paidDate}
+                    onChange={(e) => setPaidDate(e.target.value)}
+                    initialDraft={paidDateDraft.current}
+                    onDraftChange={(draft) => { paidDateDraft.current = draft; }}
+                    onDraftValidityChange={(valid) => { paidDateValid.current = valid; }}
+                    acceptCalendarInputEvents
+                    retainInvalidDraftOnBlur
+                    className="min-w-0 border-input text-base md:text-sm"
+                    data-testid="input-paid-date"
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Payment reference (optional)</Label>

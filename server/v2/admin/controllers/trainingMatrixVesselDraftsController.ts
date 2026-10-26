@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { trainingMatrixVesselDraftsService } from "../services";
+import { matrixWriteData, sendMatrixPolicyError } from "./trainingMatrixPolicyController";
 
 export const trainingMatrixVesselDraftsController = {
   async getAll(req: Request, res: Response) {
@@ -42,10 +43,10 @@ export const trainingMatrixVesselDraftsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await trainingMatrixVesselDraftsService.create({ ...req.body, auditUserUuid });
+      const record = await trainingMatrixVesselDraftsService.create(matrixWriteData(req, "draft"));
       res.json(record);
     } catch (error: any) {
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error creating training matrix vessel draft:", error);
       res.status(500).json({ error: "Failed to create training matrix vessel draft" });
     }
@@ -57,13 +58,13 @@ export const trainingMatrixVesselDraftsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid training matrix vessel draft ID" });
       }
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await trainingMatrixVesselDraftsService.updateById(id, { ...req.body, auditUserUuid });
+      const record = await trainingMatrixVesselDraftsService.updateById(id, matrixWriteData(req, "draft", true));
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error updating training matrix vessel draft:", error);
       res.status(500).json({ error: "Failed to update training matrix vessel draft" });
     }
@@ -81,6 +82,7 @@ export const trainingMatrixVesselDraftsController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error deleting training matrix vessel draft:", error);
       res.status(500).json({ error: "Failed to delete training matrix vessel draft" });
     }
@@ -88,10 +90,10 @@ export const trainingMatrixVesselDraftsController = {
 
   async upsert(req: Request, res: Response) {
     try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await trainingMatrixVesselDraftsService.upsert({ ...req.body, auditUserUuid });
+      const record = await trainingMatrixVesselDraftsService.upsert(matrixWriteData(req, "draft"));
       res.json(record);
     } catch (error: any) {
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error upserting training matrix vessel draft:", error);
       res.status(500).json({ error: "Failed to upsert training matrix vessel draft" });
     }

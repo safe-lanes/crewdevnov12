@@ -75,6 +75,7 @@ export const PAY_ELEMENT_CATEGORIES: Option[] = [
   opt("communication", "Communication"),
   opt("one_off", "One-off"),
   opt("other", "Other"),
+  opt("leave", "Leave Pay"),
 ];
 
 export const CALC_METHODS: Option[] = [

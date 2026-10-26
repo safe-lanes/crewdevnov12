@@ -1,3 +1,4 @@
+import { startDocumentPreparationWorker } from "./v2/company-forms/documentArchive";
 import express, { type Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
@@ -133,6 +134,7 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
+    startDocumentPreparationWorker();
   });
 
   // Handle port conflicts explicitly

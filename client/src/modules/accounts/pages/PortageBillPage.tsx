@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Printer, Lock } from "lucide-react";
@@ -260,28 +260,29 @@ export default function PortageBillPage() {
           period={period}
           onVesselChange={setVesselUuid}
           onPeriodChange={setPeriod}
-        >
-          <div className="ml-auto flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={exportExcel}
-              disabled={rows.length === 0}
-              data-testid="button-export-portage"
-            >
-              <Download size={14} className="mr-1" /> Export
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => window.print()}
-              disabled={rows.length === 0}
-              data-testid="button-print-portage"
-            >
-              <Printer size={14} className="mr-1" /> Print
-            </Button>
-          </div>
-        </VesselPeriodBar>
+          actions={
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportExcel}
+                disabled={rows.length === 0}
+                data-testid="button-export-portage"
+              >
+                <Download size={14} className="mr-1" /> Export
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.print()}
+                disabled={rows.length === 0}
+                data-testid="button-print-portage"
+              >
+                <Printer size={14} className="mr-1" /> Print
+              </Button>
+            </div>
+          }
+        />
       </div>
 
       {!hasFilter && (

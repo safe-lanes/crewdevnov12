@@ -4,6 +4,7 @@ import type { VersionApplicability } from "@shared/v2/admin/applicability";
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
 import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { CompanyFormProblems } from "./CompanyFormProblems";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,7 @@ function toPayload(draft: PolicyDraft): ApplicabilityDraft {
     mode: draft.mode,
     obligation: draft.obligation,
     effectiveKind: draft.effectiveKind,
-    ...(draft.effectiveKind === "specific_date" ? { specificDate: draft.specificDate } : {}),
+    ...(draft.effectiveKind === "specific_date" && draft.specificDate ? { specificDate: draft.specificDate } : {}),
     ...(draft.mode === "conditional"
       ? {
           sets: draft.sets.map((set) => ({
@@ -245,7 +246,6 @@ export function CompanyFormApplicabilityEditor({
     if (!isDirty) return true;
     if (
       !conditionSetsValid
-      || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)
     ) {
       setSaveError("Complete every condition and choose an effective date before saving.");
       return false;
@@ -525,7 +525,7 @@ export function CompanyFormApplicabilityEditor({
               policy={toPayload(draft)}
             />
           )}
-          {saveError && <p className="mt-3 text-sm text-[#a44738]" role="alert">{saveError}</p>}
+          {saveError && <CompanyFormProblems message={saveError} />}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">
             <p className="text-xs text-[#6a808b]">
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}

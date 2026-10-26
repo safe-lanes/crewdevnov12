@@ -1,3 +1,4 @@
+import { authorizeStandardSignature } from "../shared/standardSignatureAccess";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../db";
@@ -668,7 +669,7 @@ export const briefingService = {
     return { missing_questions: missing };
   },
   async rawSignature(attUuid: string, req: Request) {
-    await authorizeBriefingRead(req);
+    await authorizeStandardSignature(req, "briefings", attUuid);
     const parent = await briefingRepository.signatureParent(attUuid);
     if (!parent) throw new BriefingError("Signature parent not found", 404);
     return parent.attachment;

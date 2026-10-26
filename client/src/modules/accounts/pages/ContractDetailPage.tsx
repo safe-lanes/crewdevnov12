@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -6,6 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -49,11 +54,11 @@ const MODE_EXPLANATION: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  active: "bg-green-600 text-white",
-  draft: "bg-slate-500 text-white",
-  completed: "bg-blue-600 text-white",
-  settled: "bg-slate-700 text-white",
-  cancelled: "bg-red-600 text-white",
+  active: accountsStatusBadgeClass("green"),
+  draft: accountsStatusBadgeClass("grey"),
+  completed: accountsStatusBadgeClass("green"),
+  settled: accountsStatusBadgeClass("green"),
+  cancelled: accountsStatusBadgeClass("red"),
 };
 
 /** True when the row is a value/suppress override (Section D), not a
@@ -161,9 +166,11 @@ export default function ContractDetailPage({
   // ---- A: sign-off editor ----
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [endDateValue, setEndDateValue] = useState("");
+  const [endDateValid, setEndDateValid] = useState(true);
+  const [endDateSession, setEndDateSession] = useState(0);
   const [savingEndDate, setSavingEndDate] = useState(false);
   const saveEndDate = async () => {
-    if (!endDateValue) return;
+    if (!endDateValue || !endDateValid) return;
     setSavingEndDate(true);
     try {
       await accountsApiV2.engagements.update(engagementUuid, {
@@ -187,13 +194,18 @@ export default function ContractDetailPage({
   const [anchorOpen, setAnchorOpen] = useState(false);
   const [anchorYear, setAnchorYear] = useState("");
   const [anchorNextStep, setAnchorNextStep] = useState("");
+  const [anchorNextStepValid, setAnchorNextStepValid] = useState(true);
+  const [anchorSession, setAnchorSession] = useState(0);
   const [savingAnchor, setSavingAnchor] = useState(false);
   const openAnchor = () => {
     setAnchorYear(String(engagement?.scaleYearAtStart ?? 1));
     setAnchorNextStep(engagement?.nextStepDate ?? "");
+    setAnchorNextStepValid(true);
+    setAnchorSession((session) => session + 1);
     setAnchorOpen(true);
   };
   const saveAnchor = async () => {
+    if (!anchorNextStepValid) return;
     setSavingAnchor(true);
     try {
       const payload: Record<string, unknown> = {};
@@ -273,12 +285,25 @@ export default function ContractDetailPage({
 
   // ---- D: pay items dialog ----
   const [itemForm, setItemForm] = useState<PayItemForm | null>(null);
+  const [itemFromValid, setItemFromValid] = useState(true);
+  const [itemToValid, setItemToValid] = useState(true);
+  const [itemMonthSession, setItemMonthSession] = useState(0);
+  const itemFromInputRef = useRef<HTMLInputElement | null>(null);
+  const itemToInputRef = useRef<HTMLInputElement | null>(null);
   const [savingItem, setSavingItem] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const openNewItem = () => setItemForm({ ...EMPTY_FORM });
-  const openEditItem = (o: any) =>
+  const openNewItem = () => {
+    setItemFromValid(true);
+    setItemToValid(true);
+    setItemMonthSession((session) => session + 1);
+    setItemForm({ ...EMPTY_FORM });
+  };
+  const openEditItem = (o: any) => {
+    setItemFromValid(true);
+    setItemToValid(true);
+    setItemMonthSession((session) => session + 1);
     setItemForm({
       epeUuid: o.epeUuid,
       payElementUuid: o.payElementUuid,
@@ -289,9 +314,15 @@ export default function ContractDetailPage({
       toMonth: o.effectiveTo ? o.effectiveTo.slice(0, 7) : "",
       remarks: o.remarks ?? "",
     });
+  };
 
   const saveItem = async () => {
-    if (!itemForm || !itemForm.payElementUuid) return;
+    if (
+      !itemForm ||
+      !itemForm.payElementUuid ||
+      !itemFromValid ||
+      !itemToValid
+    ) return;
     setSavingItem(true);
     try {
       const payload: Record<string, unknown> = {
@@ -457,6 +488,8 @@ export default function ContractDetailPage({
                   title="Edit sign-off date"
                   onClick={() => {
                     setEndDateValue(engagement.endDate ?? "");
+                    setEndDateValid(true);
+                    setEndDateSession((session) => session + 1);
                     setEndDateOpen(true);
                   }}
                   data-testid="button-edit-sign-off"
@@ -786,7 +819,9 @@ export default function ContractDetailPage({
                       {a.beneficiaryName ?? a.beneficiary ?? "—"}
                     </td>
                     <td className="py-1.5 pr-2 text-right">
-                      {formatMoney(a.amount)}
+                      {a.allotmentType === "percentage"
+                        ? `${a.value}%`
+                        : formatMoney(a.value)}
                     </td>
                     <td className="py-1.5 pr-2">{a.currency ?? ""}</td>
                     <td className="py-1.5 pr-2">
@@ -873,11 +908,22 @@ export default function ContractDetailPage({
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="sign-off-date">Sign-off (end) date</Label>
-            <Input
-              id="sign-off-date"
-              type="date"
+            <FormattedDateInput
+              key={endDateSession}
+              ref={(node) => {
+                const input = node?.querySelector<HTMLInputElement>(
+                  'input[type="text"]',
+                );
+                if (input) {
+                  input.id = "sign-off-date";
+                  input.removeAttribute("aria-label");
+                }
+              }}
               value={endDateValue}
+              initialDraft={formatIsoDate(endDateValue) || endDateValue}
               onChange={(e) => setEndDateValue(e.target.value)}
+              onDraftValidityChange={setEndDateValid}
+              acceptCalendarInputEvents
               data-testid="input-sign-off-date"
             />
             <p className="text-xs text-muted-foreground">
@@ -891,7 +937,7 @@ export default function ContractDetailPage({
             </Button>
             <Button
               onClick={saveEndDate}
-              disabled={!endDateValue || savingEndDate}
+              disabled={!endDateValue || !endDateValid || savingEndDate}
               data-testid="button-save-sign-off"
             >
               {savingEndDate ? "Saving…" : "Save"}
@@ -919,11 +965,22 @@ export default function ContractDetailPage({
             </div>
             <div>
               <Label htmlFor="anchor-next">Next step date</Label>
-              <Input
-                id="anchor-next"
-                type="date"
+              <FormattedDateInput
+                key={anchorSession}
+                ref={(node) => {
+                  const input = node?.querySelector<HTMLInputElement>(
+                    'input[type="text"]',
+                  );
+                  if (input) {
+                    input.id = "anchor-next";
+                    input.removeAttribute("aria-label");
+                  }
+                }}
                 value={anchorNextStep}
+                initialDraft={formatIsoDate(anchorNextStep) || anchorNextStep}
                 onChange={(e) => setAnchorNextStep(e.target.value)}
+                onDraftValidityChange={setAnchorNextStepValid}
+                acceptCalendarInputEvents
                 data-testid="input-anchor-next-step"
               />
             </div>
@@ -934,7 +991,7 @@ export default function ContractDetailPage({
             </Button>
             <Button
               onClick={saveAnchor}
-              disabled={savingAnchor}
+              disabled={savingAnchor || !anchorNextStepValid}
               data-testid="button-save-anchor"
             >
               {savingAnchor ? "Saving…" : "Save"}
@@ -1037,25 +1094,57 @@ export default function ContractDetailPage({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="item-from">Effective from (month)</Label>
-                  <Input
-                    id="item-from"
-                    type="month"
+                  <FormattedDateInput
+                    key={itemMonthSession}
+                    mode="month"
+                    ref={(node) => {
+                      const input =
+                        node?.querySelector<HTMLInputElement>(
+                          'input[type="text"]',
+                        ) ?? null;
+                      itemFromInputRef.current = input;
+                      if (input) {
+                        input.id = "item-from";
+                        input.removeAttribute("aria-label");
+                      }
+                    }}
                     value={itemForm.fromMonth}
                     onChange={(e) =>
                       setItemForm({ ...itemForm, fromMonth: e.target.value })
                     }
+                    onMonthDraftChange={() => {
+                      setItemFromValid(
+                        itemFromInputRef.current?.dataset.monthValid === "true",
+                      );
+                    }}
                     data-testid="input-pay-item-from"
                   />
                 </div>
                 <div>
                   <Label htmlFor="item-to">Effective to (month)</Label>
-                  <Input
-                    id="item-to"
-                    type="month"
+                  <FormattedDateInput
+                    key={itemMonthSession}
+                    mode="month"
+                    ref={(node) => {
+                      const input =
+                        node?.querySelector<HTMLInputElement>(
+                          'input[type="text"]',
+                        ) ?? null;
+                      itemToInputRef.current = input;
+                      if (input) {
+                        input.id = "item-to";
+                        input.removeAttribute("aria-label");
+                      }
+                    }}
                     value={itemForm.toMonth}
                     onChange={(e) =>
                       setItemForm({ ...itemForm, toMonth: e.target.value })
                     }
+                    onMonthDraftChange={() => {
+                      setItemToValid(
+                        itemToInputRef.current?.dataset.monthValid === "true",
+                      );
+                    }}
                     data-testid="input-pay-item-to"
                   />
                 </div>
@@ -1085,6 +1174,8 @@ export default function ContractDetailPage({
               onClick={saveItem}
               disabled={
                 savingItem ||
+                !itemFromValid ||
+                !itemToValid ||
                 !itemForm?.payElementUuid ||
                 (itemForm?.overrideMode !== "suppress_element" &&
                   !itemForm?.amount &&

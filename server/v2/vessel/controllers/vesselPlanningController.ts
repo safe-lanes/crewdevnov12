@@ -16,7 +16,7 @@ import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 import { getDb } from "../../db";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -214,6 +214,10 @@ export const vesselPlanningController = {
         signOnDate: crewAssignments.signOnDate,
         contractPeriod: crewAssignments.contractPeriod,
         portOfJoiningUuid: crewAssignments.portOfJoiningUuid,
+        contractRankUuid: sql<string | null>`(SELECT contract_rank_uuid FROM crew_assignment_rule_context WHERE assign_uuid=${crewAssignments.assignUuid})`,
+        contractRankLabel: sql<string | null>`(SELECT contract_rank_label FROM crew_assignment_rule_context WHERE assign_uuid=${crewAssignments.assignUuid})`,
+        plannedJoiningDate: vesselPlanningV2.relieverSignOnDate,
+        contractRangeEndMonths: vesselPlanningV2.relieverContractEndRangeEndMonths,
       }).from(vesselPlanningV2)
         .innerJoin(crewAssignments, and(
           eq(crewAssignments.assignUuid, vesselPlanningV2.relieverAssignUuid),
@@ -227,7 +231,15 @@ export const vesselPlanningController = {
           eq(vesselPlanningV2.isDeleted, false),
         ));
       if (!row) return res.status(404).json({ error: "Linked reliever assignment unavailable" });
-      res.json(row);
+      res.json({
+        ...row,
+        contractRankLabel: row.contractRankUuid ? (row.contractRankLabel || "Not recorded") : "Not recorded",
+        inputAvailability: {
+          contractRank: row.contractRankUuid ? "available" : "absent",
+          plannedJoiningDate: row.plannedJoiningDate ? "available" : "absent",
+          contractRangeEndMonths: row.contractRangeEndMonths != null ? "available" : "absent",
+        },
+      });
     } catch (error) {
       console.error("Error opening linked reliever assignment:", error);
       res.status(500).json({ error: "Failed to open linked reliever assignment" });
@@ -454,7 +466,7 @@ export const vesselPlanningController = {
    * For status changes: Planned -> Confirmed -> In Transit
    */
   async updateRelieverStatus(req: Request, res: Response) {
-    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}))
+    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}) || "trainingOverride" in (req.body ?? {}))
       return res.status(400).json({ message: "Complete the deployment checklist through the linked Planning screen, not a status shortcut." });
     try {
       const { planUuid } = req.params;

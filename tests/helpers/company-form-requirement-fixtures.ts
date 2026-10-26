@@ -50,13 +50,15 @@ export async function createRequirementFixture(stageKey = "before_joining", opti
   await requirementPool.query(`INSERT INTO frm_sections(section_uuid,form_version_uuid,form_part_uuid,section_code,section_title,responsible_mode,
     signature_officer_required,signature_seafarer_required)
     VALUES($1,$2,$3,'REQ','Form evidence','seafarer',$4,$4)`, [section, v.fvUuid, part, options.signatures ?? false]);
-  await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type)
-    VALUES($1,$2,'ANSWER','Retained requirement evidence',$3)`, [question, section, options.signatures ? "content" : "free_text"]);
+  await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type,content_html,comment_enabled)
+    VALUES($1,$2,'ANSWER','Retained requirement evidence',$3,$4,$5)`,
+    [question, section, options.signatures ? "content" : "free_text",
+      options.signatures ? "<p>Retained requirement evidence</p>" : null, !options.signatures]);
   if (options.rankSystemField) {
     const rankQuestion = randomUUID();
     retainFixtureReferences("required signing contract rank System field", [rankQuestion]);
-    await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type,system_field_key)
-      VALUES($1,$2,'CONTRACT_RANK','Contract rank at signing','system_field','rank')`, [rankQuestion, section]);
+    await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type,system_field_key,comment_enabled)
+      VALUES($1,$2,'CONTRACT_RANK','Contract rank at signing','system_field','rank',false)`, [rankQuestion, section]);
   }
   const policy = await formCall("put", `/form-versions/${v.id}/applicability`, options.signatures ? {
     mode: "conditional", obligation: "mandatory", sets: [

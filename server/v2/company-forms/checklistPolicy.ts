@@ -27,7 +27,8 @@ export function checklistBlockerMessage(blockers: readonly ChecklistBlocker[]): 
 export class ChecklistGateError extends Error {
   readonly status = 409;
   readonly code = "company_forms_checklist_blocked";
-  constructor(message: string, readonly blockers: ChecklistBlocker[] = [], readonly canOverride = false) {
+  constructor(message: string, readonly blockers: (ChecklistBlocker | import("../shared/training-compliance/checklistPolicy").TrainingBlocker)[] = [],
+    readonly canOverride = false, readonly canOverrideTraining = false) {
     super(message);
   }
 }

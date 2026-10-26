@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { trainingMatrixVesselRevisionsService } from "../services";
+import { matrixWriteData, sendMatrixPolicyError } from "./trainingMatrixPolicyController";
 
 export const trainingMatrixVesselRevisionsController = {
   async getAll(req: Request, res: Response) {
@@ -42,10 +43,10 @@ export const trainingMatrixVesselRevisionsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const record = await trainingMatrixVesselRevisionsService.create({ ...req.body, auditUserUuid });
+      const record = await trainingMatrixVesselRevisionsService.create(matrixWriteData(req, "revision"));
       res.json(record);
     } catch (error: any) {
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error creating training matrix vessel revision:", error);
       res.status(500).json({ error: "Failed to create training matrix vessel revision" });
     }
@@ -64,10 +65,10 @@ export const trainingMatrixVesselRevisionsController = {
 
   async submit(req: Request, res: Response) {
     try {
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const result = await trainingMatrixVesselRevisionsService.submit({ ...req.body, auditUserUuid });
+      const result = await trainingMatrixVesselRevisionsService.submit(matrixWriteData(req, "revision"));
       res.json(result);
     } catch (error: any) {
+      if (sendMatrixPolicyError(error, res)) return;
       console.error("Error submitting training matrix vessel revision:", error);
       res.status(500).json({ error: "Failed to submit training matrix vessel revision" });
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { AdminDateInput } from "@/components/AdminDateInput";
 import { formatIsoDate } from "@/components/ui/formatted-date-input";
 import { usePermissions } from '@/contexts/PermissionsContext';
+import TrainingEquivalentsEditor from './TrainingEquivalentsEditor';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
@@ -118,6 +119,7 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
+import { CompanyDocumentBranding } from "@/components/admin/CompanyDocumentBranding";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
@@ -138,6 +140,8 @@ import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypes
 import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2, useFormCopySourcesV2, useCopyFormConfigurationV2 } from './hooks/useAdminV2';
 
 const V2_KEY = '/api/v2/admin';
+type AdminTrainingMaster = TrainingMaster & { certificateExpires?: boolean };
+type AdminInsertTrainingMaster = InsertTrainingMaster & { certificateExpires: boolean };
 type CompanyForm = Form & {
   formUuid?: string; subjectType?: string | null; description?: string | null; archivedAt?: string | null;
   versionSummary?: VersionLoadResult; rankGroups?: RankGroup[]; parts?: ConfigurableFormPart[];
@@ -198,7 +202,7 @@ const rankGroupSchema = z.object({
 interface NewTrainingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: InsertTrainingMaster) => Promise<void>;
+  onSubmit: (data: AdminInsertTrainingMaster) => Promise<void>;
   existingIds: string[];
   isLoading: boolean;
 }
@@ -210,6 +214,7 @@ const newTrainingSchema = z.object({
   requirementReference: z.string().optional(),
   trainingLabel: z.string().optional(),
   applicableToCompany: z.boolean(),
+  certificateExpires: z.boolean(),
 });
 
 function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoading }: NewTrainingDialogProps) {
@@ -222,6 +227,7 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
       requirementReference: '',
       trainingLabel: '',
       applicableToCompany: true,
+      certificateExpires: true,
     },
   });
 
@@ -233,7 +239,7 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
   }, [watchCategory, watchGroup, existingIds]);
 
   const handleSubmit = async (values: z.infer<typeof newTrainingSchema>) => {
-    const data: InsertTrainingMaster = {
+    const data: AdminInsertTrainingMaster = {
       trainingId: generatedId,
       trainingName: values.trainingName,
       category: values.category,
@@ -241,6 +247,7 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
       requirementReference: values.requirementReference || null,
       trainingLabel: values.trainingLabel || null,
       applicableToCompany: values.applicableToCompany,
+      certificateExpires: values.certificateExpires,
       sortOrder: 0,
       isDefault: false,
     };
@@ -373,6 +380,27 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
                   <FormControl>
                     <Input {...field} className="h-8 text-xs" placeholder="Short label for display" data-testid="input-new-label" />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="certificateExpires"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Certificate expires</FormLabel>
+                  <Select value={field.value ? "yes" : "no"} onValueChange={(value) => field.onChange(value === "yes")}>
+                    <FormControl>
+                      <SelectTrigger className="h-8 text-xs" data-testid="select-new-certificate-expires">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormItem>
               )}
             />
@@ -671,7 +699,7 @@ const AdminModuleInner = (): JSX.Element => {
   const reorderTrainingMutation = useReorderTrainingMastersV2();
 
   // Training Master local state
-  const [localTrainingData, setLocalTrainingData] = useState<TrainingMaster[]>([]);
+  const [localTrainingData, setLocalTrainingData] = useState<AdminTrainingMaster[]>([]);
   const [changedTrainings, setChangedTrainings] = useState<Set<number>>(new Set());
   const [showNewTrainingDialog, setShowNewTrainingDialog] = useState(false);
   const [showDeleteTrainingDialog, setShowDeleteTrainingDialog] = useState(false);
@@ -729,7 +757,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Sync training master data with local state
   useEffect(() => {
     if (trainingMasterData.length > 0 && !isTrainingMasterEditing) {
-      setLocalTrainingData(trainingMasterData);
+      setLocalTrainingData(trainingMasterData.map((training: AdminTrainingMaster) => ({
+        ...training,
+        certificateExpires: training.certificateExpires !== false,
+      })));
       setChangedTrainings(new Set());
     }
   }, [trainingMasterData, isTrainingMasterEditing]);
@@ -836,6 +867,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [tmFlexDate, setTmFlexDate] = useState("");
   const tmFlexDateDraftValidRef = useRef(true);
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
+  const [tmEquivalentsDirty, setTmEquivalentsDirty] = useState(false);
   const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
 
   // Training Matrix Vessel revision queries - use queryFn with explicit URL
@@ -982,8 +1014,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      const auditUserUuid = getCrewUserId() || undefined;
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData, auditUserUuid });
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -993,6 +1024,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
       // Invalidate draft query to refresh the data
       queryClient.invalidateQueries({ queryKey: ['tm-vessel-draft', variables.vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
     },
     onError: (error: any) => {
       console.error('Failed to save training matrix draft:', error);
@@ -1007,8 +1039,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      const auditUserUuid = getCrewUserId() || undefined;
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData, auditUserUuid });
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -1016,6 +1047,7 @@ const AdminModuleInner = (): JSX.Element => {
         description: "Training matrix revision submitted successfully.",
         duration: 3000,
       });
+      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
       setTmRevisionMode(false);
       // Invalidate all training matrix queries for this vessel using predicate for robust matching
       queryClient.invalidateQueries({
@@ -4988,7 +5020,7 @@ const AdminModuleInner = (): JSX.Element => {
                       initialDraft={formatIsoDate(flexDate) || flexDate}
                       onChange={(e) => setFlexDate(e.target.value)}
                       onDraftValidityChange={(valid) => { flexDateDraftValidRef.current = valid; }}
-                      placeholder="DD-MMM-YYYY"
+                      placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                       className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
                       disabled={!revisionMode}
                       data-testid="flex-date-input"
@@ -5351,6 +5383,7 @@ const AdminModuleInner = (): JSX.Element => {
             requirementReference: training.requirementReference,
             applicableToCompany: training.applicableToCompany,
             trainingLabel: training.trainingLabel,
+            certificateExpires: training.certificateExpires !== false,
             ...(training.isDefault ? {} : {
               trainingName: training.trainingName,
               category: training.category,
@@ -5387,7 +5420,7 @@ const AdminModuleInner = (): JSX.Element => {
     setShowNewTrainingDialog(true);
   };
 
-  const handleCreateTraining = async (data: InsertTrainingMaster) => {
+  const handleCreateTraining = async (data: AdminInsertTrainingMaster) => {
     try {
       await createTrainingMutation.mutateAsync(data);
       setShowNewTrainingDialog(false);
@@ -5472,8 +5505,8 @@ const AdminModuleInner = (): JSX.Element => {
     }
   };
 
-  const handleTrainingFieldChange = (id: number, field: keyof TrainingMaster, value: any) => {
-    const protectedFields: (keyof TrainingMaster)[] = ['trainingName', 'category', 'trainingGroup'];
+  const handleTrainingFieldChange = (id: number, field: keyof AdminTrainingMaster, value: any) => {
+    const protectedFields: (keyof AdminTrainingMaster)[] = ['trainingName', 'category', 'trainingGroup'];
 
     setLocalTrainingData(prev => prev.map(t => {
       if (t.id !== id) return t;
@@ -6026,6 +6059,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Category</TableHead>
                       <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Group</TableHead>
                       <TableHead className="w-32 text-xs font-normal text-white bg-[#52baf3]">Requirement/Ref</TableHead>
+                      <TableHead className="w-28 text-center text-xs font-normal text-white bg-[#52baf3]">Certificate expires</TableHead>
                       <TableHead className="w-32 text-center text-xs font-normal text-white bg-[#52baf3]">
                         <div className="flex items-center justify-center gap-2">
                           <span>Applicable to Company</span>
@@ -6074,8 +6108,10 @@ const AdminModuleInner = (): JSX.Element => {
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="text-center"><div className="h-4 w-10 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
                             <TableCell className="text-center"><div className="h-4 w-4 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
                             <TableCell><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            {isTrainingMasterEditing && <TableCell />}
                           </TableRow>
                         ))}
                       </>
@@ -6083,7 +6119,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {/* Empty State - No data found */}
                     {!trainingMasterLoading && filteredTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={isTrainingMasterEditing ? 10 : 9} className="text-center py-8 text-gray-500">
                           No training data found
                         </TableCell>
                       </TableRow>
@@ -6166,6 +6202,24 @@ const AdminModuleInner = (): JSX.Element => {
                                   />
                                 ) : (
                                   training.requirementReference || '-'
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {isTrainingMasterEditing ? (
+                                  <Select
+                                    value={training.certificateExpires !== false ? "yes" : "no"}
+                                    onValueChange={(value) => handleTrainingFieldChange(training.id, 'certificateExpires', value === "yes")}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-certificate-expires-${training.id}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="yes">Yes</SelectItem>
+                                      <SelectItem value="no">No</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  training.certificateExpires !== false ? "Yes" : "No"
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
@@ -6533,6 +6587,7 @@ const AdminModuleInner = (): JSX.Element => {
                       role="combobox"
                       className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                       data-testid="tm-vessel-select"
+                      disabled={tmEquivalentsDirty}
                     >
                       {tmSelectedVessels.length === 0 
                         ? "Select Vessel or Group" 
@@ -6635,7 +6690,7 @@ const AdminModuleInner = (): JSX.Element => {
                       initialDraft={formatIsoDate(tmFlexDate) || tmFlexDate}
                       onChange={(e) => setTmFlexDate(e.target.value)}
                       onDraftValidityChange={(valid) => { tmFlexDateDraftValidRef.current = valid; }}
-                      placeholder="DD-MMM-YYYY"
+                      placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                       className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
                       disabled={!tmRevisionMode}
                       data-testid="tm-flex-date-input"
@@ -6677,6 +6732,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
                         data-testid="tm-cancel-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Cancel
                       </Button>
@@ -6690,6 +6746,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-save-draft-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Save Draft
                       </Button>
@@ -6717,6 +6774,7 @@ const AdminModuleInner = (): JSX.Element => {
                         }}
                         className="h-8 bg-[#00AF7B] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-submit-button"
+                        disabled={tmEquivalentsDirty}
                       >
                         Submit
                       </Button>
@@ -6753,7 +6811,8 @@ const AdminModuleInner = (): JSX.Element => {
             )}
 
             {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <div className="flex-1 min-h-0 overflow-y-auto pb-4" data-testid="training-vessel-scroll">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[50vh] min-h-[250px] flex flex-col overflow-hidden">
               <div className="flex-1 overflow-auto relative">
                 <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
                   <TableHeader className="sticky top-0 z-50">
@@ -6915,6 +6974,15 @@ const AdminModuleInner = (): JSX.Element => {
                   </TableBody>
                 </Table>
               </div>
+            </div>
+            {tmSelectedVessels.length === 1 && (
+              <TrainingEquivalentsEditor
+                vesselId={tmSelectedVessels[0]}
+                editable={tmRevisionMode && canEdit("Admin Training Matrix")}
+                draftData={{ applicableTrainingIds: Array.from(tmApplicableTrainings.get(tmSelectedVessels[0]) || new Set<number>()) }}
+                onDirtyChange={setTmEquivalentsDirty}
+              />
+            )}
             </div>
           </div>
         )}
@@ -8493,6 +8561,7 @@ const AdminModuleInner = (): JSX.Element => {
     <div className="flex min-h-0 flex-1 flex-col">
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          {accessControlManagement && <CompanyDocumentBranding />}
           {formsTab === "company" && !showArchivedCompany && (permissions.length === 0 || canCreate("Forms")) && (
             <Button variant="outline" onClick={() => setShowCreateFormDialog(true)}
               className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2" data-testid="button-new-company-form">

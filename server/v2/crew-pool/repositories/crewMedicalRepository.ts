@@ -1,5 +1,6 @@
 import { eq, and, inArray, sql, asc } from "drizzle-orm";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 import {
   crewPreJoiningMedicals,
   crewMedicalAttachments,
@@ -138,12 +139,19 @@ export class CrewMedicalRepository {
 
   async updateMedical(
     medUuid: string,
-    data: Partial<InsertCrewPreJoiningMedical>
+    data: Partial<InsertCrewPreJoiningMedical>,
+    db = getDb()
   ): Promise<CrewPreJoiningMedical | undefined> {
-    const db = getDb();
+    let fields = data;
+    if (Object.prototype.hasOwnProperty.call(data, "crewUuid")) {
+      const [original] = await db.select({ crewUuid: crewPreJoiningMedicals.crewUuid })
+        .from(crewPreJoiningMedicals).where(eq(crewPreJoiningMedicals.medUuid, medUuid));
+      if (!original) return undefined;
+      fields = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Medical record");
+    }
     const results = await db
       .update(crewPreJoiningMedicals)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...fields, updatedAt: new Date() })
       .where(eq(crewPreJoiningMedicals.medUuid, medUuid))
       .returning();
     return results[0];
@@ -315,12 +323,19 @@ export class CrewMedicalRepository {
 
   async updateVisit(
     visitUuid: string,
-    data: Partial<InsertCrewDoctorVisit>
+    data: Partial<InsertCrewDoctorVisit>,
+    db = getDb()
   ): Promise<CrewDoctorVisit | undefined> {
-    const db = getDb();
+    let fields = data;
+    if (Object.prototype.hasOwnProperty.call(data, "crewUuid")) {
+      const [original] = await db.select({ crewUuid: crewDoctorVisits.crewUuid })
+        .from(crewDoctorVisits).where(eq(crewDoctorVisits.visitUuid, visitUuid));
+      if (!original) return undefined;
+      fields = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Doctor visit");
+    }
     const results = await db
       .update(crewDoctorVisits)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...fields, updatedAt: new Date() })
       .where(eq(crewDoctorVisits.visitUuid, visitUuid))
       .returning();
     return results[0];

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { CertificateOwnershipError } from "../../crew-pool/utils/certificateOwnership";
 import { documentsService } from "../services";
 import {
   fileStorageService,
@@ -571,6 +572,9 @@ export async function updateTrainingCourse(req: Request, res: Response) {
     if (!course) return res.status(404).json({ error: "Not found" });
     res.json(course);
   } catch (error) {
+    if (error instanceof CertificateOwnershipError) {
+      return res.status(409).json({ error: error.code, message: error.message });
+    }
     console.error("Error updating training course:", error);
     res.status(500).json({ error: "Failed to update training course" });
   }

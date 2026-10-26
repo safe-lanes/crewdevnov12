@@ -9,6 +9,7 @@ import { format, addMonths, differenceInMonths, differenceInDays, parse } from '
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { PlannedDateCellEditor } from './PlannedDateCellEditor';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { DueInChips } from '@/components/common/DueInChips';
 
 const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
@@ -325,13 +326,6 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
     });
   }, [testRecords, selectedVessel]);
 
-  const staticLegend = [
-    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
-    { label: '2M', color: '#FFCC00', textColor: '#000000' },
-    { label: '1M', color: '#F9ECEF', textColor: '#000000' },
-    { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
-  ];
-
   const columnDefs = useMemo<ColDef<SummaryRowData>[]>(() => {
     const baseCols: ColDef<SummaryRowData>[] = [
       {
@@ -450,18 +444,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
 
   return (
     <div className="flex flex-col flex-1 gap-4">
-      <div className="flex gap-2 items-center">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
-        {staticLegend.map((item, index) => (
-          <div
-            key={index}
-            className="px-3 py-1 rounded text-sm font-semibold"
-            style={{ backgroundColor: item.color, color: item.textColor }}
-          >
-            {item.label}
-          </div>
-        ))}
-      </div>
+      <DueInChips className="flex gap-2 items-center" />
 
       <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-full">

@@ -1,8 +1,10 @@
 import { Router } from "express";
+import { standardSignatureAccess } from "../shared/standardSignatureAccess";
 import { z } from "zod";
 import { debriefingController } from "./controller";
 
 const router = Router();
+router.use(standardSignatureAccess("debriefings"));
 const uuid = z.string().uuid();
 const create = z.object({ debriefingUuid: uuid }).strict();
 const resolveCreation = z.object({ debriefingUuid: uuid }).strict();

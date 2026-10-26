@@ -39,10 +39,11 @@ export function logEmailEvent(level: 'INFO' | 'WARN' | 'ERROR', message: string,
   }
 }
 
-// Log initialization details
+// Log presence only: never credentials, credential prefixes or endpoints.
 logEmailEvent('INFO', 'EmailService Initializing', {
-  localGmailConfigured: Boolean(GMAIL_SUPPORT_EMAIL && GMAIL_CLIENT_ID && GMAIL_REFRESH_TOKEN),
-  externalApiConfigured: Boolean(EMAIL_API_URL),
+  gmailConfigured: Boolean(GMAIL_SUPPORT_EMAIL && GMAIL_CLIENT_ID && GMAIL_CLIENT_SECRET && GMAIL_REFRESH_TOKEN),
+  externalServiceConfigured: Boolean(EMAIL_API_URL),
+  ccConfigured: Boolean(EMAIL_CC),
 });
 
 

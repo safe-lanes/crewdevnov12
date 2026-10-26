@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { CertificateOwnershipError, certificateUpdateFields } from "../utils/certificateOwnership";
 import { crewDocumentsService } from "../services";
 import { insertCrewDocumentSchema } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
@@ -104,7 +105,11 @@ export const crewDocumentsController = {
   async update(req: Request, res: Response) {
     try {
       const { docUuid } = req.params;
-      const validatedData = insertCrewDocumentSchema.partial().parse(req.body);
+      if (Object.prototype.hasOwnProperty.call(req.body, "crewUuid")) {
+        const original = await crewDocumentsService.getByUuid(docUuid);
+        certificateUpdateFields(req.body, original.crewUuid, "crewUuid", "Travel document");
+      }
+      const validatedData = insertCrewDocumentSchema.omit({ crewUuid: true }).partial().parse(req.body);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const document = await crewDocumentsService.update(docUuid, {
         ...validatedData,
@@ -112,6 +117,9 @@ export const crewDocumentsController = {
       });
       res.json(document);
     } catch (error: any) {
+      if (error instanceof CertificateOwnershipError) {
+        return res.status(409).json({ error: error.code, message: error.message });
+      }
       if (error instanceof z.ZodError) {
         return res
           .status(400)

@@ -53,6 +53,7 @@ import {
 import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured } from "./draftSectionPolicy";
 import { sanitizeComparisonHtml } from "../../../shared/v2/forms-engine/contentSanitizer";
 import { companyFormSubmissionLifecycleRepository } from "./submissionLifecycleRepository";
+import { handoversFor } from "./documentHandover";
 import { fileStorageService } from "../shared/fileStorageService";
 import { randomUUID } from "node:crypto";
 import { getDb } from "../db";
@@ -282,7 +283,7 @@ export class CompanyFormSubmissionsService {
     throw new CompanyFormPermissionError();
   }
 
-  private async authorizeSubmission(
+  async authorizeSubmission(
     req: Request,
     submissionUuid: string,
     action: CompanyFormAction,
@@ -293,6 +294,15 @@ export class CompanyFormSubmissionsService {
     const adapter = this.contextAdapter(req, submission.subjectType);
     const subject = await adapter.lookup(submission.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+    // History remains readable, but a deleted/orphaned subject must never
+    // authorize attachment bytes (including archived PDF copies).
+    if (action === "read_asset" && submission.subjectType === "crew_assignment") {
+      const owners = (await getDb().execute(sql`SELECT 1 FROM crew_assignments a
+        JOIN crew_members_v2 c ON c.crew_uuid=a.crew_uuid
+        WHERE a.assign_uuid=${submission.subjectRef}
+          AND NOT coalesce(a.is_deleted,false) AND NOT coalesce(c.is_deleted,false)`)).rows;
+      if (owners.length !== 1) throw new CompanyFormNotFoundError("Company Form attachment subject not found.");
+    }
     // Void authority belongs exclusively to the locked actual status below.
     // A pre-lock status check would refuse a valid completed-void request, or
     // authorize an in-progress grant against a concurrently completed record.
@@ -539,6 +549,7 @@ export class CompanyFormSubmissionsService {
     const history = await this.readableHistory(input.req, data.submission);
     return {
       submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),
+      documentEvidence: data.documentEvidence,
       states,
       answers,
       formUrl: `${formUrl}/form`,
@@ -860,6 +871,7 @@ export class CompanyFormSubmissionsService {
       states,
       answers,
       systemSnapshotAt: isoDate(snapshotAt),
+      documentEvidence: preview ? undefined : data.documentEvidence,
       systemSnapshotEvent: data.submission.systemSnapshotEvent,
       systemValuesChanged,
       systemValuesComparisonError,
@@ -1013,6 +1025,7 @@ export class CompanyFormSubmissionsService {
           fileName: "signature.png",
           fileType: mimeType,
           fileSize: bytes.length,
+          bytes,
         },
         actor: principal,
         adapter,
@@ -1273,6 +1286,7 @@ export class CompanyFormSubmissionsService {
       rowsBySubject.set(row.subjectRef, subjectRows);
     }
 
+    const handovers = await handoversFor(getDb(), rows.map(row => row.submissionUuid));
     const groups = (await Promise.all(permittedSubjects.map(async (subject) => {
       const classified = classifyOutstanding(adapter, subject, rowsBySubject.get(subject.subjectRef) ?? []);
       return {
@@ -1282,6 +1296,7 @@ export class CompanyFormSubmissionsService {
         ...classified,
         submissions: await Promise.all(classified.submissions.map(async row => ({
           ...row,
+          handovers: handovers.filter(h => h.submissionUuid === row.submissionUuid),
           canEdit: await this.canEditSubmission(adapter, principal, subject.context, row.status, row.stageKey),
           replacementHistory: await this.readableHistory(input.req, row),
         }))),

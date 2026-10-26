@@ -1,3 +1,230 @@
+# Vessel Training Matrix slice 7 — 21-Oct-2026
+
+- Reuses fixture vessel `a4120000-0000-4000-8000-000000000001`
+  (TEST ONLY PDF layout review), crew
+  `a4120000-0000-4000-8000-000000000004` (TEST ONLY PDF Layout Seafarer),
+  on-board assignment `a4120000-0000-4000-8000-000000000005`, planned
+  reliever assignment `dc2528aa-45d1-4507-95a3-5128b9501065`, and planning
+  `068511d9-9c64-4125-9e55-f3e4b41beac0`. No new vessel, crew, assignment
+  or planning root.
+- The on-board fixture formerly had no captured rank. A test-only declared
+  contract-rank context is now retained for that exact assignment, with
+  `rank_source.method=registered_fixture_declared_contract_rank`, using the
+  registered fixture's explicit Chief Officer UUID. This is synthetic fixture
+  preparation, **not** a production backfill/name match or a claim of historical
+  Deploy capture. Already frozen signatures/PDFs keep their original values.
+- Reuses the three slice 4 certificates and slice 6 renewal
+  `9471834c-cff2-4529-b308-a43589c431af`. Only their dates and the exact fixture
+  plan's incumbent link/reliever dates are temporarily varied, then restored
+  from the ignored baseline file. Master expiry flags, equivalents and released
+  matrix remain unchanged.
+- `node scripts/verify-vessel-training-matrix.mjs --closing` checks main-preview
+  dots, true touch tap, shared details and identical input/result parity with
+  the reliever screen. Preparation uses tightly UUID-scoped SQL on these
+  registered fixtures, not the UI or production flows. The matrix itself is
+  read-only. The reliever screen's normal suggestion reconciliation is allowed;
+  after restoration it is reconciled again so generated needs are not stale.
+- Office development persona 24/Admin uses its existing Vessel/Crew Database
+  View grants. No grant changes. The separate older no-rank on-board fixture
+  remains available for grey Incomplete dots.
+
+# Training Needs suggestion acceptance — 21-Oct-2026
+
+Reuses the registered TEST ONLY PDF layout review vessel
+`a4120000-0000-4000-8000-000000000001`, TEST ONLY PDF Layout Seafarer
+`a4120000-0000-4000-8000-000000000004`, assignment
+`dc2528aa-45d1-4507-95a3-5128b9501065`, and planning
+`068511d9-9c64-4125-9e55-f3e4b41beac0`.
+All generated Training Needs suggestion slots and append-only transitions on
+this exact assignment are retained acceptance descendants, not realistic needs.
+The additional D3 certificate number `TEST-S6-RENEWAL` and manual need titled
+`TEST ONLY slice 6 manual need — never auto-close` belong only to this seafarer;
+the verification script reuses them by identity on every replay. No new vessel,
+crew, assignment, course master, permission grant or Company Form is created.
+The pending renewal is prepared through the normal authenticated fixture D3
+endpoint and completed/saved through the D3 screen. The manual need must remain
+unchanged while generated needs close. Original certificate edits are restored;
+the new registered descendants and all history remain.
+
+- Renewal certificate: `9471834c-cff2-4529-b308-a43589c431af`.
+- Manual Training Need: `52199d45-50a6-4b12-897d-7a392e3ef6b0`.
+- AFF suggestion: `dcd99ef3-1d39-4c1a-b6d5-b2c9b65b12e2`,
+  confirmed then automatically closed by the renewal.
+- Chemical-course suggestion: `8a8e9855-63c7-4312-9c4f-c008cd8d9faf`,
+  dismissed with a written reason; dismissal survives rechecks.
+- Office development persona: user 24, Admin parent role
+  `d57dd06b-7c4f-4152-8902-c8af0422b3e6`; existing Training View/Create,
+  Crew Database View and Vessel View. No grants added.
+- Negative-permission persona: user 3, Crewing Manager role
+  `408d9fe9-1d0f-11f1-925d-5419ffd80f01`; Training View true/Create false.
+  No grants added. These are development-persona checks, not parent-login
+  acceptance. Signed-JWT authorization also runs in the isolated test database.
+
+# Additional attachment display fixtures — 20-Oct-2026
+
+Authorised specifically to finish slice 1 UI verification. Preparation is
+`node scripts/prepare-attachment-display-fixtures.mjs --prepare`; it reuses
+every UUID and refuses to overwrite a mismatched or deleted record.
+These are retained acceptance fixtures, not automated test data.
+
+The existing own-vessel subject remains crew
+`a4120000-0000-4000-8000-000000000004` (`PDF-LAYOUT-412`) on fixture-only vessel
+`a4120000-0000-4000-8000-000000000001`. No real seafarer, candidate or vessel
+was edited. All new UUIDs below have prefix
+`a4200000-0000-4000-8000-`; the last column is their complete 12-digit suffix.
+
+| Record | Table | UUID suffix |
+| --- | --- | --- |
+| Other-vessel fixture seafarer, TEST-ATTACHMENT-OTHER | crew_members_v2 | 000000000001 |
+| TEST ONLY attachment other vessel | master_vessels | 000000000002 |
+| Its current OnBoard assignment, 20-Oct-2026 | crew_assignments | 000000000003 |
+| Own-vessel document | crew_documents | 000000000010 |
+| Own-vessel document attachment | crew_documents_attachments | 000000000011 |
+| Other-vessel document | crew_documents | 000000000012 |
+| Other-vessel document attachment | crew_documents_attachments | 000000000013 |
+| Own-vessel licence | crew_licenses | 000000000020 |
+| Licence attachment | crew_licenses_attachments | 000000000021 |
+| Own-vessel synthetic medical | crew_pre_joining_medicals | 000000000030 |
+| Medical attachment | crew_medical_attachments | 000000000031 |
+| TEST-ATTACHMENT-SLICE1 candidate | recruitment_candidates_v2 | 000000000040 |
+| Candidate document | cand_documents | 000000000041 |
+| Candidate document attachment | cand_documents_attachments | 000000000042 |
+| Candidate B1 initial screening | screening_b1_initial | 000000000043 |
+| B1 screening attachment | screening_b1_attachments | 000000000044 |
+| Candidate B6 context | screening_b6_interviews | 000000000045 |
+| Interview item | screening_b6_interview_items | 000000000046 |
+| Pinned Interview submission | crew_interview_submissions | 000000000047 |
+| Interview section state | frm_section_states | 000000000048 |
+| Synthetic officer signature | frm_section_signatures | 000000000049 |
+| Signature image | frm_signature_attachments | 000000000050 |
+| Own-vessel fixture Promotion review | promotion_reviews_v2 | 000000000060 |
+| Checklist B1.1 progress | promo_checklist_progress_v2 | 000000000061 |
+| Promotion attachment | promo_checklist_attachments_v2 | 000000000062 |
+| Fixture-vessel periodic D&A draft | da_test_records_v2 | 000000000070 |
+| D&A attachment | da_attachments_v2 | 000000000071 |
+
+Every file reuses the small, explicitly TEST ONLY image from the registered D3
+fixture, stored at private tenant-relative
+`main/attachment-ui-verification/slice1.png`. This is not evidence of a real
+qualification, medical examination, interview signature or test result.
+The Interview pins existing released version
+`07bc12fd-3c5d-4a70-9d8b-eba2456c2ea0`, section
+`712c347f-fdce-470a-b7c1-3f435289c5bb`. Promotion pins existing version
+`aea84765-034c-4b6f-8a45-7f4e10e75962`. No Standard Form definition,
+configuration, draft or released version was created or modified.
+
+## Authorised fixture-only role grant
+
+Role `a4120000-0000-4000-8000-000000000052`, PDF Layout Review Vessel, is used
+only by registered fixture user 412002. Checked against all master users by
+normalised role UUID/name before granting. No real user shares the role.
+
+The normal audited Access Control API enabled **Crew Database View only**.
+Menu UUID: `8e526cf4-d5ab-4e81-9736-bad10a722108`; grant row UUID:
+`7da25780-a041-4966-aee1-7606a3973793`.
+Server audit event 21 records View from absent (`null`) to `true` at
+`20-Oct-2026 15:25:44 UTC`, server-derived master user 1 / Sail Admin.
+Events 22–24 record the new row's Create/Edit/Delete values as `false`.
+Existing Company Forms actions and all other grants/memberships are unchanged.
+
+With the user's subsequent explicit approval, the normal audited Access
+Control API also enabled **Crew Pool View only** for this same fixture-only
+role. Exclusivity was checked again immediately before writing: user 412002
+is still the only matching master user, including normalised role names.
+
+| Grant | Menu UUID | Grant row UUID | View audit event | Server time (UTC) |
+| --- | --- | --- | --- | --- |
+| Crew Database View | 8e526cf4-d5ab-4e81-9736-bad10a722108 | 7da25780-a041-4966-aee1-7606a3973793 | 21 | 20-Oct-2026 15:25:44 |
+| Crew Pool View | 2dcbfb8e-8cf8-499e-ab9d-d21f9b635eb2 | 561ad59b-58c6-4c29-af02-54868ece9487 | 25 | 20-Oct-2026 15:49:12 |
+| CP Travel ID Documents View | 82b25615-1f5e-48d8-af49-8028c2a2d440 | af846225-e511-4d9f-9e49-d09fcb163071 | 29 | 20-Oct-2026 15:57:29 |
+
+All three View events record absent (`null`) → `true`, with server-derived
+actor master user 1 / Sail Admin. Create/Edit/Delete remain `false` for all
+three; events 26–28 and 30–32 record those values for the new Crew Pool and
+Travel ID rows. No other role, membership or permission was changed.
+
+The user separately approved Travel ID View, then authorised any further
+**View-only** grant needed for this verification on this fixture-only role;
+no further grants were needed. This is not standing permission to change
+other roles or future verification permissions. Never add Edit, Void,
+Override or management authority under that approval.
+
+The own-vessel document now opens through Part C in a read-only attachment
+dialog: the saved image displays and Preview opens it, with no upload or
+remove controls. The other-vessel fixture crew link is refused in the screen
+with a plain message and exposes no other-vessel profile or file.
+
+# Attachment display verification — 20-Oct-2026
+
+Reuses registered seafarer `424584fc-dc59-4f85-aa14-30781eb8477e`
+(`TEST-JOINING-DECL-REGRESSION`), with no new crew, vessel, assignment or form.
+The authorised D3 certificate upload uses the existing master course `SB002`,
+Security Training for Seafarers with Designated Security Duties (STSDSD).
+
+- Training row: `3e5d7984-c17a-4352-b620-b1ff7e25ffbc`.
+- Attachment: `ec7e667e-c4a0-4352-91d4-6b9c5cbcaaed`,
+  `fixture-d3-display.png`. Clearly labelled TEST ONLY, not a qualification.
+- The fixture's previously empty Date of Recruitment was set through the
+  screen to `20-Oct-2026`, the mandatory prerequisite for saving the D3 row.
+- The course, attachment and date were saved through the normal Office UI.
+  Existing frozen forms and PDFs were not regenerated or changed.
+- Subsequent verification must open this existing course/attachment, not add
+  another. No grants, memberships or real seafarer records were changed.
+
+Evidence and outstanding coverage are described in
+`docs/attachment-security-main-preview-verification.md`.
+
+# Void-copy and handover verification registration
+
+Reuses the approved automatic-generation fixture form
+`a4120000-0000-4000-8000-000000000411`, submission
+`ffd002d7-fe0b-45a0-b429-70d85e7c4fc4` (CF-2026-000005), existing seafarer
+`424584fc-dc59-4f85-aa14-30781eb8477e`, assignment
+`a4120000-0000-4000-8000-000000000003`, and fixture-only vessel
+`a4120000-0000-4000-8000-000000000001`. No new crew, assignment, vessel, form
+or released rule was created. The original PDF and signed snapshot are retained
+unchanged. The original handover, void notice, annotated copy and notice handover
+are registered under `voidCopyEvidence` in
+`docs/company-forms/pdf-rollout-fixtures.json`. Reruns read these exact records.
+The normal audited Access Control API temporarily enabled Void completed for
+the existing preview actor's role to void this fixture, then restored false;
+the two grant changes remain audited. No authority or browser bypass was added.
+
+# PDF final-glance revision registration
+
+The final-glance pair is registered in
+`docs/company-forms/pdf-layout-fixtures.json` (layout revision 3). It reuses the
+same fixture-only vessel, seafarers and assignment UUIDs. Its form UUIDs are
+`a4120000-0000-4000-8000-000000000311` and
+`a4120000-0000-4000-8000-000000000312`; both released applicability rules remain
+conditional on the fixture-only vessel. Every prior sample is retained under
+`priorSamples`; no historical PDF or frozen evidence is replaced.
+
+One deliberately registered Planning row, plan UUID
+`a4120000-0000-4000-8000-000000000006`, links the existing joining fixture
+assignment to planned joining date 23-Oct-2026. Its numeric ID and the new form,
+version, submission and branding identifiers are recorded in the manifest after
+provisioning. It is unrelated to protected Planning row 1112, rotation entry 473
+and archive 414. Normal verification reuses these records; it does not create a
+new pair per run.
+
+## Revised PDF layout review fixtures — 20 October 2026
+
+The approved layout revision retains the original two frozen records and PDFs
+unchanged. Two new fixture-only forms reuse the existing registered fixture
+vessel, seafarers and assignments; no new crew, vessel or assignment is created.
+They are named `SAMPLE PDF layout review — logo — revised` and
+`SAMPLE PDF layout review — company-name — revised` (form IDs 5298 and 5299;
+form UUIDs a4120000-0000-4000-8000-000000000211 and
+a4120000-0000-4000-8000-000000000212). All child/version/signing identifiers,
+and the retained original samples, are in
+[the layout manifest](company-forms/pdf-layout-fixtures.json).
+The new completions freeze Crew ID, nationality and unique document references
+CF-2026-000001 / CF-2026-000002 at signing. Missing nationality remains
+"Not recorded"; it is not filled from later data. Every released condition set
+remains restricted to the registered fixture-only vessel. Verification reuses
+these records and never creates a new set on each run. Real generation is off.
+
 # Automated test database separation
 
 The fixture register below is only for deliberate main-preview acceptance
@@ -32,6 +259,30 @@ The guard also checks crew/assignment registration and refuses direct SQL releas
 Legacy fixture-building scripts refuse new crew, assignments, vessels, forms or
 versions instead of creating another set; reuse or explicitly prepare an existing
 registered fixture. This does not modify existing released development rules.
+
+## Lifecycle of provisioned fixtures
+
+Some fixture provisioning scripts insert assignments directly as `OnBoard`,
+rather than taking them through Deploy and sign-on. For example,
+`scripts/prepare-attachment-display-fixtures.mjs:82–85` inserts the assignment
+directly. Such a fixture can lack the captured contract rank and published
+training-matrix context that the real lifecycle establishes. There have been
+three separate false-alarm investigations caused by this distinction.
+
+Before investigating missing training requirements or an incomplete check,
+inspect how the registered fixture was provisioned and whether its exact
+assignment has the canonical contract rank and published matrix context.
+Do not infer these from present rank, a rank-name match or another assignment.
+For lifecycle/compliance acceptance evidence, use an existing registered fixture
+that actually went through the required operations, or explicitly prepare and
+register the missing synthetic context in a separately authorised fixture run.
+An attachment-display fixture is not automatically a valid Deploy/compliance
+fixture. Otherwise a missing fixture prerequisite can be mistaken for a product
+defect and repeatedly investigated.
+
+This is a documentation warning, not a change to provisioning scripts, existing
+fixtures, application logic or enforcement. Automated fixtures and teardown
+remain confined to the registered isolated test database.
 
 # Retained Company Form regression fixtures
 
@@ -34593,3 +34844,133 @@ The closing journey edits registered draft identities only; it never creates an 
 - Retained test context (2026-10-12T18:11:38.559Z): verified-history/cf_verified_history_cdcfffae; target registered_fixture_context; references `7bef7224-30c8-4f4a-abef-b872f4f0cb2c`, `a966ad9a-99d3-403c-9ebf-27d3920034c2`, `ef9a654d-8f8f-49fb-90f6-2b9bcc76c172`, `49912020-7324-43b8-a999-a16179d423ec`, `986b4c9b-fa7e-4774-89a6-7768fa8d36a7`, `0f29a6cc-5bc2-4d86-975e-49d8a1c417db`, `923bb8f4-2675-4853-ae47-e1d124b56916`, `457f2847-decf-4aa1-b02e-e359fc57d67c`, `5a83d97e-01fd-4d73-b7a5-397a09a695bf`, `b3998917-7f6b-44e1-8d52-7949037c0c73`.
 
 - Retained test context (2026-10-12T18:11:58.751Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+## PDF layout approval fixtures (registered 2026-10-20)
+
+Dedicated fixture-only vessel a4120000-0000-4000-8000-000000000001 (TEST ONLY PDF layout review); assignment a4120000-0000-4000-8000-000000000002; existing fixture crew 424584fc-dc59-4f85-aa14-30781eb8477e (id 1266) reused without changing his protected vessel-02 assignment/rotations. Vessel role a4120000-0000-4000-8000-000000000052, synthetic Ship user 412002 / a4120000-0000-4000-8000-000000000062. Detailed form/version/section/question/submission/branding/stage identifiers are recorded in [the layout manifest](company-forms/pdf-layout-fixtures.json). These fixtures are retained and reused. Real-form generation remains disabled. Sample branding is isolated from tenant settings; no real Access Control grants are changed.
+
+Additional joining-stage layout fixture assignment: a4120000-0000-4000-8000-000000000003; same registered fixture seafarer and fixture-only vessel, not his protected vessel-02 assignment.
+
+Dedicated synthetic on-board layout seafarer a4120000-0000-4000-8000-000000000004 (TEST ONLY PDF Layout Seafarer, PDF-LAYOUT-412), current assignment a4120000-0000-4000-8000-000000000005. A separate crew member is necessary because the retained seafarer's protected vessel-02 assignment remains current and unchanged. Preparation assignment a4120000-0000-4000-8000-000000000002 is retained, noncurrent and unused by the PDFs. No new fixture is created by normal verification.
+
+### Approved PDF rollout acceptance fixture (20-Oct-2026)
+
+One new form a4120000-0000-4000-8000-000000000411, template part a4120000-0000-4000-8000-000000000481, section a4120000-0000-4000-8000-000000000421; existing crew 424584fc-dc59-4f85-aa14-30781eb8477e, assignment a4120000-0000-4000-8000-000000000003, fixture-only vessel a4120000-0000-4000-8000-000000000001 reused. Full retained descendants are registered in [the rollout manifest](company-forms/pdf-rollout-fixtures.json). No new crew, vessel, assignment or grant. The released rule must be conditional on this fixture-only vessel in every set. It is deliberately NOT a registered PDF sample: ordinary generation must prepare it automatically. Normal reruns reuse this form.
+
+### Training Matrix equivalents acceptance (20-Oct-2026)
+
+Reuses **TEST ONLY PDF layout review**, vessel
+`a4120000-0000-4000-8000-000000000001`. The deliberately synthetic course
+alternatives apply only to this fixture vessel, not real compliance policy.
+Full identifiers are in [the Training Matrix fixture manifest](training-matrix-slice-2-fixtures.json).
+
+- Retain revision **R0**, `9f2ae8cd-fcd2-4569-a2b1-b3b8632bd95c`, with A accepting B
+  and B accepting C. A accepting C is deliberately absent from this revision.
+- Retain working draft **R1**, `ae8f8713-8c6f-47cb-ab64-b96d03afffa3`, with A accepting C.
+- Retain their three current link records and three append-only audit events.
+  All equivalent links/events selected by this vessel UUID belong to this fixture.
+- Initial working draft `a24fb594-6f11-4405-baf5-eb313b916ee3` was consumed by the
+  ordinary Publish workflow, not fixture cleanup; its audit event remains.
+- Existing master courses/company-training rows are reused. No course, crew,
+  assignment, vessel, candidate, Company Form, role or grant was added.
+- UI verification uses existing office persona **Crewing Manager**, user 3,
+  parent role `408d9fe9-1d0f-11f1-925d-5419ffd80f01`. Its existing **Admin Training
+  Matrix View** and **Edit** grants are unchanged.
+- Normal reruns: `node scripts/verify-training-equivalents.mjs`. This is read-only
+  and reuses these records. `TRAINING_VERIFY_BOOTSTRAP=1` was used for the initial
+  fixture setup through the screen; the tool refuses writes to any other vessel
+  and refuses to add another published revision on a rerun.
+
+### Training compliance UI — initial setup registration (21-Oct-2026)
+
+Reuses the dedicated synthetic crew `a4120000-0000-4000-8000-000000000004`
+(`PDF-LAYOUT-412`) on fixture-only vessel `a4120000-0000-4000-8000-000000000001`.
+The retained seafarer with protected vessel-02 history is not changed.
+Stable setup identities (retained even if setup needs resuming):
+- Fixture vessel rank revision `a4240000-0000-4000-8000-000000000010`.
+- Fixture rotation draft `a4240000-0000-4000-8000-000000000011`.
+- Fixture rotation entry `a4240000-0000-4000-8000-000000000012`, and its exact
+  normal-Deploy-created assignment/planning and all their lifecycle descendants.
+- D3 certificates `a4240000-0000-4000-8000-000000000020`,
+  `a4240000-0000-4000-8000-000000000021`,
+  `a4240000-0000-4000-8000-000000000022`; attachment
+  `a4240000-0000-4000-8000-000000000023`.
+No vessel, seafarer, role, grant, company-wide M/R rule or saved training matrix
+revision is created or changed. The existing R0 equivalents are reused. The
+completed manifest records exact server-generated assignment/planning identities.
+Normal setup reruns reuse records; none are deleted. UI scenarios change only
+this fixture's saved reliever dates and restore their baseline afterwards.
+
+### Read-only training compliance UI (21-Oct-2026)
+
+Reuses fixture-only vessel a4120000-0000-4000-8000-000000000001 and dedicated fixture seafarer a4120000-0000-4000-8000-000000000004; no protected vessel-02 records touched. Exact retained records are in [the slice 4 manifest](training-compliance-slice-4-fixtures.json): planning 068511d9-9c64-4125-9e55-f3e4b41beac0, assignment dc2528aa-45d1-4507-95a3-5128b9501065, rank revision a4240000-0000-4000-8000-000000000010, rotation draft a4240000-0000-4000-8000-000000000011, entry a4240000-0000-4000-8000-000000000012, certificates a4240000-0000-4000-8000-000000000020, a4240000-0000-4000-8000-000000000021, a4240000-0000-4000-8000-000000000022, attachment a4240000-0000-4000-8000-000000000023. Their assignment-scoped lifecycle descendants are retained. No grants or real/global policy changed. Normal setup reruns only verify/reuse; UI replay changes only this fixture's saved reliever dates.
+
+Presentation review reuses these same records, adding no fixtures or grants.
+`node scripts/verify-training-compliance-presentation.mjs` clicks four scenarios:
+all compliant course states, mixed states with expanded certificate evidence,
+action-only filtering, and a rank with no recommended courses. The saved R0
+matrix has two Chief Officer requirements, both mandatory, under A. Statutory,
+ordered company course 18 then 22. The malformed-issue flag remains disclosed
+even when a valid equivalent makes both course states compliant. The replay
+restores the plan to joining 01-May-2027 / 6 months. See `presentationReview`
+in the retained manifest. No current data is replaced by mocked API results.
+
+### Training checklist acceptance — slice 5 (21-Oct-2026)
+
+Reuses the exact slice 4 vessel, dedicated crew, assignment, plan, matrix and
+three certificates above. Does not touch the protected fixture crew with real
+vessel-02 history. Certificate edits and reliever dates are restored; successful
+acceptances and their audit/snapshot history are retained, never deleted.
+
+The existing registered Company Form `a4120000-0000-4000-8000-000000000012`
+(SAMPLE PDF layout review — company-name, numeric 5297) receives ONE before-joining
+mandatory draft/version for combined refusal evidence, authored through Forms
+Configuration and then reused on every replay. Every condition card is limited
+to fixture-only vessel `a4120000-0000-4000-8000-000000000001`; the guarded release
+must pass that restriction. Original sample versions/files remain pinned and
+unchanged. Its copied version/part/question descendants are retained fixtures.
+An explicit internal acceptance harness records a requirement against the
+registered planned assignment, not a retrospective operational trigger. Stable
+resolution event key: `a4250000-0000-4000-8000-000000000001`. Exact generated
+identities are recorded after provisioning.
+
+Verification uses existing Office user 24, parent role Admin
+`d57dd06b-7c4f-4152-8902-c8af0422b3e6`, as a development persona subject to the
+real persisted authority/scope checks. Only `training_compliance/override` is
+temporarily granted through Access Control, audited, then restored to its
+original default-off decision. No other role/menu/Company Forms grant is added.
+Tenant expiry policy is switched ON for the requested evidence and restored to
+OFF through audited APIs. These are explicit acceptance actions, not default
+grants or automatic fixture creation on every test run.
+
+Exact new version, copied parts/questions, condition set, resolution run and
+requirement identities: [slice 5 fixture manifest](training-checklist-slice-5-fixtures.json).
+Draft 7459 was copied from the on-board sample: its on-board-only Vessel
+Management signature was removed **only from that draft**, through the normal
+authoring structure API, before guarded release. Release correctly refused it
+until that change; no validation was relaxed. The retained original version and
+its PDF/signature records were not changed.
+
+### Live Training Matrix corrections — 21-Oct-2026
+
+Reuses the slice 4 fixture vessel, seafarer, exact planned assignment, matrix
+and three certificate UUIDs in `training-compliance-slice-4-fixtures.json`.
+No new vessel, crew, assignment, Company Form or rank fixture is created.
+`scripts/verify-training-live-corrections.mjs` refuses non-allowlisted browser
+writes. It temporarily edits only this reliever's joining/own lengths and the
+issue dates of the registered long AFF/chemical certificates, then restores
+their exact previous values in finally. Checklist stays No; no form is started,
+completed or released. X/outside confirmation is exercised through the screen.
+
+Existing Office development persona 24 (parent Admin role, same persisted
+permission/scope checks) demonstrates the new tenant missing-expiry setting.
+It changes OFF to ON through Access Control's management screen, records the
+server-derived actor and before/after audit, then restores OFF through the same
+audited endpoint. No grant is added. Existing expiry-during-contract policy is
+preserved. This is development-persona UI evidence, not parent-login evidence.
+
+The legacy fixture certificate number ending PERMANENT is an identifier only:
+it does not decide whether the training master says Certificate expires.
+Current default Yes deliberately makes that blank expiry amber. Master courses
+are not changed to No merely to obtain green screenshots. Registered originals,
+signatures and PDF files remain unchanged.

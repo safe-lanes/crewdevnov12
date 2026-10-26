@@ -1,12 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CURRENCIES } from "../accountsConstants";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,7 +53,7 @@ import {
   parseApiError,
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
-import { formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
@@ -55,6 +61,52 @@ import { useVesselPeriod } from "../vesselPeriodStore";
 // Advances & Bond are governed by the combined "Allotments & Cash" screen's
 // menu row (Account Allotments) since the Cash & Bond menu row was retired.
 const MENU = "Account Allotments";
+
+type CashBondDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+>;
+
+function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div
+      style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}
+      onBlurCapture={handleBlurCapture}
+    >
+      {/* Reserve the shared error's natural height, including narrow-screen wrapping. */}
+      <div
+        aria-hidden="true"
+        style={{ gridArea: "1 / 1", paddingTop: 36, visibility: "hidden", pointerEvents: "none" }}
+      >
+        <p className="mt-1 text-xs leading-4">Incorrect date/date format</p>
+      </div>
+      <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
+        <FormattedDateInput
+          {...props}
+          mode="date"
+          className="min-w-0 border-input text-base md:text-sm"
+          acceptCalendarInputEvents
+          retainInvalidDraftOnBlur
+          onDraftValidityChange={onDraftValidityChange}
+        />
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Advances tab                                                        */
@@ -99,13 +151,13 @@ function previewSchedule(amount: string, recovery: string): string[] {
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "open":
-      return "border-blue-300 bg-blue-50 text-blue-800";
+      return accountsStatusBadgeClass("blue");
     case "fully-recovered":
-      return "border-green-300 bg-green-50 text-green-800";
+      return accountsStatusBadgeClass("green");
     case "cancelled":
-      return "border-gray-300 bg-gray-50 text-gray-600";
+      return accountsStatusBadgeClass("red");
     case "closed":
-      return "border-amber-300 bg-amber-50 text-amber-800";
+      return accountsStatusBadgeClass("yellow");
     default:
       return "";
   }
@@ -141,11 +193,15 @@ export function AdvancesTab({
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<AdvanceForm>(emptyAdvanceForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const requestDateIsValid = useRef(true);
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [closeTarget, setCloseTarget] = useState<any | null>(null);
   const [closeRemark, setCloseRemark] = useState("");
+  const [closePeriod, setClosePeriod] = useState("");
   const [acting, setActing] = useState(false);
 
   const set = <K extends keyof AdvanceForm>(key: K, value: AdvanceForm[K]) =>
@@ -158,7 +214,29 @@ export function AdvancesTab({
 
   const schedule = previewSchedule(form.amount, form.recoveryAmount);
 
+  const requiredErrors: Record<string, string> = {};
+  if (!form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.amount) {
+    requiredErrors.amount = "Amount is required.";
+  }
+  if (!form.recoveryAmount) {
+    requiredErrors.recoveryAmount = "Monthly Deduction is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
     if (!crew) {
       toast({
@@ -168,10 +246,10 @@ export function AdvancesTab({
       });
       return;
     }
-    if (!form.amount || !form.recoveryAmount) {
+    if (!requestDateIsValid.current) {
       toast({
-        title: "Missing fields",
-        description: "Amount and monthly recovery are required.",
+        title: "Invalid date",
+        description: "Enter a valid Date or clear it before saving.",
         variant: "destructive",
       });
       return;
@@ -231,6 +309,7 @@ export function AdvancesTab({
       await accountsApiV2.advances.close(
         closeTarget.advanceUuid,
         closeRemark.trim(),
+        closePeriod,
       );
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({ title: "Advance closed (remainder written off)" });
@@ -252,7 +331,13 @@ export function AdvancesTab({
       { headerName: "Crew", field: "crewName", flex: 2, minWidth: 150 },
       { headerName: "Rank", field: "rank", width: 90 },
       { headerName: "Vessel", field: "vesselName", flex: 1, minWidth: 110 },
-      { headerName: "Date", field: "requestDate", width: 110 },
+      {
+        headerName: "Date",
+        field: "requestDate",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
       {
         headerName: "Amount",
         field: "amount",
@@ -286,6 +371,7 @@ export function AdvancesTab({
         headerName: "Status",
         field: "displayStatus",
         width: 130,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"
@@ -336,6 +422,7 @@ export function AdvancesTab({
                     disabled={acting}
                     onClick={() => {
                       setCloseRemark("");
+                      setClosePeriod(period);
                       setCloseTarget(row);
                     }}
                     data-testid={`button-close-advance-${row.advanceUuid}`}
@@ -349,7 +436,7 @@ export function AdvancesTab({
         },
       },
     ],
-    [mayEdit, acting],
+    [mayEdit, acting, period],
   );
 
   return (
@@ -359,6 +446,9 @@ export function AdvancesTab({
           <Button
             size="sm"
             onClick={() => {
+              setValidationAttempted(false);
+              requestDateIsValid.current = true;
+              setDateFormVersion((version) => version + 1);
               setForm({
                 ...emptyAdvanceForm,
                 requestDate: new Date().toISOString().slice(0, 10),
@@ -391,12 +481,12 @@ export function AdvancesTab({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
               >
-                <SelectTrigger data-testid="select-advance-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-advance-crew">
                   <SelectValue
                     placeholder={
                       vesselUuid
@@ -413,43 +503,78 @@ export function AdvancesTab({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Amount</Label>
+              <Label>Amount <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
                 data-testid="input-advance-amount"
+                className={errors.amount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.amount}
               />
+              {errors.amount && (
+                <p className="text-xs text-red-500" role="alert">{errors.amount}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-advance-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-advance-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Date</Label>
-              <Input
-                type="date"
+              <CashBondDateInput
+                key={dateFormVersion}
                 value={form.requestDate}
                 onChange={(e) => set("requestDate", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  requestDateIsValid.current = valid;
+                }}
                 data-testid="input-advance-date"
               />
             </div>
             <div className="space-y-1">
-              <Label>Recovery per Month</Label>
+              <Label>Recovery per Month <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.recoveryAmount}
                 onChange={(e) => set("recoveryAmount", e.target.value)}
                 data-testid="input-advance-recovery"
+                className={errors.recoveryAmount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.recoveryAmount}
               />
+              {errors.recoveryAmount && (
+                <p className="text-xs text-red-500" role="alert">{errors.recoveryAmount}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
               <Label>Approved by (optional)</Label>
@@ -660,6 +785,11 @@ export function AdvancesTab({
             {closeTarget?.crewName}. Nothing further is posted. A remark is
             required.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Write-off period: {formatPeriod(closePeriod)}. On recalculation,
+            saved recoveries before this month are kept; recoveries for this
+            month and later are removed.
+          </p>
           <Textarea
             rows={3}
             placeholder="Write-off reason…"
@@ -804,7 +934,15 @@ export function BondTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<BondForm>(emptyBondForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const saleDateIsValid = useRef(true);
+
+  const resetDateInput = () => {
+    saleDateIsValid.current = true;
+    setDateFormVersion((version) => version + 1);
+  };
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -836,6 +974,8 @@ export function BondTab({
   };
 
   const openCreate = () => {
+    setValidationAttempted(false);
+    resetDateInput();
     setEditing(null);
     setForm({
       ...emptyBondForm,
@@ -845,6 +985,8 @@ export function BondTab({
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
+    resetDateInput();
     setEditing(row);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -859,19 +1001,36 @@ export function BondTab({
     setDialogOpen(true);
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editing && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.itemName.trim()) {
+    requiredErrors.itemName = "Item is required.";
+  }
+  if (!String(form.quantity ?? "").trim()) {
+    requiredErrors.quantity = "Quantity is required.";
+  }
+  if (!String(form.unitPrice ?? "").trim()) {
+    requiredErrors.unitPrice = "Unit Price is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
-    if (!editing && !form.crewUuid) {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
       toast({
-        title: "Missing crew",
-        description: "Select a crew member.",
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
         variant: "destructive",
       });
       return;
     }
-    if (!form.itemName.trim()) {
+    if (!saleDateIsValid.current) {
       toast({
-        title: "Missing item",
-        description: "Item name is required.",
+        title: "Invalid date",
+        description: "Enter a valid Sale Date or clear it before saving.",
         variant: "destructive",
       });
       return;
@@ -965,6 +1124,7 @@ export function BondTab({
         type: "rightAligned",
         valueFormatter: (p) => (p.value ? formatMoney(p.value) : ""),
       },
+      { headerName: "Ccy", field: "currency", width: 70 },
       {
         headerName: "Deduction",
         field: "deductionAmount",
@@ -973,25 +1133,12 @@ export function BondTab({
         valueFormatter: (p) =>
           formatMoney(p.value ?? p.data.totalPrice ?? "0"),
       },
-      { headerName: "Sale Date", field: "saleDate", width: 110 },
       {
-        headerName: "Status",
-        field: "status",
+        headerName: "Sale Date",
+        field: "saleDate",
         width: 110,
-        cellRenderer: (p: any) => (
-          <Badge
-            variant="outline"
-            className={`text-xs ${
-              p.value === "cancelled"
-                ? "border-gray-300 bg-gray-50 text-gray-600"
-                : p.value === "deducted"
-                  ? "border-green-300 bg-green-50 text-green-800"
-                  : ""
-            }`}
-          >
-            {p.value}
-          </Badge>
-        ),
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
       },
       {
         headerName: "Actions",
@@ -1132,13 +1279,13 @@ export function BondTab({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
                 disabled={!!editing}
               >
-                <SelectTrigger data-testid="select-bond-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-bond-crew">
                   <SelectValue placeholder="Select crew member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1149,35 +1296,53 @@ export function BondTab({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
-              <Label>Item</Label>
+              <Label>Item <span className="text-red-500">*</span></Label>
               <Input
                 value={form.itemName}
                 onChange={(e) => set("itemName", e.target.value)}
                 placeholder="Cigarettes, toiletries…"
                 data-testid="input-bond-item"
+                className={errors.itemName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.itemName}
               />
+              {errors.itemName && (
+                <p className="text-xs text-red-500" role="alert">{errors.itemName}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Qty</Label>
+              <Label>Qty <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.quantity}
                 onChange={(e) => setQtyPrice(e.target.value, form.unitPrice)}
                 data-testid="input-bond-qty"
+                className={errors.quantity ? "border-red-500" : undefined}
+                aria-invalid={!!errors.quantity}
               />
+              {errors.quantity && (
+                <p className="text-xs text-red-500" role="alert">{errors.quantity}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Unit Price</Label>
+              <Label>Unit Price <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.unitPrice}
                 onChange={(e) => setQtyPrice(form.quantity, e.target.value)}
                 data-testid="input-bond-unit-price"
+                className={errors.unitPrice ? "border-red-500" : undefined}
+                aria-invalid={!!errors.unitPrice}
               />
+              {errors.unitPrice && (
+                <p className="text-xs text-red-500" role="alert">{errors.unitPrice}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Total</Label>
@@ -1201,18 +1366,40 @@ export function BondTab({
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-bond-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-bond-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Sale Date</Label>
-              <Input
-                type="date"
+              <CashBondDateInput
+                key={dateFormVersion}
                 value={form.saleDate}
                 onChange={(e) => set("saleDate", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  saleDateIsValid.current = valid;
+                }}
                 data-testid="input-bond-sale-date"
               />
             </div>

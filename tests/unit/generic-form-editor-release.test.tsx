@@ -170,6 +170,100 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor release workflow", () => {
+  it.each([
+    { action: "save", status: 400, body: { error: "Invalid form structures", details: [
+      { path: ["parts", 0, "structure", "sections", 0, "questions", 0, "options"], message: "System fields cannot contain answer options" },
+      { path: ["parts", 0, "structure", "sections", 0, "responsible_department"], message: "responsible_department must be empty when responsible_mode is role" },
+    ] }, count: 2 },
+    { action: "release", status: 400, body: { error: 'Section "Navigation readiness" requires at least one permitted vessel role. Section "Navigation readiness" requires submission but has no responsible party. Assign a role, department, or seafarer.' }, count: 2 },
+    { action: "save", status: 500, body: { error: "server_error" }, count: 1 },
+  ])("keeps $action refusal ($status) visible as $count readable list items", async ({ action, status, body, count }) => {
+    setup();
+    permissionState.permissions = [{ menuName: "Forms", canview: true, canedit: true }];
+    queryResults.set("/api/v2/admin/forms/99/versions", [{ ...draft, rankGroupId: null, stageKey: "before_joining" }]);
+    queryResults.set("/api/v2/admin/forms/99/subject-stages", [{ subjectType: "crew_assignment", stageKey: "before_joining", label: "Before joining", sortOrder: 1 }]);
+    apiRequestMock.mockImplementation(async (method: string, url: string) => {
+      if (method !== "GET") throw new Error(`${status}: ${JSON.stringify(body)}`);
+      if (url.endsWith("/structure")) return response(structureResponse());
+      if (url.includes("/parts?")) return response(queryResults.get("admin-form-version-parts"));
+      if (url.endsWith("/applicability")) return response({ mode: "manual_only", sets: [] });
+      return response([]);
+    });
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    if (action === "release") {
+      click(editor.querySelector<HTMLElement>('[data-testid="button-release-version"]')!);
+      click(document.body.querySelector<HTMLElement>('[data-testid="button-confirm-release"]')!);
+    } else {
+      click(editor.querySelector<HTMLElement>('[data-testid="button-save-form-structure"]')!);
+    }
+    await flushAsyncWork();
+    await flushAsyncWork();
+    const problems = editor.querySelector<HTMLElement>('[data-testid="text-form-save-error"]')!;
+    expect(problems).not.toBeNull();
+    expect(problems.getAttribute("role")).toBe("alert");
+    expect(problems.querySelectorAll("li")).toHaveLength(count);
+    expect(problems.textContent).not.toMatch(/responsible_department|responsible_mode|400:|500:|server_error/);
+    if (status === 400) {
+      expect(problems.textContent).toContain("Section 1.1");
+      expect(problems.textContent).not.toMatch(/could not be (saved|released)/);
+    } else expect(problems.textContent).toContain("Form settings could not be saved");
+  });
+
+  it("turns comments off with a notice when changing a point to a system field", async () => {
+    setup();
+    apiRequestMock.mockImplementation(async (_method: string, url: string) => response(
+      url.endsWith("/structure") ? structureResponse() : [],
+    ));
+    queryResults.set("/api/v2/admin/forms/99/versions", [{ ...draft, rankGroupId: null }]);
+    permissionState.permissions = [{ menuName: "Forms", canview: true, canedit: true }];
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    const trigger = editor.querySelector<HTMLElement>('[data-testid="select-response-type-1-1"]')!;
+    Object.assign(trigger, { hasPointerCapture: () => false, releasePointerCapture: () => undefined });
+    act(() => trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" })));
+    await flushAsyncWork();
+    click(Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'))
+      .find(option => option.textContent === "System Field")!);
+    await flushAsyncWork();
+    const comment = editor.querySelector<HTMLElement>('[data-testid="checkbox-point-comment-1-1"]')!;
+    expect(comment).not.toBeNull();
+    expect(comment.getAttribute("data-state")).toBe("unchecked");
+    expect(comment.hasAttribute("disabled")).toBe(true);
+    expect(comment.parentElement?.title).toBe("System fields display a value the system already holds and cannot take a comment.");
+    expect(toastMock).toHaveBeenCalledWith({
+      title: "Comments turned off",
+      description: "System fields display a value the system already holds and cannot take a comment.",
+    });
+  });
+
+  it("opens legacy released system fields safely in builder and preview without saving or releasing them", async () => {
+    const legacy = structureResponse();
+    Object.assign(legacy.sections[0].questions[0], {
+      response_type: "system_field", system_field_key: "rank", comment_enabled: true,
+      question_text: "Rank",
+    });
+    setup(legacy);
+    apiRequestMock.mockImplementation(async (_method: string, url: string) => response(
+      url.endsWith("/structure") ? legacy : [],
+    ));
+    queryResults.set("/api/v2/admin/forms/99/versions", [{ ...released, rankGroupId: null }]);
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+    const comment = editor.querySelector<HTMLElement>('[data-testid="checkbox-point-comment-1-1"]')!;
+    expect(comment).not.toBeNull();
+    expect(comment.hasAttribute("disabled")).toBe(true);
+    expect(comment.getAttribute("data-state")).toBe("unchecked");
+    click(editor.querySelector<HTMLElement>('[data-testid="button-preview-mode"]')!);
+    await flushAsyncWork();
+    expect(document.body.querySelector('[data-testid="configured-form-preview"]')).not.toBeNull();
+    expect(apiRequestMock.mock.calls.filter(([method]) => ["PUT", "POST", "DELETE"].includes(method))).toEqual([]);
+    expect(legacy.sections[0].questions[0].comment_enabled).toBe(true);
+  });
+
   it("renders while versions have not loaded and no stage selection exists", () => {
     setup();
     queryResults.set("/api/v2/admin/forms/99/versions", []);
