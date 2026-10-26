@@ -174,22 +174,24 @@ export function AdvancesTab({
   const { canCreate, canEdit } = usePermissions();
   const mayCreate = canCreate(MENU);
   const mayEdit = canEdit(MENU);
+  const hasFilter = !!vesselUuid && !!period;
 
   const listKey = [`${ACCOUNTS_BASE}/advances`];
   const { data: advances = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    enabled: hasFilter,
   });
 
-  const filteredAdvances = useMemo(
-    () =>
-      advances.filter(
-        (advance) =>
-          (!vesselUuid || advance.vesselUuid === vesselUuid) &&
-          (!advance.validFrom || advance.validFrom <= period) &&
-          (!advance.validTo || advance.validTo >= period),
-      ),
-    [advances, vesselUuid, period],
-  );
+  const filteredAdvances = useMemo(() => {
+    if (!hasFilter) return [];
+
+    return advances.filter(
+      (advance) =>
+        advance.vesselUuid === vesselUuid &&
+        (!advance.validFrom || advance.validFrom <= period) &&
+        (!advance.validTo || advance.validTo >= period),
+    );
+  }, [advances, hasFilter, vesselUuid, period]);
 
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
@@ -487,6 +489,7 @@ export function AdvancesTab({
             }}
             className="bg-[#16569e] hover:bg-[#1e5fa8]"
             data-testid="button-add-advance"
+            disabled={!hasFilter}
           >
             <Plus size={14} className="mr-1" /> New Advance
           </Button>
@@ -494,7 +497,14 @@ export function AdvancesTab({
       </div>
 
       <div className="border rounded-md bg-white p-2">
-        {isLoading ? (
+        {!hasFilter ? (
+          <div
+            className="p-8 text-center text-sm text-muted-foreground"
+            data-testid="text-advances-select-prompt"
+          >
+            Select a vessel and period to view Advances.
+          </div>
+        ) : isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             Loading advances…
           </div>

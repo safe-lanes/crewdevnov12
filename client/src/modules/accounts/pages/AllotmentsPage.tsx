@@ -139,15 +139,14 @@ export default function AllotmentsPage({
   const { vessels } = useVesselLookup();
   const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   const [periodInputKey, setPeriodInputKey] = useState(0);
-  const vesselFilter = vesselUuid || "all";
-  const setVesselFilter = (value: string) =>
-    setVesselUuid(value === "all" ? "" : value);
+  const hasFilter = !!vesselUuid && !!period;
   const [statusFilter, setStatusFilter] = useState("all");
   const [crewSearch, setCrewSearch] = useState("");
 
   const listKey = [`${ACCOUNTS_BASE}/allotments`];
   const { data: allotments = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    enabled: hasFilter,
     refetchOnWindowFocus: "always",
   });
 
@@ -185,16 +184,17 @@ export default function AllotmentsPage({
   );
 
   const filtered = useMemo(() => {
+    if (!hasFilter) return [];
     const q = crewSearch.trim().toLowerCase();
     return allotments.filter(
       (a) =>
-        (vesselFilter === "all" || a.vesselUuid === vesselFilter) &&
+        a.vesselUuid === vesselUuid &&
         (!a.validFrom || a.validFrom.slice(0, 7) <= period) &&
         (!a.validTo || a.validTo.slice(0, 7) >= period) &&
         (statusFilter === "all" || a.status === statusFilter) &&
         (!q || (a.crewName ?? "").toLowerCase().includes(q)),
     );
-  }, [allotments, vesselFilter, period, statusFilter, crewSearch]);
+  }, [allotments, hasFilter, vesselUuid, period, statusFilter, crewSearch]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -578,15 +578,14 @@ export default function AllotmentsPage({
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Vessel</Label>
-          <Select value={vesselFilter} onValueChange={setVesselFilter}>
+          <Select value={vesselUuid} onValueChange={setVesselUuid}>
             <SelectTrigger
               className="h-8 w-44 text-xs"
               data-testid="select-filter-vessel"
             >
-              <SelectValue />
+              <SelectValue placeholder="Select vessel" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All vessels</SelectItem>
               {vessels.map((v) => (
                 <SelectItem key={v.entryId} value={v.entryId}>
                   {v.name}
@@ -687,7 +686,14 @@ export default function AllotmentsPage({
       </div>
 
       <div className="border rounded-md bg-white p-2">
-        {isLoading ? (
+        {!hasFilter ? (
+          <div
+            className="p-8 text-center text-sm text-muted-foreground"
+            data-testid="text-allotments-select-prompt"
+          >
+            Select a vessel and period to view Allotments.
+          </div>
+        ) : isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             Loading allotments…
           </div>
