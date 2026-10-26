@@ -31,7 +31,7 @@ export function snapshotFromServer(appraisal: Record<string, any>, appraisalData
 }
 
 // The change set from `base` (as loaded) to `current` (the form now): changed
-// header fields, new rows with all their fields, changed rows with only the
+// header fields, new rows with their non-empty fields, changed rows with only the
 // changed fields, and the uuids of removed rows. Every current row must carry
 // a uuid. A field the row does not carry (undefined) is left out, so the
 // server keeps its stored value.
@@ -70,7 +70,14 @@ export function buildAppraisalChanges(
       for (const field of SECTION_FIELDS[key]) {
         const value = row[field];
         if (value === undefined) continue;
-        if (!prior || !sameValue(value, prior[field])) out[field] = value;
+        if (prior) {
+          if (!sameValue(value, prior[field])) out[field] = value;
+        } else if (value !== "" && value !== null) {
+          // A new row leaves out empty fields. The server stores them as empty
+          // anyway, and if another session already saved a row under this uuid
+          // (a B1 auto row, APD-20), that session's values are kept.
+          out[field] = value;
+        }
       }
       if (!prior || Object.keys(out).length > 1) rows.push(out);
     }

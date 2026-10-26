@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAppraisalChanges, snapshotFromServer, type AppraisalSnapshot } from "@/modules/crewing/appraisalChanges";
-import { PART_G_SECTIONS, isEmptyChanges, sameValue } from "@shared/v2/appraisals/appraisalChanges";
+import { PART_G_SECTIONS, autoTrainingRowUuid, isEmptyChanges, sameValue } from "@shared/v2/appraisals/appraisalChanges";
 
 const T1 = "10000000-0000-4000-8000-000000000001";
 const T2 = "10000000-0000-4000-8000-000000000002";
@@ -48,17 +48,41 @@ describe("appraisal save-draft change set (APD-16)", () => {
     });
   });
 
-  it("sends a new row with all its fields and a removed row as a deleted uuid", () => {
+  it("sends a new row with its non-empty fields and a removed row as a deleted uuid", () => {
     const base = serverCopy();
     const current = formCopy(base);
     current.sections.trainings!.splice(0, 1);
-    current.sections.trainings!.push({ id: "999", uuid: "new-row", training: "ECDIS", evaluation: "", comment: "", source: "manual" });
+    current.sections.trainings!.push({ id: "999", uuid: "new-row", training: "ECDIS", evaluation: "", comment: null, source: "manual" });
 
     expect(buildAppraisalChanges(base, current).sections).toEqual({
       trainings: {
-        rows: [{ uuid: "new-row", training: "ECDIS", evaluation: "", comment: "", source: "manual" }],
+        rows: [{ uuid: "new-row", training: "ECDIS", source: "manual" }],
         deleted: [T1],
       },
+    });
+  });
+
+  // APD-20: a B1 auto row has the same uuid in every session that adds it, so a
+  // session sending it as new must not blank what another session saved in it.
+  it("keeps false and 0 on a new row, which are values, not empty fields", () => {
+    const base = serverCopy();
+    const current = formCopy(base);
+    current.sections.officeReviews!.push({ id: "n", uuid: "g1-new", name: "Manual", position: "", feedback: "", userUuid: "user-m", isAssigned: false });
+    current.sections.competenceAssessments!.push({ id: "n", uuid: "c-new", assessmentCriteria: "Safety", weight: 0, effectiveness: "", comment: "" });
+
+    expect(buildAppraisalChanges(base, current).sections).toEqual({
+      officeReviews: { rows: [{ uuid: "g1-new", name: "Manual", userUuid: "user-m", isAssigned: false }] },
+      competenceAssessments: { rows: [{ uuid: "c-new", assessmentCriteria: "Safety", weight: 0 }] },
+    });
+  });
+
+  it("still lets a stored row's field be cleared", () => {
+    const base = serverCopy();
+    const current = formCopy(base);
+    current.sections.trainings![1].comment = "";
+
+    expect(buildAppraisalChanges(base, current).sections).toEqual({
+      trainings: { rows: [{ uuid: T2, comment: "" }] },
     });
   });
 
@@ -100,5 +124,25 @@ describe("appraisal save-draft change set (APD-16)", () => {
     current.sections.targets = [{ id: "1", targetSetting: "x" }];
 
     expect(() => buildAppraisalChanges(base, current)).toThrow(/targets row has no uuid/);
+  });
+});
+
+describe("B1 auto-row uuid (APD-20)", () => {
+  const A1 = "a0000000-0000-4000-8000-000000000001";
+  const A2 = "a0000000-0000-4000-8000-000000000002";
+  const AUTO_ROW_UUID_A1_TRAIN_1 = "52846c3d-c7c7-50c9-90c4-57d1fce60918";
+
+  it("is the same every time for the same appraisal and course", () => {
+    expect(autoTrainingRowUuid(A1, "train-1")).toBe(autoTrainingRowUuid(A1, "train-1"));
+    expect(autoTrainingRowUuid(A1, "train-1")).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it("differs per appraisal and per course", () => {
+    expect(autoTrainingRowUuid(A1, "train-1")).not.toBe(autoTrainingRowUuid(A2, "train-1"));
+    expect(autoTrainingRowUuid(A1, "train-1")).not.toBe(autoTrainingRowUuid(A1, "train-2"));
+  });
+
+  it("never changes for a stored input (rows saved with it depend on it)", () => {
+    expect(autoTrainingRowUuid(A1, "train-1")).toBe(AUTO_ROW_UUID_A1_TRAIN_1);
   });
 });

@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
+import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, autoTrainingRowUuid, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
 import { buildAppraisalChanges, snapshotFromServer, type AppraisalSnapshot } from "./appraisalChanges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -770,8 +770,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         autoCommentReassignments.push({ newId: id, priorId });
         return {
           id,
-          // Keep the stored row's uuid so a save updates that row.
-          uuid: prior?.uuid,
+          // Keep the stored row's uuid so a save updates that row. A new auto
+          // row's uuid comes from the appraisal and course, so two sessions
+          // that add it save one row, not two (APD-20).
+          uuid: prior?.uuid ?? autoTrainingRowUuid(appraisalUuid || newAppraisalUuid, stableKey),
           training: trainingName,
           evaluation: prior?.evaluation || '',
           comment,
@@ -818,7 +820,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return unchanged ? prev : merged;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken]);
+  }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken, appraisalUuid]);
 
   // Pre-populate crew member fields when data loads (only for new appraisals)
   useEffect(() => {
@@ -1115,6 +1117,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           {
             header: {
               ...Object.fromEntries(PART_A_FIELDS.map(f => [f, (payload.data as any)[f]])),
+              // The vessel can't be edited on a saved appraisal. The form only
+              // turns a stored vessel name into its id for display, which is not
+              // a change to save (APD-20).
+              vessel: undefined,
               appraisalType: payload.data.appraisalType,
               competenceRating: competenceScore,
               behavioralRating: behavioralScore,
@@ -1359,8 +1365,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           ? JSON.parse(existingAppraisal.appraisalData) 
           : existingAppraisal.appraisalData;
 
-        // Taken before any of the client-side adjustments below, so those
-        // (e.g. seeded G1 rows) count as changes on the next save.
+        // The appraisal as loaded. The form changes nothing here on its own: G1
+        // rows for assigned reviewers are created by the server at Stage 2
+        // (APD-20). The B1 auto rows the form still adds get a uuid computed
+        // from their course, so every session saves the same row.
         baselineRef.current = snapshotFromServer(existingAppraisal, parsedData);
         
         // Reset form with existing data
@@ -1396,35 +1404,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         }
         if (parsedData.officeReviews) {
           form.setValue('officeReviews', parsedData.officeReviews, { shouldDirty: false });
-        }
-
-        // Re-derive isAssigned on hydration as a safety net. Since migration 0180 the assembler
-        // now stores and returns isAssigned from appr_office_reviews_v2, so most rows will
-        // already have the correct value. Name-matching against appr_reviewers_v2 handles
-        // legacy rows saved before migration 0180 that have isAssigned=false in the DB.
-        const existingOfficeReviews: any[] = parsedData.officeReviews || [];
-        const assignedRevs = (existingAppraisal.reviewers || []).filter((r: any) => r.userUuid);
-        const assignedNames = new Set(assignedRevs.map((r: any) => r.reviewerName).filter(Boolean));
-        const reMarked = existingOfficeReviews.map((or: any) => ({
-          ...or,
-          isAssigned: or.isAssigned || assignedNames.has(or.name),
-        }));
-        if (reMarked.some((or: any, i: number) => !!or.isAssigned !== !!existingOfficeReviews[i].isAssigned)) {
-          form.setValue('officeReviews', reMarked, { shouldDirty: false });
-        }
-
-        // Seed G1 office review rows from assigned reviewers when no rows exist yet
-        // (first open of a pending_review appraisal before any draft save).
-        if (existingOfficeReviews.length === 0 && assignedRevs.length > 0) {
-          const seededReviews = assignedRevs.map((r: any) => ({
-            id: crypto.randomUUID(),
-            name: r.reviewerName || '',
-            position: r.designation || '',
-            feedback: '',
-            isAssigned: true,
-            userUuid: r.userUuid || '',
-          }));
-          form.setValue('officeReviews', seededReviews, { shouldDirty: false });
         }
 
         // Load comments from form data into useState hooks for persistence

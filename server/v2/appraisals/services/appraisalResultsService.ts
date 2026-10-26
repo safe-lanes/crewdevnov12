@@ -730,6 +730,11 @@ export class AppraisalResultsService {
         await appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || [], auditUserUuid, tx);
         await seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || [], auditUserUuid, tx);
         await reviewersRepo.syncForAppraisal(appraisal.appraisalUuid, reviewerList, auditUserUuid, tx);
+        // Each assigned reviewer gets a G1 row here, once (APD-20). Not after
+        // Stage 3: a reviewed appraisal never gains G1 rows.
+        if (!appraisal.stage3Status) {
+          await officeReviewsRepo.addAssignedReviewers(appraisal.appraisalUuid, reviewerList, auditUserUuid, tx);
+        }
         // Task #500: persist the current B1 trainings (and targets) snapshot
         // alongside the Stage-2 C-F writes. Only sync them when the payload
         // includes them so legacy callers that omit `trainings`/`targets`

@@ -5,6 +5,8 @@
 // so a stale copy of the form cannot overwrite someone else's edits. Child rows
 // are identified by their row uuid, never by list position.
 
+import { v5 as uuidv5 } from "uuid";
+
 export const SECTION_KEYS = [
   "trainings",
   "targets",
@@ -65,7 +67,8 @@ export const HEADER_FIELDS = [
 export type AppraisalHeaderField = (typeof HEADER_FIELDS)[number];
 
 // A row of a section. An existing row carries its uuid and only the fields
-// that changed; a new row carries its (client-generated) uuid and all fields.
+// that changed; a new row carries its (client-generated) uuid and every field
+// that is not empty.
 export type AppraisalChangeRow = { uuid: string } & Record<string, unknown>;
 
 export interface AppraisalSectionChanges {
@@ -95,4 +98,16 @@ export function sameValue(a: unknown, b: unknown): boolean {
 export function isEmptyChanges(changes: AppraisalChanges): boolean {
   return Object.keys(changes.header ?? {}).length === 0
     && Object.keys(changes.sections ?? {}).length === 0;
+}
+
+// Fixed namespace for B1 auto-row uuids. Never change it: stored rows depend on it.
+const AUTO_TRAINING_ROW_NAMESPACE = "2b0e69a5-509a-4543-8e9a-4d4d753e70d1";
+
+// The uuid of the B1 auto row for one course of one appraisal (APD-20). The
+// form adds these rows itself, so every session that adds the row for the same
+// course must give it the same uuid; a sync then merges the rows instead of
+// keeping two. `courseKey` is the crew training's trainUuid (else its course
+// id, else its name).
+export function autoTrainingRowUuid(appraisalUuid: string, courseKey: string): string {
+  return uuidv5(`${appraisalUuid}:${courseKey}`, AUTO_TRAINING_ROW_NAMESPACE);
 }

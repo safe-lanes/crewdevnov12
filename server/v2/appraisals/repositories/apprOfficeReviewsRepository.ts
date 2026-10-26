@@ -50,4 +50,45 @@ export class ApprOfficeReviewsRepository {
   async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
     return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
+
+  // Stage 2: gives each assigned reviewer one G1 row. The server does this, not
+  // the form, so two sessions can't each add the row under their own uuid
+  // (APD-20). A reviewer who already has a live row (same user, or a row from
+  // before migration 0180 with no user and the same name) gets no new row; if
+  // that row was added by hand it is marked assigned. Running it again writes
+  // nothing. Reviewers without a user are skipped.
+  async addAssignedReviewers(
+    appraisalUuid: string,
+    reviewers: { userUuid?: string; reviewerName?: string; designation?: string }[],
+    auditUserUuid?: string | null,
+    executor: Executor = getDb(),
+  ): Promise<number> {
+    const live: any[] = await executor
+      .select()
+      .from(apprOfficeReviewsV2)
+      .where(and(
+        eq(apprOfficeReviewsV2.appraisalUuid, appraisalUuid),
+        eq(apprOfficeReviewsV2.isDeleted, false),
+      ));
+
+    const rows: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+    for (const reviewer of reviewers) {
+      const userUuid = reviewer.userUuid?.trim();
+      if (!userUuid || seen.has(userUuid)) continue;
+      seen.add(userUuid);
+      const name = reviewer.reviewerName?.trim() || "";
+
+      const existing = live.find((r) => r.userUuid === userUuid)
+        ?? (name ? live.find((r) => !r.userUuid && (r.name ?? "").trim() === name) : undefined);
+      if (!existing) {
+        rows.push({ name, position: reviewer.designation || "", feedback: "", userUuid, isAssigned: true });
+      } else if (!existing.isAssigned) {
+        rows.push({ uuid: existing.officeReviewUuid, isAssigned: true });
+      }
+    }
+
+    if (rows.length === 0) return 0;
+    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "patch", auditUserUuid);
+  }
 }

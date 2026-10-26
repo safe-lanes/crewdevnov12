@@ -20,6 +20,34 @@ const ROWS: ChildTableConfig = {
   ],
 };
 
+// An auto row's uuid comes from its course (APD-20), so when a course leaves the
+// B1 window and later comes back, the form sends it under the uuid of the row
+// deleted when it left. That row is brought back here; otherwise "the deletion
+// stands" would drop it on every save. Returns the number of rows restored.
+async function restoreReturningAutoRows(
+  executor: Executor,
+  appraisalUuid: string,
+  rows: Record<string, any>[],
+  auditUserUuid?: string | null,
+): Promise<number> {
+  const uuids = rows
+    .filter((r) => r?.source === "auto" && typeof r.uuid === "string" && r.uuid.length > 0)
+    .map((r) => r.uuid as string);
+  if (uuids.length === 0) return 0;
+
+  const restored: unknown[] = await executor
+    .update(apprTrainingsV2)
+    .set({ isDeleted: false, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
+    .where(and(
+      eq(apprTrainingsV2.appraisalUuid, appraisalUuid),
+      inArray(apprTrainingsV2.trainingUuid, uuids),
+      eq(apprTrainingsV2.isDeleted, true),
+      eq(apprTrainingsV2.source, "auto"),
+    ))
+    .returning({ id: apprTrainingsV2.id });
+  return restored.length;
+}
+
 export class ApprTrainingsRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprTrainingV2[]>> {
     if (appraisalUuids.length === 0) return new Map();
@@ -43,11 +71,13 @@ export class ApprTrainingsRepository {
   // The whole section (create, stage submits): rows matched by uuid, live rows
   // missing from `rows` are soft-deleted, unchanged rows are not written.
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
-    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
+    const restored = await restoreReturningAutoRows(executor, appraisalUuid, rows, auditUserUuid);
+    return restored + await syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
   }
 
   // A save-draft change set: only the given rows and deletions are written.
   async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
-    return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
+    const restored = await restoreReturningAutoRows(executor, appraisalUuid, changes.rows, auditUserUuid);
+    return restored + await syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
 }

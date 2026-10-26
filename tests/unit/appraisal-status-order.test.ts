@@ -11,6 +11,8 @@ const { repo, getDbMock } = vi.hoisted(() => ({
   repo: {
     findByAppraisalUuid: vi.fn(),
     updateByAppraisalUuid: vi.fn(),
+    syncForAppraisal: vi.fn(),
+    addAssignedReviewers: vi.fn(),
   },
   getDbMock: vi.fn(),
 }));
@@ -132,5 +134,58 @@ describe("save draft status (AppraisalResultsService.update)", () => {
 
     expect(repo.updateByAppraisalUuid).toHaveBeenCalledTimes(1);
     expect(repo.updateByAppraisalUuid.mock.calls[0][1]).toEqual({ status: "preliminary" });
+  });
+});
+
+// APD-20: the server, not the form, gives assigned reviewers their G1 rows.
+describe("Stage 2 adds the assigned reviewers' G1 rows (submitStage)", () => {
+  const UUID = "30000000-0000-4000-8000-000000000002";
+  const service = new AppraisalResultsService();
+  const reviewers = [{ userUuid: "user-x", reviewerName: "Xavier X", designation: "DPA" }];
+  const tx = { name: "tx" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getDbMock.mockReturnValue({ transaction: (fn: (tx: unknown) => unknown) => fn(tx) });
+    repo.syncForAppraisal.mockResolvedValue(0);
+    repo.addAssignedReviewers.mockResolvedValue(1);
+    vi.spyOn(AppraisalResultsService.prototype as any, "resolveAppraisalPinForSubmittedStatus").mockResolvedValue(null);
+    vi.spyOn(AppraisalResultsService.prototype, "getByUuid").mockResolvedValue({ appraisalUuid: UUID } as any);
+  });
+
+  function stored(fields: Record<string, unknown> = {}) {
+    repo.findByAppraisalUuid.mockResolvedValue({
+      appraisalUuid: UUID,
+      status: "preliminary",
+      stage1Status: "completed",
+      ...fields,
+    });
+  }
+
+  it("adds them inside the Stage 2 transaction, after the reviewers are saved", async () => {
+    stored();
+    await service.submitStage(UUID, "stage2", { reviewers }, "Master");
+
+    expect(repo.addAssignedReviewers).toHaveBeenCalledTimes(1);
+    expect(repo.addAssignedReviewers).toHaveBeenCalledWith(UUID, reviewers, null, tx);
+    const reviewersSaved = repo.syncForAppraisal.mock.calls.findIndex((c) => c[1] === reviewers);
+    expect(reviewersSaved).toBeGreaterThanOrEqual(0);
+    expect(repo.syncForAppraisal.mock.invocationCallOrder[reviewersSaved])
+      .toBeLessThan(repo.addAssignedReviewers.mock.invocationCallOrder[0]);
+  });
+
+  it("adds none when Stage 2 is resubmitted after Stage 3", async () => {
+    stored({ status: "reviewed", stage2Status: "completed", stage3Status: "completed" });
+    await service.submitStage(UUID, "stage2", { reviewers }, "Master");
+
+    expect(repo.addAssignedReviewers).not.toHaveBeenCalled();
+  });
+
+  it("is not part of Stage 1 or Stage 3", async () => {
+    stored({ stage2Status: "completed" });
+    await service.submitStage(UUID, "stage1", { reviewers }, "Master");
+    await service.submitStage(UUID, "stage3", { reviewers, trainings: [{ evaluation: "Good" }] }, "Master");
+
+    expect(repo.addAssignedReviewers).not.toHaveBeenCalled();
   });
 });
