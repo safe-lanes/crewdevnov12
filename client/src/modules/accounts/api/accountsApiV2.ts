@@ -226,8 +226,10 @@ export const accountsApiV2 = {
       req("POST", `${ACCOUNTS_BASE}/advances`, data),
     update: (uuid: string, data: Record<string, unknown>) =>
       req("PATCH", `${ACCOUNTS_BASE}/advances/${uuid}`, data),
-    cancel: (uuid: string) =>
-      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/cancel`),
+    cancel: (uuid: string, cancelledPeriod: string) =>
+      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/cancel`, {
+        cancelledPeriod,
+      }),
     close: (uuid: string, remark: string, writeOffPeriod: string) =>
       req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/close`, { remark, writeOffPeriod }),
     remove: (uuid: string) =>

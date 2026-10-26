@@ -180,6 +180,17 @@ export function AdvancesTab({
     queryKey: listKey,
   });
 
+  const filteredAdvances = useMemo(
+    () =>
+      advances.filter(
+        (advance) =>
+          (!vesselUuid || advance.vesselUuid === vesselUuid) &&
+          (!advance.validFrom || advance.validFrom <= period) &&
+          (!advance.validTo || advance.validTo >= period),
+      ),
+    [advances, vesselUuid, period],
+  );
+
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
       `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${vesselUuid}&period=${period}`,
@@ -199,6 +210,7 @@ export function AdvancesTab({
   const requestDateIsValid = useRef(true);
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
+  const [cancelPeriod, setCancelPeriod] = useState("");
   const [closeTarget, setCloseTarget] = useState<any | null>(null);
   const [closeRemark, setCloseRemark] = useState("");
   const [closePeriod, setClosePeriod] = useState("");
@@ -287,7 +299,10 @@ export function AdvancesTab({
     if (!cancelTarget) return;
     setActing(true);
     try {
-      await accountsApiV2.advances.cancel(cancelTarget.advanceUuid);
+      await accountsApiV2.advances.cancel(
+        cancelTarget.advanceUuid,
+        cancelPeriod,
+      );
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({ title: "Advance cancelled" });
     } catch (err) {
@@ -337,6 +352,18 @@ export function AdvancesTab({
         width: 110,
         cellRenderer: (p: { value: string | null | undefined }) =>
           formatDate(p.value),
+      },
+      {
+        headerName: "Valid From",
+        field: "validFrom",
+        width: 110,
+        valueFormatter: (p) => (p.value ? formatPeriod(p.value) : ""),
+      },
+      {
+        headerName: "Valid To",
+        field: "validTo",
+        width: 110,
+        valueFormatter: (p) => (p.value ? formatPeriod(p.value) : ""),
       },
       {
         headerName: "Amount",
@@ -409,7 +436,10 @@ export function AdvancesTab({
                     className="h-7 w-7 text-red-600"
                     title="Cancel (no recoveries posted)"
                     disabled={acting}
-                    onClick={() => setCancelTarget(row)}
+                    onClick={() => {
+                      setCancelPeriod(period);
+                      setCancelTarget(row);
+                    }}
                     data-testid={`button-cancel-advance-${row.advanceUuid}`}
                   >
                     <Ban size={14} />
@@ -469,7 +499,7 @@ export function AdvancesTab({
             Loading advances…
           </div>
         ) : (
-          <AgGridTable rowData={advances} columnDefs={cols} height="440px" />
+          <AgGridTable rowData={filteredAdvances} columnDefs={cols} height="440px" />
         )}
       </div>
 
