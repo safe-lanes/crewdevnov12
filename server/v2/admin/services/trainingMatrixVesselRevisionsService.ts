@@ -2,6 +2,10 @@ import { TrainingMatrixVesselRevisionsRepository } from "../repositories/trainin
 import { TrainingMatrixVesselDraftsRepository } from "../repositories/trainingMatrixVesselDraftsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmTrainingMatrixVesselRevisionV2, InsertAdmTrainingMatrixVesselRevisionV2 } from "../../../../shared/v2/admin/types";
+import { admTrainingMatrixVesselRevisionsV2 as revisions, admTrainingMatrixVesselDraftsV2 as drafts } from "../../../../shared/v2/admin/schema";
+import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { withMatrixLock, freezeMatrixEquivalents, nextMatrixRevision, MatrixPolicyError } from "./trainingMatrixEquivalents";
 
 const tmVesselRevisionsRepo = new TrainingMatrixVesselRevisionsRepository();
 const tmVesselDraftsRepo = new TrainingMatrixVesselDraftsRepository();
@@ -22,7 +26,19 @@ export const trainingMatrixVesselRevisionsService = {
   },
 
   async create(data: Omit<InsertAdmTrainingMatrixVesselRevisionV2, "tmvrUuid">): Promise<AdmTrainingMatrixVesselRevisionV2> {
-    return tmVesselRevisionsRepo.create(applyAuditUser(data, true));
+    return withMatrixLock(data.vesselId, async tx => {
+      const next = await nextMatrixRevision(tx, data.vesselId);
+      if (data.revision && data.revision !== next)
+        throw new MatrixPolicyError(409, "The next revision number has changed. Reload the matrix before publishing.");
+      const [created] = await tx.insert(revisions).values({
+        ...applyAuditUser(data, true), revision: next, tmvrUuid: randomUUID(),
+      }).returning();
+      await freezeMatrixEquivalents(tx, data.vesselId, created.tmvrUuid, (data as any).auditUserUuid);
+      // Both publication entry points end the draft; future editing clones the
+      // frozen revision rather than retaining a stale second policy.
+      await tx.delete(drafts).where(eq(drafts.vesselId, data.vesselId));
+      return created;
+    });
   },
 
   async getNextRevision(vesselId: string): Promise<string> {
@@ -34,27 +50,14 @@ export const trainingMatrixVesselRevisionsService = {
     revision: AdmTrainingMatrixVesselRevisionV2;
     metadata: { autoAssignedRevision: string; deletedDrafts: number };
   }> {
-    const autoAssignedRevision = await tmVesselRevisionsRepo.getNextRevision(data.vesselId);
-
-    const revision = await tmVesselRevisionsRepo.create(applyAuditUser({
-      vesselId: data.vesselId,
-      revision: autoAssignedRevision,
-      revisionDate: data.revisionDate,
-      revisionData: data.revisionData,
-      auditUserUuid: data.auditUserUuid,
-    }, true));
-
-    const existingDrafts = await tmVesselDraftsRepo.findByVesselId(data.vesselId);
-    let deletedDrafts = 0;
-    for (const draft of existingDrafts) {
-      const deleted = await tmVesselDraftsRepo.hardDeleteById(draft.id);
-      if (deleted) deletedDrafts++;
-    }
-
-    return {
-      success: true,
-      revision,
-      metadata: { autoAssignedRevision, deletedDrafts },
-    };
+    return withMatrixLock(data.vesselId, async tx => {
+      const autoAssignedRevision = await nextMatrixRevision(tx, data.vesselId);
+      const [revision] = await tx.insert(revisions).values({
+        ...applyAuditUser({ ...data, revision: autoAssignedRevision }, true), tmvrUuid: randomUUID(),
+      }).returning();
+      await freezeMatrixEquivalents(tx, data.vesselId, revision.tmvrUuid, data.auditUserUuid!);
+      const deleted = await tx.delete(drafts).where(eq(drafts.vesselId, data.vesselId)).returning();
+      return { success: true, revision, metadata: { autoAssignedRevision, deletedDrafts: deleted.length } };
+    });
   },
 };

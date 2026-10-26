@@ -1,5 +1,6 @@
+import { CompanyPdfActions } from "./CompanyPdfActions";
 import { sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -399,6 +400,7 @@ export function CompanySubmissionRenderer({
   entryStage?: { stageKey: string; submissionUuids: readonly string[] };
 }) {
   const [activeSubmissionUuid, setActiveSubmissionUuid] = useState(submissionUuid);
+  const queryClient = useQueryClient();
   const originalSubmissionUuid = useRef(submissionUuid);
   const activeSubmissionUuidRef = useRef(activeSubmissionUuid);
   const activeSubmissionStatusRef = useRef<CompanySubmissionRendererModel["status"] | undefined>();
@@ -756,6 +758,8 @@ export function CompanySubmissionRenderer({
 
   const refetchPersistedForm = async () => {
     await form.refetch();
+    await queryClient.invalidateQueries({ queryKey: ["company-form-pdf-status", activeSubmissionUuid] });
+    await queryClient.invalidateQueries({ queryKey: ["crew-company-forms-home"] });
   };
 
   const handleSubmitSection = async (sectionUuid: string, _comment: string) => {
@@ -917,6 +921,27 @@ export function CompanySubmissionRenderer({
     lifecycleForm?.submission.stageKey === "on_board" && lifecycleForm.form.archivedAt &&
       submissionStatus === "voided" && !lifecycleForm.submission.replacedBySubmissionUuid &&
       React.createElement("p", { className: "mb-3 text-sm" }, "No replacement — form retired"),
+    lifecycleForm?.documentEvidence && ["completed", "voided"].includes(submissionStatus ?? "") && React.createElement(
+      CompanyPdfActions, {
+        submissionUuid: lifecycleForm.submission.submissionUuid,
+        completed: true,
+        canFillIn: true, // The status endpoint supplies the actual scoped Fill in decision.
+        onChanged: () => { void queryClient.invalidateQueries({ queryKey: ["crew-company-forms-home"] }); },
+      },
+    ),
+    lifecycleForm?.documentEvidence && lifecycleForm.documentEvidence.status !== "not_started" && React.createElement(
+      "div",
+      {
+        role: lifecycleForm.documentEvidence.status === "unavailable" ? "alert" : "status",
+        className: "mb-3 rounded-md border bg-slate-50 p-3 text-sm text-slate-800",
+        "aria-label": "Document evidence",
+      },
+      React.createElement("p", null, lifecycleForm.documentEvidence.message),
+      lifecycleForm.documentEvidence.frozenRecordSha256 && React.createElement(
+        "p", { className: "mt-1 break-all text-xs" },
+        `Frozen-record SHA-256: ${lifecycleForm.documentEvidence.frozenRecordSha256}`,
+      ),
+    ),
     lifecycleForm?.systemValuesChangedNotice && React.createElement(
       "div",
       { role: "status", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },

@@ -4,6 +4,8 @@ import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, 
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import type { CompanyFormValidationContext } from "@/lib/companyFormValidation";
+import { CompanyFormProblems } from "@/components/company-forms/CompanyFormProblems";
 import { getCrewUserId } from "@/lib/crewUser";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -63,8 +65,8 @@ export interface ConfigurableFormPart {
 
 const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
 
-function editorErrorMessage(error: unknown, action: Parameters<typeof companyFormErrorMessage>[1], isCompanyForm: boolean): string {
-  if (isCompanyForm) return companyFormErrorMessage(error, action);
+function editorErrorMessage(error: unknown, action: Parameters<typeof companyFormErrorMessage>[1], isCompanyForm: boolean, context?: CompanyFormValidationContext): string {
+  if (isCompanyForm) return companyFormErrorMessage(error, action, context);
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -854,6 +856,52 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const currentSections = selectedPart?.partType === "configurable"
     ? (trees[selectedPart.formPartUuid] || [])
     : [];
+  const validationContext = (): CompanyFormValidationContext => {
+    const references: Record<string, string> = {};
+    const remember = (reference: string, label: string) => {
+      references[reference] = references[reference] && references[reference] !== label
+        ? `${references[reference]} / ${label}` : label;
+    };
+    const pointName = (question: QuestionModel) => pointDisplay(question)
+      ? `Point ${pointDisplay(question)}` : question.response_type === "system_field" ? "System Field" : "Content";
+    const partLabel = (part: ConfigurableFormPart) => `Part ${allParts.indexOf(part) + 1} — ${part.partTitle}`;
+    for (const part of configurableParts) {
+      remember(part.formPartUuid, partLabel(part));
+      for (const section of trees[part.formPartUuid] || []) {
+        const sectionLabel = `${partLabel(part)} · Section ${sectionDisplay(section)}${section.section_title ? ` — ${section.section_title}` : ""}`;
+        if (section.section_uuid) remember(section.section_uuid, sectionLabel);
+        if (section.section_title) remember(section.section_title, sectionLabel);
+        if (section.section_code) remember(section.section_code, sectionLabel);
+        for (const question of section.questions) {
+          const pointLabel = `${sectionLabel} · ${pointName(question)}${question.question_text ? ` — ${question.question_text}` : ""}`;
+          if (question.question_uuid) remember(question.question_uuid, pointLabel);
+          for (const option of question.options)
+            if (option.option_uuid) remember(option.option_uuid, `${pointLabel} · Answer choice "${option.option_label}"`);
+        }
+      }
+      for (const set of optionSets[part.formPartUuid] || []) {
+        if (set.option_set_uuid) remember(set.option_set_uuid, `${partLabel(part)} · Named answer choices${set.option_set_name ? ` "${set.option_set_name}"` : ""}`);
+        for (const option of set.options)
+          if (option.option_uuid) remember(option.option_uuid, `${partLabel(part)} · Answer choice "${option.option_label}"`);
+      }
+    }
+    return {
+      references,
+      partLabel: configurableParts.length === 1 ? partLabel(configurableParts[0]) : "Form structure — review the form's parts",
+      locationForPath: path => {
+        const offset = path.indexOf("parts");
+        const part = offset >= 0 ? configurableParts[Number(path[offset + 1])] : selectedPart;
+        if (!part) return "Form settings";
+        const sectionOffset = path.indexOf("sections");
+        const section = sectionOffset >= 0 ? trees[part.formPartUuid]?.[Number(path[sectionOffset + 1])] : undefined;
+        if (!section) return partLabel(part);
+        const sectionLabel = `${partLabel(part)} · Section ${sectionDisplay(section)}${section.section_title ? ` — ${section.section_title}` : ""}`;
+        const pointOffset = path.indexOf("questions");
+        const point = pointOffset >= 0 ? section.questions[Number(path[pointOffset + 1])] : undefined;
+        return point ? `${sectionLabel} · ${pointName(point)}${point.question_text ? ` — ${point.question_text}` : ""}` : sectionLabel;
+      },
+    };
+  };
   const previewStructures = useMemo(() => Object.fromEntries(Object.entries(trees).map(([partUuid, sections]) => [
     partUuid,
     sections.map((section) => ({ ...section, effectiveLayout: resolveDraftEffectiveLayout(section) })),
@@ -1088,6 +1136,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const changeResponseType = (partUuid: string, sectionIndex: number, questionIndex: number, responseType: string) => {
     const previousQuestion = trees[partUuid]?.[sectionIndex]?.questions[questionIndex];
     const previousSet = optionSetFor(partUuid, previousQuestion?.option_set_uuid);
+    if (responseType === "system_field" && previousQuestion?.comment_enabled) {
+      toast({
+        title: "Comments turned off",
+        description: "System fields display a value the system already holds and cannot take a comment.",
+      });
+    }
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
       if (responseType === "system_field") {
         const field = systemFields[0];
@@ -1431,34 +1485,34 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const validateTrees = (): string | null => {
     for (const part of configurableParts) {
       const namedSets = namedOptionSetsFor(part.formPartUuid);
-      if (namedSets.some((set) => !set.option_set_name?.trim())) return "Named option sets need a name";
-      if (namedSets.some((set) => set.options.length === 0)) return "Named option sets need at least one option";
-      if (namedSets.some((set) => set.options.some((option) => !option.option_label.trim()))) {
+      if (!isCompanyForm && namedSets.some((set) => !set.option_set_name?.trim())) return "Named option sets need a name";
+      if (!isCompanyForm && namedSets.some((set) => set.options.length === 0)) return "Named option sets need at least one option";
+      if (!isCompanyForm && namedSets.some((set) => set.options.some((option) => !option.option_label.trim()))) {
         return "Named option-set option labels cannot be empty";
       }
       for (const section of trees[part.formPartUuid] || []) {
-        if (!section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
-        if (section.responsible_mode === "role" && !section.responsible_role_uuid) {
+        if (!isCompanyForm && !section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
+        if (!isCompanyForm && section.responsible_mode === "role" && !section.responsible_role_uuid) {
           return `${sectionDisplay(section)}: select a responsible role`;
         }
-        if (section.responsible_mode === "department" && !section.responsible_department) {
+        if (!isCompanyForm && section.responsible_mode === "department" && !section.responsible_department) {
           return `${sectionDisplay(section)}: select a responsible department`;
         }
         for (const question of section.questions) {
-          if (question.response_type === "system_field" && !systemFields.some((field) => field.key === question.system_field_key)) {
+          if (question.response_type === "system_field" && (!isCompanyForm || question.system_field_key) && !systemFields.some((field) => field.key === question.system_field_key)) {
             return "Select a valid system field";
           }
-          if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
-          if (question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
+          if (!isCompanyForm && !question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
+          if (!isCompanyForm && question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
             return "Content point body is required";
           }
-          if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
+          if (!isCompanyForm && (question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
             return `${pointDisplay(question)}: add at least one option`;
           }
           if (question.option_set_uuid && !optionSetFor(part.formPartUuid, question.option_set_uuid)) {
             return `${pointDisplay(question)}: selected option set is unavailable`;
           }
-          if (question.options.some((option) => !option.option_label.trim())) {
+          if (!isCompanyForm && question.options.some((option) => !option.option_label.trim())) {
             return `${pointDisplay(question)}: option labels cannot be empty`;
           }
         }
@@ -1547,9 +1601,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       await refetchVersions();
       return draft;
     } catch (error: any) {
-      const message = editorErrorMessage(error, "editorSave", isCompanyForm);
+      const message = editorErrorMessage(error, "editorSave", isCompanyForm, validationContext());
       setSaveError(message);
-      toast({ title: "Unable to save form", description: message, variant: "destructive" });
+      toast({ title: "Unable to save form", description: isCompanyForm ? "Review the problems listed in the editor." : message, variant: "destructive" });
       return null;
     } finally {
       saveTransitionRef.current = false;
@@ -1602,9 +1656,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         description: "The version has been released successfully.",
       });
     } catch (error: any) {
-      const message = editorErrorMessage(error, "release", isCompanyForm);
+      const message = editorErrorMessage(error, "release", isCompanyForm, validationContext());
       setSaveError(message);
-      toast({ title: "Unable to release form", description: message, variant: "destructive" });
+      toast({ title: "Unable to release form", description: isCompanyForm ? "Review the problems listed in the editor." : message, variant: "destructive" });
     } finally {
       setIsReleasing(false);
     }
@@ -2273,12 +2327,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                    <div className="mt-3 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
                  </div>
 
-              {saveError && (
+              {saveError && (isCompanyForm ? <CompanyFormProblems message={saveError} testId="text-form-save-error" /> : (
                 <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 flex items-start gap-2" data-testid="text-form-save-error">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>{saveError}</span>
                 </div>
-              )}
+              ))}
 
                 <div>
                  {isLoadingTree || isLoadingParts ? (
@@ -2618,13 +2672,16 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
-                                      {question.response_type === "content" || question.response_type === "system_field" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
+                                      {question.response_type === "content" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
+                                     {question.response_type !== "system_field" && (
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
                                        <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory
                                      </label>
-                                     <label className="flex items-center gap-2 text-xs text-gray-700">
-                                       <Checkbox checked={question.comment_enabled} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                     )}
+                                     <label className="flex items-center gap-2 text-xs text-gray-700"
+                                       title={question.response_type === "system_field" ? "System fields display a value the system already holds and cannot take a comment." : undefined}>
+                                       <Checkbox checked={question.response_type === "system_field" ? false : question.comment_enabled} disabled={!canModify || question.response_type === "system_field"} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Comment enabled
                                      </label>
                                      </>}

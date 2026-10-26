@@ -287,7 +287,11 @@ describe("GenericFormEditor shared Preview shell", () => {
     expect(fieldPicker).toBeTruthy();
     expect(pointText?.disabled).toBe(true);
     expect(editor.querySelector('[data-testid="checkbox-point-mandatory-1-1"]')).toBeNull();
-    expect(editor.querySelector('[data-testid="checkbox-point-comment-1-1"]')).toBeNull();
+    const commentControl = editor.querySelector<HTMLElement>('[data-testid="checkbox-point-comment-1-1"]')!;
+    expect(commentControl).not.toBeNull();
+    expect(commentControl.hasAttribute("disabled")).toBe(true);
+    expect(commentControl.getAttribute("data-state")).toBe("unchecked");
+    expect(commentControl.parentElement?.title).toBe("System fields display a value the system already holds and cannot take a comment.");
     expect(editor.querySelector('[data-testid="option-editor-1-1"]')).toBeNull();
 
     click(previewButton);

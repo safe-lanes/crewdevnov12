@@ -17,7 +17,7 @@ export async function seedIsolatedTests() {
     await pool.query("UPDATE master_users SET designation='Synthetic Crewing Superintendent' WHERE id=24");
     await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
       SELECT r.ruid,a.resource,a.action,true FROM adm_rolemaster_ac r
-      CROSS JOIN adm_permission_actions a WHERE r.assigned_role='Admin'
+      CROSS JOIN adm_permission_actions a WHERE r.assigned_role='Admin' AND a.resource<>'training_compliance'
       ON CONFLICT(role_id,resource,action) DO UPDATE SET allowed=true`);
     await pool.query(`INSERT INTO adm_roleaccess_ac
       (rauid,role_id,menu_id,canview,cancreate,canedit,candelete,is_deleted)

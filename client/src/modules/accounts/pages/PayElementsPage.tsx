@@ -1,13 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +93,44 @@ function natLabel(n: any): string {
   return n?.nationality || n?.countryName || n?.natUuid || "";
 }
 
+type PayElementDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "min" | "data-testid"
+>;
+
+function PayElementDateInput({ onDraftValidityChange, ...props }: PayElementDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const draft = useRef(formatIsoDate(props.value));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ minHeight: 56 }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        key={props.min || ""}
+        initialDraft={draft.current}
+        onDraftChange={(value) => { draft.current = value; }}
+        mode="date"
+        className="min-w-0 border-input text-base md:text-sm"
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 export default function PayElementsPage() {
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = usePermissions();
@@ -119,18 +162,30 @@ export default function PayElementsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<ElementForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const dateValidity = useRef({ effectiveFrom: true, effectiveTo: true });
+
+  const resetDateInputs = () => {
+    dateValidity.current = { effectiveFrom: true, effectiveTo: true };
+    setDateFormVersion((version) => version + 1);
+  };
 
   const set = <K extends keyof ElementForm>(key: K, value: ElementForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    setValidationAttempted(false);
+    resetDateInputs();
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
+    resetDateInputs();
     setEditingUuid(row.payElementUuid);
     setForm({
       code: row.code ?? "",
@@ -184,27 +239,48 @@ export default function PayElementsPage() {
     return payload;
   };
 
-  const handleSave = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
-      toast({
-        title: "Missing fields",
-        description: "Code and name are required.",
-        variant: "destructive",
-      });
-      return;
+  const requiredErrors: Record<string, string> = {};
+  if (!form.code.trim()) {
+    requiredErrors.code = "Code is required.";
+  }
+  if (!form.name.trim()) {
+    requiredErrors.name = "Name is required.";
+  }
+  for (const [key, label] of [
+    ["type", "Type"],
+    ["category", "Category"],
+    ["calcMethod", "Calculation Method"],
+    ["paymentTiming", "Payment Timing"],
+    ["roundingRule", "Rounding Rule"],
+    ["status", "Status"],
+  ] as const) {
+    if (!form[key]) {
+      requiredErrors[key] = `${label} is required.`;
     }
-    if (
-      !form.type ||
-      !form.category ||
-      !form.calcMethod ||
-      !form.paymentTiming ||
-      !form.roundingRule ||
-      !form.status
-    ) {
+  }
+  if (
+    form.calcMethod === "percentage_of_base" &&
+    !form.percentageBaseElementUuid
+  ) {
+    requiredErrors.percentageBaseElementUuid =
+      "Percentage base element is required.";
+  }
+  if (
+    form.nationalityConditional &&
+    form.applicableNationalityUuids.length === 0
+  ) {
+    requiredErrors.applicableNationalityUuids =
+      "Select at least one applicable nationality.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
+  const handleSave = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
       toast({
-        title: "Missing fields",
-        description:
-          "Type, category, calculation method, payment timing, rounding rule, and status are required.",
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
         variant: "destructive",
       });
       return;
@@ -217,6 +293,14 @@ export default function PayElementsPage() {
       toast({
         title: "Invalid effective dates",
         description: "Effective to must be on or after effective from.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
+      toast({
+        title: "Invalid date",
+        description: "Correct or clear Effective from and Effective to before saving.",
         variant: "destructive",
       });
       return;
@@ -324,9 +408,17 @@ export default function PayElementsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant={p.value === "active" ? "default" : "secondary"}
+            className={
+              p.value === "active"
+                ? accountsStatusBadgeClass("green")
+                : p.value === "inactive"
+                  ? accountsStatusBadgeClass("grey")
+                  : undefined
+            }
             data-testid={`status-element-${p.data?.code}`}
           >
             {labelOf(PAY_ELEMENT_STATUSES, p.value)}
@@ -422,8 +514,9 @@ export default function PayElementsPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3">
+      <div className="mb-3 flex flex-wrap items-end gap-3">
         <FilterSelect
+          label="Type"
           value={typeFilter}
           onChange={setTypeFilter}
           options={PAY_ELEMENT_TYPES}
@@ -431,6 +524,7 @@ export default function PayElementsPage() {
           testId="filter-type"
         />
         <FilterSelect
+          label="Category"
           value={categoryFilter}
           onChange={setCategoryFilter}
           options={PAY_ELEMENT_CATEGORIES}
@@ -438,12 +532,26 @@ export default function PayElementsPage() {
           testId="filter-category"
         />
         <FilterSelect
+          label="Status"
           value={statusFilter}
           onChange={setStatusFilter}
           options={PAY_ELEMENT_STATUSES}
           allLabel="All statuses"
           testId="filter-status"
         />
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            setTypeFilter("all");
+            setCategoryFilter("all");
+            setStatusFilter("all");
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
       </div>
 
       <div className="flex-1 min-h-[400px]">
@@ -466,21 +574,31 @@ export default function PayElementsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label>Code</Label>
+              <Label>Code <span className="text-red-500">*</span></Label>
               <Input
                 value={form.code}
                 onChange={(e) => set("code", e.target.value)}
                 disabled={!!editingUuid}
+                className={errors.code ? "border-red-500" : undefined}
+                aria-invalid={!!errors.code}
                 data-testid="input-element-code"
               />
+              {errors.code && (
+                <p className="text-xs text-red-500" role="alert">{errors.code}</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Name</Label>
+              <Label>Name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
+                className={errors.name ? "border-red-500" : undefined}
+                aria-invalid={!!errors.name}
                 data-testid="input-element-name"
               />
+              {errors.name && (
+                <p className="text-xs text-red-500" role="alert">{errors.name}</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label>Description</Label>
@@ -499,6 +617,7 @@ export default function PayElementsPage() {
               options={PAY_ELEMENT_TYPES}
               onChange={(v) => set("type", v)}
               testId="select-element-type"
+              error={errors.type}
             />
             <DialogSelect
               label="Category"
@@ -507,6 +626,7 @@ export default function PayElementsPage() {
               options={PAY_ELEMENT_CATEGORIES}
               onChange={(v) => set("category", v)}
               testId="select-element-category"
+              error={errors.category}
             />
             <div className="flex flex-col gap-1.5">
               <Label>GL code (accounting)</Label>
@@ -524,6 +644,7 @@ export default function PayElementsPage() {
               options={CALC_METHODS}
               onChange={(v) => set("calcMethod", v)}
               testId="select-element-calc-method"
+              error={errors.calcMethod}
             />
             <DialogSelect
               label="Payment timing"
@@ -532,17 +653,19 @@ export default function PayElementsPage() {
               options={PAYMENT_TIMINGS}
               onChange={(v) => set("paymentTiming", v)}
               testId="select-element-payment-timing"
+              error={errors.paymentTiming}
             />
 
             {form.calcMethod === "percentage_of_base" && (
               <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <Label>Percentage base element</Label>
+                <Label>Percentage base element <span className="text-red-500">*</span></Label>
                 <Select
                   value={form.percentageBaseElementUuid}
                   onValueChange={(v) => set("percentageBaseElementUuid", v)}
                 >
                   <SelectTrigger
-                    className="h-9"
+                    className={`h-9${errors.percentageBaseElementUuid ? " border-red-500" : ""}`}
+                    aria-invalid={!!errors.percentageBaseElementUuid}
                     data-testid="select-percentage-base"
                   >
                     <SelectValue placeholder="Select base element" />
@@ -559,6 +682,9 @@ export default function PayElementsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.percentageBaseElementUuid && (
+                  <p className="text-xs text-red-500" role="alert">{errors.percentageBaseElementUuid}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Required: the element this percentage is calculated from.
                 </p>
@@ -572,6 +698,7 @@ export default function PayElementsPage() {
               options={ROUNDING_RULES}
               onChange={(v) => set("roundingRule", v)}
               testId="select-element-rounding"
+              error={errors.roundingRule}
             />
             <DialogSelect
               label="Status"
@@ -580,24 +707,31 @@ export default function PayElementsPage() {
               options={PAY_ELEMENT_STATUSES}
               onChange={(v) => set("status", v)}
               testId="select-element-status"
+              error={errors.status}
             />
 
             <div className="flex flex-col gap-1.5">
               <Label>Effective from</Label>
-              <Input
-                type="date"
+              <PayElementDateInput
+                key={dateFormVersion}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveFrom = valid;
+                }}
                 data-testid="input-element-effective-from"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective to</Label>
-              <Input
-                type="date"
+              <PayElementDateInput
+                key={dateFormVersion}
                 value={form.effectiveTo}
                 min={form.effectiveFrom || undefined}
                 onChange={(e) => set("effectiveTo", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveTo = valid;
+                }}
                 data-testid="input-element-effective-to"
               />
             </div>
@@ -660,8 +794,13 @@ export default function PayElementsPage() {
 
             {form.nationalityConditional && (
               <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <Label>Applicable nationalities</Label>
-                <div className="max-h-40 overflow-y-auto rounded border p-2 grid grid-cols-2 gap-1">
+                <Label>Applicable nationalities <span className="text-red-500">*</span></Label>
+                <div
+                  className={`max-h-40 overflow-y-auto rounded border p-2 grid grid-cols-2 gap-1${errors.applicableNationalityUuids ? " border-red-500" : ""}`}
+                  role="group"
+                  aria-label="Applicable nationalities"
+                  aria-invalid={!!errors.applicableNationalityUuids}
+                >
                   {nationalities.map((n: any) => {
                     const id = n.natUuid;
                     const checked = form.applicableNationalityUuids.includes(id);
@@ -690,6 +829,9 @@ export default function PayElementsPage() {
                     );
                   })}
                 </div>
+                {errors.applicableNationalityUuids && (
+                  <p className="text-xs text-red-500" role="alert">{errors.applicableNationalityUuids}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   At least one nationality is required for a
                   nationality-conditional element.
@@ -722,12 +864,14 @@ export default function PayElementsPage() {
 }
 
 function FilterSelect({
+  label,
   value,
   onChange,
   options,
   allLabel,
   testId,
 }: {
+  label: string;
   value: string;
   onChange: (v: string) => void;
   options: Option[];
@@ -735,19 +879,28 @@ function FilterSelect({
   testId: string;
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-[180px] text-xs" data-testid={testId}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">{allLabel}</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="space-y-1">
+      <Label htmlFor={testId} className="text-xs text-gray-600">
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          id={testId}
+          className="h-8 w-[180px] text-xs"
+          data-testid={testId}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{allLabel}</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -758,6 +911,7 @@ function DialogSelect({
   options,
   onChange,
   testId,
+  error,
 }: {
   label: string;
   placeholder: string;
@@ -765,13 +919,15 @@ function DialogSelect({
   options: Option[];
   onChange: (v: string) => void;
   testId: string;
+  error?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
+      <Label>{label} <span className="text-red-500">*</span></Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
-          className="h-9 data-[placeholder]:text-muted-foreground"
+          className={`h-9 data-[placeholder]:text-muted-foreground${error ? " border-red-500" : ""}`}
+          aria-invalid={!!error}
           data-testid={testId}
         >
           <SelectValue placeholder={placeholder} />
@@ -784,6 +940,9 @@ function DialogSelect({
           ))}
         </SelectContent>
       </Select>
+      {error && (
+        <p className="text-xs text-red-500" role="alert">{error}</p>
+      )}
     </div>
   );
 }

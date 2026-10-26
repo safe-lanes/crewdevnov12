@@ -1,4 +1,8 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
+import {
+  formatIsoDate,
+  formatIsoDateTime,
+} from '@/components/ui/formatted-date-input';
 
 interface EquipmentEntry {
   id: string;
@@ -82,6 +86,13 @@ function formatDate(dateStr: string | undefined): string {
   } catch {
     return dateStr;
   }
+}
+
+function formatExternalResultsDate(value: string | undefined): string {
+  if (value && formatIsoDateTime(value) !== value) {
+    return formatIsoDate(value.slice(0, 10)) + ' ' + value.slice(11, 16);
+  }
+  return formatDate(value);
 }
 
 function formatDateTime(dateTimeStr: string | undefined): string {
@@ -585,7 +596,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     builder.drawFieldRow([
       {
         label: 'Date External Test Results received',
-        value: formatDate(formData.externalTestResultsDate)
+        value: formatExternalResultsDate(formData.externalTestResultsDate)
       },
     ], CONTENT_WIDTH);
   }

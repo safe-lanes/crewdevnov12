@@ -184,8 +184,8 @@ export class FormStructureRepository {
     return { sections, questions, optionSets, options };
   }
 
-  async readTree(fvUuid: string, partUuid: string) {
-    return this.readTreeWithExecutor(getDb(), fvUuid, partUuid);
+  async readTree(fvUuid: string, partUuid: string, executor: Executor = getDb()) {
+    return this.readTreeWithExecutor(executor, fvUuid, partUuid);
   }
 
   async replaceTree(
@@ -241,6 +241,7 @@ export class FormStructureRepository {
          }
          for (const question of section.questions) {
            if (question.response_type !== "system_field") continue;
+           if (context.category === "dynamic" && !question.system_field_key) continue;
            const field = context.category === "dynamic"
              ? getSystemField(context.subjectType, question.system_field_key)
              : undefined;
@@ -257,8 +258,13 @@ export class FormStructureRepository {
        for (const section of input.sections) {
          for (const question of section.questions) {
            if (question.response_type !== "content") continue;
+           if (/<\s*(script|iframe|object|embed|svg|math)\b|\bon\w+\s*=|javascript\s*:/i.test(question.content_html || "")) {
+             const error: any = new Error("Content point body is required after sanitization");
+             error.statusCode = 400;
+             throw error;
+           }
            const html = sanitizeComparisonHtml(question.content_html || "");
-           if (!html.replace(/<[^>]*>/g, "").trim()) {
+           if (context.category !== "dynamic" && !html.replace(/<[^>]*>/g, "").trim()) {
              throw new Error("Content point body is required after sanitization");
            }
            sanitizedContent.set(question, html);
@@ -449,11 +455,11 @@ export class FormStructureRepository {
           const existing = questionByUuid.get(questionUuid);
           const values = {
             questionCode: question.question_code,
-            questionText: question.response_type === "system_field"
+            questionText: question.response_type === "system_field" && question.system_field_key
               ? getSystemField(context.subjectType, question.system_field_key)!.label
               : question.question_text,
              contentHtml: question.response_type === "content" ? sanitizedContent.get(question)! : null,
-            systemFieldKey: question.response_type === "system_field" ? question.system_field_key! : null,
+            systemFieldKey: question.response_type === "system_field" ? question.system_field_key ?? null : null,
             responseType: question.response_type,
             isMandatory: question.is_mandatory,
             commentEnabled: question.comment_enabled,

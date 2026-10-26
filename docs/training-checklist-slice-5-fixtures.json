@@ -1,0 +1,32 @@
+{
+  "registeredOn": "2026-10-21",
+  "reusedManifest": "docs/training-compliance-slice-4-fixtures.json",
+  "formUuid": "a4120000-0000-4000-8000-000000000012",
+  "formId": 5297,
+  "versionId": 7459,
+  "versionUuid": "67a4c063-c322-4ef0-a18b-8ba70a158dab",
+  "stage": "before_joining",
+  "obligation": "mandatory",
+  "vesselCondition": ["a4120000-0000-4000-8000-000000000001"],
+  "partUuids": ["567e9181-0bb3-4831-ba4a-c468dc066244"],
+  "sectionUuids": ["e7d76366-09b4-4445-9188-b8f81c9a5280"],
+  "questionUuids": [
+    "fd1f7308-f7d3-49dd-aa3e-8ab1bb0ebf93",
+    "861ce1b2-8f1d-4523-8570-5d6158131946",
+    "a1e3fc57-eab2-43a0-8e9d-803d9cc954c9"
+  ],
+  "conditionSetUuid": "391b94ef-74ad-445f-814d-f0a7eed3c628",
+  "conditionUuid": "7de069af-0990-4900-9d3b-d667cbd3f083",
+  "resolutionEventKey": "a4250000-0000-4000-8000-000000000001",
+  "runUuid": "61b3a516-285e-46ba-b7b7-26fbbcce9e00",
+  "requirementUuid": "a1ebbcd1-51c2-43b6-9c7e-49b2ecb240cc",
+  "retention": "All acceptance snapshots/audit and requirement history for the registered assignment are fixture descendants and retained. Replays reuse the version and requirement, never create another.",
+  "temporaryGrant": {
+    "roleUuid": "d57dd06b-7c4f-4152-8902-c8af0422b3e6",
+    "resource": "training_compliance",
+    "action": "override",
+    "scope": "Explicit audited acceptance check with existing Office persona 24 on the fixture vessel. Restored OFF after each run; no other grants."
+  },
+  "restoration": "Expiry setting OFF; training override OFF; certificate 022 issued 2028-01-01 with no expiry; fixture planned joining 2027-05-01, range end 6 months, checklist No. Outstanding fixture requirement is intentionally retained for combined refusal.",
+  "provisioning": "Copy existing registered form through Forms Configuration once. Draft-only structure update through normal authoring API removes the on-board-only Vessel Management signature; guarded conditional release; explicit current-date acceptance resolution harness, not a real deployment trigger."
+}

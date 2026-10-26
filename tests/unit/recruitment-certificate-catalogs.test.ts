@@ -1,0 +1,69 @@
+// @vitest-environment node
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { loadCatalogs } from "../../server/v2/recruitment/import/catalogs";
+import { masterLanguages } from "../../shared/schema";
+const mocks = vi.hoisted(() => ({
+  visaEntries: vi.fn(async () => [{ id: 9, name: "Indian" }]),
+  licenses: vi.fn(async () => [{ id: "internal-uuid", entryId: "LIC007", name: "Chief Engineer", shortCode: "CE", description: "Master default" }]),
+  training: vi.fn(async () => [{ id: 197, trainingMasterId: 92, companyId: "SAF029", trainingLabel: "Company Safety Induction", abr: "CSI", requirement: "Company requirement" }]),
+  documents: vi.fn(async () => [
+    { mtdtUuid: "internal-uuid", entryId: "DOC001", name: "Passport", isActive: true, isDeleted: false },
+    { entryId: "DOC002", name: "Inactive", isActive: false, isDeleted: false },
+    { entryId: "DOC003", name: "Deleted", isActive: true, isDeleted: true },
+  ]),
+}));
+vi.mock("../../server/v2/db", () => ({ getDb: () => ({
+  select: () => ({ from: (table: unknown) => ({ where: async () => table === masterLanguages ? [
+    { label: "French", value: "french-uuid", isActive: true },
+    { label: "Spanish", value: "spanish-uuid", isActive: true },
+    { label: "Inactive", value: "inactive-uuid", isActive: false },
+    { label: "", value: "blank-uuid", isActive: true },
+  ] : [] }) }),
+}) }));
+vi.mock("../../server/v2/masters/repositories/mastersRepository", () => ({
+  MastersRepository: class { findAllLicensesDce = mocks.licenses; getMasterDataEntries = mocks.visaEntries; },
+}));
+vi.mock("../../server/v2/admin/repositories/companyTrainingsRepository", () => ({
+  CompanyTrainingsRepository: class { findAll = mocks.training; },
+}));
+vi.mock("../../server/v2/masters/repositories/travelDocumentTypeRepository", () => ({
+  TravelDocumentTypeRepository: class { findAll = mocks.documents; },
+}));
+
+describe("Recruitment Excel certificate catalog sources", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("loads the web visa entry source and supplements it with predefined choices", async () => {
+    const catalogs = await loadCatalogs();
+    expect(mocks.visaEntries).toHaveBeenCalledWith("001");
+    expect(catalogs.visaCountries).toContainEqual({ label: "India", value: "India" });
+    expect(catalogs.visaCountries).toContainEqual({ label: "Schengen", value: "Schengen" });
+  });
+  it("reports a visa master read failure instead of silently returning an incomplete list", async () => {
+    mocks.visaEntries.mockRejectedValueOnce(new Error("Visa master unavailable"));
+    await expect(loadCatalogs()).rejects.toThrow("Visa master unavailable");
+  });
+  it("matches the web language eligibility while preserving the existing native-language catalog", async () => {
+    const catalogs = await loadCatalogs();
+    expect(catalogs.foreignLanguages).toEqual([
+      { label: "French", value: "french-uuid" }, { label: "Spanish", value: "spanish-uuid" },
+    ]);
+    expect(catalogs.languages).toContainEqual({ label: "Inactive", value: "inactive-uuid" });
+  });
+  it("reuses the live web-selection repositories with business IDs and the same two dependent defaults", async () => {
+    const catalogs = await loadCatalogs();
+    expect(mocks.licenses).toHaveBeenCalledOnce();
+    expect(mocks.training).toHaveBeenCalledOnce();
+    expect(catalogs.licenses).toEqual([{ label: "Chief Engineer", value: "LIC007", abbr: "CE", requirement: "Master default" }]);
+    expect(catalogs.training).toEqual([{ label: "Company Safety Induction", value: "SAF029", abbr: "CSI", requirement: "Company requirement" }]);
+    expect(mocks.documents).toHaveBeenCalledOnce();
+    expect(catalogs.travelDocuments).toEqual([{ label: "Passport", value: "DOC001" }]);
+  });
+  it("does not silently remove document choices when their repository fails", async () => {
+    mocks.documents.mockRejectedValueOnce(new Error("Document catalog unavailable"));
+    await expect(loadCatalogs()).rejects.toThrow("Document catalog unavailable");
+  });
+  it("propagates catalog failures instead of silently substituting a static list", async () => {
+    mocks.licenses.mockRejectedValueOnce(new Error("Catalog unavailable"));
+    await expect(loadCatalogs()).rejects.toThrow("Catalog unavailable");
+  });
+});

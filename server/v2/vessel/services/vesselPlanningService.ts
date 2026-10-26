@@ -1044,7 +1044,7 @@ export const vesselPlanningService = {
   async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }, req?: Request) {
   if (data.deploymentChecklistCompleted === true && data.relieverCrewUuid === null)
     throw new ChecklistGateError("A cleared reliever cannot have a completed deployment checklist. Deploy the reliever first.");
-  if (req?.body?.checklistOverride !== undefined && data.deploymentChecklistCompleted !== true)
+  if ((req?.body?.checklistOverride !== undefined || req?.body?.trainingOverride !== undefined) && data.deploymentChecklistCompleted !== true)
     throw new ChecklistGateError("A checklist override must explicitly set Deployment Checklist Completed to Yes.");
   const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
   if (!existing) {
@@ -1066,6 +1066,7 @@ export const vesselPlanningService = {
 
   const resolvedData = { ...auditedData };
    delete (resolvedData as any).checklistOverride;
+   delete (resolvedData as any).trainingOverride;
    // Association identity is written only by Deploy (or the migration), not
    // by generic planning edits supplied by a client.
    delete (resolvedData as any).relieverAssignUuid;
@@ -1209,12 +1210,18 @@ export const vesselPlanningService = {
          throw new Error("Planning crew changed; reload before editing");
        }
        await syncIncumbent(tx, lockedPlanning);
-       if (resolvedData.deploymentChecklistCompleted === true)
-         await verifyChecklistYes(tx, lockedPlanning, req);
+       let checklistAcceptance;
+       if (resolvedData.deploymentChecklistCompleted === true) {
+         // Check the proposed reliever dates, not the values being replaced.
+         // Both writes roll back if either independent compliance gate refuses.
+         const { deploymentChecklistCompleted: _yes, ...facts } = resolvedData;
+         await vesselPlanningRepository.update(planUuid, facts, tx);
+         checklistAcceptance = await verifyChecklistYes(tx, lockedPlanning, req);
+       }
        const row = await vesselPlanningRepository.update(planUuid, resolvedData, tx);
        const event = await checkReliefTransition(lockedPlanning, row, data.auditUserUuid || "system", tx);
        reliefEventUuid = event?.event_uuid;
-       return row;
+       return checklistAcceptance ? { ...row, checklistAcceptance } : row;
      });
   }
   await finishLifecycle(reliefEventUuid, data.auditUserUuid || "system");
@@ -1596,7 +1603,7 @@ export const vesselPlanningService = {
     relieverContractPeriodMonths?: number;
     auditUserUuid?: string;
   }) {
-    if ((relieverData as any).deploymentChecklistCompleted === true)
+    if ((relieverData as any).deploymentChecklistCompleted === true || "trainingOverride" in (relieverData as any))
       throw new ChecklistGateError("Complete the checklist through the linked Planning record, not a reliever shortcut.");
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!existing) throw new Error(`Planning record not found: ${planUuid}`);
@@ -2005,7 +2012,7 @@ export const vesselPlanningService = {
     relieverContractPeriodMonths?: number;
     auditUserUuid?: string;
   }) {
-    if ((updateData as any)?.deploymentChecklistCompleted === true)
+    if ((updateData as any)?.deploymentChecklistCompleted === true || "trainingOverride" in (updateData as any ?? {}))
       throw new ChecklistGateError("Complete the checklist through the linked Planning record, not a status shortcut.");
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!planning) {

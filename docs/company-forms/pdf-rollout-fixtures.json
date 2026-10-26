@@ -1,0 +1,98 @@
+{
+  "databaseIdentity": {
+    "clusterid": "7586633721581772821",
+    "databaseoid": "16384"
+  },
+  "formUuid": "a4120000-0000-4000-8000-000000000411",
+  "formId": 5302,
+  "crewUuid": "424584fc-dc59-4f85-aa14-30781eb8477e",
+  "assignmentUuid": "a4120000-0000-4000-8000-000000000003",
+  "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+  "sectionUuid": "a4120000-0000-4000-8000-000000000421",
+  "versionUuid": "6043deaf-7308-4049-89f2-fcab0dea50c1",
+  "versionId": 7458,
+  "partUuid": "e1ca7d2c-9c3c-4b45-9b01-8b93e8db626f",
+  "released": true,
+  "submissionUuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+  "retainedEvidence": {
+    "frm_section_states": [
+      {
+        "section_state_uuid": "61e97d37-f0d5-4ee9-a79a-f95f91628231",
+        "section_uuid": "a4120000-0000-4000-8000-000000000421"
+      }
+    ],
+    "frm_document_snapshots": [
+      {
+        "snapshot_uuid": "5a5fe4c4-961a-432a-9d11-8aeb6efcbc83",
+        "frozen_record_sha256": "3d5e4af2d793129bbd27c153879fd4c7b4f04fda7c0479129eb72013772d0add"
+      }
+    ],
+    "frm_document_files": [
+      {
+        "file_uuid": "1993b1f4-9f0b-4090-bd1d-aa9f666d9888",
+        "file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb"
+      }
+    ],
+    "frm_document_preparation_requests": [
+      {
+        "request_uuid": "19ea89bf-0866-4067-bbe0-d767ccef2307"
+      }
+    ],
+    "signatures": [
+      {
+        "section_signature_uuid": "0b74bd9a-4139-4876-a957-31a9f136e693",
+        "signature_att_uuid": "84db9770-972f-4525-a6bb-b86913c70b56"
+      },
+      {
+        "section_signature_uuid": "85cca331-f99e-420f-b9a2-6f3a766a3e41",
+        "signature_att_uuid": "63e60884-6e5a-41ef-974a-dc7911e2ecf3"
+      }
+    ]
+  },
+  "voidCopyEvidence": {
+    "copies": [
+      {
+        "file_uuid": "68266e83-784e-48bf-8434-b936e7309c98",
+        "notice_uuid": "5f4dfb54-df7e-4e09-886b-78d68c010e0c",
+        "file_sha256": "c6fac05a7c4e5351322aa260fc02e0d3bace3dc469ddf1d1a36c074f08b67f3a",
+        "original_file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+        "page_count": 2,
+        "revision": 1,
+        "evidence": {
+          "reason": "Registered fixture verification: original copy handed over; issue an immutable void notice.",
+          "voidedAt": "2026-10-20T10:34:42.945",
+          "actorName": "Jeevan Naik",
+          "actorUuid": "24",
+          "designation": "Office User",
+          "submissionUuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+          "originalFileSha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+          "replacementSubmissionUuid": null
+        }
+      }
+    ],
+    "handovers": [
+      {
+        "handover_uuid": "c76c42c2-b041-4476-b9d8-ad751460116e",
+        "submission_uuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+        "file_uuid": "68266e83-784e-48bf-8434-b936e7309c98",
+        "file_sha256": "c6fac05a7c4e5351322aa260fc02e0d3bace3dc469ddf1d1a36c074f08b67f3a",
+        "actor_uuid": "9f83f1c3-a8a7-479d-8fea-a67ccad01435",
+        "actor_name": "Jeevan Naik",
+        "actor_role_uuid": "d57dd06b-7c4f-4152-8902-c8af0422b3e6",
+        "recorded_at": "2026-10-20T10:36:53.026Z"
+      }
+    ],
+    "originalHandovers": [
+      {
+        "handover_uuid": "a5049e5c-2666-475b-9ca4-daa721af7531",
+        "submission_uuid": "ffd002d7-fe0b-45a0-b429-70d85e7c4fc4",
+        "file_uuid": "1993b1f4-9f0b-4090-bd1d-aa9f666d9888",
+        "file_sha256": "c83da9129897cbdafe4aff53d3a2b212cb52b09a4a4fc62bbbb51a072cac77eb",
+        "actor_uuid": "9f83f1c3-a8a7-479d-8fea-a67ccad01435",
+        "actor_name": "Jeevan Naik",
+        "actor_role_uuid": "d57dd06b-7c4f-4152-8902-c8af0422b3e6",
+        "recorded_at": "2026-10-20T10:34:42.710Z"
+      }
+    ]
+  }
+}

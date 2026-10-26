@@ -7,6 +7,7 @@ interface VesselPeriodState {
   period: string; // YYYY-MM
   setVesselUuid: (uuid: string) => void;
   setPeriod: (period: string) => void;
+  resetFilters: (vesselUuid?: string) => void;
 }
 
 /**
@@ -21,6 +22,8 @@ export const useVesselPeriod = create<VesselPeriodState>()(
       period: currentPeriod(),
       setVesselUuid: (vesselUuid) => set({ vesselUuid }),
       setPeriod: (period) => set({ period }),
+      resetFilters: (vesselUuid = "") =>
+        set({ vesselUuid, period: currentPeriod() }),
     }),
     {
       name: "accounts-vessel-period",

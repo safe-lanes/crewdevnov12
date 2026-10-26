@@ -1,4 +1,5 @@
 import { TenantConfigRepository, PayElementsRepository } from "../repositories";
+import { getBuiltInVesselTabElementUuids } from "../../../../shared/v2/accounts/vesselEntryTabBindings";
 import type {
   AccTenantConfigV2,
   InsertAccTenantConfigV2,
@@ -57,6 +58,40 @@ async function assertExtraTabSlotsValid(
   }
 }
 
+async function assertNoNewBuiltInTabConflicts(
+  next: Partial<InsertAccTenantConfigV2>,
+  current: AccTenantConfigV2,
+): Promise<void> {
+  const changedSlots = ([1, 2] as const).flatMap((slot) => {
+    const elementKey = slot === 1
+      ? "extraTab1PayElementUuid"
+      : "extraTab2PayElementUuid";
+    const enabledKey = slot === 1
+      ? "extraTab1Enabled"
+      : "extraTab2Enabled";
+    const elementUuid = next[elementKey] === undefined
+      ? current[elementKey]
+      : next[elementKey];
+    const enabled = next[enabledKey] ?? current[enabledKey];
+    const changed = elementUuid !== current[elementKey];
+    const reenabled = enabled && !current[enabledKey];
+    return elementUuid && (changed || reenabled)
+      ? [{ slot, elementUuid }]
+      : [];
+  });
+  if (changedSlots.length === 0) return;
+  const reserved = getBuiltInVesselTabElementUuids(
+    await payElementsRepository.findAll(),
+  );
+  for (const { slot, elementUuid } of changedSlots) {
+    if (reserved.has(elementUuid)) {
+      throw validationError(
+        `Extra vessel entry tab ${slot}: this pay element cannot be assigned (Already selected in Vessel Portage)`,
+      );
+    }
+  }
+}
+
 export const tenantConfigService = {
   /** Return the single config row, creating it with defaults if absent. */
   async get(auditUserUuid?: string): Promise<AccTenantConfigV2> {
@@ -70,6 +105,7 @@ export const tenantConfigService = {
     data: Partial<InsertAccTenantConfigV2> & { auditUserUuid?: string },
   ): Promise<AccTenantConfigV2> {
     const current = await this.get(data.auditUserUuid);
+    await assertNoNewBuiltInTabConflicts(data, current);
     await assertExtraTabSlotsValid(data, current);
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await tenantConfigRepository.update(

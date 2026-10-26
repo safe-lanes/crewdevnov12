@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { planningAttachmentAccess } from "../shared/operationalAttachmentAccess";
+import { redactAttachmentJson } from "../shared/attachmentJsonAccess";
 import {
   vesselPlanningController,
   vesselCrewCountController,
@@ -9,9 +11,16 @@ import {
   vesselImportController,
 } from "./controllers";
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
+import { getOnboardTrainingCompliance } from "./controllers/onboardTrainingComplianceController";
 import { requirePermission } from "../../middleware/requirePermission";
+import { checkTrainingSuggestions } from "../training-needs/complianceSuggestionController";
+import { getRelieverTrainingCompliance } from "./controllers/trainingComplianceController";
+import { getTrainingChecklistHistory } from "./controllers/trainingChecklistHistoryController";
 
 const router = Router();
+router.use(planningAttachmentAccess);
+router.use(redactAttachmentJson);
+router.get("/planning/:planUuid/checklist-history", getTrainingChecklistHistory);
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
@@ -54,6 +63,9 @@ router.get("/planning/:planUuid/unlinked-reliever-clear-audit",
 router.post("/planning/:planUuid/clear-unlinked-reliever",
   requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
+router.get("/planning/:planUuid/reliever-assignment/:assignUuid/training-compliance", getRelieverTrainingCompliance);
+router.get("/:vesselUuid/training-compliance", getOnboardTrainingCompliance);
+router.post("/planning/:planUuid/reliever-assignment/:assignUuid/training-suggestions", checkTrainingSuggestions);
 router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
 router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
+import { CURRENCIES } from "../accountsConstants";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
@@ -72,7 +74,7 @@ export default function MonthlyTransactionsPage() {
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
 
-  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   const [originFilter, setOriginFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const hasFilter = !!vesselUuid && !!period;
@@ -142,6 +144,7 @@ export default function MonthlyTransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<TxnForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -205,12 +208,14 @@ export default function MonthlyTransactionsPage() {
   };
 
   const openCreate = () => {
+    setValidationAttempted(false);
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
     setEditingUuid(row.txnUuid);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -224,20 +229,34 @@ export default function MonthlyTransactionsPage() {
     setDialogOpen(true);
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editingUuid && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  if (!form.payElementUuid) {
+    requiredErrors.payElementUuid = "Pay Element is required.";
+  }
+  if (!form.amount) {
+    requiredErrors.amount = "Amount is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     const review = crewByUuid.get(form.crewUuid);
     if (!editingUuid && !review?.engagement) {
       toast({
         title: "No engagement",
         description: "Selected crew has no engagement for this period.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form.payElementUuid || !form.amount) {
-      toast({
-        title: "Missing fields",
-        description: "Pay element and amount are required.",
         variant: "destructive",
       });
       return;
@@ -427,18 +446,21 @@ export default function MonthlyTransactionsPage() {
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"
-            className={`text-xs ${
+            className={
               p.value === "rejected"
-                ? "border-red-300 bg-red-50 text-red-800"
+                ? accountsStatusBadgeClass("red")
                 : p.value === "accepted"
-                  ? "border-green-300 bg-green-50 text-green-800"
+                  ? accountsStatusBadgeClass("green")
                   : p.value === "submitted"
-                    ? "border-blue-300 bg-blue-50 text-blue-800"
-                    : ""
-            }`}
+                    ? accountsStatusBadgeClass("blue")
+                    : p.value === "draft"
+                      ? accountsStatusBadgeClass("grey")
+                      : "text-xs"
+            }
           >
             {p.value}
           </Badge>
@@ -559,12 +581,40 @@ export default function MonthlyTransactionsPage() {
         period={period}
         onVesselChange={setVesselUuid}
         onPeriodChange={setPeriod}
+        onClear={() => {
+          resetFilters();
+          setOriginFilter("all");
+          setStatusFilter("all");
+        }}
+        actions={
+          <div className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportCsv}
+              disabled={filteredTxns.length === 0}
+              data-testid="button-export-txns"
+            >
+              <Download size={14} className="mr-1" /> Export
+            </Button>
+            {mayCreate && hasFilter && !isLocked && (
+              <Button
+                size="sm"
+                onClick={openCreate}
+                className="bg-[#16569e] hover:bg-[#1e5fa8]"
+                data-testid="button-add-txn"
+              >
+                <Plus size={14} className="mr-1" /> Add Transaction
+              </Button>
+            )}
+          </div>
+        }
       >
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Origin</Label>
           <Select value={originFilter} onValueChange={setOriginFilter}>
             <SelectTrigger
-              className="h-9 w-32 bg-white"
+              className="h-8 w-32 text-xs"
               data-testid="select-filter-origin"
             >
               <SelectValue />
@@ -580,7 +630,7 @@ export default function MonthlyTransactionsPage() {
           <Label className="text-xs text-gray-600">Status</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
-              className="h-9 w-32 bg-white"
+              className="h-8 w-32 text-xs"
               data-testid="select-filter-status"
             >
               <SelectValue />
@@ -593,27 +643,6 @@ export default function MonthlyTransactionsPage() {
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportCsv}
-            disabled={filteredTxns.length === 0}
-            data-testid="button-export-txns"
-          >
-            <Download size={14} className="mr-1" /> Export
-          </Button>
-          {mayCreate && hasFilter && !isLocked && (
-            <Button
-              size="sm"
-              onClick={openCreate}
-              className="bg-[#16569e] hover:bg-[#1e5fa8]"
-              data-testid="button-add-txn"
-            >
-              <Plus size={14} className="mr-1" /> Add Transaction
-            </Button>
-          )}
         </div>
       </VesselPeriodBar>
 
@@ -654,13 +683,13 @@ export default function MonthlyTransactionsPage() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 col-span-2">
-              <Label>Crew</Label>
+              <Label>Crew <span className="text-red-500">*</span></Label>
               <Select
                 value={form.crewUuid}
                 onValueChange={(v) => set("crewUuid", v)}
                 disabled={!!editingUuid}
               >
-                <SelectTrigger data-testid="select-txn-crew">
+                <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-txn-crew">
                   <SelectValue placeholder="Select crew member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -671,15 +700,18 @@ export default function MonthlyTransactionsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.crewUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+              )}
             </div>
             <div className="space-y-1 col-span-2">
-              <Label>Pay Element</Label>
+              <Label>Pay Element <span className="text-red-500">*</span></Label>
               <Select
                 value={form.payElementUuid}
                 onValueChange={(v) => set("payElementUuid", v)}
                 disabled={!!editingUuid}
               >
-                <SelectTrigger data-testid="select-txn-element">
+                <SelectTrigger className={errors.payElementUuid ? "border-red-500" : undefined} aria-invalid={!!errors.payElementUuid} data-testid="select-txn-element">
                   <SelectValue placeholder="Select pay element" />
                 </SelectTrigger>
                 <SelectContent>
@@ -694,6 +726,9 @@ export default function MonthlyTransactionsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.payElementUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.payElementUuid}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Qty</Label>
@@ -716,23 +751,46 @@ export default function MonthlyTransactionsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Amount *</Label>
+              <Label>Amount <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => set("amount", e.target.value)}
                 data-testid="input-txn-amount"
+                className={errors.amount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.amount}
               />
+              {errors.amount && (
+                <p className="text-xs text-red-500" role="alert">{errors.amount}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                maxLength={3}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-txn-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-txn-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1 col-span-2">
               <Label>Remarks</Label>

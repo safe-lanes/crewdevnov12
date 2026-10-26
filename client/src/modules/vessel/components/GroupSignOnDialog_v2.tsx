@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FormattedDateInput } from '@/components/ui/formatted-date-input';
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { useToast } from '@/hooks/use-toast';
 import { vesselApiV2 } from '../api/vesselApiV2';
 
@@ -397,13 +398,18 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
                         </DialogHeader>
                         <div className="py-4">
                             <label className="text-sm font-medium text-gray-700">Sign On Date</label>
-                            <FormattedDateInput
+                            <VesselFutureDateMessage
                                 value={newSignOnDate}
-                                onChange={(e) => setNewSignOnDate(e.target.value)}
-                                max={format(new Date(), 'yyyy-MM-dd')}
-                                className="mt-1"
-                                data-testid="input-change-sign-on-date"
-                            />
+                                message="Sign On date should not be a future date"
+                            >
+                                <FormattedDateInput
+                                    value={newSignOnDate}
+                                    onChange={(e) => setNewSignOnDate(e.target.value)}
+                                    max={format(new Date(), 'yyyy-MM-dd')}
+                                    className="mt-1"
+                                    data-testid="input-change-sign-on-date"
+                                />
+                            </VesselFutureDateMessage>
                         </div>
                         <DialogFooter>
                             <Button

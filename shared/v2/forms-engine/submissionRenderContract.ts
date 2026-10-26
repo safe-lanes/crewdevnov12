@@ -56,6 +56,7 @@ export type CompanyFormRenderResponseType =
   | "system_field";
 
 export type CompanyFormSubmissionSummary = {
+  handovers?: { actorName: string; recordedAt: string; fileSha256: string; copyKind?: "original" | "void_notice"; currentNotice?: boolean }[];
   origin?: "MANUAL" | "REQUIRED";
   requirementUuid?: string | null;
   submissionUuid: string;
@@ -206,6 +207,7 @@ export type CompanyFormRenderPart = {
 };
 
 export type CompanyFormSubmissionRenderContract = {
+  documentEvidence?: import("./documentEvidence").DocumentEvidenceStatus;
   submission: CompanyFormSubmissionSummary;
   signatureMethodOptions: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>;
   form: {
@@ -241,6 +243,7 @@ export type CompanyFormSubmissionRenderContract = {
 };
 
 export type CompanyFormSubmissionDetail = {
+  documentEvidence?: import("./documentEvidence").DocumentEvidenceStatus;
   submission: CompanyFormSubmissionSummary;
   states: CompanyFormSubmissionSectionState[];
   answers: CompanyFormSubmissionAnswer[];

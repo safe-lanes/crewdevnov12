@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { standardSignatureAccess } from "../shared/standardSignatureAccess";
 import { z } from "zod";
 import { interviewController } from "./controller";
 const router = Router(), uuid = z.string().uuid();
+router.use(standardSignatureAccess("interviews"));
 const create = z.object({ interviewItemUuid: uuid }).strict();
 const partA = z.object({ interviewCategory: z.string().max(500).nullable(), interviewStage: z.string().max(500).nullable() }).strict();
 const partC = z.object({ interviewerComments: z.string().max(10000).nullable() }).strict();

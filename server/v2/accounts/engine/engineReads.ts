@@ -1,4 +1,4 @@
-import { eq, and, inArray, lt, lte } from "drizzle-orm";
+import { eq, and, inArray, lt, lte, or, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   accTenantConfigV2,
@@ -11,6 +11,7 @@ import {
   accMonthlyTransactionsV2,
   accAllotmentsV2,
   accAdvancesV2,
+  accPortageBillsV2,
   accWageLedgerV2,
   accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
@@ -272,6 +273,47 @@ export class EngineReads {
       (a: AccAdvanceV2) =>
         a.recoveryAmount != null && Number(a.recoveryAmount) > 0,
     );
+  }
+
+  /** Saved payroll recoveries of closed Office Advances for this month only. */
+  async findClosedAdvancePayrollLines(
+    engagementUuids: string[],
+    period: string,
+  ): Promise<AccWageLedgerV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    const rows = await db
+      .select({ line: accWageLedgerV2 })
+      .from(accWageLedgerV2)
+      .innerJoin(
+        accAdvancesV2,
+        eq(accWageLedgerV2.sourceUuid, accAdvancesV2.advanceUuid),
+      )
+      .innerJoin(
+        accPortageBillsV2,
+        and(
+          eq(accWageLedgerV2.portageUuid, accPortageBillsV2.portageUuid),
+          eq(accWageLedgerV2.period, accPortageBillsV2.period),
+          eq(accWageLedgerV2.vesselUuid, accPortageBillsV2.vesselUuid),
+        ),
+      )
+      .where(
+        and(
+          inArray(accWageLedgerV2.engagementUuid, engagementUuids),
+          eq(accWageLedgerV2.period, period),
+          eq(accWageLedgerV2.sourceType, "advance_recovery"),
+          eq(accWageLedgerV2.isAdjustment, false),
+          eq(accWageLedgerV2.isDeleted, false),
+          eq(accAdvancesV2.status, "closed"),
+          or(
+            isNull(accAdvancesV2.writeOffPeriod),
+            lt(accWageLedgerV2.period, accAdvancesV2.writeOffPeriod),
+          ),
+          eq(accAdvancesV2.isDeleted, false),
+          eq(accPortageBillsV2.isDeleted, false),
+        ),
+      );
+    return rows.map(({ line }: { line: AccWageLedgerV2 }) => line);
   }
 
   /**

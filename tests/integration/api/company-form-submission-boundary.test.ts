@@ -233,9 +233,10 @@ describe("Company Form relationship boundary", () => {
     await db.query(
       `INSERT INTO adm_form_versions_v2
          (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       VALUES ($1, $2, '01', '2026-01-01', 'released', 'on_board', false, NOW())`,
+       VALUES ($1, $2, '01', '2026-01-01', 'draft', 'on_board', false, NOW())`,
       [formVersionUuid, form.rows[0].id],
     );
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [formVersionUuid]);
 
     const vesselType = await db.query(
       `INSERT INTO master_vessel_types (vt_uuid, vessel_type, is_active, is_deleted)

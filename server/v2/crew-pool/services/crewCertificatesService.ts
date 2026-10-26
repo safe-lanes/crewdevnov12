@@ -28,6 +28,7 @@ import type {
 } from "../../../../shared/v2/crew-pool/types";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 
 /**
  * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
@@ -168,7 +169,8 @@ export const crewCertificatesService = {
     licUuid: string,
     data: Partial<InsertCrewLicense> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewLicense> {
-    await this.getLicenseByUuid(licUuid);
+    const original = await this.getLicenseByUuid(licUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Licence");
 
     // Resolve issuing country (accept name or UUID)
     const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
@@ -281,11 +283,10 @@ export const crewCertificatesService = {
         let licUuid: string;
 
         if (item.licUuid) {
-          const [updated] = await tx
-            .update(crewLicenses)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewLicenses.licUuid, item.licUuid))
-            .returning();
+          const updated = await crewLicensesRepository.update(
+            item.licUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Licence ${item.licUuid} not found`);
           licUuid = item.licUuid;
           results.push(updated);
         } else {
@@ -361,21 +362,30 @@ export const crewCertificatesService = {
 
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId });
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
+    return getDb().transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, crewUuid);
+      const created = await crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId }, tx);
+      await reconcileCrewSuggestions(crewUuid, tx);
+      return created;
+    });
   },
 
   async updateTraining(
     trainUuid: string,
     data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
-    await this.getTrainingByUuid(trainUuid);
-    const dataWithAudit = applyAuditUser(data, false);
+    const original = await this.getTrainingByUuid(trainUuid);
+    const dataWithAudit = applyAuditUser(certificateUpdateFields(data, original.crewUuid), false);
 
-    const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit);
-    if (!updated) {
-      throw new Error(`Failed to update training: ${trainUuid}`);
-    }
-    return updated;
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
+    return getDb().transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, original.crewUuid);
+      const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit, tx);
+      if (!updated) throw new Error(`Failed to update training: ${trainUuid}`);
+      await reconcileCrewSuggestions(original.crewUuid, tx);
+      return updated;
+    });
   },
 
   async deleteTraining(trainUuid: string): Promise<void> {
@@ -442,7 +452,9 @@ export const crewCertificatesService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
     return db.transaction(async (tx: any) => {
+      await lockCrewSuggestionAssignments(tx, crewUuid);
       const results: CrewTrainingCourse[] = [];
       const now = new Date();
 
@@ -458,11 +470,10 @@ export const crewCertificatesService = {
         let trainUuid: string;
 
         if (item.trainUuid) {
-          const [updated] = await tx
-            .update(crewTrainingCourses)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewTrainingCourses.trainUuid, item.trainUuid))
-            .returning();
+          const updated = await crewTrainingRepository.update(
+            item.trainUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Training ${item.trainUuid} not found`);
           trainUuid = item.trainUuid;
           results.push(updated);
         } else {
@@ -503,6 +514,7 @@ export const crewCertificatesService = {
         }
       }
 
+      await reconcileCrewSuggestions(crewUuid, tx);
       return results;
     });
   },

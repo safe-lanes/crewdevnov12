@@ -1,12 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -61,6 +65,40 @@ const emptyForm: CbaForm = {
   sourceNote: "",
 };
 
+type CbaDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+>;
+
+function CbaDateInput({ onDraftValidityChange, ...props }: CbaDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ display: "contents" }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        mode="date"
+        className="min-w-0 border-input text-base md:text-sm"
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 export default function CbaReferencePage() {
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = usePermissions();
@@ -86,18 +124,30 @@ export default function CbaReferencePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<CbaForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const dateValidity = useRef({ effectiveFrom: true, effectiveTo: true });
+
+  const resetDateInputs = () => {
+    dateValidity.current = { effectiveFrom: true, effectiveTo: true };
+    setDateFormVersion((version) => version + 1);
+  };
 
   const set = <K extends keyof CbaForm>(key: K, value: CbaForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    setValidationAttempted(false);
+    resetDateInputs();
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
+    resetDateInputs();
     setEditingUuid(row.cbaRefUuid);
     setForm({
       cbaName: row.cbaName ?? "",
@@ -113,11 +163,36 @@ export default function CbaReferencePage() {
     setDialogOpen(true);
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!form.cbaName.trim()) {
+    requiredErrors.cbaName = "CBA Name is required.";
+  }
+  if (!form.rankId) {
+    requiredErrors.rankId = "Rank is required.";
+  }
+  if (!form.payElementUuid || form.payElementUuid === NONE) {
+    requiredErrors.payElementUuid = "Pay Element is required.";
+  }
+  if (!String(form.minimumAmount ?? "").trim()) {
+    requiredErrors.minimumAmount = "Amount is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const handleSave = async () => {
-    if (!form.cbaName.trim()) {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
       toast({
-        title: "Missing field",
-        description: "CBA name is required.",
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
+      toast({
+        title: "Invalid date",
+        description: "Correct or clear Effective from and Effective to before saving.",
         variant: "destructive",
       });
       return;
@@ -303,18 +378,23 @@ export default function CbaReferencePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <Label>CBA name</Label>
+              <Label>CBA name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.cbaName}
                 onChange={(e) => set("cbaName", e.target.value)}
                 data-testid="input-cba-name"
+                className={errors.cbaName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.cbaName}
               />
+              {errors.cbaName && (
+                <p className="text-xs text-red-500" role="alert">{errors.cbaName}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Rank</Label>
+              <Label>Rank <span className="text-red-500">*</span></Label>
               <Select value={form.rankId} onValueChange={(v) => set("rankId", v)}>
-                <SelectTrigger className="h-9" data-testid="select-cba-rank">
+                <SelectTrigger className={`h-9${errors.rankId ? " border-red-500" : ""}`} aria-invalid={!!errors.rankId} data-testid="select-cba-rank">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -328,6 +408,9 @@ export default function CbaReferencePage() {
                     ))}
                 </SelectContent>
               </Select>
+              {errors.rankId && (
+                <p className="text-xs text-red-500" role="alert">{errors.rankId}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -350,16 +433,15 @@ export default function CbaReferencePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Pay element (optional)</Label>
+              <Label>Pay element <span className="text-red-500">*</span></Label>
               <Select
-                value={form.payElementUuid}
+                value={form.payElementUuid === NONE ? "" : form.payElementUuid}
                 onValueChange={(v) => set("payElementUuid", v)}
               >
-                <SelectTrigger className="h-9" data-testid="select-cba-element">
-                  <SelectValue />
+                <SelectTrigger className={`h-9${errors.payElementUuid ? " border-red-500" : ""}`} aria-invalid={!!errors.payElementUuid} data-testid="select-cba-element">
+                  <SelectValue placeholder="Select Pay Element" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>None</SelectItem>
                   {elements.map((e: any) => (
                     <SelectItem
                       key={e.payElementUuid}
@@ -371,9 +453,12 @@ export default function CbaReferencePage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.payElementUuid && (
+                <p className="text-xs text-red-500" role="alert">{errors.payElementUuid}</p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="hidden">
               <Label>Category (optional)</Label>
               <Select
                 value={form.category}
@@ -394,31 +479,42 @@ export default function CbaReferencePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Minimum amount</Label>
+              <Label>Minimum amount <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.minimumAmount}
                 onChange={(e) => set("minimumAmount", e.target.value)}
                 data-testid="input-cba-minimum"
+                className={errors.minimumAmount ? "border-red-500" : undefined}
+                aria-invalid={!!errors.minimumAmount}
               />
+              {errors.minimumAmount && (
+                <p className="text-xs text-red-500" role="alert">{errors.minimumAmount}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label>Effective from</Label>
-              <Input
-                type="date"
+              <CbaDateInput
+                key={dateFormVersion}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveFrom = valid;
+                }}
                 data-testid="input-cba-effective-from"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective to</Label>
-              <Input
-                type="date"
+              <CbaDateInput
+                key={dateFormVersion}
                 value={form.effectiveTo}
                 onChange={(e) => set("effectiveTo", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveTo = valid;
+                }}
                 data-testid="input-cba-effective-to"
               />
             </div>

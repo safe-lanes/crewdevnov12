@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewVisasRepository,
@@ -94,7 +95,8 @@ export const crewVisasService = {
     visaUuid: string,
     data: Partial<InsertCrewVisa> & { country?: string | null; auditUserUuid?: string | null }
   ): Promise<CrewVisa> {
-    await this.getByUuid(visaUuid);
+    const original = await this.getByUuid(visaUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Visa");
 
     // C2 Visas: "Issuing Country" is a free entry field, store as-is without UUID resolution
     const countryInput = (data as any).country || data.countryUuid;
@@ -221,11 +223,10 @@ export const crewVisasService = {
         let visaUuid: string;
 
         if (item.visaUuid) {
-          const [updated] = await tx
-            .update(crewVisas)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewVisas.visaUuid, item.visaUuid))
-            .returning();
+          const updated = await crewVisasRepository.update(
+            item.visaUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Visa ${item.visaUuid} not found`);
           visaUuid = item.visaUuid;
           results.push(updated);
         } else {

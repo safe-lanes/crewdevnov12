@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { formStructureInputSchema } from "../../../../shared/v2/forms-engine/schema";
+import { companyFormDraftStructureInputSchema } from "../../../../shared/v2/forms-engine/schema";
 import { formStructureService } from "../services";
 
 const paramsSchema = z.object({
@@ -11,7 +11,7 @@ const versionParamsSchema = z.object({ fvUuid: z.string().uuid() });
 const batchStructureSchema = z.object({
   parts: z.array(z.object({
     form_part_uuid: z.string().uuid(),
-    structure: formStructureInputSchema,
+    structure: companyFormDraftStructureInputSchema,
   })).min(1),
 });
 
@@ -51,7 +51,7 @@ export const formStructureController = {
     if (!params) return;
 
     const { auditUserUuid, ...structureBody } = req.body ?? {};
-    const parsed = formStructureInputSchema.safeParse(structureBody);
+    const parsed = companyFormDraftStructureInputSchema.safeParse(structureBody);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid form structure", details: parsed.error.issues });
       return;

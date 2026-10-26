@@ -65,10 +65,7 @@ export async function writeApplicability(id: number, input: unknown): Promise<Ve
   const p = parsed.data;
   if (p.mode === "manual_only" && (p.obligation || p.effectiveKind || p.specificDate || p.sets?.length))
     throw new ApplicabilityError("Manual only has no obligation, effective date or condition sets");
-  if (p.mode !== "manual_only" && !p.obligation) throw new ApplicabilityError("Automatic modes require mandatory or optional");
   const effectiveKind = p.mode === "manual_only" ? null : p.effectiveKind ?? "on_release";
-  if (effectiveKind === "specific_date" && !p.specificDate)
-    throw new ApplicabilityError("A specific effective date is required");
   if (p.specificDate) {
     const date = new Date(`${p.specificDate}T00:00:00Z`);
     if (effectiveKind !== "specific_date" || !Number.isFinite(date.getTime()) ||
@@ -142,6 +139,10 @@ export async function copyApplicability(sourceUuid: string, destinationUuid: str
 
 export async function validateApplicabilityRelease(versionUuid: string, tx: any) {
   const policy = await readApplicability(versionUuid, tx);
+  if (policy.mode !== "manual_only" && !policy.obligation)
+    throw new ApplicabilityError("Automatic modes require mandatory or optional");
+  if (policy.effectiveKind === "specific_date" && !policy.specificDate)
+    throw new ApplicabilityError("A specific effective date is required");
   // A fail-closed seam: the dimension slice must supply trusted validation,
   // including its database release guard. Never accept client "ready" flags.
   if (policy.mode === "conditional") {

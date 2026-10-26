@@ -1,3 +1,4 @@
+import { clearCompanyFormDocumentFixtures } from "../helpers/companyFormDocumentCleanup";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -251,9 +252,10 @@ describe.sequential("stage-less Company Form submission service", () => {
       INSERT INTO adm_form_versions_v2(
         fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at
       )
-      SELECT $1, id, '01', '2026-01-01', 'released', NULL, false, NOW()
+      SELECT $1, id, '01', '2026-01-01', 'draft', NULL, false, NOW()
       FROM adm_forms_v2 WHERE form_uuid = $2
     `, [formVersionUuid, formUuid]);
+    await client.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [formVersionUuid]);
 
     await client.query(`
       INSERT INTO frm_form_parts(
@@ -364,6 +366,7 @@ describe.sequential("stage-less Company Form submission service", () => {
     try {
       await client.query("BEGIN");
       if (lifecycleSchemaReady && submissionUuids.length > 0) {
+        await clearCompanyFormDocumentFixtures(client, submissionUuids);
         // Production rows are immutable. Disable only the database-enforced
         // snapshot DELETE guard while this fixture removes its own private test
         // submissions; no application write path has access to this teardown.

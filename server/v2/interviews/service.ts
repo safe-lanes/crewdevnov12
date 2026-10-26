@@ -1,3 +1,4 @@
+import { authorizeStandardSignature } from "../shared/standardSignatureAccess";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import type { Request } from "express";
@@ -253,5 +254,5 @@ export const interviewService = {
     await getDb().transaction(async (tx: any) => { const locked = await writable(tx, submissionUuid, sectionUuid); const signature = (await tx.select().from(frmSectionSignatures).where(and(eq(frmSectionSignatures.sectionStateUuid, locked.state.sectionStateUuid),eq(frmSectionSignatures.signatureType,type),eq(frmSectionSignatures.isDeleted,false))).limit(1))[0]; if (!signature) return; path=(await tx.select().from(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid,signature.signatureAttUuid)).limit(1))[0]?.filePath??null; await tx.delete(frmSectionSignatures).where(eq(frmSectionSignatures.sectionSignatureUuid,signature.sectionSignatureUuid)); await tx.delete(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid,signature.signatureAttUuid)); });
     if(path) await fileStorageService.deleteAttachment(path);
   },
-  async rawSignature(attUuid: string, req: Request) { await authorizeInterviewRead(req); const parent = await interviewRepository.signatureParent(attUuid); if (!parent) throw new InterviewError("Signature parent not found", 404); return parent.attachment; },
+  async rawSignature(attUuid: string, req: Request) { await authorizeStandardSignature(req, "interviews", attUuid); const parent = await interviewRepository.signatureParent(attUuid); if (!parent) throw new InterviewError("Signature parent not found", 404); return parent.attachment; },
 };

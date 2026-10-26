@@ -1,3 +1,5 @@
+import { companyFormValidationProblems, type CompanyFormValidationContext } from "./companyFormValidation";
+
 export type CompanyFormErrorAction =
   | "load"
   | "loadHistory"
@@ -193,8 +195,11 @@ function applicabilityRefusal(message: string | undefined, action: CompanyFormEr
   return undefined;
 }
 
-export function companyFormErrorMessage(error: unknown, action: CompanyFormErrorAction): string {
+export function companyFormErrorMessage(error: unknown, action: CompanyFormErrorAction, context?: CompanyFormValidationContext): string {
   const message = readErrorText(error);
+  const problems = action === "editorSave" || action === "release" ? companyFormValidationProblems(error, context) : [];
+  if (problems.length && (/"(?:details|issues)"\s*:/.test(message ?? "") ||
+    (typeof error === "object" && error !== null && ("details" in error || "issues" in error)))) return problems.join("\n");
   const code = safeCodeFrom(error) ?? parseCode(message);
   if (code && knownCodes[code]) return knownCodes[code];
   const refusal = applicabilityRefusal(message, action);
@@ -203,6 +208,7 @@ export function companyFormErrorMessage(error: unknown, action: CompanyFormError
   const status = message?.match(/^\s*(\d{3})\s*:/)?.[1];
   if (status === "401") return knownCodes.UNAUTHORIZED;
   if (status === "403") return knownCodes.FORBIDDEN;
+  if (problems.length) return problems.join("\n");
   if (message && safeLegacyReasons.has(message.trim())) return safeLegacyReasons.get(message.trim())!;
   return actionMessages[action];
 }

@@ -1,3 +1,4 @@
+import { clearCompanyFormDocumentFixtures } from "../../helpers/companyFormDocumentCleanup";
 import { openHarnessStages, captureHarnessContractRank } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
@@ -134,9 +135,10 @@ async function createVersion(input: {
   await db.query(
     `INSERT INTO adm_form_versions_v2
        (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-     VALUES ($1, $2, $3, '2026-01-01', 'released', 'before_joining', false, NOW())`,
+     VALUES ($1, $2, $3, '2026-01-01', 'draft', 'before_joining', false, NOW())`,
     [versionUuid, input.formId, input.versionNo],
   );
+  await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [versionUuid]);
 
   const partUuid = uuid();
   const signSectionUuid = uuid();
@@ -384,6 +386,7 @@ describe("Company Form signing, section submission, completion, and void history
 
       await db.query("BEGIN");
       try {
+        await clearCompanyFormDocumentFixtures(db, submissionUuids);
         await db.query(
           "ALTER TABLE frm_company_submission_system_snapshots DISABLE TRIGGER USER",
         );

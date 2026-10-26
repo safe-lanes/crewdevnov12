@@ -11,6 +11,7 @@ import type {
   InsertCrewTrainingAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 import { v4 as uuidv4 } from "uuid";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 
 export type CrewTrainingCourseWithAttachments = CrewTrainingCourse & {
   attachments: CrewTrainingAttachment[];
@@ -86,9 +87,9 @@ export class CrewTrainingRepository {
   }
 
   async create(
-    data: Omit<InsertCrewTrainingCourse, "trainUuid">
+    data: Omit<InsertCrewTrainingCourse, "trainUuid">,
+    db = getDb()
   ): Promise<CrewTrainingCourse> {
-    const db = getDb();
     const results = await db
       .insert(crewTrainingCourses)
       .values({
@@ -101,12 +102,19 @@ export class CrewTrainingRepository {
 
   async update(
     trainUuid: string,
-    data: Partial<InsertCrewTrainingCourse>
+    data: Partial<InsertCrewTrainingCourse>,
+    db = getDb()
   ): Promise<CrewTrainingCourse | undefined> {
-    const db = getDb();
+    let fields = data;
+    if (Object.prototype.hasOwnProperty.call(data, "crewUuid")) {
+      const [original] = await db.select({ crewUuid: crewTrainingCourses.crewUuid })
+        .from(crewTrainingCourses).where(eq(crewTrainingCourses.trainUuid, trainUuid));
+      if (!original) return undefined;
+      fields = certificateUpdateFields(data, original.crewUuid);
+    }
     const results = await db
       .update(crewTrainingCourses)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...fields, updatedAt: new Date() })
       .where(eq(crewTrainingCourses.trainUuid, trainUuid))
       .returning();
     return results[0];

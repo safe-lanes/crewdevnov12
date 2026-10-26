@@ -4,6 +4,12 @@ import { ColDef, ICellRendererParams } from "ag-grid-community";
 import { useMemo, useRef } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatIsoDate, formatIsoDateTime } from "@/components/ui/formatted-date-input";
+
+function formatDisplayDateTime(value: string): string {
+  if (!value || formatIsoDateTime(value) === value) return value;
+  return `${formatIsoDate(value.slice(0, 10))}, ${value.slice(11, 16)}`;
+}
 
 interface PostIncidentTestData {
   id: number;
@@ -200,6 +206,7 @@ export function PostIncidentTestTable_v2({
     {
       headerName: "Incident Date & Time",
       field: "incidentDateTime",
+      cellRenderer: (params: ICellRendererParams) => formatDisplayDateTime(params.value || ''),
       flex: 1.2,
       minWidth: 150,
       cellClass: 'flex items-center text-[13px]',
@@ -207,6 +214,7 @@ export function PostIncidentTestTable_v2({
     {
       headerName: "Alcohol test Date & Time",
       field: "alcoholTestDateTime",
+      cellRenderer: (params: ICellRendererParams) => formatDisplayDateTime(params.value || ''),
       flex: 1.2,
       minWidth: 150,
       cellClass: 'flex items-center text-[13px]',
@@ -221,6 +229,7 @@ export function PostIncidentTestTable_v2({
     {
       headerName: "Drug test Date & Time",
       field: "drugTestDateTime",
+      cellRenderer: (params: ICellRendererParams) => formatDisplayDateTime(params.value || ''),
       flex: 1.2,
       minWidth: 150,
       cellClass: 'flex items-center text-[13px]',

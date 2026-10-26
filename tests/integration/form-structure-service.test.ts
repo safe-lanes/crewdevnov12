@@ -315,14 +315,22 @@ describe.sequential("form structure service integration", () => {
       configuration: "{}", versionDate: "24-Aug-2026",
     } as any);
     const partUuid = await versionPartUuid(draft.fvUuid);
-    const hostile = '<p style="color:red">Read <b onclick="evil()">this</b><script>alert(1)</script></p><img src=x>';
+    // Unsafe executable markup is refused, not silently accepted. Harmless
+    // unsupported formatting still exercises sanitizer/read-back behaviour.
+    const hostile = '<p style="color:red">Read <b>this</b></p><img src=x>';
+    for (const unsafe of ['<p onclick="evil()">Text</p>', '<script>alert(1)</script><p>Text</p>', '<iframe src="evil"></iframe><p>Text</p>']) {
+      await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, contentStructure(unsafe), null))
+        .rejects.toMatchObject({ statusCode: 400 });
+      await expect(formStructureService.replaceStructures(draft.fvUuid, [{ partUuid, structure: contentStructure(unsafe) }], null))
+        .rejects.toMatchObject({ statusCode: 400 });
+    }
     const expected = sanitizeComparisonHtml(hostile);
     const saved = await formStructureService.replaceStructure(draft.fvUuid, partUuid, contentStructure(hostile), null);
     expect(saved.sections[0].questions[0].content_html).toBe(expected);
     expect(saved.sections[0].questions[0].question_text).toBe("Short label");
     expect((await formStructureService.getStructure(draft.fvUuid, partUuid)).sections[0].questions[0].content_html).toBe(expected);
 
-    const next = '<ul class="hostile"><li>One</li><li><strong style="color:red">Two</strong></li></ul><iframe src="evil"></iframe>';
+    const next = '<ul class="hostile"><li>One</li><li><strong style="color:red">Two</strong></li></ul>';
     const batch = await formStructureService.replaceStructures(draft.fvUuid, [{
       partUuid, structure: contentStructure(next),
     }], null);
@@ -360,9 +368,9 @@ describe.sequential("form structure service integration", () => {
       configuration: "{}", versionDate: "24-Aug-2026",
     } as any);
     const sourcePart = await versionPartUuid(draft.fvUuid);
-    const sanitized = sanitizeComparisonHtml('<p class="word">Pinned <b>content</b></p><script>evil()</script>');
+    const sanitized = sanitizeComparisonHtml('<p class="word">Pinned <b>content</b></p>');
     const saved = await formStructureService.replaceStructure(draft.fvUuid, sourcePart,
-      contentStructure('<p class="word">Pinned <b>content</b></p><script>evil()</script>'), null);
+      contentStructure('<p class="word">Pinned <b>content</b></p>'), null);
     const questionUuid = saved.sections[0].questions[0].question_uuid;
     await configureRequiredSeafarerSignature(draft.fvUuid, sourcePart);
     await formsService.updateVersionById(draft.id, { stageKey: "before_joining" });

@@ -1,0 +1,110 @@
+// Development-only validation smoke: never confirms an import or creates records.
+const { chromium } = require("playwright");
+const ExcelJS = require("exceljs");
+const JSZip = require("jszip");
+const fs = require("node:fs/promises");
+const assert = require("node:assert/strict");
+
+async function main() {
+  const browser = await chromium.launch({ executablePath: "/repl/tools/bin/chromium", headless: true, args: ["--no-sandbox"] });
+  const page = await browser.newPage({ viewport: { width: 1100, height: 950 } });
+  const base = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  let executions = 0;
+  page.on("request", req => { if (req.url().endsWith("/import/execute")) executions++; });
+  try {
+    await page.goto(`${base}/recruitment`);
+    const candidatesBefore = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
+    await page.getByTestId("button-import-candidate-excel").click();
+    const downloaded = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download .xlsx template" }).click();
+    const template = await fs.readFile(await (await downloaded).path());
+    const zip = await JSZip.loadAsync(template);
+    zip.file("xl/workbook.xml", "<workbook>");
+    const broken = await zip.generateAsync({ type: "nodebuffer" });
+    const confirm = page.getByRole("button", { name: "Confirm & import candidate", exact: true });
+    const choose = async (name, buffer) => {
+      await page.locator("#candidate-excel-file").setInputFiles({ name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+    };
+    const validate = async () => {
+      const pending = page.waitForResponse(r => r.url().endsWith("/import/validate") && r.request().method() === "POST");
+      await page.getByRole("button", { name: "Validate workbook", exact: true }).click();
+      return pending;
+    };
+    await choose("old-form.xls", template);
+    await page.getByRole("alert").waitFor();
+    assert((await page.getByRole("alert").textContent()).includes("old-form.xls"));
+    assert((await page.getByRole("alert").textContent()).includes(".xlsx"));
+    assert(await confirm.isDisabled());
+    await choose("dummy-filled.xlsx", broken);
+    assert.equal((await validate()).status(), 400);
+    await page.getByText("Workbook could not be validated", { exact: true }).waitFor();
+    let text = await page.getByRole("alert").textContent();
+    assert(text.includes("dummy-filled.xlsx") && text.includes("could not be opened") && text.includes("What to do next") && text.includes("No candidate has been imported"));
+    assert(!/undefined|reading|stack/.test(text));
+    assert(await confirm.isDisabled());
+    await page.screenshot({ path: "/tmp/recruitment-readable-file-error.png" });
+    await choose("empty-template.xlsx", template);
+    assert.equal(await page.getByRole("alert").count(), 0, "Choosing a file must clear old errors");
+    await validate();
+    await page.getByText("Validation needs corrections", { exact: true }).waitFor();
+    assert((await page.getByRole("alert").textContent()).includes("Correct 1 workbook issue"));
+    await page.getByText("A1 · First name", { exact: true }).waitFor();
+    await page.getByText("First name is required.", { exact: true }).waitFor();
+    await page.getByText("Sheet: APPLICATION FORM · Cell: F8", { exact: true }).waitFor();
+    assert(await confirm.isDisabled());
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(template);
+    book.worksheets[0].getCell("F8").value = "ErrorCheck";
+    book.worksheets[0].getCell("V7").value = "2024-02-31";
+    await choose("invalid-date.xlsx", Buffer.from(await book.xlsx.writeBuffer()));
+    await validate();
+    await page.getByText("A1 · Date of birth", { exact: true }).waitFor();
+    await page.getByText("Sheet: APPLICATION FORM · Cell: V7", { exact: true }).waitFor();
+    await page.screenshot({ path: "/tmp/recruitment-readable-cell-error.png" });
+    book.worksheets[0].getCell("V7").value = "1990-01-01";
+    const corrected = Buffer.from(await book.xlsx.writeBuffer());
+    await choose("corrected.xlsx", corrected);
+    assert(await confirm.isDisabled(), "Previous validation cannot authorize a replacement file");
+    assert.equal(await page.getByText("A1 · Date of birth", { exact: true }).count(), 0);
+    await validate();
+    await page.getByText("Ready to import", { exact: true }).waitFor();
+    assert(await confirm.isEnabled());
+    // Hold a revalidation request: the earlier valid preview must disappear immediately.
+    let release, notify;
+    const held = new Promise(resolve => { release = resolve; });
+    const started = new Promise(resolve => { notify = resolve; });
+    const url = "**/api/v2/recruitment/import/validate";
+    await page.route(url, async route => {
+      notify();
+      await held;
+      await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "SERVICE_UNAVAILABLE", message: "The current master lists are unavailable. Please try again later; you do not need to change your workbook." }) });
+    });
+    await page.getByRole("button", { name: "Validate workbook", exact: true }).click();
+    await started;
+    assert(await confirm.isDisabled());
+    assert.equal(await page.getByText("Ready to import", { exact: true }).count(), 0);
+    release();
+    await page.getByRole("alert").waitFor();
+    text = await page.getByRole("alert").textContent();
+    assert(text.includes("master lists") && text.includes("do not need to change"));
+    assert(!text.includes("What to do next"), "Server outage must not blame workbook content");
+    await page.unroute(url);
+    await validate();
+    await page.getByText("Ready to import", { exact: true }).waitFor();
+    await choose("dummy-filled.xlsx", broken);
+    assert(await confirm.isDisabled());
+    await validate();
+    await page.getByRole("alert").waitFor();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "/tmp/recruitment-readable-file-error-phone.png" });
+    await confirm.scrollIntoViewIfNeeded();
+    const buttonBox = await confirm.boundingBox();
+    const dialogBox = await page.getByRole("dialog").boundingBox();
+    assert(buttonBox.y + buttonBox.height <= dialogBox.y + dialogBox.height, "Phone footer must be reachable without being clipped by the dialog");
+    const candidatesAfter = await (await page.request.get(`${base}/api/v2/recruitment/candidates`)).json();
+    assert.deepEqual(candidatesAfter.map(c => c.recCanUuid).sort(), candidatesBefore.map(c => c.recCanUuid).sort());
+    assert.equal(executions, 0, "Validation/recovery must never execute an import");
+    console.log(JSON.stringify({ success: true, validationRecovery: true, fileAndCellErrors: true, stalePreviewPrevented: true, candidateWrites: 0 }));
+  } finally { await browser.close(); }
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

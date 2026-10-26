@@ -13,6 +13,7 @@ import { getBaseRank } from "../../../../shared/crew-mapping";
 import { v4 as uuidv4 } from "uuid";
 import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
 import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
+import { validatePersistedCompanyFormStructure } from "./formStructureService";
 import { enrichCompanyVersions, recordReleaseChanges } from "./versionChanges";
 
 const formsRepo = new FormsRepository();
@@ -633,7 +634,10 @@ export const formsService = {
     return getDb().transaction(async (tx: any) => {
       const { form, version: existing } = await lockWritableVersion(tx, id);
       if (existing.status !== "draft") throw new Error("Only draft versions can be released.");
-      if (form.category === "dynamic") await validateApplicabilityRelease(existing.fvUuid, tx);
+      if (form.category === "dynamic") {
+        await validatePersistedCompanyFormStructure(existing.fvUuid, form.subjectType, tx);
+        await validateApplicabilityRelease(existing.fvUuid, tx);
+      }
       const stages = form.category === "dynamic" ? await getDeclaredStages(form.subjectType, tx) : [];
       if (stages.length > 0 && (!existing.stageKey || !stages.some((stage) => stage.stageKey === existing.stageKey))) {
         throw new FormStageValidationError("Select a subject stage before releasing this Company Form version.");

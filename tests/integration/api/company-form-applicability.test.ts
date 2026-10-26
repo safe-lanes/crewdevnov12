@@ -80,7 +80,11 @@ describe("Company Form applicability foundation", () => {
   it("defaults to manual only and rejects invalid/unknown/browser-provenance fields", async () => {
     const { v } = await fixture();
     expect(await policy(v)).toMatchObject({ mode: "manual_only", obligation: null, effectiveKind: null, effectiveFrom: null });
-    for (const body of [{ mode: "bogus" }, { mode: "all" }, { mode: "manual_only", obligation: "mandatory" },
+    const unfinished = await call("put", `/form-versions/${v.id}/applicability`, { mode: "all" });
+    expect(unfinished.status).toBe(200);
+    expect(await policy(v)).toMatchObject({ mode: "all", obligation: null });
+    expect((await call("post", `/form-versions/${v.id}/release`)).status).toBe(400);
+    for (const body of [{ mode: "bogus" }, { mode: "manual_only", obligation: "mandatory" },
       { mode: "all", obligation: "mandatory", effectiveKind: "specific_date", specificDate: "2026-02-30" },
       { mode: "all", obligation: "optional", effectiveFrom: "2000-01-01" },
       { mode: "all", obligation: "optional", dimensionValidationReady: true }])

@@ -1,12 +1,19 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
+import EndAllotmentDialog from "./EndAllotmentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CURRENCIES } from "../accountsConstants";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,16 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -48,9 +45,9 @@ import {
   parseApiError,
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
-import { formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { currentPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Allotments";
 
@@ -88,6 +85,40 @@ const emptyForm: AllotmentForm = {
   bankVerified: false,
 };
 
+type AllotmentDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className"
+>;
+
+function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ minHeight: 56 }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        mode="date"
+        className={`min-w-0 ${props.className || "border-input"} text-base md:text-sm`}
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 function maskAccount(acct: string | null | undefined): string {
   if (!acct) return "";
   const tail = acct.slice(-4);
@@ -106,22 +137,47 @@ export default function AllotmentsPage({
   const mayEdit = canEdit(MENU);
 
   const { vessels } = useVesselLookup();
-  const [vesselFilter, setVesselFilter] = useState("all");
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
+  const [periodInputKey, setPeriodInputKey] = useState(0);
+  const vesselFilter = vesselUuid || "all";
+  const setVesselFilter = (value: string) =>
+    setVesselUuid(value === "all" ? "" : value);
   const [statusFilter, setStatusFilter] = useState("all");
   const [crewSearch, setCrewSearch] = useState("");
 
   const listKey = [`${ACCOUNTS_BASE}/allotments`];
   const { data: allotments = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    refetchOnWindowFocus: "always",
   });
 
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const scheduleRefresh = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setUTCHours(24, 0, 0, 0);
+
+      timer = setTimeout(() => {
+        void queryClient.invalidateQueries({
+          queryKey: [`${ACCOUNTS_BASE}/allotments`],
+        });
+        scheduleRefresh();
+      }, nextMidnight.getTime() - now.getTime() + 100);
+    };
+
+    scheduleRefresh();
+
+    return () => clearTimeout(timer);
+  }, []);
+
   // Crew for the create dialog comes from the selected vessel's engagements.
-  const [dialogVessel, setDialogVessel] = useState("");
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
-      `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${dialogVessel}&period=${currentPeriod()}`,
+      `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${vesselUuid}&period=${period}`,
     ],
-    enabled: !!dialogVessel,
+    enabled: !!vesselUuid && !!period,
   });
   const engagedRows = useMemo(
     () => reviewRows.filter((r) => r.engagement),
@@ -133,15 +189,33 @@ export default function AllotmentsPage({
     return allotments.filter(
       (a) =>
         (vesselFilter === "all" || a.vesselUuid === vesselFilter) &&
+        (!a.validFrom || a.validFrom.slice(0, 7) <= period) &&
+        (!a.validTo || a.validTo.slice(0, 7) >= period) &&
         (statusFilter === "all" || a.status === statusFilter) &&
         (!q || (a.crewName ?? "").toLowerCase().includes(q)),
     );
-  }, [allotments, vesselFilter, statusFilter, crewSearch]);
+  }, [allotments, vesselFilter, period, statusFilter, crewSearch]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<AllotmentForm>(emptyForm);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const validFromIsValid = useRef(true);
+
+  const validFromOrderError =
+    editing?.validTo &&
+    form.validFrom &&
+    form.validFrom !== (editing.validFrom ?? "") &&
+    form.validFrom > editing.validTo
+      ? "Valid From cannot be later than Valid To."
+      : "";
+
+  const resetDateInput = () => {
+    validFromIsValid.current = true;
+    setDateFormVersion((version) => version + 1);
+  };
   const [endTarget, setEndTarget] = useState<any | null>(null);
   const [acting, setActing] = useState(false);
 
@@ -149,13 +223,16 @@ export default function AllotmentsPage({
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    setValidationAttempted(false);
+    resetDateInput();
     setEditing(null);
     setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
-    setDialogVessel("");
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    setValidationAttempted(false);
+    resetDateInput();
     setEditing(row);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -188,21 +265,60 @@ export default function AllotmentsPage({
     }
   };
 
+  const requiredErrors: Record<string, string> = {};
+  if (!editing && !form.crewUuid) {
+    requiredErrors.crewUuid = "Crew is required.";
+  }
+  for (const [key, label] of [
+    ["beneficiaryName", "Payee Name"],
+    ["bankName", "Bank Name"],
+    ["accountNumber", "Account Number"],
+    ["ibanSwift", "IBAN/SWIFT"],
+  ] as const) {
+    if (!form[key].trim()) {
+      requiredErrors[key] = `${label} is required.`;
+    }
+  }
+  if (!form.value) {
+    requiredErrors.value =
+      form.allotmentType === "percentage"
+        ? "Percent is required."
+        : "Amount is required.";
+  }
+  if (!form.validFrom) {
+    requiredErrors.validFrom = "Valid From is required.";
+  }
+  const errors: Record<string, string> =
+    validationAttempted ? requiredErrors : {};
+
   const save = async () => {
-    if (!editing && !form.crewUuid) {
+    setValidationAttempted(true);
+    if (Object.keys(requiredErrors).length > 0) {
       toast({
-        title: "Missing crew",
-        description: "Select a vessel and crew member.",
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
         variant: "destructive",
       });
       return;
     }
-    if (!form.beneficiaryName.trim() || !form.value || !form.validFrom) {
+    const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
+    if (!editing && (!vesselUuid || !period || !crew)) {
       toast({
-        title: "Missing fields",
-        description: "Payee name, amount and valid-from are required.",
+        title: "Missing crew",
+        description: "Select a vessel and period on the main screen, then choose a crew member from that vessel.",
         variant: "destructive",
       });
+      return;
+    }
+    if (!validFromIsValid.current) {
+      toast({
+        title: "Invalid date",
+        description: "Enter a valid date in Valid From before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (validFromOrderError) {
       return;
     }
     setSaving(true);
@@ -229,7 +345,6 @@ export default function AllotmentsPage({
           payload,
         );
       } else {
-        const crew = engagedRows.find((r) => r.crewUuid === form.crewUuid);
         res = await accountsApiV2.allotments.create({
           ...payload,
           crewUuid: form.crewUuid,
@@ -255,24 +370,20 @@ export default function AllotmentsPage({
 
   const lifecycle = async (
     row: any,
-    action: "suspend" | "reactivate" | "end",
+    action: "suspend" | "reactivate",
   ) => {
     setActing(true);
     try {
       const res: any =
         action === "suspend"
           ? await accountsApiV2.allotments.suspend(row.allotmentUuid)
-          : action === "reactivate"
-            ? await accountsApiV2.allotments.reactivate(row.allotmentUuid)
-            : await accountsApiV2.allotments.end(row.allotmentUuid);
+          : await accountsApiV2.allotments.reactivate(row.allotmentUuid);
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({
         title:
           action === "suspend"
             ? "Allotment suspended"
-            : action === "reactivate"
-              ? "Allotment reactivated"
-              : "Allotment ended",
+            : "Allotment reactivated",
       });
       if (action === "reactivate") notifyCap(res);
     } catch (err) {
@@ -329,8 +440,20 @@ export default function AllotmentsPage({
       },
       { headerName: "Ccy", field: "currency", width: 70 },
       { headerName: "Priority", field: "priority", width: 90 },
-      { headerName: "Valid From", field: "validFrom", width: 110 },
-      { headerName: "Valid To", field: "validTo", width: 110 },
+      {
+        headerName: "Valid From",
+        field: "validFrom",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
+      {
+        headerName: "Valid To",
+        field: "validTo",
+        width: 110,
+        cellRenderer: (p: { value: string | null | undefined }) =>
+          formatDate(p.value),
+      },
       {
         headerName: "KYC",
         field: "kycComplete",
@@ -349,16 +472,19 @@ export default function AllotmentsPage({
         headerName: "Status",
         field: "status",
         width: 110,
+        cellClass: "accounts-status-badge-cell",
         cellRenderer: (p: any) => (
           <Badge
             variant="outline"
-            className={`text-xs ${
+            className={
               p.value === "active"
-                ? "border-green-300 bg-green-50 text-green-800"
+                ? accountsStatusBadgeClass("green")
                 : p.value === "suspended"
-                  ? "border-amber-300 bg-amber-50 text-amber-800"
-                  : "border-gray-300 bg-gray-50 text-gray-600"
-            }`}
+                  ? accountsStatusBadgeClass("red")
+                  : p.value === "ended"
+                    ? accountsStatusBadgeClass("yellow")
+                    : "text-xs border-gray-300 bg-gray-50 text-gray-600"
+            }
           >
             {p.value}
           </Badge>
@@ -454,7 +580,7 @@ export default function AllotmentsPage({
           <Label className="text-xs text-gray-600">Vessel</Label>
           <Select value={vesselFilter} onValueChange={setVesselFilter}>
             <SelectTrigger
-              className="h-9 w-44 bg-white"
+              className="h-8 w-44 text-xs"
               data-testid="select-filter-vessel"
             >
               <SelectValue />
@@ -469,11 +595,37 @@ export default function AllotmentsPage({
             </SelectContent>
           </Select>
         </div>
+        <div
+          className="space-y-1"
+          onBlur={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            const input =
+              event.currentTarget.querySelector<HTMLInputElement>(
+                'input[type="text"]',
+              );
+            if (
+              input &&
+              (!input.value.trim() || input.dataset.monthValid === "false")
+            ) {
+              setPeriodInputKey((key) => key + 1);
+            }
+          }}
+        >
+          <Label className="text-xs text-gray-600">Period</Label>
+          <FormattedDateInput
+            key={periodInputKey}
+            mode="month"
+            value={period}
+            onChange={(e) => e.target.value && setPeriod(e.target.value)}
+            className="h-8 w-44 bg-transparent text-xs md:text-xs"
+            data-testid="input-period"
+          />
+        </div>
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Status</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
-              className="h-9 w-36 bg-white"
+              className="h-8 w-36 text-xs"
               data-testid="select-filter-status"
             >
               <SelectValue />
@@ -486,7 +638,7 @@ export default function AllotmentsPage({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="hidden space-y-1">
           <Label className="text-xs text-gray-600">Crew</Label>
           <Input
             className="h-9 w-48 bg-white"
@@ -496,6 +648,20 @@ export default function AllotmentsPage({
             data-testid="input-search-crew"
           />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            resetFilters();
+            setPeriodInputKey((key) => key + 1);
+            setStatusFilter("all");
+            setCrewSearch("");
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
         <div className="ml-auto flex gap-2">
           <Button
             size="sm"
@@ -510,6 +676,7 @@ export default function AllotmentsPage({
             <Button
               size="sm"
               onClick={openCreate}
+              disabled={!vesselUuid || !period}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-add-allotment"
             >
@@ -546,28 +713,13 @@ export default function AllotmentsPage({
             {!editing && (
               <>
                 <div className="space-y-1">
-                  <Label>Vessel</Label>
-                  <Select value={dialogVessel} onValueChange={setDialogVessel}>
-                    <SelectTrigger data-testid="select-allotment-vessel">
-                      <SelectValue placeholder="Select vessel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vessels.map((v) => (
-                        <SelectItem key={v.entryId} value={v.entryId}>
-                          {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Crew</Label>
+                  <Label>Crew <span className="text-red-500">*</span></Label>
                   <Select
                     value={form.crewUuid}
                     onValueChange={(v) => set("crewUuid", v)}
-                    disabled={!dialogVessel}
+                    disabled={!vesselUuid || !period}
                   >
-                    <SelectTrigger data-testid="select-allotment-crew">
+                    <SelectTrigger className={errors.crewUuid ? "border-red-500" : undefined} aria-invalid={!!errors.crewUuid} data-testid="select-allotment-crew">
                       <SelectValue placeholder="Select crew member" />
                     </SelectTrigger>
                     <SelectContent>
@@ -578,6 +730,9 @@ export default function AllotmentsPage({
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.crewUuid && (
+                    <p className="text-xs text-red-500" role="alert">{errors.crewUuid}</p>
+                  )}
                 </div>
               </>
             )}
@@ -587,12 +742,17 @@ export default function AllotmentsPage({
               </div>
             )}
             <div className="space-y-1">
-              <Label>Payee Name</Label>
+              <Label>Payee Name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.beneficiaryName}
                 onChange={(e) => set("beneficiaryName", e.target.value)}
                 data-testid="input-allotment-payee"
+                className={errors.beneficiaryName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.beneficiaryName}
               />
+              {errors.beneficiaryName && (
+                <p className="text-xs text-red-500" role="alert">{errors.beneficiaryName}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Relationship</Label>
@@ -621,6 +781,7 @@ export default function AllotmentsPage({
             <div className="space-y-1">
               <Label>
                 {form.allotmentType === "percentage" ? "Percent" : "Amount"}
+                {" "}<span className="text-red-500">*</span>
               </Label>
               <Input
                 type="number"
@@ -628,15 +789,39 @@ export default function AllotmentsPage({
                 value={form.value}
                 onChange={(e) => set("value", e.target.value)}
                 data-testid="input-allotment-value"
+                className={errors.value ? "border-red-500" : undefined}
+                aria-invalid={!!errors.value}
               />
+              {errors.value && (
+                <p className="text-xs text-red-500" role="alert">{errors.value}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Currency</Label>
-              <Input
-                value={form.currency}
-                onChange={(e) => set("currency", e.target.value.toUpperCase())}
-                data-testid="input-allotment-currency"
-              />
+              <Select
+                value={form.currency === "" ? "__existing_blank_currency__" : form.currency}
+                onValueChange={(v) =>
+                  set("currency", form.currency === "" && v === "__existing_blank_currency__" ? "" : v)
+                }
+              >
+                <SelectTrigger className="h-9" data-testid="input-allotment-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                  {form.currency === "" ? (
+                    <SelectItem value="__existing_blank_currency__">
+                      Blank (existing value)
+                    </SelectItem>
+                  ) : !CURRENCIES.some((c) => c.value === form.currency) ? (
+                    <SelectItem value={form.currency}>{form.currency}</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Priority</Label>
@@ -648,28 +833,43 @@ export default function AllotmentsPage({
               />
             </div>
             <div className="space-y-1">
-              <Label>Bank Name</Label>
+              <Label>Bank Name <span className="text-red-500">*</span></Label>
               <Input
                 value={form.bankName}
                 onChange={(e) => set("bankName", e.target.value)}
                 data-testid="input-allotment-bank"
+                className={errors.bankName ? "border-red-500" : undefined}
+                aria-invalid={!!errors.bankName}
               />
+              {errors.bankName && (
+                <p className="text-xs text-red-500" role="alert">{errors.bankName}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>Account Number</Label>
+              <Label>Account Number <span className="text-red-500">*</span></Label>
               <Input
                 value={form.accountNumber}
                 onChange={(e) => set("accountNumber", e.target.value)}
                 data-testid="input-allotment-account"
+                className={errors.accountNumber ? "border-red-500" : undefined}
+                aria-invalid={!!errors.accountNumber}
               />
+              {errors.accountNumber && (
+                <p className="text-xs text-red-500" role="alert">{errors.accountNumber}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label>IBAN / SWIFT</Label>
+              <Label>IBAN / SWIFT <span className="text-red-500">*</span></Label>
               <Input
                 value={form.ibanSwift}
                 onChange={(e) => set("ibanSwift", e.target.value)}
                 data-testid="input-allotment-iban"
+                className={errors.ibanSwift ? "border-red-500" : undefined}
+                aria-invalid={!!errors.ibanSwift}
               />
+              {errors.ibanSwift && (
+                <p className="text-xs text-red-500" role="alert">{errors.ibanSwift}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Bank Country</Label>
@@ -680,13 +880,25 @@ export default function AllotmentsPage({
               />
             </div>
             <div className="space-y-1">
-              <Label>Valid From</Label>
-              <Input
-                type="date"
+              <Label>Valid From <span className="text-red-500">*</span></Label>
+              <AllotmentDateInput
+                key={dateFormVersion}
                 value={form.validFrom}
                 onChange={(e) => set("validFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  validFromIsValid.current = valid;
+                }}
                 data-testid="input-allotment-valid-from"
+                className={errors.validFrom ? "border-red-500" : undefined}
               />
+              {errors.validFrom && (
+                <p className="text-xs text-red-500" role="alert">{errors.validFrom}</p>
+              )}
+              {validFromOrderError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {validFromOrderError}
+                </p>
+              )}
             </div>
             <div className="flex items-end gap-6 pb-1">
               <label className="flex items-center gap-2 text-sm">
@@ -728,34 +940,17 @@ export default function AllotmentsPage({
       </Dialog>
 
       {/* End confirmation */}
-      <AlertDialog
-        open={!!endTarget}
-        onOpenChange={(open) => !open && setEndTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>End allotment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This ends the allotment for {endTarget?.crewName ?? "this crew"}{" "}
-              to {endTarget?.beneficiaryName}. It will stop being deducted from
-              the next payroll run.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-end">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              disabled={acting}
-              onClick={() => endTarget && lifecycle(endTarget, "end")}
-              data-testid="button-confirm-end"
-            >
-              End Allotment
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {endTarget && (
+        <EndAllotmentDialog
+          key={endTarget.allotmentUuid}
+          target={endTarget}
+          onClose={() => setEndTarget(null)}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: listKey });
+            setEndTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

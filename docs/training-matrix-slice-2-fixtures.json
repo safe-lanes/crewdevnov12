@@ -1,0 +1,42 @@
+{
+  "purpose": "Synthetic Training Matrix equivalents acceptance; never a real-vessel policy",
+  "registeredAt": "2026-10-20",
+  "vesselUuid": "a4120000-0000-4000-8000-000000000001",
+  "vesselName": "TEST ONLY PDF layout review",
+  "reusedPersona": {
+    "masterUserId": 3,
+    "role": "Crewing Manager",
+    "roleUuid": "408d9fe9-1d0f-11f1-925d-5419ffd80f01",
+    "relevantExistingGrants": ["Admin Training Matrix View", "Admin Training Matrix Edit"],
+    "grantsAdded": []
+  },
+  "coursesReusedNotCreated": [
+    { "companyTrainingId": 18, "masterUuid": "1fbde38c-a34f-4b87-beae-f05d362decba", "fixtureAlias": "A" },
+    { "companyTrainingId": 22, "masterUuid": "0d4ed165-03b7-4db8-a339-fa02df0bb561", "fixtureAlias": "B" },
+    { "companyTrainingId": 42, "masterUuid": "2193ff21-2325-47a4-8f29-6c728f166456", "fixtureAlias": "C" }
+  ],
+  "revision": {
+    "uuid": "9f2ae8cd-fcd2-4569-a2b1-b3b8632bd95c",
+    "label": "R0",
+    "applicableTrainingIds": [18, 22],
+    "links": [
+      { "uuid": "1b115c78-389c-4291-9142-f70396cad10e", "direction": "A accepts B" },
+      { "uuid": "23c49a95-26dc-4f2c-95ba-7e454e96c034", "direction": "B accepts C" }
+    ]
+  },
+  "workingDraft": {
+    "uuid": "ae8f8713-8c6f-47cb-ab64-b96d03afffa3",
+    "label": "R1",
+    "applicableTrainingIds": [18, 22],
+    "links": [{ "uuid": "a4adc1ff-8e36-4448-9734-6cdbc5c57cbb", "direction": "A accepts C" }]
+  },
+  "auditEvents": [
+    "12fd4b57-b481-44cb-b27e-37e00bb7fb30",
+    "8dc4f297-f84d-43f5-a48c-9bdef304b90d",
+    "f407c46a-1228-4f3d-8883-530a82892f14"
+  ],
+  "initialWorkingDraftConsumedByNormalPublication": "a24fb594-6f11-4405-baf5-eb313b916ee3",
+  "rerunCommand": "node scripts/verify-training-equivalents.mjs",
+  "rerunPolicy": "Read-only by default. Reuse this exact revision and draft. Do not create new vessels, crew, assignments, master courses or grants.",
+  "descendants": "All Training Matrix equivalent links and events with this vessel_uuid are acceptance fixtures."
+}

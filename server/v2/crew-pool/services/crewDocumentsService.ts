@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { certificateUpdateFields } from "../utils/certificateOwnership";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewDocumentsRepository,
@@ -100,7 +101,8 @@ export const crewDocumentsService = {
     docUuid: string,
     data: Partial<InsertCrewDocument> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewDocument> {
-    await this.getByUuid(docUuid);
+    const original = await this.getByUuid(docUuid);
+    data = certificateUpdateFields(data, original.crewUuid, "crewUuid", "Travel document");
 
     // Resolve issuing country (accept name or UUID)
     const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
@@ -229,11 +231,10 @@ export const crewDocumentsService = {
         let docUuid: string;
 
         if (item.docUuid) {
-          const [updated] = await tx
-            .update(crewDocuments)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
-            .where(eq(crewDocuments.docUuid, item.docUuid))
-            .returning();
+          const updated = await crewDocumentsRepository.update(
+            item.docUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+          );
+          if (!updated) throw new Error(`Document ${item.docUuid} not found`);
           docUuid = item.docUuid;
           results.push(updated);
         } else {

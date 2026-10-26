@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,13 +19,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    formatIsoDate,
+    parseManualDate,
+} from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
@@ -35,14 +38,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDetails";
 import { JoiningCompanyForms } from "./JoiningCompanyForms";
+import { TrainingMatrixCompliance } from "./TrainingMatrixCompliance";
+import { AcceptedChecklistHistory } from "./AcceptedChecklistHistory";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
     relieverNationality: z.string().optional(),
     signOnStatus: z.string().optional(),
-    relieverContractPeriodMonths: z.coerce.number().positive("Contract Period must be greater than 0").optional(),
-    relieverContractEndRangeStartMonths: z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional(),
-    relieverContractEndRangeEndMonths: z.coerce.number().positive("Contract End - Range End must be greater than 0").optional(),
+    relieverContractPeriodMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract Period must be greater than 0").optional()),
+    relieverContractEndRangeStartMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional()),
+    relieverContractEndRangeEndMonths: z.preprocess(value => value === "" || value === null ? undefined : value, z.coerce.number().positive("Contract End - Range End must be greater than 0").optional()),
     plannedConfirmedDate: z.string().optional(),
     travelStartDate: z.string().optional(),
     relieverSignOnDate: z.string().optional(),
@@ -52,8 +57,8 @@ const reliefStatusFormSchema = z.object({
 });
 
 type ReliefStatusFormData = z.infer<typeof reliefStatusFormSchema>;
-type ChecklistBlocker = { kind: "requirement" | "check"; status: string; formName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
-type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean };
+type ChecklistBlocker = { kind: "requirement" | "check" | "training"; status: string; formName?: string; courseName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
+type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean; canOverrideTraining: boolean };
 
 function parseChecklistConflict(error: unknown): ChecklistConflict | null {
     if (!(error instanceof Error)) return null;
@@ -62,10 +67,10 @@ function parseChecklistConflict(error: unknown): ChecklistConflict | null {
         const value = JSON.parse(body);
         if (value?.error !== "company_forms_checklist_blocked" || typeof value.message !== "string" || !Array.isArray(value.blockers) || typeof value.canOverride !== "boolean") return null;
         const blockers = value.blockers.filter((item: any) =>
-            item && (item.kind === "requirement" || item.kind === "check") && typeof item.status === "string"
+            item && (item.kind === "requirement" || item.kind === "check" || item.kind === "training") && typeof item.status === "string"
         ) as ChecklistBlocker[];
         if (blockers.length !== value.blockers.length) return null;
-        return { message: value.message, blockers, canOverride: value.canOverride };
+        return { message: value.message, blockers, canOverride: value.canOverride, canOverrideTraining: value.canOverrideTraining === true };
     } catch { return null; }
 }
 
@@ -130,6 +135,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const canOverrideChecklist = canCompanyFormAction("override_checklist");
     const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
     const [overrideReason, setOverrideReason] = useState("");
+    const [trainingOverrideReason, setTrainingOverrideReason] = useState("");
+    const [requestChecklistOverride, setRequestChecklistOverride] = useState(false);
+    const [requestTrainingOverride, setRequestTrainingOverride] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const trainingPermissionQuery = useQuery<{ allowed: boolean }>({
+        queryKey: ["/api/v2/admin/training-compliance/my-permission"],
+        queryFn: async () => (await apiRequest("GET", "/api/v2/admin/training-compliance/my-permission")).json(),
+        retry: false,
+        enabled: open,
+        staleTime: 0,
+        refetchOnMount: "always",
+    });
     const [pendingChecklistPayload, setPendingChecklistPayload] = useState<Record<string, unknown> | null>(null);
     const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
         && userType?.trim().toLowerCase() !== 'ship'
@@ -138,6 +155,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
     const [plannedConfirmedDateOpen, setPlannedConfirmedDateOpen] = useState(false);
     const [travelStartDateOpen, setTravelStartDateOpen] = useState(false);
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
     const [clearReason, setClearReason] = useState('');
@@ -151,9 +172,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         assignmentType: string | null;
         signOnDate: string | null;
         contractPeriod: string | null;
+        contractRankUuid: string | null;
+        contractRankLabel: string;
+        plannedJoiningDate: string | null;
+        contractRangeEndMonths: number | null;
     } | null>(null);
     const [assignmentLoading, setAssignmentLoading] = useState(false);
     const [assignmentError, setAssignmentError] = useState<string | null>(null);
+    const formSubjectRef = React.useRef<string | null>(null);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -175,8 +201,15 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             applicableDocsChecked: false,
         }
     });
+    const formIsDirty = form.formState.isDirty;
 
     React.useEffect(() => {
+        const subjectKey = `${planningData?.planUuid ?? "new"}:${vesselUuid}:${rankId}`;
+        if (!open) formSubjectRef.current = null;
+        else {
+            if (formSubjectRef.current === subjectKey) return;
+            formSubjectRef.current = subjectKey;
+        }
         setAssignmentDetails(null);
         setAssignmentError(null);
         setClearReason('');
@@ -186,12 +219,12 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 relieverCrewName: planningData.relieverCrewName || '',
                 relieverNationality: planningData.relieverNationality || '',
                 signOnStatus: planningData.joiningStatus || '',
-                relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? planningData.contractPeriodMonths,
-                relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? planningData.contractEndRangeStartMonths,
-                relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? planningData.contractEndRangeEndMonths,
+                relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? undefined,
+                relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? undefined,
+                relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? undefined,
                 plannedConfirmedDate: planningData.plannedConfirmedDate || '',
                 travelStartDate: planningData.travelStartDate || '',
-                relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '',
+                relieverSignOnDate: planningData.relieverSignOnDate || '',
                 relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPortUuid || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
@@ -214,7 +247,45 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             });
             setUnassignChecked(false);
         }
-    }, [open, planningData, form]);
+    }, [open, planningData, form, rankId, vesselUuid]);
+
+    const handleDialogOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && formIsDirty && !window.confirm("Discard unsaved changes?")) return;
+        onOpenChange(nextOpen);
+    };
+
+    const resetAfterSave = (submitted: ReliefStatusFormData, persisted: any) => {
+        const currentValues = form.getValues();
+        const field = (key: keyof ReliefStatusFormData, serverKey: string = key) =>
+            persisted && Object.prototype.hasOwnProperty.call(persisted, serverKey)
+                ? persisted[serverKey]
+                : submitted[key] !== undefined ? submitted[key] : currentValues[key] ?? null;
+        form.reset({
+            ...form.getValues(),
+            relieverCrewName: (field("relieverCrewName") ?? "") as string,
+            relieverNationality: (field("relieverNationality") ?? "") as string,
+            relieverContractPeriodMonths: field("relieverContractPeriodMonths") as number | undefined,
+            relieverContractEndRangeStartMonths: field("relieverContractEndRangeStartMonths") as number | undefined,
+            relieverContractEndRangeEndMonths: field("relieverContractEndRangeEndMonths") as number | undefined,
+            relieverSignOnDate: (field("relieverSignOnDate") ?? "") as string,
+            plannedConfirmedDate: (field("plannedConfirmedDate") ?? "") as string,
+            travelStartDate: (field("travelStartDate") ?? "") as string,
+            relieverSignOnPort: (field("relieverSignOnPort", "joiningPortUuid") ?? "") as string,
+            signOnStatus: (field("signOnStatus", "joiningStatus") ?? "") as string,
+            deploymentChecklistCompleted: field("deploymentChecklistCompleted") as boolean | undefined,
+            applicableDocsChecked: field("applicableDocsChecked") as boolean | undefined,
+        });
+    };
+
+    const refreshAfterSave = async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            queryClient.invalidateQueries({
+                queryKey: ["training-matrix-compliance", planningData?.planUuid ?? null, planningData?.relieverAssignUuid ?? null],
+            }),
+        ]);
+    };
 
     const openLinkedAssignment = async () => {
         if (!planningData?.planUuid || !planningData?.relieverAssignUuid) return;
@@ -226,8 +297,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/reliever-assignment/${encodeURIComponent(planningData.relieverAssignUuid)}`
             );
             setAssignmentDetails(await response.json());
-        } catch (error) {
-            setAssignmentError(error instanceof Error ? error.message : "Assignment unavailable");
+        } catch {
+            setAssignmentError("The linked assignment could not be opened. Check your access or ask the office to review its link, then try again.");
         } finally {
             setAssignmentLoading(false);
         }
@@ -278,46 +349,48 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
+            let saveResult: any;
             
             if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
                 // and moves reliever to on-board crew
-                const signOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
-                const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
-                const contractPeriodMonths = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
+                const signOnDate = data.relieverSignOnDate || null;
+                const signOnPort = data.relieverSignOnPort || null;
+                const contractPeriodMonths = data.relieverContractPeriodMonths ?? null;
                 
-                await vesselApiV2.signOnReliever(planningData.planUuid, {
+                saveResult = await vesselApiV2.signOnReliever(planningData.planUuid, {
                     signOnDate,
                     signOnPort,
                     contractPeriodMonths,
-                    contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths,
-                    contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths,
-                    plannedConfirmedDate: data.plannedConfirmedDate || undefined,
-                    travelStartDate: data.travelStartDate || undefined,
+                    contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
+                    plannedConfirmedDate: data.plannedConfirmedDate || null,
+                    travelStartDate: data.travelStartDate || null,
                 });
             } else {
                 const payload = {
-                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
-                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
-                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths ?? null,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     joiningStatus: data.signOnStatus,
                     relieverSignOnDate: data.relieverSignOnDate || null,
-                    joiningPortUuid: data.relieverSignOnPort,
+                    joiningPortUuid: data.relieverSignOnPort || null,
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 };
                 
                 if (planningData?.planUuid) {
-                    await updatePlanningV2.mutateAsync({
+                    saveResult = await updatePlanningV2.mutateAsync({
                         planUuid: planningData.planUuid,
                         data: payload
                     });
                 } else {
-                    await createPlanningV2.mutateAsync({
+                    saveResult = await createPlanningV2.mutateAsync({
                         vesselUuid,
                         rankId,
                         rank,
@@ -326,40 +399,34 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 }
             }
             
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
+            await refreshAfterSave();
+            resetAfterSave(data, saveResult);
             
             toast({
                 title: "Success",
-                description: "Relief status saved successfully",
+                description: `Relief status saved successfully${Array.isArray(saveResult?.checklistAcceptance?.warnings) && saveResult.checklistAcceptance.warnings.length ? ` Checklist notes: ${saveResult.checklistAcceptance.warnings.join(" ")}` : ""}`,
             });
-            onOpenChange(false);
         } catch (error: any) {
             console.error('Relief status save error:', error);
             const conflict = parseChecklistConflict(error);
-            const eligibleBlockers = conflict?.blockers.length
-                ? conflict.blockers.every((blocker) =>
-                    (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                    (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                )
-                : false;
             if (conflict && data.deploymentChecklistCompleted === true && planningData?.planUuid) {
                 setChecklistConflict(conflict);
+                setOverrideReason("");
+                setTrainingOverrideReason("");
+                setRequestChecklistOverride(false);
+                setRequestTrainingOverride(false);
                 setPendingChecklistPayload({
-                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
-                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
-                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths ?? null,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? null,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? null,
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     joiningStatus: data.signOnStatus,
                     relieverSignOnDate: data.relieverSignOnDate || null,
-                    joiningPortUuid: data.relieverSignOnPort,
+                    joiningPortUuid: data.relieverSignOnPort || null,
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
                 });
-                if (!eligibleBlockers || !conflict.canOverride || !canOverrideChecklist) {
-                    toast({ title: "Forms must be completed", description: conflict.message, variant: "destructive", duration: 7000 });
-                }
                 return;
             }
             toast({
@@ -372,22 +439,41 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const confirmChecklistOverride = async () => {
-        if (!planningData?.planUuid || !pendingChecklistPayload || !overrideReason.trim() ||
-            !checklistConflict?.canOverride || !canOverrideChecklist) return;
+        if (!planningData?.planUuid || !pendingChecklistPayload || !checklistConflict) return;
+        const hasFormBlockers = checklistConflict.blockers.some(blocker => blocker.kind !== "training");
+        const hasTrainingBlockers = checklistConflict.blockers.some(blocker => blocker.kind === "training");
+        const hasUnsafeMandatoryBlocker = checklistConflict.blockers.some(blocker =>
+            (blocker.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(blocker.status.toUpperCase())) ||
+            (blocker.kind === "check" && blocker.status.toUpperCase() === "NOT_CHECKED")
+        );
+        const formsEligible = hasFormBlockers && checklistConflict.canOverride && canOverrideChecklist &&
+            checklistConflict.blockers.filter(blocker => blocker.kind !== "training").every(blocker =>
+                (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+            );
+        const trainingEligible = hasTrainingBlockers && checklistConflict.canOverrideTraining &&
+            trainingPermissionQuery.data?.allowed === true;
+        if (hasUnsafeMandatoryBlocker || (!requestChecklistOverride && !requestTrainingOverride) ||
+            (requestChecklistOverride && (!formsEligible || !overrideReason.trim())) ||
+            (requestTrainingOverride && (!trainingEligible || !trainingOverrideReason.trim()))) return;
         try {
-            await updatePlanningV2.mutateAsync({
+            const overrides: Record<string, { reason: string }> = {};
+            if (requestChecklistOverride) overrides.checklistOverride = { reason: overrideReason.trim() };
+            if (requestTrainingOverride) overrides.trainingOverride = { reason: trainingOverrideReason.trim() };
+            const result: any = await updatePlanningV2.mutateAsync({
                 planUuid: planningData.planUuid,
-                data: { ...pendingChecklistPayload, checklistOverride: { reason: overrideReason.trim() } } as any,
+                data: { ...pendingChecklistPayload, ...overrides } as any,
             });
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
-                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
-            ]);
+            await refreshAfterSave();
+            resetAfterSave(pendingChecklistPayload as ReliefStatusFormData, result);
             setChecklistConflict(null);
             setPendingChecklistPayload(null);
             setOverrideReason("");
-            toast({ title: "Success", description: "Relief status saved with the recorded checklist override." });
-            onOpenChange(false);
+            setTrainingOverrideReason("");
+            setRequestChecklistOverride(false);
+            setRequestTrainingOverride(false);
+            const warnings = result?.checklistAcceptance?.warnings;
+            toast({ title: "Success", description: `Relief status saved.${Array.isArray(warnings) && warnings.length ? ` Checklist notes: ${warnings.join(" ")}` : " Checklist acceptance was recorded."}` });
         } catch (error) {
             const conflict = parseChecklistConflict(error);
             toast({ title: "Unable to override checklist", description: conflict?.message ?? "The checklist override was not accepted. Review the forms and try again.", variant: "destructive" });
@@ -503,6 +589,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return;
         }
         
+        if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
+
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
@@ -595,21 +683,94 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     }, [watchedSignOnStatus]);
 
+    const datePickerFormOwner = React.useId();
+    const getPickerDay = (date: Date | undefined): string | undefined => {
+        if (!date || Number.isNaN(date.getTime())) return undefined;
+        return format(date, "yyyy-MM-dd");
+    };
+    const getInputDate = (value?: string): string => {
+        if (!value) return "";
+        if (formatIsoDate(value)) return value;
+        return getPickerDay(parseDateString(value)) || "";
+    };
+    const renderDateSelector = (
+        field: {
+            name: string;
+            value?: string;
+            onChange: (value: string) => void;
+        },
+        min?: string,
+        max?: string,
+    ) => (
+        <FormControl>
+            <div
+                className="col-span-2 min-w-0"
+                ref={(node) => {
+                    const calendarInput =
+                        node?.querySelector<HTMLInputElement>('input[type="date"]');
+                    if (calendarInput) {
+                        calendarInput.setAttribute("form", datePickerFormOwner);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    if (
+                        event.key === "Enter" &&
+                        event.target instanceof HTMLInputElement &&
+                        event.target.type === "text"
+                    ) {
+                        event.preventDefault();
+                    }
+                }}
+            >
+                <VesselDateInput
+                    value={getInputDate(field.value)}
+                    disabled={!isRelieverAssigned}
+                    min={min}
+                    max={max}
+                    className={
+                        !isRelieverAssigned
+                            ? "bg-gray-100 cursor-not-allowed"
+                            : undefined
+                    }
+                    retainInvalidDraftOnBlur={field.name === "relieverSignOnDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "relieverSignOnDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
+                    data-testid={`input-${field.name}`}
+                    onChange={(event) => {
+                        const value = event.target.value;
+                        if (!value || !formatIsoDate(value)) return;
+                        if (min && value < min) return;
+                        if (max && value > max) return;
+                        field.onChange(value);
+                    }}
+                />
+            </div>
+        </FormControl>
+    );
+
     return (
         <>
             <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
-                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); }
+                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); setTrainingOverrideReason(""); setRequestChecklistOverride(false); setRequestTrainingOverride(false); }
             }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Company Forms checklist is incomplete</AlertDialogTitle>
+                        <AlertDialogTitle>Checklist needs attention</AlertDialogTitle>
                         <AlertDialogDescription>{checklistConflict?.message}</AlertDialogDescription>
                     </AlertDialogHeader>
                     {checklistConflict?.blockers.map((blocker, index) => (
                         <div key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
                           data-testid={`checklist-blocker-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`}
                           className="text-sm text-amber-900">
-                            {blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")} · {blocker.status}
+                            <span className="font-medium">{blocker.kind === "training" ? blocker.courseName || "Training course" : blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")}</span>
+                            {" · "}{blocker.status.toLowerCase().replace(/_/g, " ")}
                             {blocker.reason ? ` — ${blocker.reason}` : ""}
                             {blocker.requirementUuid && planningData?.relieverAssignUuid && canCompanyFormAction("view") &&
                               <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => {
@@ -618,37 +779,46 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                               }}>Open form</Button>}
                         </div>
                     ))}
-                    {checklistConflict?.canOverride && canOverrideChecklist &&
-                        checklistConflict.blockers.length > 0 &&
-                        checklistConflict.blockers.every((blocker) =>
-                            (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                            (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                        ) ? (
-                        <div className="space-y-2">
-                            <Label htmlFor="checklist-override-reason">Reason for override</Label>
-                            <Textarea id="checklist-override-reason" value={overrideReason}
-                                onChange={(event) => setOverrideReason(event.target.value)}
-                                placeholder="Record why deployment is proceeding before the checklist is clear." />
-                            <AlertDialogDescription>This reason will be recorded with the planning change. The override does not complete any form.</AlertDialogDescription>
-                        </div>
-                    ) : null}
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Return to forms</AlertDialogCancel>
-                        {checklistConflict?.canOverride && canOverrideChecklist &&
-                            checklistConflict.blockers.length > 0 &&
-                            checklistConflict.blockers.every((blocker) =>
+                    {checklistConflict && (() => {
+                        const formBlockers = checklistConflict.blockers.filter(blocker => blocker.kind !== "training");
+                        const trainingBlockers = checklistConflict.blockers.filter(blocker => blocker.kind === "training");
+                        const forbidden = checklistConflict.blockers.some(blocker =>
+                            (blocker.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(blocker.status.toUpperCase())) ||
+                            (blocker.kind === "check" && blocker.status.toUpperCase() === "NOT_CHECKED"));
+                        const formsEligible = formBlockers.length > 0 && checklistConflict.canOverride && canOverrideChecklist && !forbidden &&
+                            formBlockers.every(blocker =>
                                 (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
-                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
-                            ) && (
-                            <AlertDialogAction disabled={!overrideReason.trim() || updatePlanningV2.isPending}
+                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase())));
+                        const trainingEligible = trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && trainingPermissionQuery.data?.allowed === true && !forbidden &&
+                            trainingBlockers.length > 0;
+                        return <div className="space-y-4 border-t pt-3">
+                            {forbidden && <p className="text-sm text-rose-800" role="status">An outstanding or started mandatory form, or an unchecked stage, must be completed first. An override is not available.</p>}
+                            {formBlockers.length > 0 && !forbidden && (!checklistConflict.canOverride || !canOverrideChecklist) && <p className="text-sm text-slate-600" role="status">A Company Forms override is not available for this checklist or your role.</p>}
+                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && trainingPermissionQuery.isLoading && <p className="text-sm text-slate-600" role="status">Checking your training override permission…</p>}
+                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && !trainingPermissionQuery.isLoading && trainingPermissionQuery.data?.allowed !== true && <p className="text-sm text-slate-600" role="status">Your role does not have permission to override training compliance.</p>}
+                            {trainingBlockers.length > 0 && !checklistConflict.canOverrideTraining && !forbidden && <p className="text-sm text-slate-600" role="status">Training compliance cannot be overridden for these results.</p>}
+                            {formsEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
+                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestChecklistOverride} onCheckedChange={checked => setRequestChecklistOverride(checked === true)} />Request a Company Forms checklist override</label>
+                                {requestChecklistOverride && <><Label htmlFor="checklist-override-reason">Reason for Company Forms override</Label><Textarea id="checklist-override-reason" value={overrideReason} onChange={event => setOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding before the forms are clear." /><p className="text-xs text-slate-600">This reason is recorded with the planning change. It does not complete any form.</p></>}
+                            </div>}
+                            {trainingEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
+                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestTrainingOverride} onCheckedChange={checked => setRequestTrainingOverride(checked === true)} />Request a training compliance override</label>
+                                {requestTrainingOverride && <><Label htmlFor="training-override-reason">Reason for training override</Label><Textarea id="training-override-reason" value={trainingOverrideReason} onChange={event => setTrainingOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding with these training results." /><p className="text-xs text-slate-600">This reason is recorded separately from any Company Forms override.</p></>}
+                            </div>}
+                        </div>;
+                    })()}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{checklistConflict?.blockers.some(blocker => blocker.kind === "requirement" && blocker.requirementUuid) ? "Return to forms" : "Close"}</AlertDialogCancel>
+                        {(requestChecklistOverride || requestTrainingOverride) && (
+                            <AlertDialogAction disabled={(!requestChecklistOverride || !overrideReason.trim()) && (!requestTrainingOverride || !trainingOverrideReason.trim()) || updatePlanningV2.isPending}
                                 onClick={(event) => { event.preventDefault(); void confirmChecklistOverride(); }}>
-                                {updatePlanningV2.isPending ? "Saving…" : "Confirm override"}
+                                {updatePlanningV2.isPending ? "Saving…" : "Save planning change"}
                             </AlertDialogAction>
                         )}
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={onOpenChange}>
+            <Dialog open={open && !joiningFormsOpen && !blockerForm} onOpenChange={handleDialogOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
@@ -674,8 +844,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                     <div className="mt-2 space-y-1" data-testid="reliever-assignment-details">
                                         <div className="font-mono text-xs break-all">{assignmentDetails.assignUuid}</div>
                                         <div>Status: {assignmentDetails.assignmentType ?? "Unknown"}</div>
-                                        <div>Joining date: {formatDateOnly(assignmentDetails.signOnDate) || "Not set"}</div>
-                                        <div>Contract: {assignmentDetails.contractPeriod ? `${assignmentDetails.contractPeriod} months` : "Not set"}</div>
+                                        <div>Contract rank: {assignmentDetails.contractRankLabel || "Not recorded"}</div>
+                                        <div>Planned joining date: {formatDateOnly(assignmentDetails.plannedJoiningDate) || "Absent — reliever date not set"}</div>
+                                        <div>Contract range end: {assignmentDetails.contractRangeEndMonths != null ? `${assignmentDetails.contractRangeEndMonths} months` : "Absent — reliever range end not set"}</div>
                                     </div>
                                 )}
                                 {assignmentError && <p className="mt-2 text-red-700" role="alert">{assignmentError}</p>}
@@ -860,34 +1031,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Planned / Confirmed Date:</FormLabel>
-                                        <Popover open={plannedConfirmedDateOpen} onOpenChange={setPlannedConfirmedDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-planned-confirmed-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setPlannedConfirmedDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        {renderDateSelector(field)}
                                     </div>
                                 </FormItem>
                             )}
@@ -900,34 +1044,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Travel Start Date:</FormLabel>
-                                        <Popover open={travelStartDateOpen} onOpenChange={setTravelStartDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-travel-start-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setTravelStartDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        {renderDateSelector(field)}
                                     </div>
                                 </FormItem>
                             )}
@@ -940,39 +1057,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
-                                        <Popover open={joiningDateOpen} onOpenChange={setJoiningDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
-                                                        data-testid="button-joining-date"
-                                                        disabled={!isRelieverAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setJoiningDateOpen(false);
-                                                        }
-                                                    }}
-                                                    disabled={
-                                                        (watchedSignOnStatus === "Signed On")
-                                                            ? (() => { const today = new Date(); today.setHours(0, 0, 0, 0); return { after: today }; })()
-                                                            : undefined
-                                                    }
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign On date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                undefined,
+                                                watchedSignOnStatus === "Signed On"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                 </FormItem>
                             )}
@@ -1057,8 +1153,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                         <Label htmlFor="docs-no">No</Label>
                                                     </div>
                                                 </RadioGroup>
-                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned}>
-                                                    See Checklist
+                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned || !planningData?.planUuid} onClick={() => setHistoryOpen(true)}>
+                                                    Accepted checklist history
                                                 </Button>
                                             </div>
                                         </FormControl>
@@ -1066,6 +1162,15 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+
+                        {planningData?.relieverCrewUuid && (
+                            <TrainingMatrixCompliance
+                                planUuid={planningData?.planUuid}
+                                assignmentUuid={planningData?.relieverAssignUuid}
+                                open={open}
+                            />
+                        )}
+                        <AcceptedChecklistHistory planUuid={planningData?.planUuid} open={historyOpen} onOpenChange={setHistoryOpen} />
 
                         {isRelieverAssigned && !isUnlinkedReliever && (
                             <div className="flex items-center gap-2 pt-2 border-t">
@@ -1104,10 +1209,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
+                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict || (!unassignChecked && watchedSignOnStatus === "Signed On" && futureDateDraft.blocked)}
                                 data-testid="button-submit-relief"
                             >
-                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}
+                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Save"}
                             </Button>
                         </div>
                     </form>

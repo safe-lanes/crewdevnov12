@@ -9,6 +9,7 @@ import { format, addMonths, differenceInMonths, differenceInDays, parse } from '
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { PlannedDateCellEditor } from './PlannedDateCellEditor';
+import { DueInChips } from '@/components/common/DueInChips';
 
 interface TestRecord {
   date: string;
@@ -297,7 +298,6 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
         'testHistory[2]',
         'nextDue',
         'frequencyMonths',
-        'plannedDate',
         'actions'
       ];
 
@@ -535,6 +535,11 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
           cellEditor: PlannedDateCellEditor,
+          singleClickEdit: true,
+          width: 180,
+          minWidth: 180,
+          suppressSizeToFit: true,
+          suppressAutoSize: true,
         },
         {
           headerName: 'Comments',
@@ -577,27 +582,9 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
     );
   }
 
-  const staticLegend = [
-    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
-    { label: '2M', color: '#FFCC00', textColor: '#000000' },
-    { label: '1M', color: '#F9ECEF', textColor: '#000000' },
-    { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
-  ];
-
   return (
     <div className="w-full flex flex-col flex-1">
-      <div className="flex gap-2 items-center mb-4">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
-        {staticLegend.map((item, index) => (
-          <div
-            key={index}
-            className="px-3 py-1 rounded text-sm font-semibold"
-            style={{ backgroundColor: item.color, color: item.textColor }}
-          >
-            {item.label}
-          </div>
-        ))}
-      </div>
+      <DueInChips />
       
       <AgGridTable
         rowData={tableData}

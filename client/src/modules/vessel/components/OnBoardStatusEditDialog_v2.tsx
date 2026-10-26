@@ -8,8 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    formatIsoDate,
+    parseManualDate,
+} from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
+import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -85,6 +89,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const { toast } = useToast();
     const { userType, permissions } = usePermissions();
     const queryClient = useQueryClient();
+    const [futureDateDraft, setFutureDateDraft] = React.useState({ future: false, blocked: false });
+    React.useEffect(() => {
+        setFutureDateDraft({ future: false, blocked: false });
+    }, [open, planningData]);
     const { getVesselName } = useVesselLookup();
     const [signoffFormsOpen, setSignoffFormsOpen] = useState(false);
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
@@ -367,6 +375,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     };
 
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
+        if (data.reliefStatus === "Signed Off" && futureDateDraft.blocked) return;
         try {
             // Safety guard: a post-handover ex-primary (secondary + handOverDate)
             // must never re-trigger a takeover swap, even if form state carries
@@ -642,6 +651,81 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         }
     };
 
+    const datePickerFormOwner = React.useId();
+    const getPickerDay = (date: Date | undefined): string | undefined => {
+        if (!date || Number.isNaN(date.getTime())) return undefined;
+        return format(date, "yyyy-MM-dd");
+    };
+    const getInputDate = (value?: string): string => {
+        if (!value) return "";
+        // Keep canonical date-only values unchanged.
+        // Do not repeatedly convert a newly typed date through UTC/local time.
+        if (formatIsoDate(value)) return value;
+        // Keep support for existing parseable legacy values.
+        return getPickerDay(parseDate(value)) || "";
+    };
+    const renderDateSelector = (
+        field: {
+            name: string;
+            value?: string;
+            onChange: (value: string) => void;
+        },
+        min?: string,
+        max?: string,
+    ) => (
+        <FormControl>
+            <div
+                className="w-full min-w-0"
+                ref={(node) => {
+                    const calendarInput =
+                        node?.querySelector<HTMLInputElement>('input[type="date"]');
+                    if (calendarInput) {
+                        // The native input is only the calendar picker.
+                        // Do not let its browser validity introduce new
+                        // validation rules for the surrounding form.
+                        calendarInput.setAttribute("form", datePickerFormOwner);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    if (
+                        event.key === "Enter" &&
+                        event.target instanceof HTMLInputElement &&
+                        event.target.type === "text"
+                    ) {
+                        event.preventDefault();
+                    }
+                }}
+            >
+                <VesselDateInput
+                    value={getInputDate(field.value)}
+                    disabled={!isOnboardCrewAssigned}
+                    min={min}
+                    max={max}
+                    retainInvalidDraftOnBlur={field.name === "signOffDate" && futureDateDraft.future}
+                    onDraftChange={field.name === "signOffDate" ? (draft) => {
+                            const date = parseManualDate(draft);
+                            const future = Boolean(max && date && date > max);
+                            const valid = Boolean(date && (!min || date >= min) && (!max || date <= max));
+                            const blocked = Boolean(max) && (future || (futureDateDraft.blocked && !valid));
+                            if (futureDateDraft.future !== future || futureDateDraft.blocked !== blocked) {
+                                setFutureDateDraft({ future, blocked });
+                            }
+                        } : undefined}
+                    data-testid={`input-${field.name}`}
+                    onChange={(event) => {
+                        const value = event.target.value;
+                        // Existing dialog calendars ignore empty selections.
+                        if (!value || !formatIsoDate(value)) return;
+                        // Apply the same limits to typed and calendar dates.
+                        if (min && value < min) return;
+                        if (max && value > max) return;
+                        field.onChange(value);
+                    }}
+                />
+            </div>
+        </FormControl>
+    );
+
     return (
         <>
         <Dialog open={open && !signoffFormsOpen} onOpenChange={onOpenChange}>
@@ -803,40 +887,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 <TooltipTrigger asChild>
                                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                                 <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
-                                                <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant="outline"
-                                                                className="w-full justify-start text-left font-normal"
-                                                                data-testid="button-take-over-date"
-                                                            >
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={field.value ? parseDate(field.value) : undefined}
-                                                            onSelect={(date) => {
-                                                                if (date) {
-                                                                    field.onChange(format(date, 'yyyy-MM-dd'));
-                                                                    setTakeOverDateOpen(false);
-                                                                }
-                                                            }}
-                                                            disabled={(() => {
-                                                                const signOnVal = planningData?.signOnDate;
-                                                                if (!signOnVal) return undefined;
-                                                                const signOnParsed = parseDate(signOnVal);
-                                                                if (!signOnParsed) return undefined;
-                                                                return { before: signOnParsed };
-                                                            })()}
-                                                            initialFocus
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
+                                                {renderDateSelector(
+                                                    field,
+                                                    getPickerDay(parseDate(planningData?.signOnDate || "")),
+                                                )}
                                             </div>
                                                 </TooltipTrigger>
                                                 <TooltipContent side="right" align="start" className="max-w-xs">
@@ -1053,51 +1107,18 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 <FormItem>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
-                                        <Popover open={signOffDateOpen} onOpenChange={setSignOffDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-sign-off-date"
-                                                        disabled={!isOnboardCrewAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setSignOffDateOpen(false);
-                                                        }
-                                                    }}
-                                                    disabled={(() => {
-                                                        const matchers: any[] = [];
-                                                        const signOnVal = form.getValues('signOnDate');
-                                                        const signOnParsed = signOnVal ? parseDate(signOnVal) : null;
-
-                                                        if (signOnParsed) {
-                                                            matchers.push({ before: signOnParsed });
-                                                        }
-
-                                                        if (watchedReliefStatus === "Signed Off") {
-                                                            const today = new Date();
-                                                            today.setHours(0, 0, 0, 0);
-                                                            matchers.push({ after: today });
-                                                        }
-
-                                                        return matchers.length > 0 ? matchers : undefined;
-                                                    })()}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <VesselFutureDateMessage
+                                            value={field.value}
+                                            message="Sign Off date should not be a future date"
+                                        >
+                                            {renderDateSelector(
+                                                field,
+                                                getPickerDay(parseDate(form.getValues("signOnDate") || "")),
+                                                watchedReliefStatus === "Signed Off"
+                                                    ? format(new Date(), "yyyy-MM-dd")
+                                                    : undefined,
+                                            )}
+                                        </VesselFutureDateMessage>
                                     </div>
                                     <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
                                 </FormItem>
@@ -1132,41 +1153,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 <FormItem>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Travel End Date</FormLabel>
-                                        <Popover open={travelEndDateOpen} onOpenChange={setTravelEndDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-travel-end-date"
-                                                        disabled={!isOnboardCrewAssigned}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setTravelEndDateOpen(false);
-                                                        }
-                                                    }}
-                                                    disabled={(() => {
-                                                        const signOffVal = form.getValues('signOffDate');
-                                                        if (!signOffVal) return undefined;
-                                                        const signOffParsed = parseDate(signOffVal);
-                                                        if (!signOffParsed) return undefined;
-                                                        return { before: signOffParsed };
-                                                    })()}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        {renderDateSelector(
+                                            field,
+                                            getPickerDay(parseDate(form.getValues("signOffDate") || "")),
+                                        )}
                                     </div>
                                 </FormItem>
                             )}
@@ -1176,7 +1166,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             <Button 
                                 type="submit"
                                 className="bg-green-600 hover:bg-green-700"
-                                disabled={!isOnboardCrewAssigned || needsIncumbentLink || updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={!isOnboardCrewAssigned || needsIncumbentLink || updatePlanningV2.isPending || createPlanningV2.isPending || (watchedReliefStatus === "Signed Off" && futureDateDraft.blocked)}
                                 data-testid="button-submit-onboard"
                             >
                                 Submit

@@ -6,6 +6,7 @@ import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
 import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
+import { clearCompanyFormDocumentFixtures } from "../../helpers/companyFormDocumentCleanup";
 import type { Server } from "http";
 import type { CompanyFormSubmissionRenderContract } from "../../../shared/v2/forms-engine/submissionRenderContract";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
@@ -151,9 +152,10 @@ async function createForm(input: {
     await db.query(
       `INSERT INTO adm_form_versions_v2
          (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       VALUES ($1, $2, $3, '2026-01-01', 'released', $4, false, NOW())`,
+       VALUES ($1, $2, $3, '2026-01-01', 'draft', $4, false, NOW())`,
       [version.versionUuid, form.rows[0].id, version.versionNo, version.stageKey],
     );
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [version.versionUuid]);
   }
 }
 
@@ -347,10 +349,11 @@ describe("Company Form subject-scoped starts and lists", () => {
     await db.query(
       `INSERT INTO adm_form_versions_v2
          (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       SELECT $1, id, '99', '2026-01-01', 'released', 'before_joining', false, NOW()
+       SELECT $1, id, '99', '2026-01-01', 'draft', 'before_joining', false, NOW()
        FROM adm_forms_v2 WHERE form_uuid = $2`,
       [invalidReleasedVersionUuid, formUuid],
     );
+    await db.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [invalidReleasedVersionUuid]);
     await createRenderStructure(versionOneUuid, "one");
     await createRenderStructure(versionTwoUuid, "two");
     formBoardUuid = u();
@@ -387,6 +390,18 @@ describe("Company Form subject-scoped starts and lists", () => {
       const submissionUuids = [
         primarySubmissionUuid, replacementSubmissionUuid, historySubmissionUuid, writeSubmissionUuid,
       ].filter(Boolean);
+      const owned = (await db.query(
+        "SELECT submission_uuid FROM frm_company_submissions WHERE subject_ref=ANY($1::text[])",
+        [subjectRefs],
+      )).rows.map(row => row.submission_uuid);
+      await db.query("BEGIN");
+      try {
+        await clearCompanyFormDocumentFixtures(db, owned);
+        await db.query("COMMIT");
+      } catch (error) {
+        await db.query("ROLLBACK");
+        throw error;
+      }
       const assetUuids = [historyAssetUuid, foreignAssetUuid].filter(Boolean);
       if (assetUuids.length) {
         await db.query(

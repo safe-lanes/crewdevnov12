@@ -127,6 +127,19 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
   },
 ];
 
+// This inventory inspects the entire Admin router. Keep the new matrix guards
+// explicit rather than excluding non-Forms routes or weakening exact equality.
+const EXPECTED_TRAINING_MATRIX_GUARDS: GuardedRoute[] = [
+  { key: "GET /training-matrix-equivalents/:vesselId", menuName: "Admin Training Matrix", action: "view" },
+  { key: "PUT /training-matrix-equivalents/:vesselId", menuName: "Admin Training Matrix", action: "edit" },
+  { key: "POST /training-matrix-vessel-drafts/upsert", menuName: "Admin Training Matrix", action: "edit" },
+  { key: "POST /training-matrix-vessel-drafts", menuName: "Admin Training Matrix", action: "edit" },
+  { key: "PATCH /training-matrix-vessel-drafts/:id", menuName: "Admin Training Matrix", action: "edit" },
+  { key: "DELETE /training-matrix-vessel-drafts/:id", menuName: "Admin Training Matrix", action: "delete" },
+  { key: "POST /training-matrix-vessel-revisions/submit", menuName: "Admin Training Matrix", action: "edit" },
+  { key: "POST /training-matrix-vessel-revisions", menuName: "Admin Training Matrix", action: "edit" },
+];
+
 function getPermissionRequirement(handler: unknown) {
   return (handler as PermissionMiddleware).permissionRequirement;
 }
@@ -166,7 +179,9 @@ function sortRoutes(routes: GuardedRoute[]): GuardedRoute[] {
 
 describe("Forms Configuration permission route inventory", () => {
   it("applies exactly the approved explicit route-to-action table", () => {
-    expect(sortRoutes(guardedRoutes())).toEqual(sortRoutes(EXPECTED_FORMS_GUARDS));
+    expect(sortRoutes(guardedRoutes())).toEqual(sortRoutes([
+      ...EXPECTED_FORMS_GUARDS, ...EXPECTED_TRAINING_MATRIX_GUARDS,
+    ]));
   });
 
   it("keeps ordinary appraisal and promotion configuration reads unguarded", () => {

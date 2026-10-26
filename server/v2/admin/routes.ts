@@ -19,7 +19,9 @@ import {
   vesselOrgChartController,
 } from "./controllers";
 import { requirePermission } from "../../middleware/requirePermission";
+import { trainingMatrixPolicyController } from "./controllers/trainingMatrixPolicyController";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
+import { trainingComplianceSettingsController } from "./controllers/trainingComplianceSettingsController";
 import { formPartController } from "./controllers/formPartController";
 import { actionPermissionsController } from "./controllers/actionPermissionsController";
 import { applicabilityController } from "./controllers/applicabilityController";
@@ -156,20 +158,22 @@ router.get("/vessel-revisions/next-revision/:vesselId", vesselRevisionsControlle
 router.get("/vessel-revisions/:id", vesselRevisionsController.getById);
 router.post("/vessel-revisions", vesselRevisionsController.create);
 
+router.get("/training-matrix-equivalents/:vesselId", requirePermission("Admin Training Matrix", "view"), trainingMatrixPolicyController.read);
+router.put("/training-matrix-equivalents/:vesselId", requirePermission("Admin Training Matrix", "edit"), trainingMatrixPolicyController.write);
 router.get("/training-matrix-vessel-drafts", trainingMatrixVesselDraftsController.getAll);
-router.post("/training-matrix-vessel-drafts/upsert", trainingMatrixVesselDraftsController.upsert);
+router.post("/training-matrix-vessel-drafts/upsert", requirePermission("Admin Training Matrix", "edit"), trainingMatrixVesselDraftsController.upsert);
 router.get("/training-matrix-vessel-drafts/by-vessel/:vesselId", trainingMatrixVesselDraftsController.getByVesselId);
 router.get("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.getById);
-router.post("/training-matrix-vessel-drafts", trainingMatrixVesselDraftsController.create);
-router.patch("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.update);
-router.delete("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.delete);
+router.post("/training-matrix-vessel-drafts", requirePermission("Admin Training Matrix", "edit"), trainingMatrixVesselDraftsController.create);
+router.patch("/training-matrix-vessel-drafts/:id", requirePermission("Admin Training Matrix", "edit"), trainingMatrixVesselDraftsController.update);
+router.delete("/training-matrix-vessel-drafts/:id", requirePermission("Admin Training Matrix", "delete"), trainingMatrixVesselDraftsController.delete);
 
 router.get("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.getAll);
-router.post("/training-matrix-vessel-revisions/submit", trainingMatrixVesselRevisionsController.submit);
+router.post("/training-matrix-vessel-revisions/submit", requirePermission("Admin Training Matrix", "edit"), trainingMatrixVesselRevisionsController.submit);
 router.get("/training-matrix-vessel-revisions/by-vessel/:vesselId", trainingMatrixVesselRevisionsController.getByVesselId);
 router.get("/training-matrix-vessel-revisions/next-revision/:vesselId", trainingMatrixVesselRevisionsController.getNextRevision);
 router.get("/training-matrix-vessel-revisions/:id", trainingMatrixVesselRevisionsController.getById);
-router.post("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.create);
+router.post("/training-matrix-vessel-revisions", requirePermission("Admin Training Matrix", "edit"), trainingMatrixVesselRevisionsController.create);
 
 router.get("/access-control/menus", accessControlController.getAllMenus);
 router.post("/access-control/menus", requireTrustedAccessControlAdmin(), accessControlController.createMenu);
@@ -182,6 +186,11 @@ router.put("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), ac
 router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.deleteRole);
 
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
+router.get("/training-compliance/my-permission", trainingComplianceSettingsController.mine);
+router.get("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.get);
+router.put("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.save);
+router.get("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.grant);
+router.put("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.saveGrant);
 router.get("/access-control/state", requireTrustedAccessControlAdmin(), accessControlController.state);
 router.get("/access-control/audit", requireTrustedAccessControlAdmin(), accessControlController.audit);
 router.get("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.getManagement);

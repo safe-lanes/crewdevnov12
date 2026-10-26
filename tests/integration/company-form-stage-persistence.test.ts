@@ -213,8 +213,9 @@ describe.sequential("Company Form stage and submission persistence", () => {
       await client.query(`
         INSERT INTO adm_form_versions_v2(
           fv_uuid, form_id, version_no, version_date, status, stage_key
-        ) VALUES ($1, $2, '02', '09-Sep-2026', 'released', 'before_joining')
+        ) VALUES ($1, $2, '02', '09-Sep-2026', 'draft', 'before_joining')
       `, [secondVersionUuid, form.formId]);
+      await client.query("UPDATE adm_form_versions_v2 SET status='released' WHERE fv_uuid=$1", [secondVersionUuid]);
       await client.query(`
         UPDATE adm_form_versions_v2
         SET stage_key = 'before_joining', status = 'released'

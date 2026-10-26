@@ -1,3 +1,4 @@
+import { AppraisalDateInput } from "./AppraisalDateInput";
 import { memo, Fragment, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -330,7 +331,17 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input type="date" value={followup.targetDate || ""} onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)} className="h-8" placeholder="dd/mm/yyyy" />
+                            <AppraisalDateInput
+                              value={followup.targetDate || ""}
+                              onChange={(e) =>
+                                updateTrainingFollowup(
+                                  followup.id,
+                                  "targetDate",
+                                  e.target.value,
+                                )
+                              }
+                              className="h-8"
+                            />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <div className="flex gap-1 justify-center">
