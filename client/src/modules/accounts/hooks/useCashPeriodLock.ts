@@ -56,6 +56,16 @@ export function useCashPeriodLock(vesselUuid: string, period: string) {
     !!formatIsoDate(value) &&
     !!periods.data?.includes(value.slice(0, 7));
 
+  const getDefaultDate = () => {
+    const date = new Date();
+
+    while (periods.data?.includes(date.toISOString().slice(0, 7))) {
+      date.setUTCMonth(date.getUTCMonth() + 1, 1);
+    }
+
+    return date.toISOString().slice(0, 10);
+  };
+
   const showDateError = () => {
     toast({
       title: "Validation Error",
@@ -89,6 +99,7 @@ export function useCashPeriodLock(vesselUuid: string, period: string) {
     blocked: !ready || isLocked,
     calendarDisabledPeriods: periods.data ?? [],
     isDateBlocked,
+    getDefaultDate,
     showDateError,
     handleServerError,
     notice: !hasFilter

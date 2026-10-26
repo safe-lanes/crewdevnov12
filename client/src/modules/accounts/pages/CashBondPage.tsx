@@ -520,7 +520,7 @@ export function AdvancesTab({
               setDateFormVersion((version) => version + 1);
               setForm({
                 ...emptyAdvanceForm,
-                requestDate: new Date().toISOString().slice(0, 10),
+                requestDate: locks.getDefaultDate(),
               });
               setDialogOpen(true);
             }}

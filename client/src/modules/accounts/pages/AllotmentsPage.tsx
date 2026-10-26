@@ -235,7 +235,7 @@ export default function AllotmentsPage({
     setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
-    setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
+    setForm({ ...emptyForm, validFrom: locks.getDefaultDate() });
     setDialogOpen(true);
   };
 
