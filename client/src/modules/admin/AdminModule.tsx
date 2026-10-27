@@ -3942,6 +3942,9 @@ const AdminModuleInner = (): JSX.Element => {
       trainingFollowups: formData.trainingFollowups || [],
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
+      ...(formData.effectivenessOptions !== undefined
+        ? { effectivenessOptions: formData.effectivenessOptions }
+        : {}),
     };
 
     if (rankGroup) {

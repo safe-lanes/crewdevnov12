@@ -4,6 +4,7 @@ import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
+import { validateStoredEffectivenessConfiguration } from "../../../../shared/appraisal-effectiveness";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -264,6 +265,7 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
+    validateStoredEffectivenessConfiguration(data.configuration);
     const auditUserUuid = (data as any).auditUserUuid ?? null;
     // Server-controlled metadata: ignore client-supplied versionNo / releasedAt / status.
     // All new versions are drafts; release happens via releaseVersionById.
@@ -322,6 +324,11 @@ export const formsService = {
   },
 
   async updateVersionById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2> {
+    const existing = await formVersionsRepo.findById(id);
+    if (!existing) throw new Error(`Form version not found: ${id}`);
+    validateStoredEffectivenessConfiguration(
+      data.configuration !== undefined ? data.configuration : existing.configuration
+    );
     const version = await formVersionsRepo.updateById(id, applyAuditUser(data));
     if (!version) throw new Error(`Form version not found: ${id}`);
     return version;
@@ -333,6 +340,7 @@ export const formsService = {
     if (existing.status !== "draft") {
       throw new Error("Only draft versions can be released.");
     }
+    validateStoredEffectivenessConfiguration(existing.configuration);
     // Preserve the draft's versionDate (admin-picked at Save Draft time).
     // Fall back to today only if the draft somehow lacks a valid date.
     const now = new Date();

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { formsService } from "../services";
 import { insertAdmFormV2Schema, insertAdmFormVersionV2Schema } from "../../../../shared/v2/admin/types";
 import { z } from "zod";
+import { EffectivenessConfigurationError } from "../../../../shared/appraisal-effectiveness";
 
 export const formsController = {
   async getAll(req: Request, res: Response) {
@@ -193,6 +194,9 @@ export const formsController = {
       const version = await formsService.createVersionByFormId(formId, payload);
       res.json(version);
     } catch (error: any) {
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       const msg: string = error.message || "";
       if (msg.includes("draft already exists")) {
         return res.status(409).json({ error: msg });
@@ -240,6 +244,9 @@ export const formsController = {
       const version = await formsService.updateVersionById(id, payload);
       res.json(version);
     } catch (error: any) {
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -258,6 +265,9 @@ export const formsController = {
       const version = await formsService.releaseVersionById(id, auditUserUuid);
       res.json(version);
     } catch (error: any) {
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       const msg: string = error.message || "";
       if (msg.includes("not found")) {
         return res.status(404).json({ error: msg });

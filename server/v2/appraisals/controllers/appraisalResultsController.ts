@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppraisalResultsService } from "../services";
+import {
+  AppraisalRatingVersionError,
+  EffectivenessConfigurationError,
+} from "../../../../shared/appraisal-effectiveness";
 
 const service = new AppraisalResultsService();
 
@@ -106,6 +110,12 @@ export class AppraisalResultsController {
       const appraisal = await service.create({ ...req.body, auditUserUuid });
       res.status(201).json(appraisal);
     } catch (error) {
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("[Appraisals V2] Failed to create appraisal:", error);
       res.status(500).json({ error: "Failed to create appraisal" });
     }

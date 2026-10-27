@@ -23,6 +23,11 @@ import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { sendEmail, logEmailEvent } from "../../shared/emailService";
 import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
 import { apprOfficeReviewsV2 } from "../../../../shared/v2/appraisals/schema";
+import {
+  AppraisalRatingVersionError,
+  readEffectivenessOptions,
+  validateEffectivenessSelections,
+} from "../../../../shared/appraisal-effectiveness";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -287,20 +292,62 @@ export class AppraisalResultsService {
 
     const appraisalUuid = uuidv4();
 
-    // Pin the appraisal to the latest released form version for the seafarer's
-    // rank at creation time so later releases don't re-skin saved appraisals.
     let formVersionId: number | null = null;
     let formVersionUuid: string | null = null;
     const seafarersRank: string | undefined = appraisalData?.seafarersRank;
-    if (seafarersRank) {
+    const expectedVersionId: unknown = auditData.expectedFormVersionId;
+    let formForRank: Awaited<ReturnType<typeof formsService.getFormForRank>> | null = null;
+
+    if (expectedVersionId !== undefined) {
+      if (
+        typeof expectedVersionId !== "number" ||
+        !Number.isInteger(expectedVersionId) ||
+        expectedVersionId < 1 ||
+        !seafarersRank
+      ) {
+        throw new AppraisalRatingVersionError(
+          "The appraisal form version could not be confirmed. Reopen the form."
+        );
+      }
       try {
-        const formForRank = await formsService.getFormForRank(seafarersRank, "appraisal");
+        formForRank = await formsService.getFormForRank(seafarersRank, "appraisal");
+      } catch {
+        throw new AppraisalRatingVersionError(
+          "The appraisal form version could not be confirmed. Please try again."
+        );
+      }
+      if (
+        !formForRank || formForRank.noReleasedVersion ||
+        formForRank.formVersionId !== expectedVersionId ||
+        !formForRank.formVersionUuid
+      ) {
+        throw new AppraisalRatingVersionError(
+          "The released form version has changed or is unavailable. " +
+          "Reopen the appraisal before saving."
+        );
+      }
+      const options = readEffectivenessOptions(formForRank.rankGroupConfig);
+      validateEffectivenessSelections(appraisalData, options);
+      formVersionId = formForRank.formVersionId;
+      formVersionUuid = formForRank.formVersionUuid;
+    } else if (seafarersRank) {
+      // Preserve the old path for legacy callers using legacy configurations.
+      try {
+        formForRank = await formsService.getFormForRank(seafarersRank, "appraisal");
         if (formForRank && !formForRank.noReleasedVersion) {
           formVersionId = formForRank.formVersionId ?? null;
           formVersionUuid = formForRank.formVersionUuid ?? null;
         }
       } catch (e) {
         console.warn(`[Appraisals V2] Failed to resolve form version for rank "${seafarersRank}":`, e);
+      }
+      if (formForRank && !formForRank.noReleasedVersion) {
+        const options = readEffectivenessOptions(formForRank.rankGroupConfig);
+        if (options !== null) {
+          throw new AppraisalRatingVersionError(
+            "This form uses configurable ratings. Reopen it before saving."
+          );
+        }
       }
     }
 

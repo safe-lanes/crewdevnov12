@@ -43,6 +43,16 @@ import { Form, FormVersion, RankGroup } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  defaultEffectivenessOptions,
+  getEffectivenessScore,
+  parseEffectivenessScore,
+  readEffectivenessOptions,
+  resolveEffectivenessOption,
+  validateEffectivenessOptions,
+  validateEffectivenessSelections,
+  type EffectivenessOption,
+} from "@shared/appraisal-effectiveness";
 
 interface RankGroupTraining {
   id: string;
@@ -75,6 +85,7 @@ interface RankGroupTrainingFollowup {
 }
 
 interface RankGroupConfiguration {
+  effectivenessOptions?: EffectivenessOption[];
   trainings?: RankGroupTraining[];
   targets?: RankGroupTarget[];
   competenceAssessments?: Array<{
@@ -390,6 +401,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return String.fromCharCode(65 + visibleIndex); // Convert to letter (A=65)
   };
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [effectivenessOptions, setEffectivenessOptions] =
+    useState<EffectivenessOption[]>(defaultEffectivenessOptions);
+  const [effectivenessConfigured, setEffectivenessConfigured] = useState(false);
+  const [effectivenessLoadError, setEffectivenessLoadError] = useState<string | null>(null);
+  const savedEffectivenessRef = useRef(JSON.stringify(defaultEffectivenessOptions()));
   // Unsaved-changes tracking for the editor. `baselineConfigRef` holds the
   // serialized configuration of the last loaded/saved state; the editor is
   // "dirty" when the current state no longer matches it. The dialog warns the
@@ -700,6 +716,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const computeConfigurationString = (
     visField: typeof fieldVisibility = fieldVisibility,
     visSection: typeof sectionVisibility = sectionVisibility,
+    options: readonly EffectivenessOption[] = effectivenessOptions,
   ) => {
     const formData = formMethods.getValues();
     const hiddenFields = Object.entries(visField)
@@ -708,7 +725,36 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const hiddenSections = Object.entries(visSection)
       .filter(([, visible]) => !visible)
       .map(([section]) => section);
-    return JSON.stringify({ ...formData, hiddenFields, hiddenSections });
+    return JSON.stringify({
+      ...formData, hiddenFields, hiddenSections,
+      effectivenessOptions: options.map(option => ({ ...option })),
+    });
+  };
+
+  const hasUnsavedEffectivenessChanges = () =>
+    JSON.stringify(effectivenessOptions) !== savedEffectivenessRef.current;
+
+  const validateCurrentEffectiveness = (): boolean => {
+    try {
+      if (effectivenessLoadError) throw new Error(effectivenessLoadError);
+      const options = validateEffectivenessOptions(effectivenessOptions);
+      validateEffectivenessSelections(formMethods.getValues(), options);
+      return true;
+    } catch (error) {
+      toast({
+        title: "Invalid Effectiveness Ratings",
+        description: error instanceof Error ? error.message : "Please check the rating options.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const recordSavedEffectiveness = (configuration: string) => {
+    const options = readEffectivenessOptions(configuration);
+    if (options === null) return;
+    savedEffectivenessRef.current = JSON.stringify(options);
+    setEffectivenessConfigured(true);
   };
 
   const buildDraftPayload = () => {
@@ -728,6 +774,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // Run the same gates that Save Draft enforces in config mode.
   // Returns true if the form is OK to persist; false if a dialog was raised.
   const runConfigModeValidation = (): boolean => {
+    if (!validateCurrentEffectiveness()) return false;
     const validationResult = validateAssessmentCriteria();
     if (!validationResult.isValid) {
       setValidationErrors(validationResult.errors);
@@ -752,21 +799,42 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // form state to the draft — otherwise rows just added in Parts B–F1 are
   // lost because /release only flips status on whatever the server holds.
   const handleReleaseVersion = async () => {
+    if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
     const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
     if (!draftVersion?.id) {
       toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
       return;
     }
-    if (isConfigMode) {
+    if (isConfigMode || hasUnsavedEffectivenessChanges()) {
+      if (activeVersion !== draftVersion.versionNo) {
+        toast({
+          title: "Open the draft first",
+          description: "Open the draft before saving and releasing these edits.",
+          variant: "destructive",
+        });
+        return;
+      }
       if (!runConfigModeValidation()) return;
       if (!validateVersionDateInput()) return;
+      const payload = buildDraftPayload();
+      let saved: { id?: number };
       try {
-        const saved = await createDraftMutation.mutateAsync(buildDraftPayload());
-        const draftId = (saved && typeof saved.id === 'number') ? saved.id : draftVersion.id;
-        releaseVersionMutation.mutate(draftId);
+        saved = await createDraftMutation.mutateAsync(payload);
       } catch {
         // createDraftMutation.onError already surfaced a toast; abort release.
+        return;
       }
+      if (!saved || typeof saved.id !== "number") {
+        toast({
+          title: "Draft save could not be confirmed",
+          description: "The version was not released. Please save again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      baselineConfigRef.current = payload.configuration;
+      recordSavedEffectiveness(payload.configuration);
+      releaseVersionMutation.mutate(saved.id);
       return;
     }
     releaseVersionMutation.mutate(draftVersion.id);
@@ -845,6 +913,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   useEffect(() => {
     const hasAnyVersion = (versionsData || []).length > 0;
     if (rankGroupConfig && !versionExplicitlySelected && !hasAnyVersion) {
+      try {
+        const configuredOptions = readEffectivenessOptions(rankGroupConfig);
+        const loadedOptions = configuredOptions ?? defaultEffectivenessOptions();
+        setEffectivenessOptions(loadedOptions);
+        setEffectivenessConfigured(configuredOptions !== null);
+        setEffectivenessLoadError(null);
+        savedEffectivenessRef.current = JSON.stringify(loadedOptions);
+      } catch (error) {
+        setEffectivenessLoadError(
+          error instanceof Error ? error.message : "The form configuration could not be read."
+        );
+        return;
+      }
       // Always set all configurable arrays (default to []) so reopening
       // the editor accurately reflects the persisted state — including
       // intentional deletions that empty a section.
@@ -905,12 +986,27 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   useEffect(() => {
     if (!versionsData || !activeVersion) return;
     const version = versionsData.find(v => v.versionNo === activeVersion);
-    if (!version?.configuration) return;
+    if (!version) return;
+    if (!version.configuration) {
+      // Preserve the existing skip for other fields; reset only rating state.
+      const loadedOptions = defaultEffectivenessOptions();
+      setEffectivenessOptions(loadedOptions);
+      setEffectivenessConfigured(false);
+      setEffectivenessLoadError(null);
+      savedEffectivenessRef.current = JSON.stringify(loadedOptions);
+      return;
+    }
     
     try {
       const config = typeof version.configuration === 'string' 
         ? JSON.parse(version.configuration) 
         : version.configuration;
+      const configuredOptions = readEffectivenessOptions(config);
+      const loadedOptions = configuredOptions ?? defaultEffectivenessOptions();
+      setEffectivenessOptions(loadedOptions);
+      setEffectivenessConfigured(configuredOptions !== null);
+      setEffectivenessLoadError(null);
+      savedEffectivenessRef.current = JSON.stringify(loadedOptions);
       
       if (config.seafarersName !== undefined) formMethods.setValue('seafarersName', config.seafarersName || '');
       if (config.seafarersRank !== undefined) formMethods.setValue('seafarersRank', config.seafarersRank || '');
@@ -982,15 +1078,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       // Capture the freshly-loaded state as the unsaved-changes baseline. Use
       // the locally-computed visibility (the setState calls above are not yet
       // committed) so the baseline exactly mirrors what the form now holds.
-      baselineConfigRef.current = computeConfigurationString(defaultFieldVis, defaultSectionVis);
+      baselineConfigRef.current = computeConfigurationString(defaultFieldVis, defaultSectionVis, loadedOptions);
 
       console.log('[FormEditor] Loaded version', activeVersion, 'configuration with hiddenFields:', config.hiddenFields, 'hiddenSections:', config.hiddenSections);
     } catch (e) {
       console.warn('[FormEditor] Failed to parse version configuration:', e);
+      setEffectivenessLoadError(
+        e instanceof Error ? e.message : "The form configuration could not be read."
+      );
     }
   }, [activeVersion, versionsData]);
 
   const onSubmit = (data: AppraisalFormData) => {
+    if (!validateCurrentEffectiveness()) return;
     // Check if we're in config mode and need to validate weights
     if (isConfigMode) {
       if (data.competenceAssessments.length > 0) {
@@ -1029,6 +1129,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     
     onSave({
       ...data,
+      effectivenessOptions: effectivenessOptions.map(option => ({ ...option })),
       formId: realFormId,
       version: formVersion,
       sharedConfig: sharedConfig,
@@ -1042,6 +1143,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // the unsaved-changes dialog). Returns true if the draft was saved, false if
   // a validation gate stopped the save (a dialog was raised instead).
   const saveDraft = async (): Promise<boolean> => {
+    if (!validateCurrentEffectiveness()) return false;
     if (isConfigMode && !runConfigModeValidation()) return false;
     if (isConfigMode && !validateVersionDateInput()) return false;
     if (!isConfigMode) {
@@ -1063,6 +1165,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     setActiveVersion(payload.versionNo);
     // The saved state is now the clean baseline.
     baselineConfigRef.current = payload.configuration;
+    recordSavedEffectiveness(payload.configuration);
     formMethods.handleSubmit(onSubmit)();
     return true;
   };
@@ -1195,21 +1298,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     
     competenceAssessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
+        const rating = getEffectivenessScore(
+          assessment.effectiveness,
+          effectivenessConfigured ? effectivenessOptions : null,
+        );
         totalScore += (rating * assessment.weight) / 100;
         totalWeight += assessment.weight;
       }
     });
     
     return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  }, [competenceAssessments]);
+  }, [competenceAssessments, effectivenessOptions, effectivenessConfigured]);
 
   // Calculate behavioural section score using memoized watched data
   const behaviouralSectionScore = useMemo(() => {
@@ -1218,21 +1317,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     
     behaviouralAssessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
+        const rating = getEffectivenessScore(
+          assessment.effectiveness,
+          effectivenessConfigured ? effectivenessOptions : null,
+        );
         totalScore += (rating * assessment.weight) / 100;
         totalWeight += assessment.weight;
       }
     });
     
     return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  }, [behaviouralAssessments]);
+  }, [behaviouralAssessments, effectivenessOptions, effectivenessConfigured]);
 
   // Keep legacy functions for backward compatibility with existing code
   const calculateSectionScore = useCallback(() => competenceSectionScore, [competenceSectionScore]);
@@ -1356,13 +1451,6 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [editingPiCategoryIndex, setEditingPiCategoryIndex] = useState<number>(-1);
 
   // Effectiveness Rating configuration state (common to Parts B, C, D)
-  const [effectivenessOptions, setEffectivenessOptions] = useState<string[]>([
-    "5- Exceeded Expectations",
-    "4- Meets Expectations", 
-    "3- Somewhat Meets Expectations",
-    "2- Below Expectations",
-    "1- Significantly Below Expectations"
-  ]);
   const [showEffectivenessDialog, setShowEffectivenessDialog] = useState(false);
   const [editingEffectiveness, setEditingEffectiveness] = useState<string>("");
   const [editingEffectivenessIndex, setEditingEffectivenessIndex] = useState<number>(-1);
@@ -1485,39 +1573,75 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   };
 
   const editEffectivenessOption = (index: number) => {
-    setEditingEffectiveness(effectivenessOptions[index]);
+    setEditingEffectiveness(effectivenessOptions[index].label);
     setEditingEffectivenessIndex(index);
     setShowEffectivenessDialog(true);
   };
 
   const deleteEffectivenessOption = (index: number) => {
+    if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+    if (effectivenessOptions.length <= 1) {
+      toast({
+        title: "Cannot delete the last option",
+        description: "At least one effectiveness option must remain.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const removed = effectivenessOptions[index];
+    if (!removed) return;
     showConfirmDialog(
       "Delete Effectiveness Option",
-      "Are you sure you want to delete this effectiveness option?",
+      "Delete this option and clear its selections in the current draft?",
       () => {
-        const newOptions = effectivenessOptions.filter((_, i) => i !== index);
-        setEffectivenessOptions(newOptions);
+        if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+        const matches = (value: string) =>
+          resolveEffectivenessOption(value, effectivenessOptions)?.id === removed.id;
+        formMethods.setValue("trainings", formMethods.getValues("trainings").map(row =>
+          matches(row.evaluation) ? { ...row, evaluation: "" } : row
+        ), { shouldDirty: true });
+        formMethods.setValue("targets", formMethods.getValues("targets").map(row =>
+          matches(row.evaluation) ? { ...row, evaluation: "" } : row
+        ), { shouldDirty: true });
+        formMethods.setValue("competenceAssessments", formMethods.getValues("competenceAssessments").map(row =>
+          matches(row.effectiveness) ? { ...row, effectiveness: "" } : row
+        ), { shouldDirty: true });
+        formMethods.setValue("behaviouralAssessments", formMethods.getValues("behaviouralAssessments").map(row =>
+          matches(row.effectiveness) ? { ...row, effectiveness: "" } : row
+        ), { shouldDirty: true });
+        setEffectivenessOptions(effectivenessOptions.filter(option => option.id !== removed.id));
+        setEffectivenessConfigured(true);
+        setEditingEffectiveness("");
+        setEditingEffectivenessIndex(-1);
         closeConfirmDialog();
       }
     );
   };
 
   const saveEffectivenessOption = () => {
-    if (editingEffectiveness.trim() === "") return;
-    
-    if (editingEffectivenessIndex === -1) {
-      // Adding new option
-      setEffectivenessOptions([...effectivenessOptions, editingEffectiveness.trim()]);
-    } else {
-      // Editing existing option
-      const newOptions = [...effectivenessOptions];
-      newOptions[editingEffectivenessIndex] = editingEffectiveness.trim();
-      setEffectivenessOptions(newOptions);
+    if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+    try {
+      const label = editingEffectiveness.trim();
+      parseEffectivenessScore(label);
+      const next = effectivenessOptions.map(option => ({ ...option }));
+      if (editingEffectivenessIndex === -1) {
+        next.push({ id: `effectiveness-${crypto.randomUUID()}`, label });
+      } else {
+        const existing = next[editingEffectivenessIndex];
+        if (!existing) throw new Error("The selected option no longer exists.");
+        next[editingEffectivenessIndex] = { ...existing, label };
+      }
+      setEffectivenessOptions(validateEffectivenessOptions(next));
+      setEffectivenessConfigured(true);
+      setEditingEffectiveness("");
+      setEditingEffectivenessIndex(-1);
+    } catch (error) {
+      toast({
+        title: "Invalid Effectiveness Rating",
+        description: error instanceof Error ? error.message : "Please check the rating.",
+        variant: "destructive",
+      });
     }
-    
-    // Clear the input field for next entry
-    setEditingEffectiveness("");
-    setEditingEffectivenessIndex(-1);
   };
 
   // Training Category management functions
@@ -2135,7 +2259,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   ? 'bg-green-600 hover:bg-green-700 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)}
+              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending || createDraftMutation.isPending}
               onClick={handleReleaseVersion}
               data-testid="button-release-version"
             >
@@ -2178,6 +2302,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               variant={isConfigMode ? "default" : "outline"}
               onClick={() => {
                 if (isConfigMode) {
+                  if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+                  if (!validateCurrentEffectiveness()) return;
+                  if (hasUnsavedEffectivenessChanges()) {
+                    toast({
+                      title: "Save Effectiveness Ratings first",
+                      description: "Save the draft or release it before leaving configuration mode.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   // Validate assessment criteria fields before exiting config mode
                   const validationResult = validateAssessmentCriteria();
                   if (!validationResult.isValid) {
@@ -2737,14 +2871,15 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               <Label className="text-sm font-medium">Current Options:</Label>
               <div className="border rounded-md p-2 max-h-48 overflow-y-auto">
                 {effectivenessOptions.map((option, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                    <span className="text-sm">{option}</span>
+                  <div key={option.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                    <span className="text-sm">{option.label}</span>
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => editEffectivenessOption(index)}
+                        disabled={createDraftMutation.isPending || releaseVersionMutation.isPending}
                         className="h-6 w-6 p-0"
                       >
                         <Edit2 className="h-3 w-3" />
@@ -2754,6 +2889,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                         variant="ghost"
                         size="icon"
                         onClick={() => deleteEffectivenessOption(index)}
+                        disabled={effectivenessOptions.length <= 1 || createDraftMutation.isPending || releaseVersionMutation.isPending}
                         className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -2772,6 +2908,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               <div className="flex gap-2">
                 <Input
                   value={editingEffectiveness}
+                  disabled={createDraftMutation.isPending || releaseVersionMutation.isPending}
                   onChange={(e) => setEditingEffectiveness(e.target.value)}
                   placeholder="Enter option name"
                   className="flex-1"
@@ -2784,7 +2921,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 <Button
                   type="button"
                   onClick={saveEffectivenessOption}
-                  disabled={!editingEffectiveness.trim()}
+                  disabled={!editingEffectiveness.trim() || createDraftMutation.isPending || releaseVersionMutation.isPending}
                   size="sm"
                 >
                   {editingEffectivenessIndex === -1 ? "Add" : "Save"}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
 import { RefObject } from "react";
+import type { EffectivenessOption } from "@shared/appraisal-effectiveness";
 
 export const trainingSchema = z.object({
   id: z.string(),
@@ -177,6 +178,7 @@ export interface PartAProps extends AppraisalFormSectionBaseProps {
 }
 
 export interface PartBProps extends AppraisalFormSectionBaseProps {
+  effectivenessOptions: EffectivenessOption[] | null;
   partRef: RefObject<HTMLDivElement>;
   showEvaluation: boolean;
   editingTraining: string | null;
@@ -200,6 +202,7 @@ export interface PartBProps extends AppraisalFormSectionBaseProps {
 }
 
 export interface PartCProps extends AppraisalFormSectionBaseProps {
+  effectivenessOptions: EffectivenessOption[] | null;
   partRef: RefObject<HTMLDivElement>;
   competenceComments: Record<string, string | null>;
   setCompetenceComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
@@ -211,6 +214,7 @@ export interface PartCProps extends AppraisalFormSectionBaseProps {
 }
 
 export interface PartDProps extends AppraisalFormSectionBaseProps {
+  effectivenessOptions: EffectivenessOption[] | null;
   partRef: RefObject<HTMLDivElement>;
   behaviouralComments: Record<string, string | null>;
   setBehaviouralComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;

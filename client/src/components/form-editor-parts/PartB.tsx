@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartBProps } from "./types";
+import { effectivenessSelectValue } from "@shared/appraisal-effectiveness";
 
 const PartBComponent: React.FC<PartBProps> = ({
   formMethods,
@@ -121,7 +122,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                             </td>
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Select
-                                value={training.evaluation}
+                                  value={effectivenessSelectValue(training.evaluation, effectivenessOptions)}
                                 onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
                                 onOpenChange={(open) => {
                                   if (isConfigMode && open && index === 0) {
@@ -137,9 +138,9 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {effectivenessOptions.map((option, optionIndex) => (
-                                    <SelectItem key={optionIndex} value={option.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}>
-                                      {option}
+                                  {effectivenessOptions.map(option => (
+                                    <SelectItem key={option.id} value={option.id}>
+                                      {option.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -289,7 +290,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select
-                              value={target.evaluation}
+                                value={effectivenessSelectValue(target.evaluation, effectivenessOptions)}
                               onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
                               onOpenChange={(open) => {
                                 if (isConfigMode && open && index === 0) {
@@ -305,9 +306,9 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 <SelectValue placeholder="Select Rating" />
                               </SelectTrigger>
                               <SelectContent>
-                                {effectivenessOptions.map((option, optionIndex) => (
-                                  <SelectItem key={optionIndex} value={option.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}>
-                                    {option}
+                                {effectivenessOptions.map(option => (
+                                  <SelectItem key={option.id} value={option.id}>
+                                    {option.label}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

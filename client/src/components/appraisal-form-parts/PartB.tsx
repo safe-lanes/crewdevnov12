@@ -12,9 +12,12 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartBProps } from "./types";
+import { EffectivenessRatingItems } from "@/components/EffectivenessRatingItems";
+import { effectivenessSelectValue } from "@shared/appraisal-effectiveness";
 import { RequiredMark } from "./RequiredMark";
 
 const PartBComponent: React.FC<PartBProps> = ({
+  effectivenessOptions,
   form,
   partRef,
   isSectionVisible,
@@ -134,16 +137,18 @@ const PartBComponent: React.FC<PartBProps> = ({
                             </td>
                             {showEvaluation && (
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Select value={training.evaluation} onValueChange={(value) => updateTraining(training.id, "evaluation", value)} disabled={lockB1Evaluation}>
+                                <Select value={effectivenessSelectValue(training.evaluation, effectivenessOptions)} onValueChange={(value) => updateTraining(training.id, "evaluation", value)} disabled={lockB1Evaluation}>
                                   <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-training-eval-${training.id}`}>
                                     <SelectValue placeholder="Select Rating" />
                                   </SelectTrigger>
                                   <SelectContent>
+                                    <EffectivenessRatingItems options={effectivenessOptions}>
                                     <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
                                     <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
                                     <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
                                     <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
                                     <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                    </EffectivenessRatingItems>
                                   </SelectContent>
                                 </Select>
                               </td>
@@ -251,16 +256,18 @@ const PartBComponent: React.FC<PartBProps> = ({
                           </td>
                           {showEvaluation && (
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                              <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2Evaluation}>
+                              <Select value={effectivenessSelectValue(target.evaluation, effectivenessOptions)} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2Evaluation}>
                                 <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-target-eval-${target.id}`}>
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <EffectivenessRatingItems options={effectivenessOptions}>
                                   <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
                                   <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
                                   <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
                                   <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
                                   <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
+                                  </EffectivenessRatingItems>
                                 </SelectContent>
                               </Select>
                             </td>

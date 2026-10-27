@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
+import type { EffectivenessOption } from "@shared/appraisal-effectiveness";
 
 export const BASELINE_RECOMMENDATION_QUESTIONS: ReadonlySet<string> = new Set([
   "Recommended for continued service on board?",
@@ -151,7 +152,7 @@ export interface PartAProps extends FormSectionBaseProps {
 export interface PartBProps extends FormSectionBaseProps {
   sectionVisibility: SectionVisibility;
   toggleSectionVisibility: (section: string) => void;
-  effectivenessOptions: string[];
+  effectivenessOptions: EffectivenessOption[];
   getDynamicSectionLetter: (originalId: string) => string;
   trainings: Training[];
   targets: Target[];
@@ -170,7 +171,7 @@ export interface PartBProps extends FormSectionBaseProps {
 }
 
 export interface PartCProps extends FormSectionBaseProps {
-  effectivenessOptions: string[];
+  effectivenessOptions: EffectivenessOption[];
   getDynamicSectionLetter: (originalId: string) => string;
   competenceAssessments: CompetenceAssessment[];
   competenceComments: Record<string, string>;
@@ -186,7 +187,7 @@ export interface PartCProps extends FormSectionBaseProps {
 export interface PartDProps extends FormSectionBaseProps {
   sectionVisibility: SectionVisibility;
   toggleSectionVisibility: (section: string) => void;
-  effectivenessOptions: string[];
+  effectivenessOptions: EffectivenessOption[];
   getDynamicSectionLetter: (originalId: string) => string;
   behaviouralAssessments: BehaviouralAssessment[];
   behaviouralComments: Record<string, string>;
