@@ -107,7 +107,8 @@ const PartCComponent: React.FC<PartCProps> = ({
                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                       <Select
                         value={effectivenessSelectValue(assessment.effectiveness, effectivenessOptions)}
-                        onValueChange={(value) => updateCompetenceCriterion(assessment.id, "effectiveness", value)}
+                        open={false}
+                        disabled={!isConfigMode || index !== 0}
                         onOpenChange={(open) => {
                           if (isConfigMode && open && index === 0) {
                             setShowEffectivenessDialog(true);

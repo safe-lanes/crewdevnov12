@@ -123,7 +123,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Select
                                   value={effectivenessSelectValue(training.evaluation, effectivenessOptions)}
-                                onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
+                                open={false}
+                                disabled={!isConfigMode || index !== 0}
                                 onOpenChange={(open) => {
                                   if (isConfigMode && open && index === 0) {
                                     setShowEffectivenessDialog(true);
@@ -291,7 +292,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select
                                 value={effectivenessSelectValue(target.evaluation, effectivenessOptions)}
-                              onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
+                              open={false}
+                              disabled={!isConfigMode || index !== 0}
                               onOpenChange={(open) => {
                                 if (isConfigMode && open && index === 0) {
                                   setShowEffectivenessDialog(true);
