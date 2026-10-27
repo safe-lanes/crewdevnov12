@@ -44,21 +44,32 @@ function stageSectionsShape<S extends AppraisalStage>(stage: S) {
   ) as Record<(typeof STAGE_SECTIONS)[S][number], z.ZodOptional<z.ZodArray<z.ZodAny>>>;
 }
 
+const stage1DataSchema = z.object({
+  seafarersName: z.string().min(1),
+  seafarersRank: z.string().min(1),
+  nationality: z.string().nullish(),
+  vessel: z.string().min(1),
+  appraisalType: z.string().min(1),
+  signOn: z.string().optional(),
+  appraisalPeriodFrom: z.string().optional(),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
+  primaryAppraiser: z.string().optional(),
+  ...stageSectionsShape("stage1"),
+});
+
+// The body POST / takes, sent with a stage submit of a form that was never
+// saved: the appraisal is created in the same transaction as the stage
+// (APD-30). The service checks it the way create() does.
+const createBodySchema = z.object({
+  crewMemberId: z.union([z.string(), z.number()]).nullish(),
+  appraisalData: z.record(z.any()),
+}).passthrough();
+
 const stage1SubmissionSchema = z.object({
-  data: z.object({
-    seafarersName: z.string().min(1),
-    seafarersRank: z.string().min(1),
-    nationality: z.string().nullish(),
-    vessel: z.string().min(1),
-    appraisalType: z.string().min(1),
-    signOn: z.string().optional(),
-    appraisalPeriodFrom: z.string().optional(),
-    appraisalPeriodTo: z.string().optional(),
-    personalityIndexCategory: z.string().optional(),
-    primaryAppraiser: z.string().optional(),
-    ...stageSectionsShape("stage1"),
-  }),
+  data: stage1DataSchema,
   submittedBy: z.string().optional(),
+  create: createBodySchema.optional(),
 });
 
 const stage2SubmissionSchema = z.object({
@@ -71,6 +82,10 @@ const stage2SubmissionSchema = z.object({
     })).optional(),
   }),
   submittedBy: z.string().optional(),
+  create: createBodySchema.optional(),
+  // Stage 1, submitted in the same transaction when it is not done yet: the
+  // form has no Stage 1 button when Part B2 is hidden.
+  stage1: stage1DataSchema.optional(),
   competenceRating: z.string().nullable().optional(),
   behavioralRating: z.string().nullable().optional(),
   overallRating: z.string().nullable().optional(),
@@ -223,17 +238,20 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy } = validationResult.data;
+      const { data, submittedBy, create } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown", undefined, { create });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 1 submission error:", error);
-      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
+      }
+      if (error instanceof AppraisalIdConflictError) {
+        return res.status(409).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 1" });
     }
@@ -247,7 +265,7 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, competenceRating, behavioralRating, overallRating } = validationResult.data;
+      const { data, submittedBy, competenceRating, behavioralRating, overallRating, create, stage1 } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
       // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
@@ -255,15 +273,18 @@ export class AppraisalResultsController {
         competenceRating,
         behavioralRating,
         overallRating,
-      });
+      }, { create, stage1 });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 2 submission error:", error);
-      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
         return res.status(400).json({ error: error.message });
+      }
+      if (error instanceof AppraisalIdConflictError) {
+        return res.status(409).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 2" });
     }

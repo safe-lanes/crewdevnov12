@@ -324,6 +324,63 @@ const appraisalSchema = z.object({
 
 type AppraisalFormData = z.infer<typeof appraisalSchema>;
 
+// A Part C or D score in percent, from each row's rating weighted by its weight.
+function calcSectionScore(assessments: any[]): string | null {
+  let totalScore = 0;
+  let totalWeight = 0;
+  assessments?.forEach(assessment => {
+    if (assessment.effectiveness && assessment.weight) {
+      let rating = 0;
+      switch (assessment.effectiveness) {
+        case "5-exceeds-expectations": rating = 5; break;
+        case "4-meets-expectations": rating = 4; break;
+        case "3-somewhat-meets-expectations": rating = 3; break;
+        case "2-below-expectations": rating = 2; break;
+        case "1-significantly-below-expectations": rating = 1; break;
+      }
+      totalScore += (rating * assessment.weight) / 100;
+      totalWeight += assessment.weight;
+    }
+  });
+  return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
+}
+
+// The scores stored on the appraisal: Part C, Part D and the overall.
+function calcAppraisalScores(data: AppraisalFormData) {
+  const competenceScore = calcSectionScore(data.competenceAssessments);
+  const behavioralScore = calcSectionScore(data.behaviouralAssessments);
+
+  // Average only sections that have a real rating (> 0). Hidden, unrated,
+  // or zero-scoring sections are excluded from the overall.
+  const scores = [competenceScore, behavioralScore]
+    .map(s => (s !== null ? parseFloat(s) : 0))
+    .filter(score => score > 0);
+
+  const overallScore = scores.length > 0
+    ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
+    : null;
+
+  return { competenceScore, behavioralScore, overallScore };
+}
+
+// What a Stage 1 submit saves: Part A and Part B.
+function buildStage1Data(formData: AppraisalFormData) {
+  return {
+    seafarersName: formData.seafarersName,
+    seafarersRank: formData.seafarersRank,
+    nationality: formData.nationality ?? "",
+    vessel: formData.vessel,
+    signOn: formData.signOn ?? "",
+    appraisalType: formData.appraisalType,
+    appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
+    appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
+    personalityIndexCategory: formData.personalityIndexCategory ?? "",
+    primaryAppraiser: formData.primaryAppraiser ?? "",
+    trainings: formData.trainings,
+    targets: formData.targets,
+  };
+}
+
 // Task #500: status union widened with `stage2_submitted` / `stage3_submitted`
 // synonyms recognized by the server; `isLockForm` is the snapshotted lock-form
 // flag carried on the appraisal record after Stage 2 submit.
@@ -1037,6 +1094,29 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   }, [formConfig, form, appraisalUuid]);
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
+  // The body that creates this appraisal from the whole form: sent to POST /
+  // by a save, or with the stage submit of a form that was never saved (the
+  // create then commits with the stage, APD-30).
+  const buildCreateBody = (data: AppraisalFormData, status: string) => {
+    const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(data);
+    return {
+      crewMemberId: crewMember?.id,
+      appraisalUuid: newAppraisalUuid,
+      formId: 1, // Default form ID
+      appraisalType: data.appraisalType,
+      appraisalDate: new Date().toISOString().split('T')[0],
+      // Includes Part G's rank-config defaults. A create never overwrites
+      // existing rows (a repeat create writes nothing), so ship users may send it.
+      appraisalData: data, // Send as object - backend handles JSON.stringify
+      competenceRating: competenceScore,
+      behavioralRating: behavioralScore,
+      overallRating: overallScore,
+      submittedBy: "Current User", // TODO: Replace with actual user
+      status,
+      auditUserUuid: getCrewUserId(),
+    };
+  };
+
   const saveAppraisalMutation = useMutation({
     mutationFn: async (payload: { data: AppraisalFormData; status: string; existingUuid?: string | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
       // Use PUT for existing appraisals, POST for new ones
@@ -1048,65 +1128,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         throw new Error('Crew member ID is required to save appraisal');
       }
 
-      // Helper function to calculate competence score from assessments
-      const calcCompetenceScore = (assessments: any[]) => {
-        let totalScore = 0;
-        let totalWeight = 0;
-        assessments?.forEach(assessment => {
-          if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
-            totalScore += (rating * assessment.weight) / 100;
-            totalWeight += assessment.weight;
-          }
-        });
-        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
-      };
-
-      // Helper function to calculate behavioral score from assessments
-      const calcBehavioralScore = (assessments: any[]) => {
-        let totalScore = 0;
-        let totalWeight = 0;
-        assessments?.forEach(assessment => {
-          if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
-            totalScore += (rating * assessment.weight) / 100;
-            totalWeight += assessment.weight;
-          }
-        });
-        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
-      };
-
-      // Calculate ratings from form data
-      const competenceScore = calcCompetenceScore(payload.data.competenceAssessments);
-      const behavioralScore = calcBehavioralScore(payload.data.behaviouralAssessments);
-
-      // Average only sections that have a real rating (> 0). Hidden, unrated,
-      // or zero-scoring sections are excluded from the overall.
-      const scores = [competenceScore, behavioralScore]
-        .map(s => (s !== null ? parseFloat(s) : 0))
-        .filter(score => score > 0);
-
-      const overallScore = scores.length > 0
-        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
-        : null;
-
-      const appraisalDate = new Date().toISOString().split('T')[0];
-
       if (idToUse) {
+        const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(payload.data);
+        const appraisalDate = new Date().toISOString().split('T')[0];
         // Existing appraisal: send only what changed since the form loaded it.
         const baseline = baselineRef.current;
         if (!baseline) {
@@ -1146,22 +1170,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
 
       // New appraisal: create it with the whole form.
-      const appraisalPayload = {
-        crewMemberId: crewMember?.id,
-        appraisalUuid: newAppraisalUuid,
-        formId: 1, // Default form ID
-        appraisalType: payload.data.appraisalType,
-        appraisalDate,
-        // Includes Part G's rank-config defaults. A create never overwrites
-        // existing rows (a repeat create writes nothing), so ship users may send it.
-        appraisalData: payload.data, // Send as object - backend handles JSON.stringify
-        competenceRating: competenceScore,
-        behavioralRating: behavioralScore,
-        overallRating: overallScore,
-        submittedBy: "Current User", // TODO: Replace with actual user
-        status: payload.status,
-        auditUserUuid: getCrewUserId(),
-      };
+      const appraisalPayload = buildCreateBody(payload.data, payload.status);
 
       const url = '/api/v2/appraisals';
       console.log(`📤 POST ${url}:`, appraisalPayload);
@@ -1209,28 +1218,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Stage 1 mutation (Parts A & B) - accepts synced form data to ensure comment persistence
+  // Stage 1 mutation (Parts A & B) - accepts synced form data to ensure comment persistence.
+  // `create` is sent for a form that was never saved: the server creates the
+  // appraisal in the same transaction as the stage (APD-30).
   const stage1Mutation = useMutation({
-    mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
-      const stageData = {
-        seafarersName: formData.seafarersName,
-        seafarersRank: formData.seafarersRank,
-        nationality: formData.nationality ?? "",
-        vessel: formData.vessel,
-        signOn: formData.signOn ?? "",
-        appraisalType: formData.appraisalType,
-        appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
-        appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
-        personalityIndexCategory: formData.personalityIndexCategory ?? "",
-        primaryAppraiser: formData.primaryAppraiser ?? "",
-        trainings: formData.trainings,
-        targets: formData.targets,
-      };
-      
+    mutationFn: async ({ uuid, formData, create }: { uuid: string; formData: AppraisalFormData; create?: ReturnType<typeof buildCreateBody> }) => {
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage1`, {
-        data: stageData,
+        data: buildStage1Data(formData),
         submittedBy: 'Current User',
         auditUserUuid: getCrewUserId(),
+        create,
       });
       return response.json();
     },
@@ -1239,7 +1236,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         setAppraisalStatus('preliminary');
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      if (appraisalUuid) queryClient.setQueryData([`/api/v2/appraisals/${appraisalUuid}`], responseData);
+      if (responseData?.appraisalUuid) {
+        setAppraisalUuid(responseData.appraisalUuid);
+        queryClient.setQueryData([`/api/v2/appraisals/${responseData.appraisalUuid}`], responseData);
+      }
       toast({ title: 'Stage 1 Submitted', description: 'Appraisal information (Parts A-B) saved successfully.' });
       onClose();
     },
@@ -1248,43 +1248,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
+  // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence.
+  // `create` (a form that was never saved) and `withStage1` (Stage 1 not done,
+  // Part B2 hidden so there is no Stage 1 button) go in the same request, and
+  // the server saves them in the same transaction as Stage 2 (APD-30).
   const stage2Mutation = useMutation({
-    mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
+    mutationFn: async ({ uuid, formData, create, withStage1 }: {
+      uuid: string;
+      formData: AppraisalFormData;
+      create?: ReturnType<typeof buildCreateBody>;
+      withStage1?: boolean;
+    }) => {
       // Calculate scores from current form data so the Crew Appraisals table
       // reflects the Overall score immediately on direct Stage 2 submit
-      // (mirrors logic used by saveAppraisalMutation / Save Draft).
-      const calcScore = (assessments: any[]) => {
-        let totalScore = 0;
-        let totalWeight = 0;
-        assessments?.forEach(assessment => {
-          if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
-            totalScore += (rating * assessment.weight) / 100;
-            totalWeight += assessment.weight;
-          }
-        });
-        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
-      };
-      const competenceScore = calcScore(formData.competenceAssessments);
-      const behavioralScore = calcScore(formData.behaviouralAssessments);
-
-      // Average only sections that have a real rating (> 0). Hidden, unrated,
-      // or zero-scoring sections are excluded from the overall.
-      const scores = [competenceScore, behavioralScore]
-        .map(s => (s !== null ? parseFloat(s) : 0))
-        .filter(score => score > 0);
-
-      const overallScore = scores.length > 0
-        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
-        : null;
+      // (same logic as saveAppraisalMutation / Save Draft).
+      const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(formData);
 
       const stageData = {
         // Task #500: snapshot the current B1 trainings (auto + manual) and
@@ -1309,6 +1287,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         behavioralRating: behavioralScore,
         overallRating: overallScore,
         auditUserUuid: getCrewUserId(),
+        create,
+        stage1: withStage1 ? buildStage1Data(formData) : undefined,
       });
       return response.json();
     },
@@ -1316,7 +1296,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Stage 2 now sets status to `pending_review` (awaiting office review)
       setAppraisalStatus('pending_review');
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      if (appraisalUuid) queryClient.setQueryData([`/api/v2/appraisals/${appraisalUuid}`], responseData);
+      if (responseData?.appraisalUuid) {
+        setAppraisalUuid(responseData.appraisalUuid);
+        queryClient.setQueryData([`/api/v2/appraisals/${responseData.appraisalUuid}`], responseData);
+      }
       toast({ title: 'Submitted for Review', description: 'Performance assessment (Parts C-F) submitted. Reviewers have been notified.' });
       onClose();
     },
@@ -1596,65 +1579,22 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return;
     }
     
-    let idToUse = appraisalUuid;
-    
-    // If no appraisalUuid, save as draft first
-    if (!idToUse) {
-      try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true });
-        if (result && result.appraisalUuid) {
-          idToUse = result.appraisalUuid;
-          setAppraisalUuid(result.appraisalUuid);
-        } else {
-          toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
-          return;
-        }
-      } catch (error) {
-        toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
-        return;
-      }
-    }
-    
-    // Ensure idToUse is non-null before calling mutations
-    if (idToUse === null) {
-      toast({ title: 'Error', description: 'Appraisal ID is required to submit stage.', variant: 'destructive' });
-      return;
-    }
-    
-    // Trigger the appropriate stage mutation with guaranteed non-null ID and synced form data
+    // One click is one request, saved by the server in one transaction
+    // (APD-30). A form that was never saved sends its create body with the
+    // stage, so a failed submit leaves nothing behind; a retry re-sends the
+    // same new id.
+    const uuid = appraisalUuid ?? newAppraisalUuid;
+    const create = appraisalUuid ? undefined : buildCreateBody(formData, 'draft');
+
     if (stage === 'stage1') {
-      stage1Mutation.mutate({ uuid: idToUse, formData });
+      stage1Mutation.mutate({ uuid, formData, create });
     } else if (stage === 'stage2') {
-      if (!isPostStage1 && !isSectionVisible('partB2')) {
-        try {
-          await apiRequest('POST', `/api/v2/appraisals/${idToUse}/submit-stage1`, {
-            data: {
-              seafarersName: formData.seafarersName,
-              seafarersRank: formData.seafarersRank,
-              nationality: formData.nationality ?? "",
-              vessel: formData.vessel,
-              signOn: formData.signOn ?? "",
-              appraisalType: formData.appraisalType,
-              appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
-              appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
-              personalityIndexCategory: formData.personalityIndexCategory ?? "",
-              primaryAppraiser: formData.primaryAppraiser ?? "",
-              trainings: formData.trainings,
-              targets: formData.targets,
-            },
-            submittedBy: 'Current User',
-            auditUserUuid: getCrewUserId(),
-          });
-          setAppraisalStatus('preliminary');
-          queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-        } catch (e: any) {
-          toast({ title: 'Error', description: e.message || 'Failed to submit. Please try again.', variant: 'destructive' });
-          return;
-        }
-      }
-      stage2Mutation.mutate({ uuid: idToUse, formData });
+      // With Part B2 hidden there is no Stage 1 button, so Stage 2 submits
+      // Stage 1 too when it is not done yet.
+      const withStage1 = !isPostStage1 && !isSectionVisible('partB2');
+      stage2Mutation.mutate({ uuid, formData, create, withStage1 });
     } else if (stage === 'stage3') {
-      stage3Mutation.mutate({ uuid: idToUse, formData });
+      stage3Mutation.mutate({ uuid, formData });
     }
   };
 
