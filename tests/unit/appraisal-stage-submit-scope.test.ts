@@ -37,6 +37,9 @@ vi.mock("@server/v2/appraisals/repositories", () => {
 vi.mock("@server/v2/crew-pool/repositories", () => ({ CrewMembersRepository: vi.fn(function () { return {}; }) }));
 vi.mock("@server/v2/admin/services", () => ({ formsService: {} }));
 vi.mock("@server/v2/shared/emailService", () => ({ sendEmail: vi.fn(), logEmailEvent: vi.fn() }));
+vi.mock("@server/v2/appraisals/utils/requestActor", () => ({
+  resolveAppraisalActor: vi.fn(async () => ({ name: "Test Officer", userUuid: "user-1" })),
+}));
 
 import { AppraisalResultsService } from "@server/v2/appraisals/services/appraisalResultsService";
 import { AppraisalResultsController } from "@server/v2/appraisals/controllers/appraisalResultsController";
@@ -69,7 +72,7 @@ function fakeRes() {
 // An office user (no `userType: "Ship"`), so Stage 3 is allowed.
 function submit(stage: AppraisalStage, data: Record<string, unknown>) {
   const controller = new AppraisalResultsController();
-  const req: any = { params: { appraisalUuid: UUID }, body: { data, submittedBy: "Master" } };
+  const req: any = { params: { appraisalUuid: UUID }, body: { data }, user: { id: 24, userType: "Office" } };
   const res = fakeRes();
   const handler = { stage1: controller.submitStage1, stage2: controller.submitStage2, stage3: controller.submitStage3 }[stage];
   return handler.call(controller, req, res).then(() => res);

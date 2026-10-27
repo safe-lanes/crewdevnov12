@@ -6,7 +6,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getCrewUserId } from "@/lib/crewUser";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, autoTrainingRowUuid, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
@@ -1111,9 +1110,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       competenceRating: competenceScore,
       behavioralRating: behavioralScore,
       overallRating: overallScore,
-      submittedBy: "Current User", // TODO: Replace with actual user
+      // Who saved it comes from the login on the server (APD-31).
       status,
-      auditUserUuid: getCrewUserId(),
     };
   };
 
@@ -1163,7 +1161,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
         const url = `/api/v2/appraisals/${idToUse}`;
         console.log(`📤 PUT ${url}:`, changes);
-        const response = await apiRequest('PUT', url, { changes, auditUserUuid: getCrewUserId() });
+        const response = await apiRequest('PUT', url, { changes });
         const result = await response.json();
         console.log('✅ Appraisal saved successfully:', result);
         return result;
@@ -1225,8 +1223,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     mutationFn: async ({ uuid, formData, create }: { uuid: string; formData: AppraisalFormData; create?: ReturnType<typeof buildCreateBody> }) => {
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage1`, {
         data: buildStage1Data(formData),
-        submittedBy: 'Current User',
-        auditUserUuid: getCrewUserId(),
         create,
       });
       return response.json();
@@ -1282,11 +1278,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage2`, {
         data: stageData,
-        submittedBy: 'Current User',
         competenceRating: competenceScore,
         behavioralRating: behavioralScore,
         overallRating: overallScore,
-        auditUserUuid: getCrewUserId(),
         create,
         stage1: withStage1 ? buildStage1Data(formData) : undefined,
       });
@@ -1323,8 +1317,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage3`, {
         data: stageData,
-        submittedBy: 'Current User',
-        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },

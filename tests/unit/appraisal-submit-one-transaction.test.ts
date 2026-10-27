@@ -43,6 +43,9 @@ vi.mock("@server/v2/appraisals/repositories", () => {
 vi.mock("@server/v2/crew-pool/repositories", () => ({ CrewMembersRepository: vi.fn(function () { return crewRepo; }) }));
 vi.mock("@server/v2/admin/services", () => ({ formsService }));
 vi.mock("@server/v2/shared/emailService", () => ({ sendEmail, logEmailEvent: vi.fn() }));
+vi.mock("@server/v2/appraisals/utils/requestActor", () => ({
+  resolveAppraisalActor: vi.fn(async () => ({ name: "Test Officer", userUuid: "user-1" })),
+}));
 
 import { AppraisalResultsService, AppraisalIdConflictError, CrewReferenceError } from "@server/v2/appraisals/services/appraisalResultsService";
 import { AppraisalResultsController } from "@server/v2/appraisals/controllers/appraisalResultsController";
@@ -68,7 +71,6 @@ const CREATE = {
   appraisalType: "Annual",
   appraisalDate: "2026-10-27",
   appraisalData: { ...STAGE1, competenceAssessments: [{ uuid: "c-row" }] },
-  submittedBy: "Current User",
   status: "draft",
 };
 
@@ -248,7 +250,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
 describe("a stage submit request carries `create` and `stage1` to the service (controller)", () => {
   function submit(stage: "stage1" | "stage2", body: Record<string, unknown>) {
     const controller = new AppraisalResultsController();
-    const req: any = { params: { appraisalUuid: UUID }, body };
+    const req: any = { params: { appraisalUuid: UUID }, body, user: { id: 24, userType: "Office" } };
     const res = fakeRes();
     const handler = stage === "stage1" ? controller.submitStage1 : controller.submitStage2;
     return handler.call(controller, req, res).then(() => res);
@@ -257,7 +259,7 @@ describe("a stage submit request carries `create` and `stage1` to the service (c
   it("Stage 1 passes `create` through whole", async () => {
     const submitStage = vi.spyOn(AppraisalResultsService.prototype, "submitStage").mockResolvedValue({ appraisalUuid: UUID } as any);
 
-    const res = await submit("stage1", { data: STAGE1, submittedBy: "Master", create: CREATE });
+    const res = await submit("stage1", { data: STAGE1, create: CREATE });
 
     expect(res.status).not.toHaveBeenCalled();
     expect(submitStage.mock.calls[0][5]).toEqual({ create: CREATE });
@@ -266,7 +268,7 @@ describe("a stage submit request carries `create` and `stage1` to the service (c
   it("Stage 2 passes `create` and `stage1` through whole", async () => {
     const submitStage = vi.spyOn(AppraisalResultsService.prototype, "submitStage").mockResolvedValue({ appraisalUuid: UUID } as any);
 
-    const res = await submit("stage2", { data: STAGE2, submittedBy: "Master", create: CREATE, stage1: STAGE1 });
+    const res = await submit("stage2", { data: STAGE2, create: CREATE, stage1: STAGE1 });
 
     expect(res.status).not.toHaveBeenCalled();
     expect(submitStage.mock.calls[0][5]).toEqual({ create: CREATE, stage1: STAGE1 });

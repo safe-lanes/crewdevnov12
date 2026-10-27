@@ -653,7 +653,8 @@ export class AppraisalResultsService {
     let appraisal: any;
     let newAppraisal: PreparedCreate | null = null;
     if (options?.create) {
-      const createData = applyAuditUser({ auditUserUuid, ...options.create }, true);
+      // The actor of the submit wins over any the create body carries (APD-31).
+      const createData = applyAuditUser({ ...options.create, submittedBy, auditUserUuid }, true);
       // Found: a repeat of a submit that already created it (a retry after a
       // lost response), so it is not created again.
       appraisal = await this.findExistingCreate(appraisalUuid, createData.crewMemberId);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppraisalResultsService, FormVersionPinError, CrewReferenceError, AppraisalIdConflictError } from "../services";
 import { AppraisalRowOwnershipError } from "../repositories/childRowSync";
 import { getActor } from "../../accounts/controllers/_auth";
+import { resolveAppraisalActor } from "../utils/requestActor";
 import {
   HEADER_FIELDS,
   PART_G_SECTIONS,
@@ -15,6 +16,10 @@ import {
 const service = new AppraisalResultsService();
 
 const PART_G_SHIP_ERROR = "Part G is for office use only. Ship users cannot change it.";
+
+// Every write records who made it, taken from the login (APD-31). A write
+// whose user cannot be identified is refused rather than saved as "Unknown".
+const SIGN_IN_ERROR = "Your sign-in could not be verified. Reload the page and try again.";
 
 const rowUuidSchema = z.string().min(1).max(64);
 
@@ -68,7 +73,6 @@ const createBodySchema = z.object({
 
 const stage1SubmissionSchema = z.object({
   data: stage1DataSchema,
-  submittedBy: z.string().optional(),
   create: createBodySchema.optional(),
 });
 
@@ -81,7 +85,6 @@ const stage2SubmissionSchema = z.object({
       designation: z.string().optional(),
     })).optional(),
   }),
-  submittedBy: z.string().optional(),
   create: createBodySchema.optional(),
   // Stage 1, submitted in the same transaction when it is not done yet: the
   // form has no Stage 1 button when Part B2 is hidden.
@@ -93,7 +96,6 @@ const stage2SubmissionSchema = z.object({
 
 const stage3SubmissionSchema = z.object({
   data: z.object(stageSectionsShape("stage3")),
-  submittedBy: z.string().optional(),
 });
 
 // Appraisals are addressed by appraisal_uuid, never the serial id: serial ids
@@ -168,8 +170,13 @@ export class AppraisalResultsController {
       if (requestedUuid != null && !appraisalUuidSchema.safeParse(requestedUuid).success) {
         return res.status(400).json({ error: "Invalid appraisal id" });
       }
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const { appraisal, created } = await service.create({ ...req.body, auditUserUuid });
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
+      const { appraisal, created } = await service.create({
+        ...req.body,
+        submittedBy: actor.name,
+        auditUserUuid: actor.userUuid,
+      });
       res.status(created ? 201 : 200).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
@@ -187,6 +194,8 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
       // A browser still running the old page sends the whole form with rows
       // keyed by position; saving that would rewrite every row.
       if (req.body?.changes === undefined && req.body?.appraisalData !== undefined) {
@@ -200,8 +209,7 @@ export class AppraisalResultsController {
       if (getActor(req).vesselUser && PART_G_SECTIONS.some((k) => changes.sections?.[k])) {
         return res.status(403).json({ error: PART_G_SHIP_ERROR });
       }
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.update(appraisalUuid, { changes, auditUserUuid });
+      const appraisal = await service.update(appraisalUuid, { changes, auditUserUuid: actor.userUuid });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -234,13 +242,14 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
       const validationResult = stage1SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, create } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown", undefined, { create });
+      const { data, create } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid: actor.userUuid }, actor.name, undefined, { create });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -261,15 +270,16 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
       const validationResult = stage2SubmissionSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, competenceRating, behavioralRating, overallRating, create, stage1 } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const { data, competenceRating, behavioralRating, overallRating, create, stage1 } = validationResult.data;
       // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
       // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid }, submittedBy || "Unknown", {
+      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid: actor.userUuid }, actor.name, {
         competenceRating,
         behavioralRating,
         overallRating,
@@ -294,6 +304,8 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
       // Stage 3 only writes Part G, which is office-owned.
       if (getActor(req).vesselUser) {
         return res.status(403).json({ error: PART_G_SHIP_ERROR });
@@ -302,9 +314,8 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(appraisalUuid, "stage3", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const { data } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage3", { ...data, auditUserUuid: actor.userUuid }, actor.name);
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
