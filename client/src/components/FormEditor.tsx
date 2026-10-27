@@ -1622,23 +1622,42 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
     try {
       const label = editingEffectiveness.trim();
-      parseEffectivenessScore(label);
+      const score = parseEffectivenessScore(label);
+      const duplicate = effectivenessOptions.some((option, index) =>
+        index !== editingEffectivenessIndex &&
+        parseEffectivenessScore(option.label) === score
+      );
+      if (duplicate) {
+        throw new Error(
+          `Rating ${score} already exists. Please use a different rating number.`
+        );
+      }
       const next = effectivenessOptions.map(option => ({ ...option }));
       if (editingEffectivenessIndex === -1) {
-        next.push({ id: `effectiveness-${crypto.randomUUID()}`, label });
+        next.push({
+          id: `effectiveness-${crypto.randomUUID()}`,
+          label,
+        });
       } else {
         const existing = next[editingEffectivenessIndex];
-        if (!existing) throw new Error("The selected option no longer exists.");
+        if (!existing) {
+          throw new Error("The selected option no longer exists.");
+        }
         next[editingEffectivenessIndex] = { ...existing, label };
       }
-      setEffectivenessOptions(validateEffectivenessOptions(next));
+      const validatedOptions = validateEffectivenessOptions(next);
+      validatedOptions.sort((a, b) =>
+        parseEffectivenessScore(b.label) - parseEffectivenessScore(a.label)
+      );
+      setEffectivenessOptions(validatedOptions);
       setEffectivenessConfigured(true);
       setEditingEffectiveness("");
       setEditingEffectivenessIndex(-1);
     } catch (error) {
       toast({
         title: "Invalid Effectiveness Rating",
-        description: error instanceof Error ? error.message : "Please check the rating.",
+        description:
+          error instanceof Error ? error.message : "Please check the rating.",
         variant: "destructive",
       });
     }
