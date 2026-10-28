@@ -26,6 +26,9 @@ export interface ChildFieldConfig {
   from: readonly string[];
   // Returns the value to store. `undefined` means "leave the column as it is".
   normalize: (row: Record<string, any>) => unknown;
+  // Once the column holds a value, a write may not change or clear it
+  // (AppraisalRowFieldLockedError). An empty column can still be filled.
+  setOnce?: boolean;
 }
 
 export interface ChildTableConfig {
@@ -48,12 +51,24 @@ export class AppraisalRowOwnershipError extends Error {
   }
 }
 
+// A write tries to change or clear a setOnce column of an existing row.
+export class AppraisalRowFieldLockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppraisalRowFieldLockedError";
+  }
+}
+
 const isUuid = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+
+function isSent(f: ChildFieldConfig, row: Record<string, any>): boolean {
+  return f.from.some((k) => Object.prototype.hasOwnProperty.call(row, k) && row[k] !== undefined);
+}
 
 function pickValues(fields: readonly ChildFieldConfig[], row: Record<string, any>): Record<string, unknown> {
   const values: Record<string, unknown> = {};
   for (const f of fields) {
-    if (!f.from.some((k) => Object.prototype.hasOwnProperty.call(row, k) && row[k] !== undefined)) continue;
+    if (!isSent(f, row)) continue;
     const value = f.normalize(row);
     if (value !== undefined) values[f.column] = value;
   }
@@ -100,6 +115,22 @@ export async function syncChildRows(
       .where(inArray(uuidColumn, unknown));
     if (foreign.length > 0) {
       throw new AppraisalRowOwnershipError(`Row ${foreign[0].uuid} does not belong to appraisal ${appraisalUuid}.`);
+    }
+  }
+
+  // Checked before any write, so a refused request changes nothing.
+  const setOnceFields = cfg.fields.filter((f) => f.setOnce);
+  for (const row of input.rows) {
+    const current = isUuid(row?.uuid) ? byUuid.get(row.uuid) : undefined;
+    if (!current || current.isDeleted) continue;
+    for (const f of setOnceFields) {
+      if (!isSent(f, row) || sameValue(current[f.column], null)) continue;
+      const value = f.normalize(row);
+      if (value !== undefined && !sameValue(current[f.column], value)) {
+        throw new AppraisalRowFieldLockedError(
+          `Row ${row.uuid} of appraisal ${appraisalUuid}: ${f.column} is already set and can't be changed.`,
+        );
+      }
     }
   }
 

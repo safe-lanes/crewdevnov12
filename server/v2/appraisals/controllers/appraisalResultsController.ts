@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppraisalResultsService, FormVersionPinError, CrewReferenceError, AppraisalIdConflictError } from "../services";
-import { AppraisalRowOwnershipError } from "../repositories/childRowSync";
+import { AppraisalRowOwnershipError, AppraisalRowFieldLockedError } from "../repositories/childRowSync";
 import { getActor } from "../../accounts/controllers/_auth";
 import { resolveAppraisalActor } from "../utils/requestActor";
 import {
@@ -180,7 +180,7 @@ export class AppraisalResultsController {
       res.status(created ? 201 : 200).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -216,7 +216,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to update appraisal:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to update appraisal" });
@@ -258,7 +258,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 1 submission error:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -292,7 +292,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 2 submission error:", error);
-      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -324,7 +324,7 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 3 submission error:", error);
-      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError) {
+      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 3" });

@@ -15,7 +15,8 @@ const ROWS: ChildTableConfig = {
     textField("name"),
     textField("position"),
     textField("feedback"),
-    textField("userUuid"),
+    // email_sent_at says this user was emailed, so the row's user can't change (APD-40).
+    { ...textField("userUuid"), setOnce: true },
     { column: "isAssigned", from: ["isAssigned"], normalize: (r) => r.isAssigned ?? false },
   ],
 };

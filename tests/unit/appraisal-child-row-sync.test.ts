@@ -7,6 +7,7 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 import {
+  AppraisalRowFieldLockedError,
   AppraisalRowOwnershipError,
   syncChildRows,
   textField,
@@ -148,5 +149,79 @@ describe("syncChildRows (APD-16 / APD-36)", () => {
       expect.objectContaining({ kind: "update", rowId: 3, values: expect.objectContaining({ comment: "stage 3 edit" }) }),
     ]);
     expect(Object.keys(writes[0].values).sort()).toEqual(["comment", "updatedAt", "updatedByUuid"]);
+  });
+});
+
+describe("syncChildRows setOnce (APD-40)", () => {
+  const lockedCfg: ChildTableConfig = {
+    table,
+    uuidKey: "trainingUuid",
+    fields: [textField("comment"), { ...textField("userUuid"), setOnce: true }],
+  };
+  let stored: any[];
+  beforeEach(() => {
+    stored = [row(1, "u1", { userUuid: "user-a" }), row(2, "u2", { userUuid: null })];
+  });
+
+  it("patch: refuses to change the stored user and writes nothing", async () => {
+    const { executor, writes } = fakeExecutor(stored);
+    await expect(
+      syncChildRows(executor, lockedCfg, APPRAISAL, {
+        rows: [{ uuid: "u2", comment: "fine" }, { uuid: "u1", userUuid: "user-c" }],
+      }, "patch", "me"),
+    ).rejects.toBeInstanceOf(AppraisalRowFieldLockedError);
+    expect(writes).toEqual([]);
+  });
+
+  it("patch: refuses to clear the stored user", async () => {
+    for (const userUuid of ["", null]) {
+      const { executor } = fakeExecutor(stored);
+      await expect(
+        syncChildRows(executor, lockedCfg, APPRAISAL, { rows: [{ uuid: "u1", userUuid }] }, "patch", "me"),
+      ).rejects.toBeInstanceOf(AppraisalRowFieldLockedError);
+    }
+  });
+
+  it("patch: the same user plus other changes is accepted", async () => {
+    const { executor, writes } = fakeExecutor(stored);
+    await syncChildRows(executor, lockedCfg, APPRAISAL, { rows: [{ uuid: "u1", userUuid: "user-a", comment: "ok" }] }, "patch", "me");
+    expect(writes).toHaveLength(1);
+    expect(Object.keys(writes[0].values).sort()).toEqual(["comment", "updatedAt", "updatedByUuid"]);
+  });
+
+  it("patch: a row with no user can be given one", async () => {
+    const { executor, writes } = fakeExecutor(stored);
+    await syncChildRows(executor, lockedCfg, APPRAISAL, { rows: [{ uuid: "u2", userUuid: "user-b" }] }, "patch", "me");
+    expect(writes).toEqual([
+      expect.objectContaining({ kind: "update", rowId: 2, values: expect.objectContaining({ userUuid: "user-b" }) }),
+    ]);
+  });
+
+  it("replace: full rows with unchanged users are accepted; a changed user is refused", async () => {
+    const same = fakeExecutor(stored);
+    await syncChildRows(same.executor, lockedCfg, APPRAISAL, {
+      rows: [{ uuid: "u1", userUuid: "user-a", comment: "" }, { uuid: "u2", userUuid: "", comment: "" }],
+    }, "replace", "me");
+    expect(same.writes).toEqual([]);
+
+    const changed = fakeExecutor(stored);
+    await expect(
+      syncChildRows(changed.executor, lockedCfg, APPRAISAL, {
+        rows: [{ uuid: "u1", userUuid: "user-c", comment: "" }, { uuid: "u2", userUuid: "", comment: "" }],
+      }, "replace", "me"),
+    ).rejects.toBeInstanceOf(AppraisalRowFieldLockedError);
+    expect(changed.writes).toEqual([]);
+  });
+
+  it("a new row and a row deleted elsewhere are not checked", async () => {
+    stored[0].isDeleted = true;
+    const { executor, writes } = fakeExecutor(stored);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await syncChildRows(executor, lockedCfg, APPRAISAL, {
+      rows: [{ uuid: "u1", userUuid: "user-c" }, { uuid: "u-new", userUuid: "user-d" }],
+    }, "patch", "me");
+    expect(writes).toEqual([
+      expect.objectContaining({ kind: "insert", values: expect.objectContaining({ trainingUuid: "u-new", userUuid: "user-d" }) }),
+    ]);
   });
 });
