@@ -14,7 +14,8 @@ import { randomUUID } from "crypto";
 import { mint, targets } from "./trialClient";
 
 type Call = { tool: string; args?: Record<string, unknown>; result?: Record<string, unknown> };
-type Turn = { q: string; calls?: Call[]; noDataTool?: boolean; answerAll?: string[]; answerNone?: string[] };
+// round 3: argsAbsent = filter keys that must NOT appear in the args Crewing received (a silently added filter fails the turn)
+type Turn = { q: string; calls?: Call[]; noDataTool?: boolean; answerAll?: string[]; answerNone?: string[]; argsAbsent?: string[] };
 type Case = { id: string; cat: string; heldOut?: boolean; instance?: "single" | "mt"; who?: Record<string, unknown>; turns: Turn[] };
 
 const ASSISTANT = process.env.TRIAL_ASSISTANT || "http://127.0.0.1:18062";
@@ -70,16 +71,22 @@ function captureCount(): number | null {
       const started = Date.now();
       let resp: Record<string, unknown> = {};
       let status = 0;
-      try {
-        const r = await fetch(`${ASSISTANT}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-assistant-identity": token },
-          body: JSON.stringify({ message: turn.q, context: { module: "crewing" }, conversationHistory: history, conversationId }),
-        });
-        status = r.status;
-        resp = (await r.json().catch(() => ({}))) as Record<string, unknown>;
-      } catch (e) {
-        resp = { error: String(e) };
+      let retries = 0;
+      // round 3: one retry on a TRANSPORT failure only (the SSH tunnel drops a connection now and then; no request
+      // reached the assistant, so nothing is re-asked) — never on an answered request
+      for (let attempt = 0; attempt < 2 && status === 0; attempt++) {
+        if (attempt) { retries++; await new Promise((r) => setTimeout(r, 2000)); }
+        try {
+          const r = await fetch(`${ASSISTANT}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-assistant-identity": token },
+            body: JSON.stringify({ message: turn.q, context: { module: "crewing" }, conversationHistory: history, conversationId }),
+          });
+          status = r.status;
+          resp = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+        } catch (e) {
+          resp = { error: String(e) };
+        }
       }
       const latencyMs = Date.now() - started;
       await new Promise((r) => setTimeout(r, 300));
@@ -100,16 +107,20 @@ function captureCount(): number | null {
       const missing = (turn.answerAll ?? []).filter((re) => !new RegExp(re, "i").test(answer));
       const forbidden = (turn.answerNone ?? []).filter((re) => new RegExp(re, "i").test(answer));
       const answerOk = missing.length === 0 && forbidden.length === 0;
-      const pass = answerOk && queryOk !== false && dataOk !== false && status === 200;
+      // round 3: an unrequested filter in ANY successful call Crewing received fails the turn
+      const unrequested = (turn.argsAbsent ?? []).filter((k) =>
+        crewingCalls.some((e) => e.ok !== false && get(e.args, k) !== undefined && !(Array.isArray(get(e.args, k)) && (get(e.args, k) as unknown[]).length === 0)));
+      const pass = answerOk && queryOk !== false && dataOk !== false && status === 200 && unrequested.length === 0;
       out.push({
         id: c.id, turn: i + 1, cat: c.cat, heldOut: !!c.heldOut, instance: inst, q: turn.q, status, pass, queryOk, dataOk, answerOk,
-        missing, forbidden, latencyMs, modelCalls: capBefore !== null && capAfter !== null ? capAfter - capBefore : null,
+        missing, forbidden, unrequested, latencyMs, transportRetries: retries, modelCalls: capBefore !== null && capAfter !== null ? capAfter - capBefore : null,
         usage: resp.usage ?? null, toolsUsed: resp.toolsUsed ?? [], partial: resp.partial ?? null, gate: resp.gate ?? null,
         calls: crewingCalls.map((e) => ({ tool: e.tool, args: e.args, ok: e.ok, code: e.code, total: e.total, totals: e.totals, returned: e.returned, nextOffset: e.nextOffset, excluded: e.excluded, ms: e.ms })),
         answer,
       });
       console.log(`${pass ? "PASS" : "FAIL"} ${c.id}.${i + 1}${c.heldOut ? " [H]" : ""} q=${queryOk} d=${dataOk} a=${answerOk} ${latencyMs}ms` +
-        (missing.length ? ` missing=${JSON.stringify(missing)}` : "") + (forbidden.length ? ` forbidden=${JSON.stringify(forbidden)}` : ""));
+        (missing.length ? ` missing=${JSON.stringify(missing)}` : "") + (forbidden.length ? ` forbidden=${JSON.stringify(forbidden)}` : "") +
+        (unrequested.length ? ` unrequested=${JSON.stringify(unrequested)}` : ""));
       history.push({ role: "user", content: turn.q }, { role: "assistant", content: answer });
     }
   }
