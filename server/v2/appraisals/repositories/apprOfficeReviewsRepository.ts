@@ -8,7 +8,10 @@ import { syncChildRows, textField, type ChildTableConfig } from "./childRowSync"
 // A transaction (tx) or the default connection.
 type Executor = any;
 
-const ROWS: ChildTableConfig = {
+// What a client may write. is_assigned is not in it: only Stage 2 sets it, from
+// the reviewers list (APD-41). A sent isAssigned is ignored, and a new row gets
+// the column default, false.
+const CLIENT_ROWS: ChildTableConfig = {
   table: apprOfficeReviewsV2,
   uuidKey: "officeReviewUuid",
   fields: [
@@ -17,6 +20,14 @@ const ROWS: ChildTableConfig = {
     textField("feedback"),
     // email_sent_at says this user was emailed, so the row's user can't change (APD-40).
     { ...textField("userUuid"), setOnce: true },
+  ],
+};
+
+// Stage 2's own writes: the client fields plus is_assigned.
+const ASSIGN_ROWS: ChildTableConfig = {
+  ...CLIENT_ROWS,
+  fields: [
+    ...CLIENT_ROWS.fields,
     { column: "isAssigned", from: ["isAssigned"], normalize: (r) => r.isAssigned ?? false },
   ],
 };
@@ -44,12 +55,12 @@ export class ApprOfficeReviewsRepository {
   // The whole section (create, stage submits): rows matched by uuid, live rows
   // missing from `rows` are soft-deleted, unchanged rows are not written.
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
-    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
+    return syncChildRows(executor, CLIENT_ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
   }
 
   // A save-draft change set: only the given rows and deletions are written.
   async applyChanges(appraisalUuid: string, changes: AppraisalSectionChanges, auditUserUuid?: string, executor: Executor = getDb()): Promise<number> {
-    return syncChildRows(executor, ROWS, appraisalUuid, changes, "patch", auditUserUuid);
+    return syncChildRows(executor, CLIENT_ROWS, appraisalUuid, changes, "patch", auditUserUuid);
   }
 
   // Stage 2: gives each assigned reviewer one G1 row. The server does this, not
@@ -90,6 +101,6 @@ export class ApprOfficeReviewsRepository {
     }
 
     if (rows.length === 0) return 0;
-    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "patch", auditUserUuid);
+    return syncChildRows(executor, ASSIGN_ROWS, appraisalUuid, { rows }, "patch", auditUserUuid);
   }
 }

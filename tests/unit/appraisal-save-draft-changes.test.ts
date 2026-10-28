@@ -67,12 +67,24 @@ describe("appraisal save-draft change set (APD-16)", () => {
   it("keeps false and 0 on a new row, which are values, not empty fields", () => {
     const base = serverCopy();
     const current = formCopy(base);
-    current.sections.officeReviews!.push({ id: "n", uuid: "g1-new", name: "Manual", position: "", feedback: "", userUuid: "user-m", isAssigned: false });
+    current.sections.trainingNeeds = [{ id: "n", uuid: "tn-new", training: "ECDIS", comment: "", addedFromDB: false }];
     current.sections.competenceAssessments!.push({ id: "n", uuid: "c-new", assessmentCriteria: "Safety", weight: 0, effectiveness: "", comment: "" });
 
     expect(buildAppraisalChanges(base, current).sections).toEqual({
-      officeReviews: { rows: [{ uuid: "g1-new", name: "Manual", userUuid: "user-m", isAssigned: false }] },
+      trainingNeeds: { rows: [{ uuid: "tn-new", training: "ECDIS", addedFromDB: false }] },
       competenceAssessments: { rows: [{ uuid: "c-new", assessmentCriteria: "Safety", weight: 0 }] },
+    });
+  });
+
+  // APD-41: only the server sets a G1 row's isAssigned, at Stage 2.
+  it("never sends G1 isAssigned", () => {
+    const base = serverCopy();
+    const current = formCopy(base);
+    current.sections.officeReviews![0].isAssigned = false;
+    current.sections.officeReviews!.push({ id: "n", uuid: "g1-new", name: "Manual", position: "", feedback: "", userUuid: "user-m", isAssigned: true });
+
+    expect(buildAppraisalChanges(base, current).sections).toEqual({
+      officeReviews: { rows: [{ uuid: "g1-new", name: "Manual", userUuid: "user-m" }] },
     });
   });
 

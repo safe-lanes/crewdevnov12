@@ -57,7 +57,8 @@ export const SECTION_FIELDS: Record<AppraisalSectionKey, readonly string[]> = {
   recommendations: ["question", "answer", "comment"],
   appraiserComments: ["name", "rank", "comment"],
   seafarerComments: ["name", "rank", "comment"],
-  officeReviews: ["name", "position", "feedback", "userUuid", "isAssigned"],
+  // isAssigned is set by the server at Stage 2 only (APD-41).
+  officeReviews: ["name", "position", "feedback", "userUuid"],
   trainingFollowups: ["training", "correspondingInDB", "identifiedByUuid", "category", "status", "targetDate", "comment"],
 };
 

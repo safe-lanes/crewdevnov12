@@ -134,6 +134,47 @@ describe("ApprOfficeReviewsRepository.addAssignedReviewers", () => {
   });
 });
 
+// APD-41: a client's isAssigned is ignored; only Stage 2 sets it.
+describe("G1 is_assigned is set only by Stage 2", () => {
+  const repo = new ApprOfficeReviewsRepository();
+
+  it("save draft: a sent isAssigned does not change a hand-added row", async () => {
+    const db = fakeDb(apprOfficeReviewsV2, [g1(1, { userUuid: "user-m", name: "Manual M", isAssigned: false })]);
+    const n = await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "g1-1", isAssigned: true }] }, "me", db.executor);
+
+    expect(n).toBe(0);
+    expect(db.writes).toEqual([]);
+    expect(db.rows[0].isAssigned).toBe(false);
+  });
+
+  it("stage submit: a stale isAssigned does not unassign an assigned row", async () => {
+    const db = fakeDb(apprOfficeReviewsV2, [g1(1, { userUuid: "user-x", name: "Xavier X", isAssigned: true })]);
+    await repo.syncForAppraisal(APPRAISAL, [{ uuid: "g1-1", name: "Xavier X", userUuid: "user-x", isAssigned: false }], "me", db.executor);
+
+    expect(db.writes).toEqual([]);
+    expect(db.rows[0].isAssigned).toBe(true);
+  });
+
+  it("a new row is inserted without isAssigned, so it gets the column default", async () => {
+    const db = fakeDb(apprOfficeReviewsV2, []);
+    await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "g1-new", name: "Manual M", userUuid: "user-m", isAssigned: true }] }, "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert"]);
+    expect(db.writes[0].values).toMatchObject({ name: "Manual M", userUuid: "user-m" });
+    expect(db.writes[0].values).not.toHaveProperty("isAssigned");
+  });
+
+  it("saves the rest of the row and drops only isAssigned", async () => {
+    const db = fakeDb(apprOfficeReviewsV2, [g1(1, { userUuid: "user-x", name: "Xavier X", isAssigned: true })]);
+    await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "g1-1", feedback: "Looks good", isAssigned: false }] }, "me", db.executor);
+
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].values).toMatchObject({ feedback: "Looks good" });
+    expect(db.writes[0].values).not.toHaveProperty("isAssigned");
+    expect(db.rows[0].isAssigned).toBe(true);
+  });
+});
+
 function training(id: number, uuid: string, fields: Record<string, unknown>) {
   return {
     id, trainingUuid: uuid, appraisalUuid: APPRAISAL, training: "Fire fighting", evaluation: null, comment: null,
