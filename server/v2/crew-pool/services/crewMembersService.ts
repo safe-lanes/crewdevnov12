@@ -858,11 +858,16 @@ export const crewMembersService = {
    * List terminated crew (status='Terminated') with personal-details / last
    * vessel data so the Terminated tab can mirror Crew Database parity.
    */
-  async getTerminated(): Promise<any[]> {
+  async getTerminated(reactivated = false): Promise<any[]> {
     const db = getDb();
 
     const rows = await db
       .select({
+        ...(reactivated ? { reactivation: sql<any>`(SELECT json_build_object(
+          'date', r.reactivation_date, 'by', r.reactivated_by_name, 'reason', r.reason
+        ) FROM crew_reactivations r
+          WHERE r.is_deleted = false AND r.crew_uuid = ${crewMembersV2.crewUuid}
+          ORDER BY r.id DESC LIMIT 1)` } : {}),
         crew: crewMembersV2,
         nationality: masterNationalities.nationality,
         crewPool: crewPersonalDetails.crewPool,
@@ -880,7 +885,11 @@ export const crewMembersService = {
       .where(
         and(
           eq(crewMembersV2.isDeleted, false),
-          eq(crewMembersV2.status, "Terminated"),
+          reactivated ? and(
+            isNull(crewMembersV2.archivedAt),
+            sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} NOT LIKE 'Terminated%')`,
+            sql`EXISTS (SELECT 1 FROM crew_reactivations r WHERE r.is_deleted = false AND r.crew_uuid = ${crewMembersV2.crewUuid})`,
+          ) : eq(crewMembersV2.status, "Terminated"),
         ),
       )
       .orderBy(desc(crewMembersV2.updatedAt));
@@ -921,7 +930,8 @@ export const crewMembersService = {
         manningAgent: r.manningAgent,
         lastVessel: last?.vesselName || last?.vesselUuid || null,
         signOffDate: last?.signOffDate || null,
-        status: "Terminated",
+        status: reactivated ? r.crew.status : "Terminated",
+        ...(reactivated ? { reactivation: r.reactivation } : {}),
       };
     });
   },
@@ -1067,6 +1077,12 @@ export const crewMembersService = {
     }
 
     const updateData: any = { ...data, updatedAt: new Date() };
+
+    // Terminated crew can be reactivated only through the authorized action.
+    if (existing.status?.startsWith('Terminated')) {
+      delete updateData.status;
+      delete updateData.isActive;
+    }
 
     if (!options?.allowVesselClear) {
       const protectedFields = [

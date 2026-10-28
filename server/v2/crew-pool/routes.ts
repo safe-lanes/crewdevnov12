@@ -18,7 +18,11 @@ import {
   crewImportController,
 } from "./controllers";
 
+import { crewReactivationController } from './controllers/crewReactivationController';
+
 const router = Router();
+router.get('/crew/reactivated', crewReactivationController.list);
+router.post('/crew/:crewUuid/reactivate', crewReactivationController.reactivate);
 
 // ============================================
 // CREW MEMBERS

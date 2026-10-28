@@ -75,6 +75,20 @@ export const crewTerminations = pgTable("crew_terminations", {
 // ============================================
 // CREW ASSIGNMENTS (1 table)
 // ============================================
+
+// Append-only reactivation events; termination records are not modified.
+export const crewReactivations = pgTable('crew_reactivations', {
+  id: serial('id').primaryKey(),
+  reactivationUuid: text('reactivation_uuid').notNull().unique(),
+  crewUuid: text('crew_uuid').notNull(),
+  reactivationDate: timestamp('reactivation_date', { withTimezone: true }).notNull().defaultNow(),
+  reactivatedByUserId: text('reactivated_by_user_id').notNull(),
+  reactivatedByName: text('reactivated_by_name').notNull(),
+  targetStatus: text('target_status').notNull(),
+  reason: text('reason'),
+  ...auditColumns,
+});
+
 export const crewAssignments = pgTable("crew_assignments", {
   id: serial("id").primaryKey(),
   assignUuid: text("assign_uuid").notNull().unique(),

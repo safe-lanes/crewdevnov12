@@ -920,6 +920,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return canEdit(menuName);
   }, [permissions, canEdit]);
 
+  const terminatedPermission = permissions.find(permission =>
+    permission.menuName?.trim().toLowerCase() === 'terminated'
+  );
+  const canReactivate = !permissionsLoading
+    && terminatedPermission?.canview === true
+    && terminatedPermission?.canedit === true;
+
   const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
 
   const canReadD3Defaults =
@@ -3459,30 +3466,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     );
   };
 
-  // Dashboard render function
-  const renderDashboard = () => {
-    if (dashboardError) {
-      return <div className="text-center py-8 text-red-600">Error loading dashboard data</div>;
-    }
-
-    return (
-      <div className="space-y-6">
-        {/* 3-Column Grid Layout with 25/35/40 proportions (1fr:1.4fr:1.6fr = 25:35:40) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_1.6fr] gap-6 items-stretch">
-          
-          {/* LEFT COLUMN - Status & Compliance */}
-          <div className="flex flex-col gap-6 h-full">
-            {/* Status Card */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
+  const renderStatusCard = () => (
+<div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
-                {canEditSection('A') && !isDashboardLoading && !isTerminatedStatus(statusData?.status) && (
+                {!isDashboardLoading && (isCrewTerminated ? canReactivate : canEditSection('A')) && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
                   onClick={() => {
-                    if (isTerminatedStatus(statusData?.status)) return;
+                    if (isCrewTerminated && !canReactivate) return;
                     setIsStatusEditOpen(true);
                   }}
                   data-testid="button-edit-status"
@@ -3491,7 +3485,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </Button>
                 )}
               </div>
-              <div className="space-y-3">
+              <fieldset disabled={isCrewTerminated} className={"space-y-3 min-w-0 " + (isCrewTerminated ? "terminated-lock" : "")}>
                 {isDashboardLoading ? (
                   <div className="space-y-3 animate-pulse">
                     <div className="h-10 bg-gray-200 rounded"></div>
@@ -3608,11 +3602,28 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </div>
                   </>
                 )}
-              </div>
+              </fieldset>
             </div>
+  );
+
+  // Dashboard render function
+  const renderDashboard = () => {
+    if (dashboardError) {
+      return <div className="text-center py-8 text-red-600">Error loading dashboard data</div>;
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* 3-Column Grid Layout with 25/35/40 proportions (1fr:1.4fr:1.6fr = 25:35:40) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_1.6fr] gap-6 items-stretch">
+          
+          {/* LEFT COLUMN - Status & Compliance */}
+          <div className="flex flex-col gap-6 h-full">
+            {/* Status Card */}
+            {renderStatusCard()}
 
             {/* Training/Cert/Docs Card */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-compliance-status">
+            <fieldset disabled={isCrewTerminated} className={"bg-white p-4 rounded-lg border border-gray-200 flex-1 min-w-0 " + (isCrewTerminated ? "terminated-lock" : "")} data-testid="card-compliance-status">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Training/ Cert/ Docs</h3>
               
               <div className="space-y-3" data-testid="compliance-items">
@@ -3799,7 +3810,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </>
                 )}
               </div>
-            </div>
+            </fieldset>
             
             {/* Issues Popup Dialog */}
             <Dialog open={issuesDialogOpen} onOpenChange={setIssuesDialogOpen}>
@@ -3842,7 +3853,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
 
           {/* MIDDLE COLUMN - Experience, Rank, Ship Types */}
-          <div className="flex flex-col gap-6 h-full">
+          <fieldset disabled={isCrewTerminated} className={"flex flex-col gap-6 h-full min-w-0 " + (isCrewTerminated ? "terminated-lock" : "")}>
             {/* Experience Metrics */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-experience">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
@@ -4026,10 +4037,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               )}
             </div>
-          </div>
+          </fieldset>
 
           {/* RIGHT COLUMN - Timeline, Appraisals, Promotion */}
-          <div className="flex flex-col gap-6 h-full">
+          <fieldset disabled={isCrewTerminated} className={"flex flex-col gap-6 h-full min-w-0 " + (isCrewTerminated ? "terminated-lock" : "")}>
             {/* Timeline Card */}
             <div className="flex-1">
               <TimelineCard
@@ -4057,7 +4068,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 Coming Soon
               </div>
             </div>
-          </div>
+          </fieldset>
         </div>
       </div>
     );
@@ -9285,8 +9296,47 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     },
   });
 
+  const [reactivationDraft, setReactivationDraft] = useState<{
+    crewUuid: string; isActive: boolean; reason: string;
+  } | null>(null);
+  const displayedCrewRef = useRef<string | null>(null);
+  displayedCrewRef.current = String(crewMember?.crewUuid || crewMember?.id || createdCrewId || '') || null;
+  useEffect(() => {
+    setReactivationDraft(null);
+  }, [isOpen, crewMember?.crewUuid, crewMember?.id]);
+
+  const reactivationMutation = useMutation({
+    mutationFn: async (draft: NonNullable<typeof reactivationDraft>) => {
+      const response = await apiRequest('POST', '/api/v2/crew-pool/crew/' + draft.crewUuid + '/reactivate', {
+        isActive: draft.isActive, reason: draft.reason,
+      });
+      return response.json();
+    },
+    onSuccess: (_, draft) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
+      invalidateCrewData(draft.crewUuid);
+      if (displayedCrewRef.current === draft.crewUuid) {
+        setReactivationDraft(null);
+        onClose();
+      }
+      toast({ title: 'Crew Reactivated', description: 'The crew member has been reactivated.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Reactivation failed', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // Handle toggling isActive status
   const handleToggleActiveStatus = (newIsActive: boolean) => {
+    if (isCrewTerminated) {
+      if (!canReactivate || reactivationMutation.isPending) return;
+      const id = displayedCrewRef.current;
+      if (!id) return;
+      setIsStatusEditOpen(false);
+      setReactivationDraft({ crewUuid: id, isActive: newIsActive, reason: '' });
+      return;
+    }
     // V2: Use crewUuid as the primary identifier
     const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId) {
@@ -9891,7 +9941,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           
           {/* Main Content Area - Continuous Scroll */}
           <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
-            <fieldset disabled={isCrewTerminated} className={`space-y-6 ${isCrewTerminated ? 'terminated-lock' : ''}`}>
+            <div className="space-y-6">
             {/* A - Dashboard */}
             {canViewSection('A') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
@@ -9901,6 +9951,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
             )}
 
+            {!canViewSection('A') && isCrewTerminated && canReactivate && (
+              <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
+                <CardContent className="p-3 sm:p-4 lg:p-6">{renderStatusCard()}</CardContent>
+              </Card>
+            )}
+            <fieldset disabled={isCrewTerminated} className={`space-y-6 ${isCrewTerminated ? 'terminated-lock' : ''}`}>
             {/* B - Seafarers' Particulars (always visible) */}
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionBRef} data-section="B">
               <CardContent className="p-3 sm:p-4 lg:p-6">
@@ -10046,6 +10102,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
             )}
             </fieldset>
+            </div>
           </div>
         </div>
       </div>
@@ -10067,7 +10124,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               data-testid="button-set-active"
             >
               <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-              Active (On Board / On Leave)
+              {isCrewTerminated ? 'Active (On Leave)' : 'Active (On Board / On Leave)'}
             </Button>
             <Button
               variant={statusData?.isActive === false ? "default" : "outline"}
@@ -10082,7 +10139,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
               Inactive
             </Button>
-            <Button
+            {!isCrewTerminated && <Button
               variant="outline"
               className="w-full justify-start"
               disabled={isCheckingStatus}
@@ -10096,6 +10153,30 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             >
               <div className="w-3 h-3 rounded-full bg-orange-500 mr-3"></div>
               Terminate Employment
+            </Button>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reactivationDraft !== null} onOpenChange={(open) => {
+        if (!open && !reactivationMutation.isPending) setReactivationDraft(null);
+      }}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader><DialogTitle>Reason of Reactivation</DialogTitle></DialogHeader>
+          <label htmlFor="reactivation-reason" className="text-sm">Reason (optional)</label>
+          <Textarea id="reactivation-reason" value={reactivationDraft?.reason || ''}
+            disabled={reactivationMutation.isPending}
+            onChange={(event) => setReactivationDraft(draft => draft ? { ...draft, reason: event.target.value } : null)}
+            data-testid="input-reactivation-reason" />
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" className="bg-white"
+              disabled={reactivationMutation.isPending}
+              onClick={() => setReactivationDraft(null)}>Cancel</Button>
+            <Button type="button" className="bg-green-600 hover:bg-green-700"
+              disabled={!canReactivate || !reactivationDraft || reactivationMutation.isPending}
+              onClick={() => { if (canReactivate && reactivationDraft) reactivationMutation.mutate(reactivationDraft); }}
+              data-testid="button-confirm-reactivation">
+              {reactivationMutation.isPending ? 'Reactivating...' : 'Reactivate'}
             </Button>
           </div>
         </DialogContent>
