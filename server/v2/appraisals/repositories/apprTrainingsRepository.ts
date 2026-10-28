@@ -17,6 +17,9 @@ const ROWS: ChildTableConfig = {
     textField("comment"),
     // An empty source keeps the stored one; a new row then gets the column default ("manual").
     { column: "source", from: ["source"], normalize: (r) => r.source || undefined },
+    // The D3 course an auto row came from (APD-42). An empty value keeps the
+    // stored one; once stored it can't change, as it is the row's identity.
+    { column: "sourceTrainUuid", from: ["sourceTrainUuid"], normalize: (r) => r.sourceTrainUuid || undefined, setOnce: true },
   ],
 };
 

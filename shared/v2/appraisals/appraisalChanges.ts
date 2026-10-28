@@ -49,7 +49,8 @@ export type AppraisalStage = keyof typeof STAGE_SECTIONS;
 
 // The editable fields of each section's rows, as the client names them.
 export const SECTION_FIELDS: Record<AppraisalSectionKey, readonly string[]> = {
-  trainings: ["training", "evaluation", "comment", "source"],
+  // sourceTrainUuid ties an auto row to its D3 course (APD-42).
+  trainings: ["training", "evaluation", "comment", "source", "sourceTrainUuid"],
   targets: ["targetSetting", "evaluation", "comment"],
   competenceAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],
   behaviouralAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],

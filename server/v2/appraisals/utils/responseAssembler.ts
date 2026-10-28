@@ -44,6 +44,7 @@ export function assembleV1Response(
       evaluation: s(t.evaluation),
       comment: s(t.comment),
       source: (t as any).source || "manual",
+      sourceTrainUuid: t.sourceTrainUuid ?? null,
     })),
     targets: targets.map((t, i) => ({
       id: String(i + 1),

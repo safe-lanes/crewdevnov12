@@ -8,8 +8,9 @@ import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, Chevr
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, autoTrainingRowUuid, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
+import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
 import { buildAppraisalChanges, snapshotFromServer, stageSectionRows, type AppraisalSnapshot } from "./appraisalChanges";
+import { buildB1AutoRows, type B1TrainingRow, type D3TrainingCourse } from "./b1AutoTrainings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -681,14 +682,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // and merge any course `issued` within 12 months of sign-on into Part B1 as
   // read-only / non-deletable rows. The fetch stops once Stage 2 has been
   // submitted — at that point the rows are frozen on the appraisal record.
-  const { data: crewTrainingCourses = [] } = useQuery<Array<{
-    trainUuid?: string;
-    courseId?: string;
-    courseName?: string | null;
-    trainingCourse?: string | null;
-    issued?: string | null;
-    expiry?: string | null;
-  }>>({
+  const { data: crewTrainingCourses = [] } = useQuery<D3TrainingCourse[]>({
     queryKey: ['/api/v2/crew-pool/crew', crewMember?.id, 'training'],
     // The default query fetcher only sends `queryKey[0]`, so we must provide
     // an explicit fetcher to hit the per-crew training endpoint.
@@ -740,12 +734,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   });
 
   // Task #500: keep B1 in sync with the auto-fetched courses while the form
-  // is still in pre-Stage-2 state. We drop any previously-injected `auto` rows,
-  // keep all manual rows verbatim, and re-inject one auto row per course whose
-  // `issued` date falls within [signOn - 12 months, signOn]. Stable identity
-  // comes from `trainUuid` / `courseId` (prefixed `auto:` so it can't collide
-  // with manual UUIDs). After Stage 2 submit the appraisal record owns the
-  // snapshot and this effect short-circuits.
+  // is still in pre-Stage-2 state. The auto rows are rebuilt as one row per
+  // course whose `issued` date falls within [signOn - 12 months, signOn], each
+  // matched to the row it already has by its stored D3 course (APD-42, see
+  // buildB1AutoRows); manual rows are kept. After Stage 2 submit the appraisal
+  // record owns the snapshot and this effect short-circuits.
   const watchedSignOn = form.watch('signOn');
   useEffect(() => {
     if (isPostStage2) return;
@@ -763,87 +756,27 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return d >= windowStart && d <= signOnDate;
     };
 
-    const existingRows = (form.getValues('trainings') || []) as Array<{
-      id: string; uuid?: string; training: string; evaluation: string; comment?: string; source?: string;
-    }>;
-    const manualRowsRaw = existingRows.filter(r => r.source !== 'auto');
-    const existingAutoRows = existingRows.filter(r => r.source === 'auto');
-
-    // Names that will appear as auto rows on this render — used to dedupe
-    // any manual rows that happen to share a training name, so the appraiser
-    // never sees the same course twice (one auto + one manual).
-    const autoNames = new Set(
-      (crewTrainingCourses || [])
-        .filter(c => inWindow(c.issued))
-        .map(c => (c.trainingCourse || c.courseName || c.courseId || 'Training').toString().trim().toLowerCase()),
-    );
-    const manualRows = manualRowsRaw.filter(
-      r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
-    );
-
-    const normalizeName = (s?: string) => (s || '').toString().trim().toLowerCase();
+    const existingRows = (form.getValues('trainings') || []) as B1TrainingRow[];
     // Latest comment state (including in-flight edits/deletions not yet folded
-    // back into the RHF rows). Used to keep a just-typed comment from being
-    // dropped when the auto rows are rebuilt.
-    const currentComments = trainingCommentsRef.current;
-    // Records how each rebuilt auto row inherits its comment-state key, so we
-    // can re-key `trainingComments` after the merge even when the auto id
-    // changes across a hydration round-trip.
-    const autoCommentReassignments: Array<{ newId: string; priorId?: string }> = [];
+    // back into the RHF rows), so a just-typed comment survives the rebuild —
+    // even when a `form.reset` (e.g. rank-group config load) has already
+    // cleared the RHF auto rows but left the comment state intact.
+    const { rows: next, commentReassignments: autoCommentReassignments } = buildB1AutoRows({
+      appraisalUuid: appraisalUuid || newAppraisalUuid,
+      courses: crewTrainingCourses || [],
+      inWindow: c => inWindow(c.issued),
+      rows: existingRows,
+      comments: trainingCommentsRef.current,
+    });
 
-    const autoRows = (crewTrainingCourses || [])
-      .filter(c => inWindow(c.issued))
-      .map(c => {
-        const trainingName = (c.trainingCourse || c.courseName || c.courseId || 'Training').toString();
-        const stableKey = c.trainUuid || c.courseId || trainingName;
-        const id = `auto:${stableKey}`;
-        // Preserve any existing evaluation/comment across re-renders, including
-        // after a server hydration that renumbers IDs. We first try to match by
-        // our prefixed `auto:` id, then fall back to training-name (normalized),
-        // which is what survives a hydration round-trip.
-        const prior = existingAutoRows.find(r => r.id === id)
-          || existingAutoRows.find(r => normalizeName(r.training) === normalizeName(trainingName));
-        const priorId = prior?.id;
-        // Resolve the comment, preferring live comment-state so a freshly-typed
-        // (or deleted) comment is never dropped — even when a `form.reset`
-        // (e.g. rank-group config load) has already cleared the RHF auto rows
-        // but left the comment state intact. Order:
-        //   1. live state under the new stable id (survives a reset that wiped
-        //      the RHF rows),
-        //   2. live state under the prior row id (covers an id change across a
-        //      hydration round-trip),
-        //   3. the prior RHF row's comment.
-        // A `null` value marks a deleted comment and resolves to an empty
-        // string, also clearing any stale text still sitting on the RHF row.
-        let comment: string;
-        if (id in currentComments) {
-          comment = currentComments[id] ?? '';
-        } else if (priorId !== undefined && priorId in currentComments) {
-          comment = currentComments[priorId] ?? '';
-        } else {
-          comment = prior?.comment || '';
-        }
-        autoCommentReassignments.push({ newId: id, priorId });
-        return {
-          id,
-          // Keep the stored row's uuid so a save updates that row. A new auto
-          // row's uuid comes from the appraisal and course, so two sessions
-          // that add it save one row, not two (APD-20).
-          uuid: prior?.uuid ?? autoTrainingRowUuid(appraisalUuid || newAppraisalUuid, stableKey),
-          training: trainingName,
-          evaluation: prior?.evaluation || '',
-          comment,
-          source: 'auto' as const,
-        };
-      });
-
-    const next = [...autoRows, ...manualRows];
     // Skip the write if nothing changed structurally (prevents an effect loop).
     const same = next.length === existingRows.length
       && next.every((r, i) => existingRows[i]
         && existingRows[i].id === r.id
+        && existingRows[i].uuid === r.uuid
         && existingRows[i].training === r.training
-        && (existingRows[i].source || 'manual') === (r.source || 'manual'));
+        && (existingRows[i].source || 'manual') === (r.source || 'manual')
+        && (existingRows[i].sourceTrainUuid || null) === (r.sourceTrainUuid || null));
     if (!same) {
       form.setValue('trainings', next as any, { shouldDirty: false });
     }

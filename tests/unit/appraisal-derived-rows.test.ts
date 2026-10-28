@@ -14,6 +14,7 @@ vi.mock("@server/v2/db", () => ({ getDb: vi.fn() }));
 import { ApprOfficeReviewsRepository } from "@server/v2/appraisals/repositories/apprOfficeReviewsRepository";
 import { ApprTrainingsRepository } from "@server/v2/appraisals/repositories/apprTrainingsRepository";
 import { ApprReviewersRepository } from "@server/v2/appraisals/repositories/apprReviewersRepository";
+import { AppraisalRowFieldLockedError } from "@server/v2/appraisals/repositories/childRowSync";
 import { apprOfficeReviewsV2, apprTrainingsV2, apprReviewersV2 } from "@shared/v2/appraisals/schema";
 
 const APPRAISAL = "a0000000-0000-4000-8000-000000000020";
@@ -229,6 +230,49 @@ describe("ApprTrainingsRepository brings back an auto row whose course returns",
 
     expect(n).toBe(0);
     expect(db.writes.filter((w) => w.ids && w.ids.length > 0)).toEqual([]);
+  });
+});
+
+describe("ApprTrainingsRepository stores an auto row's D3 course (APD-42)", () => {
+  const repo = new ApprTrainingsRepository();
+
+  it("saves the course of a new auto row", async () => {
+    const db = fakeDb(apprTrainingsV2, []);
+    await repo.syncForAppraisal(APPRAISAL, [
+      { uuid: "auto-u", training: "Fire fighting", source: "auto", sourceTrainUuid: "train-a" },
+    ], "me", db.executor);
+
+    const inserts = db.writes.filter((w) => w.kind === "insert");
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].values).toMatchObject({ trainingUuid: "auto-u", sourceTrainUuid: "train-a" });
+  });
+
+  it("fills the course of a row saved before the link existed", async () => {
+    const db = fakeDb(apprTrainingsV2, [training(1, "auto-u", { sourceTrainUuid: null })]);
+    const n = await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "auto-u", sourceTrainUuid: "train-a" }] }, "me", db.executor);
+
+    expect(n).toBe(1);
+    expect(db.rows[0].sourceTrainUuid).toBe("train-a");
+  });
+
+  it("refuses to move a row to another course and writes nothing", async () => {
+    const db = fakeDb(apprTrainingsV2, [training(1, "auto-u", { sourceTrainUuid: "train-a" })]);
+
+    await expect(repo.applyChanges(APPRAISAL, {
+      rows: [{ uuid: "auto-u", evaluation: "Good", sourceTrainUuid: "train-b" }],
+    }, "me", db.executor)).rejects.toBeInstanceOf(AppraisalRowFieldLockedError);
+    expect(db.writes.filter((w) => w.ids && w.ids.length > 0)).toEqual([]);
+    expect(db.rows[0]).toMatchObject({ sourceTrainUuid: "train-a", evaluation: null });
+  });
+
+  it("keeps the stored course when a row is sent without one", async () => {
+    const db = fakeDb(apprTrainingsV2, [training(1, "auto-u", { sourceTrainUuid: "train-a" })]);
+    const n = await repo.syncForAppraisal(APPRAISAL, [
+      { uuid: "auto-u", training: "Fire fighting", source: "auto", sourceTrainUuid: null },
+    ], "me", db.executor);
+
+    expect(n).toBe(0);
+    expect(db.rows[0].sourceTrainUuid).toBe("train-a");
   });
 });
 

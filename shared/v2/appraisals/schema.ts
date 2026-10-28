@@ -58,6 +58,9 @@ export const apprTrainingsV2 = pgTable("appr_trainings_v2", {
   evaluation: text("evaluation"),
   comment: text("comment"),
   source: text("source").notNull().default("manual"),
+  // An auto row's Crew Pool D3 course (crew_training_courses.train_uuid). Set
+  // once; null on manual rows and on auto rows not yet re-saved (APD-42).
+  sourceTrainUuid: text("source_train_uuid"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
