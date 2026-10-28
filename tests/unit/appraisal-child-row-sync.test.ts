@@ -136,4 +136,17 @@ describe("syncChildRows (APD-16 / APD-36)", () => {
     ]);
     expect(Object.keys(writes[0].values).sort()).toEqual(["sortOrder", "updatedAt", "updatedByUuid"]);
   });
+
+  it("replace: a row sent as its uuid only keeps its stored values and is not deleted (APD-38)", async () => {
+    const { executor, writes } = fakeExecutor(stored);
+    await syncChildRows(executor, cfg, APPRAISAL, {
+      rows: [{ uuid: "u1" }, { uuid: "u2" }, { uuid: "u3", comment: "stage 3 edit" }],
+    }, "replace", "me");
+
+    // u2's "office edit" stays; only u3's comment is written.
+    expect(writes).toEqual([
+      expect.objectContaining({ kind: "update", rowId: 3, values: expect.objectContaining({ comment: "stage 3 edit" }) }),
+    ]);
+    expect(Object.keys(writes[0].values).sort()).toEqual(["comment", "updatedAt", "updatedByUuid"]);
+  });
 });

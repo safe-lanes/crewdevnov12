@@ -30,6 +30,45 @@ export function snapshotFromServer(appraisal: Record<string, any>, appraisalData
   return { header, sections };
 }
 
+// One row as it goes to the server: its uuid, plus the fields that changed
+// since `prior` (an existing row) or the fields that are not empty (a new row,
+// `prior` undefined). A field the row does not carry (undefined) is left out.
+function rowChanges(key: AppraisalSectionKey, prior: any, row: any): AppraisalChangeRow {
+  if (!row?.uuid) throw new Error(`A ${key} row has no uuid.`);
+  const out: AppraisalChangeRow = { uuid: row.uuid };
+  for (const field of SECTION_FIELDS[key]) {
+    const value = row[field];
+    if (value === undefined) continue;
+    if (prior) {
+      if (!sameValue(value, prior[field])) out[field] = value;
+    } else if (value !== "" && value !== null) {
+      // A new row leaves out empty fields. The server stores them as empty
+      // anyway, and if another session already saved a row under this uuid
+      // (a B1 auto row, APD-20), that session's values are kept.
+      out[field] = value;
+    }
+  }
+  return out;
+}
+
+function rowsByUuid(rows: any[] | undefined): Map<string, any> {
+  const byUuid = new Map<string, any>();
+  for (const row of rows ?? []) {
+    if (row?.uuid) byUuid.set(row.uuid, row);
+  }
+  return byUuid;
+}
+
+// A section's rows for a stage submit, which replaces the whole section: every
+// current row, so the server deletes only the rows the user removed, but an
+// unchanged row is just its uuid and a changed row carries only the changed
+// fields. The server then keeps values another writer saved since the form
+// loaded them, e.g. a G2 status set in Training & Retention (APD-38).
+export function stageSectionRows(key: AppraisalSectionKey, baseRows: any[] | undefined, currentRows: any[] | undefined): AppraisalChangeRow[] {
+  const baseByUuid = rowsByUuid(baseRows);
+  return (currentRows ?? []).map((row) => rowChanges(key, baseByUuid.get(row?.uuid), row));
+}
+
 // The change set from `base` (as loaded) to `current` (the form now): changed
 // header fields, new rows with their non-empty fields, changed rows with only the
 // changed fields, and the uuids of removed rows. Every current row must carry
@@ -55,30 +94,14 @@ export function buildAppraisalChanges(
   for (const key of SECTION_KEYS) {
     if (options.skipSections?.includes(key)) continue;
 
-    const baseByUuid = new Map<string, any>();
-    for (const row of base.sections[key] ?? []) {
-      if (row?.uuid) baseByUuid.set(row.uuid, row);
-    }
+    const baseByUuid = rowsByUuid(base.sections[key]);
 
     const rows: AppraisalChangeRow[] = [];
     const kept = new Set<string>();
     for (const row of current.sections[key] ?? []) {
-      if (!row?.uuid) throw new Error(`A ${key} row has no uuid.`);
-      kept.add(row.uuid);
-      const prior = baseByUuid.get(row.uuid);
-      const out: AppraisalChangeRow = { uuid: row.uuid };
-      for (const field of SECTION_FIELDS[key]) {
-        const value = row[field];
-        if (value === undefined) continue;
-        if (prior) {
-          if (!sameValue(value, prior[field])) out[field] = value;
-        } else if (value !== "" && value !== null) {
-          // A new row leaves out empty fields. The server stores them as empty
-          // anyway, and if another session already saved a row under this uuid
-          // (a B1 auto row, APD-20), that session's values are kept.
-          out[field] = value;
-        }
-      }
+      const prior = baseByUuid.get(row?.uuid);
+      const out = rowChanges(key, prior, row);
+      kept.add(out.uuid);
       if (!prior || Object.keys(out).length > 1) rows.push(out);
     }
 

@@ -719,15 +719,23 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
         // All three sourced types accept Status, Target/Compl. Date, Comments and
         // Training (in DB). Server persists fields the source table can hold and
         // overlays the rest — this never touches the original "Training" name.
-        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
-          status: form.status || null,
-          targetDate: form.targetDate || null,
-          comments: form.comments || null,
-          correspondingInDb: form.correspondingInDb || null,
-        });
+        // Only the fields changed in this dialog are sent: the source module
+        // (e.g. the appraisal's Part G2) also edits them, and an untouched
+        // field must not overwrite what it saved since the list loaded (APD-38).
+        const changed: Record<string, string | null> = {};
+        for (const key of ["status", "targetDate", "comments", "correspondingInDb"] as const) {
+          if ((form[key] || null) !== (row[key] || null)) changed[key] = form[key] || null;
+        }
+        if (Object.keys(changed).length === 0) return { unchanged: true };
+        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, changed);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.unchanged) {
+        toast({ title: "No Changes", description: "There are no changes to save." });
+        onClose();
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/v2/training-needs"] });
       toast({ title: "Saved", description: "Training need saved." });
       onClose();

@@ -349,20 +349,24 @@ export class TrainingNeedsRepository {
   async patchAppraisal(
     trainingFollowupUuid: string,
     data: SourcePatchInput,
-    _auditUserUuid?: string | null,
+    auditUserUuid?: string | null,
   ): Promise<boolean> {
     const db = getDb();
-    const sets: Partial<typeof apprTrainingFollowupsV2.$inferInsert> & { updatedAt: Date } = {
-      updatedAt: new Date(),
-    };
+    const live = and(eq(apprTrainingFollowupsV2.trainingFollowupUuid, trainingFollowupUuid), eq(apprTrainingFollowupsV2.isDeleted, false));
+    const sets: Partial<typeof apprTrainingFollowupsV2.$inferInsert> = {};
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.targetDate = data.targetDate;
     if (data.comments !== undefined) sets.comment = data.comments;
     if (data.correspondingInDb !== undefined) sets.correspondingInDb = data.correspondingInDb;
+    // Nothing sent: no write, so updated_at and updated_by stay as they were.
+    if (Object.keys(sets).length === 0) {
+      const r = await db.select({ id: apprTrainingFollowupsV2.id }).from(apprTrainingFollowupsV2).where(live).limit(1);
+      return r.length > 0;
+    }
     const r = await db
       .update(apprTrainingFollowupsV2)
-      .set(sets)
-      .where(and(eq(apprTrainingFollowupsV2.trainingFollowupUuid, trainingFollowupUuid), eq(apprTrainingFollowupsV2.isDeleted, false)))
+      .set({ ...sets, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
+      .where(live)
       .returning();
     return r.length > 0;
   }

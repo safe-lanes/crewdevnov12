@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, autoTrainingRowUuid, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
-import { buildAppraisalChanges, snapshotFromServer, type AppraisalSnapshot } from "./appraisalChanges";
+import { buildAppraisalChanges, snapshotFromServer, stageSectionRows, type AppraisalSnapshot } from "./appraisalChanges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1305,6 +1305,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Stage 3 mutation (Part G) - accepts synced form data to ensure comment persistence
   const stage3Mutation = useMutation({
     mutationFn: async ({ uuid, formData }: { uuid: string; formData: AppraisalFormData }) => {
+      const baseline = baselineRef.current;
+      if (!baseline) {
+        throw new Error('The appraisal is still loading. Please try again in a moment.');
+      }
       const stageData = {
         // Task #500: B1 Evaluation stays editable through Stage 3, so we must
         // ship the latest `trainings` array along with Section G payloads so
@@ -1312,7 +1316,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         // sync writes them in the same transaction.
         trainings: formData.trainings,
         officeReviews: formData.officeReviews,
-        trainingFollowups: formData.trainingFollowups,
+        // Training & Retention also edits G2 rows, so send only the fields
+        // changed here: an untouched status stays as T&R saved it (APD-38).
+        trainingFollowups: stageSectionRows('trainingFollowups', baseline.sections.trainingFollowups, formData.trainingFollowups),
       };
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage3`, {

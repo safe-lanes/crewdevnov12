@@ -5,6 +5,8 @@ import { insertTrainingNeedOtherSchema } from "../../../shared/v2/training-needs
 import { complianceSuggestionRoutes } from "./complianceSuggestionController";
 import { complianceNeedRows } from "./complianceNeedRows";
 import { AttachmentAccessError } from "../shared/attachmentAccess";
+import { getActor } from "../accounts/controllers/_auth";
+import { resolveAppraisalActor } from "../appraisals/utils/requestActor";
 
 type AuthedRequest = Request & { user?: { uuid?: string | null } };
 
@@ -45,11 +47,18 @@ router.patch("/source/recruitment/:uuid", async (req: AuthedRequest, res: Respon
   }
 });
 
+// An appraisal G2 row is Part G, which is office-owned (APD-38): the same
+// login and ship rules as the appraisal's own Part G writes.
 router.patch("/source/appraisal/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
+    const actor = await resolveAppraisalActor(req);
+    if (!actor) return res.status(401).json({ error: "Your sign-in could not be verified. Reload the page and try again." });
+    if (getActor(req).vesselUser) {
+      return res.status(403).json({ error: "Part G is for office use only. Ship users cannot change it." });
+    }
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data, req.body?.auditUserUuid ?? null);
+    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data, actor.userUuid);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAppraisalChanges, snapshotFromServer, type AppraisalSnapshot } from "@/modules/crewing/appraisalChanges";
+import { buildAppraisalChanges, snapshotFromServer, stageSectionRows, type AppraisalSnapshot } from "@/modules/crewing/appraisalChanges";
 import { PART_G_SECTIONS, autoTrainingRowUuid, isEmptyChanges, sameValue } from "@shared/v2/appraisals/appraisalChanges";
 
 const T1 = "10000000-0000-4000-8000-000000000001";
@@ -144,5 +144,40 @@ describe("B1 auto-row uuid (APD-20)", () => {
 
   it("never changes for a stored input (rows saved with it depend on it)", () => {
     expect(autoTrainingRowUuid(A1, "train-1")).toBe(AUTO_ROW_UUID_A1_TRAIN_1);
+  });
+});
+
+// APD-38: Training & Retention also edits G2 rows. Stage 3 replaces the whole
+// G2 section, so it lists every row but sends only the fields changed in the
+// form; a status T&R saved after the form loaded is not put back.
+describe("stage submit section rows (APD-38)", () => {
+  const F1 = "30000000-0000-4000-8000-000000000001";
+  const F2 = "30000000-0000-4000-8000-000000000002";
+  const loaded = [
+    { id: "1", uuid: F1, training: "ECDIS", correspondingInDB: "c-1", identifiedByUuid: "", category: "Mandatory", status: "Proposed", targetDate: "2026-12-01", comment: "" },
+    { id: "2", uuid: F2, training: "BRM", correspondingInDB: "", identifiedByUuid: "", category: "", status: "Proposed", targetDate: "", comment: "Due" },
+  ];
+
+  it("sends an unchanged row as its uuid only", () => {
+    expect(stageSectionRows("trainingFollowups", loaded, structuredClone(loaded))).toEqual([{ uuid: F1 }, { uuid: F2 }]);
+  });
+
+  it("sends only the changed fields of a changed row", () => {
+    const current = structuredClone(loaded);
+    current[1].comment = "Booked";
+    expect(stageSectionRows("trainingFollowups", loaded, current)).toEqual([{ uuid: F1 }, { uuid: F2, comment: "Booked" }]);
+  });
+
+  it("sends a new row with its non-empty fields", () => {
+    const current = [...structuredClone(loaded), { id: "3", uuid: "new-1", training: "GMDSS", correspondingInDB: "", identifiedByUuid: "", category: "", status: "Proposed", targetDate: "", comment: "" }];
+    expect(stageSectionRows("trainingFollowups", loaded, current)[2]).toEqual({ uuid: "new-1", training: "GMDSS", status: "Proposed" });
+  });
+
+  it("leaves out a removed row, so the server's replace deletes it", () => {
+    expect(stageSectionRows("trainingFollowups", loaded, [structuredClone(loaded[1])])).toEqual([{ uuid: F2 }]);
+  });
+
+  it("refuses a row without a uuid", () => {
+    expect(() => stageSectionRows("trainingFollowups", loaded, [{ id: "9", training: "X" }])).toThrow(/trainingFollowups row has no uuid/);
   });
 });
