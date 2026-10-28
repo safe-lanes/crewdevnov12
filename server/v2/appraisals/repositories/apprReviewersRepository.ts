@@ -1,10 +1,20 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { apprReviewersV2 } from "../../../../shared/v2/appraisals/schema";
-import { v4 as uuidv4 } from "uuid";
+import { syncChildRows, textField, type ChildTableConfig } from "./childRowSync";
 
 // A transaction (tx) or the default connection.
 type Executor = any;
+
+const ROWS: ChildTableConfig = {
+  table: apprReviewersV2,
+  uuidKey: "reviewerUuid",
+  fields: [
+    textField("userUuid"),
+    textField("reviewerName"),
+    textField("designation"),
+  ],
+};
 
 export class ApprReviewersRepository {
   async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, any[]>> {
@@ -29,19 +39,20 @@ export class ApprReviewersRepository {
     return map;
   }
 
+  // Stage 2: the whole reviewer list. The form sends reviewers without a row
+  // uuid, so each one is matched to a live row here: same user, or a row with
+  // no user and the same name (the rule addAssignedReviewers uses). Unchanged
+  // rows are not written, reviewers left out are soft-deleted and new ones are
+  // inserted. Before APD-37 every submit deleted and re-inserted all rows.
   async syncForAppraisal(
     appraisalUuid: string,
     reviewers: { userUuid?: string; reviewerName?: string; designation?: string }[],
     auditUserUuid?: string | null,
     executor: Executor = getDb(),
-  ): Promise<void> {
-    const db = executor;
-    const now = new Date();
-
-    // Soft-delete all existing non-deleted rows for this appraisal
-    await db
-      .update(apprReviewersV2)
-      .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || null })
+  ): Promise<number> {
+    const live: any[] = await executor
+      .select()
+      .from(apprReviewersV2)
       .where(
         and(
           eq(apprReviewersV2.appraisalUuid, appraisalUuid),
@@ -49,20 +60,26 @@ export class ApprReviewersRepository {
         ),
       );
 
-    if (reviewers.length === 0) return;
+    // Each live row is matched once, so a reviewer listed twice keeps two rows.
+    const unmatched = [...live];
+    const take = (match: (row: any) => boolean) => {
+      const i = unmatched.findIndex(match);
+      return i === -1 ? undefined : unmatched.splice(i, 1)[0];
+    };
 
-    // Insert fresh rows
-    await db.insert(apprReviewersV2).values(
-      reviewers.map((r, i) => ({
-        reviewerUuid: uuidv4(),
-        appraisalUuid,
-        userUuid: r.userUuid || null,
-        reviewerName: r.reviewerName || null,
-        designation: r.designation || null,
-        sortOrder: i,
-        createdByUuid: auditUserUuid || null,
-        updatedByUuid: auditUserUuid || null,
-      })),
-    );
+    const rows = reviewers.map((reviewer) => {
+      const userUuid = reviewer.userUuid?.trim();
+      const name = reviewer.reviewerName?.trim();
+      const existing = (userUuid ? take((r) => (r.userUuid ?? "").trim() === userUuid) : undefined)
+        ?? (name ? take((r) => !r.userUuid && (r.reviewerName ?? "").trim() === name) : undefined);
+      return {
+        uuid: existing?.reviewerUuid,
+        userUuid: reviewer.userUuid,
+        reviewerName: reviewer.reviewerName,
+        designation: reviewer.designation,
+      };
+    });
+
+    return syncChildRows(executor, ROWS, appraisalUuid, { rows }, "replace", auditUserUuid);
   }
 }

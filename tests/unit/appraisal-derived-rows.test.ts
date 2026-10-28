@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 // APD-20: rows the app derives on its own must not be added twice.
+// APD-37: a Stage 2 resubmit must not rewrite the reviewer rows.
 
 // Conditions become plain objects so the fake database below can apply them.
 vi.mock("drizzle-orm", () => ({
@@ -12,7 +13,8 @@ vi.mock("@server/v2/db", () => ({ getDb: vi.fn() }));
 
 import { ApprOfficeReviewsRepository } from "@server/v2/appraisals/repositories/apprOfficeReviewsRepository";
 import { ApprTrainingsRepository } from "@server/v2/appraisals/repositories/apprTrainingsRepository";
-import { apprOfficeReviewsV2, apprTrainingsV2 } from "@shared/v2/appraisals/schema";
+import { ApprReviewersRepository } from "@server/v2/appraisals/repositories/apprReviewersRepository";
+import { apprOfficeReviewsV2, apprTrainingsV2, apprReviewersV2 } from "@shared/v2/appraisals/schema";
 
 const APPRAISAL = "a0000000-0000-4000-8000-000000000020";
 
@@ -186,5 +188,102 @@ describe("ApprTrainingsRepository brings back an auto row whose course returns",
 
     expect(n).toBe(0);
     expect(db.writes.filter((w) => w.ids && w.ids.length > 0)).toEqual([]);
+  });
+});
+
+function reviewerRow(id: number, fields: Record<string, unknown>) {
+  return {
+    id, reviewerUuid: `rv-${id}`, appraisalUuid: APPRAISAL, userUuid: null, reviewerName: null, designation: null,
+    sortOrder: id - 1, isDeleted: false, updatedByUuid: null, ...fields,
+  };
+}
+
+describe("ApprReviewersRepository.syncForAppraisal (APD-37)", () => {
+  const repo = new ApprReviewersRepository();
+  const A = { userUuid: "user-a", reviewerName: "Anna A", designation: "DPA" };
+  const B = { userUuid: "user-b", reviewerName: "Ben B", designation: "Fleet Manager" };
+  const live = () => [reviewerRow(1, A), reviewerRow(2, B)];
+
+  it("first submit inserts one row per reviewer, in order", async () => {
+    const db = fakeDb(apprReviewersV2, []);
+    const n = await repo.syncForAppraisal(APPRAISAL, [A, B], "me", db.executor);
+
+    expect(n).toBe(2);
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert", "insert"]);
+    expect(db.rows.map((r) => [r.userUuid, r.sortOrder, r.createdByUuid])).toEqual([["user-a", 0, "me"], ["user-b", 1, "me"]]);
+  });
+
+  it("the same list again writes nothing and keeps the row uuids", async () => {
+    const db = fakeDb(apprReviewersV2, []);
+    await repo.syncForAppraisal(APPRAISAL, [A, B], "me", db.executor);
+    const uuids = db.rows.map((r) => r.reviewerUuid);
+    const again = await repo.syncForAppraisal(APPRAISAL, [{ ...A }, { ...B }], "other", db.executor);
+
+    expect(again).toBe(0);
+    expect(db.writes).toHaveLength(2);
+    expect(db.rows.map((r) => r.reviewerUuid)).toEqual(uuids);
+    expect(db.rows.every((r) => !r.isDeleted)).toBe(true);
+  });
+
+  it("adding a reviewer inserts only that one", async () => {
+    const db = fakeDb(apprReviewersV2, live());
+    const C = { userUuid: "user-c", reviewerName: "Cara C", designation: "HSEQ" };
+
+    expect(await repo.syncForAppraisal(APPRAISAL, [A, B, C], "me", db.executor)).toBe(1);
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert"]);
+    expect(db.writes[0].values).toMatchObject({ userUuid: "user-c", sortOrder: 2 });
+  });
+
+  it("removing a reviewer soft-deletes only that row", async () => {
+    const db = fakeDb(apprReviewersV2, live());
+
+    expect(await repo.syncForAppraisal(APPRAISAL, [A], "me", db.executor)).toBe(1);
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0]).toMatchObject({ kind: "update", ids: [2], values: { isDeleted: true } });
+    expect(db.rows[0].isDeleted).toBe(false);
+  });
+
+  it("a new order updates only the sort order", async () => {
+    const db = fakeDb(apprReviewersV2, live());
+    await repo.syncForAppraisal(APPRAISAL, [B, A], "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["update", "update"]);
+    for (const w of db.writes) expect(Object.keys(w.values).sort()).toEqual(["sortOrder", "updatedAt", "updatedByUuid"]);
+    expect(db.rows.map((r) => [r.id, r.sortOrder, r.isDeleted])).toEqual([[1, 1, false], [2, 0, false]]);
+  });
+
+  it("an edited designation updates only that column", async () => {
+    const db = fakeDb(apprReviewersV2, live());
+    await repo.syncForAppraisal(APPRAISAL, [{ ...A, designation: "Superintendent" }, B], "me", db.executor);
+
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0]).toMatchObject({ kind: "update", ids: [1], values: { designation: "Superintendent" } });
+    expect(db.writes[0].values).not.toHaveProperty("reviewerName");
+    expect(db.writes[0].values).not.toHaveProperty("sortOrder");
+  });
+
+  it("matches a row with no user by its name instead of adding another", async () => {
+    const db = fakeDb(apprReviewersV2, [reviewerRow(1, { reviewerName: " Anna A ", designation: "DPA" })]);
+    await repo.syncForAppraisal(APPRAISAL, [A], "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["update"]);
+    expect(db.rows).toHaveLength(1);
+    expect(db.rows[0]).toMatchObject({ reviewerUuid: "rv-1", userUuid: "user-a", isDeleted: false });
+  });
+
+  it("does not bring back a deleted row of the same user", async () => {
+    const db = fakeDb(apprReviewersV2, [reviewerRow(1, { ...A, isDeleted: true })]);
+    await repo.syncForAppraisal(APPRAISAL, [A], "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert"]);
+    expect(db.rows[0].isDeleted).toBe(true);
+  });
+
+  it("a reviewer listed twice keeps the same two rows on the next submit", async () => {
+    const db = fakeDb(apprReviewersV2, []);
+    await repo.syncForAppraisal(APPRAISAL, [A, A], "me", db.executor);
+
+    expect(await repo.syncForAppraisal(APPRAISAL, [A, A], "me", db.executor)).toBe(0);
+    expect(db.rows).toHaveLength(2);
   });
 });
