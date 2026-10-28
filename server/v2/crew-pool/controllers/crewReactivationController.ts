@@ -13,6 +13,18 @@ class ReactivationError extends Error {
 }
 
 async function requireAccess(req: Request, edit: boolean) {
+  const devBypass = process.env.NODE_ENV === 'development'
+    && process.env.AUTH_BYPASS === 'true'
+    && !process.env.JWT_SECRET;
+
+  if (!req.user && devBypass) {
+    return {
+      userId: 'development-bypass',
+      userUuid: null,
+      name: 'Development bypass',
+    };
+  }
+
   const userId = Number(req.user?.id);
   if (!Number.isSafeInteger(userId) || userId <= 0) {
     throw new ReactivationError(401, 'Sign in before continuing.');
