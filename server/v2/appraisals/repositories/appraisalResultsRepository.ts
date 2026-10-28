@@ -96,11 +96,14 @@ export class AppraisalResultsRepository {
     return results[0];
   }
 
-  async softDeleteByAppraisalUuid(uuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
+  async softDeleteByAppraisalUuid(
+    uuid: string,
+    auditUserUuid?: string | null,
+    executor: Executor = getDb(),
+  ): Promise<boolean> {
+    const results = await executor
       .update(appraisalResultsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+      .set({ isDeleted: true, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
       .where(and(eq(appraisalResultsV2.appraisalUuid, uuid), eq(appraisalResultsV2.isDeleted, false)))
       .returning();
     return results.length > 0;

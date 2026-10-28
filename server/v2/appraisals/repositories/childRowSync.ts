@@ -1,6 +1,19 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { sameValue } from "../../../../shared/v2/appraisals/appraisalChanges";
+import {
+  apprTrainingsV2,
+  apprTargetsV2,
+  apprCompetenceAssessmentsV2,
+  apprBehaviouralAssessmentsV2,
+  apprTrainingNeedsV2,
+  apprRecommendationsV2,
+  apprAppraiserCommentsV2,
+  apprSeafarerCommentsV2,
+  apprOfficeReviewsV2,
+  apprTrainingFollowupsV2,
+  apprReviewersV2,
+} from "../../../../shared/v2/appraisals/schema";
 
 // A transaction (tx) or the default connection.
 type Executor = any;
@@ -149,4 +162,44 @@ export async function syncChildRows(
   }
 
   return written;
+}
+
+// Every table that holds an appraisal's child rows (APD-33). Deleting an
+// appraisal deletes its live rows in all of them.
+export const APPRAISAL_CHILD_TABLES = [
+  apprTrainingsV2,
+  apprTargetsV2,
+  apprCompetenceAssessmentsV2,
+  apprBehaviouralAssessmentsV2,
+  apprTrainingNeedsV2,
+  apprRecommendationsV2,
+  apprAppraiserCommentsV2,
+  apprSeafarerCommentsV2,
+  apprOfficeReviewsV2,
+  apprTrainingFollowupsV2,
+  apprReviewersV2,
+] as const;
+
+// Soft-deletes the live child rows of an appraisal in every child table, so
+// the sync never sends live rows of a deleted appraisal. Rows deleted earlier
+// are not written, so they keep their own updated_at and updated_by.
+//
+// Returns the number of rows deleted.
+export async function softDeleteAppraisalChildRows(
+  executor: Executor,
+  appraisalUuid: string,
+  auditUserUuid?: string | null,
+): Promise<number> {
+  const now = new Date();
+  let deleted = 0;
+  // Sequential: one transaction runs on one connection.
+  for (const table of APPRAISAL_CHILD_TABLES) {
+    const rows: unknown[] = await executor
+      .update(table)
+      .set({ isDeleted: true, updatedAt: now, ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
+      .where(and(eq(table.appraisalUuid, appraisalUuid), eq(table.isDeleted, false)))
+      .returning({ id: table.id });
+    deleted += rows.length;
+  }
+  return deleted;
 }

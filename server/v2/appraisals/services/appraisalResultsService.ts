@@ -12,6 +12,7 @@ import {
   ApprTrainingFollowupsRepository,
   ApprReviewersRepository,
 } from "../repositories";
+import { softDeleteAppraisalChildRows } from "../repositories/childRowSync";
 import { CrewMembersRepository } from "../../crew-pool/repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
 import { applyAuditUser } from "../../admin/utils/auditUser";
@@ -628,8 +629,17 @@ export class AppraisalResultsService {
     return this.getByUuid(existing.appraisalUuid);
   }
 
-  async delete(appraisalUuid: string) {
-    return appraisalResultsRepo.softDeleteByAppraisalUuid(appraisalUuid);
+  // Soft-deletes the appraisal and all its live child rows in one transaction
+  // (APD-33), so the sync never sees live rows of a deleted appraisal.
+  // Returns false when the appraisal is not found or already deleted; its
+  // child rows are then left alone.
+  async delete(appraisalUuid: string, auditUserUuid?: string) {
+    return getDb().transaction(async (tx: any) => {
+      const deleted = await appraisalResultsRepo.softDeleteByAppraisalUuid(appraisalUuid, auditUserUuid, tx);
+      if (!deleted) return false;
+      await softDeleteAppraisalChildRows(tx, appraisalUuid, auditUserUuid);
+      return true;
+    });
   }
 
   // A stage submit, saved in one transaction (APD-30). One click of Submit

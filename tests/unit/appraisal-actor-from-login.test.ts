@@ -78,7 +78,7 @@ function fakeRes() {
   return res;
 }
 
-type Handler = "create" | "update" | "submitStage1" | "submitStage2" | "submitStage3";
+type Handler = "create" | "update" | "submitStage1" | "submitStage2" | "submitStage3" | "deleteAppraisal";
 
 const BODIES: Record<Handler, Record<string, unknown>> = {
   create: { ...CREATE, ...FORGED },
@@ -86,6 +86,7 @@ const BODIES: Record<Handler, Record<string, unknown>> = {
   submitStage1: { data: STAGE1, ...FORGED },
   submitStage2: { data: { competenceAssessments: [] }, ...FORGED },
   submitStage3: { data: { officeReviews: [] }, ...FORGED },
+  deleteAppraisal: { ...FORGED },
 };
 
 function call(handler: Handler, user: object | undefined = { id: 24, userType: "Office" }) {
@@ -106,6 +107,7 @@ describe("the controller takes the actor from the login, not the body", () => {
     vi.spyOn(AppraisalResultsService.prototype, "submitStage").mockResolvedValue({ appraisalUuid: UUID } as any);
     vi.spyOn(AppraisalResultsService.prototype, "create").mockResolvedValue({ appraisal: { appraisalUuid: UUID }, created: true } as any);
     vi.spyOn(AppraisalResultsService.prototype, "update").mockResolvedValue({ appraisalUuid: UUID } as any);
+    vi.spyOn(AppraisalResultsService.prototype, "delete").mockResolvedValue(true);
   });
 
   for (const handler of ["submitStage1", "submitStage2", "submitStage3"] as const) {
@@ -138,6 +140,14 @@ describe("the controller takes the actor from the login, not the body", () => {
     });
   });
 
+  it("delete records the logged-in user as the one who deleted it (APD-33)", async () => {
+    const res = await call("deleteAppraisal");
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ success: true });
+    expect(AppraisalResultsService.prototype.delete).toHaveBeenCalledWith(UUID, ACTOR.userUuid);
+  });
+
   for (const handler of Object.keys(BODIES) as Handler[]) {
     it(`${handler} answers 401 and saves nothing when the user can't be identified`, async () => {
       resolveActor.mockResolvedValue(null);
@@ -149,6 +159,7 @@ describe("the controller takes the actor from the login, not the body", () => {
       expect(AppraisalResultsService.prototype.submitStage).not.toHaveBeenCalled();
       expect(AppraisalResultsService.prototype.create).not.toHaveBeenCalled();
       expect(AppraisalResultsService.prototype.update).not.toHaveBeenCalled();
+      expect(AppraisalResultsService.prototype.delete).not.toHaveBeenCalled();
     });
   }
 

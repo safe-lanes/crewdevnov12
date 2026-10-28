@@ -227,7 +227,9 @@ export class AppraisalResultsController {
     try {
       const appraisalUuid = parseAppraisalUuid(req, res);
       if (!appraisalUuid) return;
-      const deleted = await service.delete(appraisalUuid);
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
+      const deleted = await service.delete(appraisalUuid, actor.userUuid);
       if (!deleted) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
