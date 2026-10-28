@@ -18,6 +18,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 // Company Training type from /api/company-trainings
 interface CompanyTraining {
   id: number;
+  ctUuid: string;
   trainingMasterId: number;
   companyId: string;
   trainingLabel: string;
@@ -55,6 +56,7 @@ export function TrainingCourseSelectionDialog({
   const templates = useMemo(() => {
     return companyTrainings.map((training, index): TrainingCourseTemplate => ({
       id: training.id.toString(),
+      ctUuid: training.ctUuid,
       companyId: training.companyId,
       name: training.trainingLabel,
       abbr: training.abr || '',
@@ -94,7 +96,8 @@ export function TrainingCourseSelectionDialog({
   };
 
   const isTemplateAlreadyAdded = (t: TrainingCourseTemplate) =>
-    alreadyAddedIds.has(t.id) || (!!t.companyId && alreadyAddedIds.has(t.companyId)) ||
+    alreadyAddedIds.has(t.id) || (!!t.ctUuid && alreadyAddedIds.has(t.ctUuid)) ||
+    (!!t.companyId && alreadyAddedIds.has(t.companyId)) ||
     alreadyAddedNames.has(d3TrainingName(t.name));
 
   const handleSelectAll = () => {

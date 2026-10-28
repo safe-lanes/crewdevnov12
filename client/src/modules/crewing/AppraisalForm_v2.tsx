@@ -2111,7 +2111,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       training: template.name,
       comment: "",
       addedFromDB: true,
-      correspondingInDB: template.id,
+      correspondingInDB: template.ctUuid,
     }));
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
@@ -2293,7 +2293,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const newFollowups = selectedTemplates.map((template) => ({
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
-      correspondingInDB: template.id,
+      correspondingInDB: template.ctUuid ?? "",
       identifiedByUuid: "",
       category: "",
       status: "" as const,

@@ -4,6 +4,7 @@ import type { DbTrainingOption } from '@/components/training/DbTrainingCombobox'
 
 interface CompanyTraining {
   id: number;
+  ctUuid: string;
   trainingLabel: string;
 }
 
@@ -20,8 +21,10 @@ export function useCompanyTrainings(): UseCompanyTrainingsResult {
     retry: false,
   });
 
+  // Option ids are the training's ct_uuid, which is what `corresponding_in_db`
+  // stores. The serial `id` differs between office and vessel databases.
   const options = useMemo<DbTrainingOption[]>(
-    () => data.map(t => ({ id: t.id.toString(), name: t.trainingLabel })),
+    () => data.map(t => ({ id: t.ctUuid, name: t.trainingLabel })),
     [data]
   );
 

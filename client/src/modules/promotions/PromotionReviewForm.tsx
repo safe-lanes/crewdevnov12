@@ -25,6 +25,7 @@ type PromotionReviewResponse = PromotionReview & {
   selectedPosition?: string | null;
 };
 import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useCompanyTrainings } from '@/hooks/useCompanyTrainings';
 import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
@@ -117,15 +118,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/v2/masters/vessels'],
   });
 
-  const { data: companyTrainingsData = [], isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useQuery<Array<{ id: number; trainingLabel: string }>>({
-    queryKey: ['/api/v2/admin/company-trainings'],
-    retry: false,
-  });
-
-  const dbTrainings = useMemo(
-    () => companyTrainingsData.map(t => ({ id: t.id.toString(), name: t.trainingLabel })),
-    [companyTrainingsData]
-  );
+  const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
 
   const vesselOptions = useMemo(() => {
     if (!vesselMasterData) return [];
@@ -1590,9 +1583,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       const batchIds = new Set<string>();
       const newTrainings = selectedTemplates
         .filter(template => {
-          if (!template.id) return true;
-          if (existingIds.has(template.id) || batchIds.has(template.id)) return false;
-          batchIds.add(template.id);
+          if (!template.ctUuid) return true;
+          if (existingIds.has(template.ctUuid) || batchIds.has(template.ctUuid)) return false;
+          batchIds.add(template.ctUuid);
           return true;
         })
         .map((template) => {
@@ -1601,7 +1594,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           return {
             id: newId,
             training: template.name,
-            correspondingInDB: template.id,
+            correspondingInDB: template.ctUuid ?? '',
             identifiedByUuid: '',
             category: '',
             status: '',

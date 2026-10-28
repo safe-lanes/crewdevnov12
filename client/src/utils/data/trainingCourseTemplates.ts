@@ -1,5 +1,7 @@
 export interface TrainingCourseTemplate {
   id: string;
+  // The company training's ct_uuid: the value `corresponding_in_db` stores.
+  ctUuid?: string;
   companyId?: string;
   name: string;
   abbr: string;
