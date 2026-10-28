@@ -16,6 +16,7 @@ import {
   crewTransferController,
   dashboardController,
   crewImportController,
+  attachmentConverterController,
 } from "./controllers";
 
 import { crewReactivationController } from './controllers/crewReactivationController';
@@ -238,5 +239,16 @@ router.get("/import/template", crewImportController.downloadTemplate);
 router.post("/import/validate", importBodyParser, crewImportController.validate);
 router.post("/import/execute", importBodyParser, crewImportController.execute);
 router.post("/import/attachments", attachmentZipBodyParser, crewImportController.importAttachments);
+
+// ============================================
+// CLIENT ATTACHMENT CONVERTER
+// ============================================
+const converterZipBodyParser = raw({
+  type: ["application/zip", "application/octet-stream", "application/x-zip-compressed"],
+  limit: "200mb",
+});
+router.get("/attachment-converter/profiles", attachmentConverterController.listProfiles);
+router.post("/attachment-converter/analyze", converterZipBodyParser, attachmentConverterController.analyze);
+router.post("/attachment-converter/convert", converterZipBodyParser, attachmentConverterController.convert);
 
 export default router;
