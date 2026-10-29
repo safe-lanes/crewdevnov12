@@ -1,5 +1,6 @@
 import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { employmentAfterReactivationOn } from "./employmentStatusSql";
 import { getDb } from "../../db";
 import { CrewMembersRepository, crewTerminationsRepository } from "../repositories";
 import {
@@ -522,6 +523,7 @@ export const crewMembersService = {
      *                like 'active' for backwards-compatible Crew Database UI.
      */
     view?: "active" | "all";
+    employmentDate?: string;
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
     const limit = Math.min(filters?.limit || 5000, 5000);
@@ -632,6 +634,9 @@ export const crewMembersService = {
         vpContractPeriodMonths: latestVesselPlanning.contractPeriodMonths,
         vpSignOnDate: latestVesselPlanning.vpSignOnDate,
         vpReliefDue: latestVesselPlanning.vpReliefDue,
+        ...(filters?.employmentDate ? {
+          employedAfterReactivation: employmentAfterReactivationOn(filters.employmentDate, false),
+        } : {}),
         vpVesselName: vpVesselNames.vessel,
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
@@ -717,6 +722,7 @@ export const crewMembersService = {
       const effectiveReliefDue = r.vpReliefDue || r.reliefDue;
       return {
         ...r.crew,
+        ...(filters?.employmentDate ? { employedAfterReactivation: r.employedAfterReactivation } : {}),
         nationalityUuid: r.crew.nationalityUuid,
         nationality: r.nationality,
         vesselTypeUuid: r.crew.vesselTypeUuid,

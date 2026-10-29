@@ -9313,6 +9313,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return response.json();
     },
     onSuccess: (_, draft) => {
+      queryClient.invalidateQueries({ predicate: ({ queryKey }) => {
+        const key = queryKey[0];
+        return ['/api/v2/crew-pool/crew', '/api/v2/crew-pool/crew/enriched',
+          '/api/v2/crew-pool/crew/details', '/api/v2/training-retention/retention',
+          '/api/v2/promotions/reviews'].includes(String(key))
+          || (key === '/api/v2/rotation' && queryKey[1] === 'crew');
+      } });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
       queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
       invalidateCrewData(draft.crewUuid);
