@@ -10,6 +10,7 @@ import {
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
 import { resolveCountryUuid } from "./masterDataResolver";
+import { ensureTrainingAttachmentReference } from "./trainingAttachmentReference";
 import {
   crewLicenses,
   crewLicensesAttachments,
@@ -361,7 +362,8 @@ export const crewCertificatesService = {
 
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId });
+    const saved = await crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId });
+    return ensureTrainingAttachmentReference(saved);
   },
 
   async updateTraining(
@@ -369,13 +371,16 @@ export const crewCertificatesService = {
     data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
     await this.getTrainingByUuid(trainUuid);
-    const dataWithAudit = applyAuditUser(data, false);
+    // References are assigned only when stored NULL. Never let a stale payload
+    // clear or replace a stored reference, including an existing empty string.
+    const { attachmentRef: _attachmentRef, ...trainingData } = data;
+    const dataWithAudit = applyAuditUser(trainingData, false);
 
     const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update training: ${trainUuid}`);
     }
-    return updated;
+    return ensureTrainingAttachmentReference(updated);
   },
 
   async deleteTraining(trainUuid: string): Promise<void> {
@@ -442,7 +447,7 @@ export const crewCertificatesService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
-    return db.transaction(async (tx: any) => {
+    const saved = await db.transaction(async (tx: any) => {
       const results: CrewTrainingCourse[] = [];
       const now = new Date();
 
@@ -458,9 +463,10 @@ export const crewCertificatesService = {
         let trainUuid: string;
 
         if (item.trainUuid) {
+          const { attachmentRef: _attachmentRef, ...trainingData } = item.data;
           const [updated] = await tx
             .update(crewTrainingCourses)
-            .set(applyAuditUser({ ...item.data, auditUserUuid }))
+            .set(applyAuditUser({ ...trainingData, auditUserUuid }))
             .where(eq(crewTrainingCourses.trainUuid, item.trainUuid))
             .returning();
           trainUuid = item.trainUuid;
@@ -505,6 +511,14 @@ export const crewCertificatesService = {
 
       return results;
     });
+
+    // Do not let reference allocation interfere with the existing bulk-save or
+    // attachment transaction. Sequential allocation also avoids self-contention.
+    const results: CrewTrainingCourse[] = [];
+    for (const training of saved) {
+      results.push(await ensureTrainingAttachmentReference(training, db));
+    }
+    return results;
   },
 
   // ============ Expiry Checks ============
