@@ -6,6 +6,7 @@ import { accessControlService } from "../services";
 import { resolveRequestRole } from "../../auth/roleResolutionService";
 import { accessControlAuthority, saveActionDecisions } from "../services/accessControlManagement";
 import { writeCatalogue, writeMenuGrants } from "../services/accessControlWrites";
+import { readAccessAuditPage } from "../services/accessAuditRead";
 
 export function accessControlHandler(fn: (req: Request) => Promise<unknown>) {
   return async (req: Request, res: Response) => {
@@ -51,6 +52,7 @@ export const accessControlController = {
       .then(d => ({ allowed: d.manage }));
   }),
   audit: accessControlHandler(async req => {
+    if (req.query.page !== undefined) return readAccessAuditPage(req);
     const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
     const condition = filter === "management" ? sql`resource='access_control' AND action='manage'` :
       filter === "void_completed" ? sql`resource='company_forms' AND action='void_completed'` :

@@ -558,8 +558,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getAccessControlAudit(filter: string, roleId?: string) {
-    const params = new URLSearchParams({ filter });
+  async getAccessControlAudit(filter: string, roleId?: string, options: Record<string, string> = {}) {
+    const params = new URLSearchParams({ filter, ...options });
     if (roleId) params.set('roleId', roleId);
     const res = await apiRequest('GET', `${V2_BASE}/access-control/audit?${params.toString()}`);
     return res.json();

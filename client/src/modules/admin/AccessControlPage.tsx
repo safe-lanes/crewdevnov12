@@ -3,7 +3,8 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck, History } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { AccessAuditHistory } from "./AccessAuditHistory";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
@@ -53,18 +54,6 @@ interface AccessControlState {
   recoveryRoute: "parent_sail_admin" | "interim_names";
 }
 
-interface AuditRow {
-  id: string;
-  event: string;
-  actor?: unknown;
-  role_id?: string | null;
-  resource?: string | null;
-  action?: string | null;
-  before_value?: unknown;
-  after_value?: unknown;
-  details?: unknown;
-  recorded_at?: string | null;
-}
 
 interface PermissionApi {
   id: number;
@@ -142,8 +131,6 @@ export default function AccessControlPage() {
   const { accessControlManagement } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
-  const [auditFilter, setAuditFilter] = useState<"all" | "management" | "void_completed" | "parent_sync">("all");
-  const [auditRoleId, setAuditRoleId] = useState("");
   const [managementDraft, setManagementDraft] = useState(false);
   const [managementError, setManagementError] = useState("");
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
@@ -165,10 +152,6 @@ export default function AccessControlPage() {
     queryKey: [roleManagementUrl],
     queryFn: () => adminApiV2.getRoleManagementGrant(selectedRoleUuid!),
     enabled: !!selectedRoleUuid,
-  });
-  const auditQuery = useQuery<AuditRow[]>({
-    queryKey: ["/api/v2/admin/access-control/audit", auditFilter, auditRoleId],
-    queryFn: () => adminApiV2.getAccessControlAudit(auditFilter, auditRoleId || undefined),
   });
   const saveManagementMutation = useMutation({
     mutationFn: (allowed: boolean) => adminApiV2.saveRoleManagementGrant(selectedRoleUuid!, allowed),
@@ -403,14 +386,6 @@ export default function AccessControlPage() {
   };
 
   const isLoading = menusLoading || rolesLoading;
-  const auditValue = (row: AuditRow, key: "before_value" | "after_value") => {
-    if (!Object.prototype.hasOwnProperty.call(row, key)) return "Missing";
-    const value = row[key];
-    return value === null ? "null" : JSON.stringify(value);
-  };
-  const renderAuditJson = (value: unknown) => value === undefined
-    ? "Missing"
-    : value === null ? "null" : JSON.stringify(value, null, 2);
 
   if (isLoading) {
     return (
@@ -422,7 +397,7 @@ export default function AccessControlPage() {
 
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
-      <div className="flex justify-end"><CompanyDocumentBranding /></div>
+      <div className="flex flex-wrap items-center justify-end gap-3"><AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding /></div>
       {accessControlManagement && <TrainingCompliancePolicySetting />}
       <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading">
         <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
@@ -579,78 +554,6 @@ export default function AccessControlPage() {
         </div>
       </div>
       </div>
-      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" aria-labelledby="access-audit-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <History size={18} className="text-[#16569e]" aria-hidden="true" />
-            <h2 id="access-audit-heading" className="font-semibold text-gray-800">Access audit history</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              Event filter
-              <select value={auditFilter} onChange={event => setAuditFilter(event.target.value as typeof auditFilter)} className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm">
-                <option value="all">All events</option>
-                <option value="management">Management</option>
-                <option value="void_completed">Void completed</option>
-                <option value="parent_sync">Parent sync</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              Role
-              <select value={auditRoleId} onChange={event => setAuditRoleId(event.target.value)} className="h-9 max-w-[220px] rounded-md border border-gray-300 bg-white px-2 text-sm">
-                <option value="">All roles</option>
-                {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
-              </select>
-            </label>
-          </div>
-        </div>
-        {auditQuery.isLoading ? (
-          <div className="space-y-2 p-4" aria-label="Loading audit history">
-            {[1, 2, 3].map(row => <div key={row} className="h-14 animate-pulse rounded bg-gray-100" />)}
-          </div>
-        ) : auditQuery.isError ? (
-          <div className="flex items-center justify-between p-4" role="alert">
-            <p className="text-sm text-red-700">Unable to load audit history.</p>
-            <Button variant="outline" size="sm" onClick={() => auditQuery.refetch()}>Retry</Button>
-          </div>
-        ) : !auditQuery.data?.length ? (
-          <p className="px-4 py-8 text-center text-sm text-gray-500">No audit events match this filter.</p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {auditQuery.data.map(row => (
-              <article key={row.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-gray-800">{row.event}</span>
-                    {row.action && <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-800">{row.action}</span>}
-                    {row.resource && <span className="text-xs text-gray-500">{row.resource}</span>}
-                  </div>
-                  <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Actor: </dt><dd className="inline break-words text-gray-700">{renderAuditJson(row.actor)}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Role UUID: </dt><dd className="inline break-all font-mono text-gray-700">{row.role_id === undefined ? "Missing" : row.role_id === null ? "null" : row.role_id}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Audit ID: </dt><dd className="inline break-all font-mono text-gray-700">{row.id}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Recorded: </dt><dd className="inline break-all font-mono text-gray-700">{row.recorded_at ?? (Object.prototype.hasOwnProperty.call(row, "recorded_at") ? "null" : "Missing")}</dd></div>
-                  </dl>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="min-w-0 rounded border border-gray-200 bg-gray-50 p-2">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Before</div>
-                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-gray-800">{auditValue(row, "before_value")}</pre>
-                  </div>
-                  <div className="min-w-0 rounded border border-gray-200 bg-gray-50 p-2">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">After</div>
-                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-gray-800">{auditValue(row, "after_value")}</pre>
-                  </div>
-                  <details className="col-span-2">
-                      <summary className="cursor-pointer text-xs font-medium text-[#16569e]">Details</summary>
-                      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-xs">{renderAuditJson(row.details)}</pre>
-                  </details>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
