@@ -111,3 +111,12 @@ verification, not parent-authenticated production sign-in verification.
 Unit tests cover label mapping, unchanged values, missing names/references,
 readable before/after values, pagination across batches, search beyond the first
 batch, and invalid page/date inputs.
+
+### Gate-only test-double maintenance
+
+The first full run reported 163 failures. The additional failure was an unchanged
+master-data synchronization test whose mock still modeled the retired
+bulk-insert API and lacked a transaction method. Only that test double was
+updated to model transactional row-by-row reconciliation. It still checks the
+exact nonsequential parent IDs and sequence reset; it now also checks the
+transaction and target table. No production master-sync code changed.
