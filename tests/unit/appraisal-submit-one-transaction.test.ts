@@ -122,6 +122,7 @@ beforeEach(() => {
   repo.updateByAppraisalUuid.mockImplementation(async (_uuid: string, data: any) => { events.push(updateLabel(data)); return data; });
   repo.syncForAppraisal.mockResolvedValue(0);
   repo.addAssignedReviewers.mockResolvedValue(0);
+  repo.findByAppraisalUuids.mockResolvedValue(new Map());
   crewRepo.findByUuid.mockResolvedValue({ crewUuid: CREW });
   formsService.getFormForRank.mockResolvedValue({ formVersionId: 7, formVersionUuid: "fv-7", isLockForm: true });
   sendEmail.mockImplementation(() => { events.push("email"); });
@@ -132,7 +133,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
   const service = new AppraisalResultsService();
 
   it("Stage 1: creates the appraisal and submits Stage 1 in the same transaction", async () => {
-    await service.submitStage(UUID, "stage1", STAGE1, "Master", undefined, { create: CREATE });
+    await service.submitStage(UUID, "stage1", STAGE1, "Master", { create: CREATE });
 
     expect(getDbMock().transaction).toHaveBeenCalledTimes(1);
     expect(events).toEqual(["tx:start", "create", "update:stage1", "tx:commit"]);
@@ -145,12 +146,21 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
   });
 
   it("Stage 2 with Part B2 hidden: create, Stage 1 and Stage 2 commit together; emails go after the commit", async () => {
-    await service.submitStage(UUID, "stage2", STAGE2, "Master", { overallRating: "80.0" }, { create: CREATE, stage1: STAGE1 });
+    // Part C/D as the create leaves them (C row not rated), then as Stage 2 leaves them.
+    repo.findByAppraisalUuids
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValueOnce(new Map([[UUID, STAGE2.competenceAssessments]]))
+      .mockResolvedValueOnce(new Map());
+
+    await service.submitStage(UUID, "stage2", STAGE2, "Master", { create: CREATE, stage1: STAGE1 });
     await flushPromises();
 
     expect(getDbMock().transaction).toHaveBeenCalledTimes(1);
-    expect(events).toEqual(["tx:start", "create", "update:stage1", "update:stage2", "tx:commit", "email"]);
-    expect(repo.updateByAppraisalUuid.mock.calls[1][1]).toMatchObject({ status: "pending_review", stage2Status: "completed", overallRating: "80.0", isLockForm: true });
+    // The ratings follow the C row Stage 2 saved (APD-49).
+    expect(events).toEqual(["tx:start", "create", "update:stage1", "update:stage2", "update", "tx:commit", "email"]);
+    expect(repo.updateByAppraisalUuid.mock.calls[1][1]).toMatchObject({ status: "pending_review", stage2Status: "completed", isLockForm: true });
+    expect(repo.updateByAppraisalUuid.mock.calls[2]).toEqual([UUID, { competenceRating: "4.0", overallRating: "4.0" }, tx]);
     expect(repo.addAssignedReviewers).toHaveBeenCalledWith(UUID, STAGE2.reviewers, null, tx);
   });
 
@@ -161,7 +171,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
     });
 
     await expect(
-      service.submitStage(UUID, "stage2", STAGE2, "Master", undefined, { create: CREATE, stage1: STAGE1 }),
+      service.submitStage(UUID, "stage2", STAGE2, "Master", { create: CREATE, stage1: STAGE1 }),
     ).rejects.toThrow("write failed");
     await flushPromises();
 
@@ -172,7 +182,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
 
   it("a failed check writes nothing: Stage 2 of a new appraisal without Stage 1", async () => {
     await expect(
-      service.submitStage(UUID, "stage2", STAGE2, "Master", undefined, { create: CREATE }),
+      service.submitStage(UUID, "stage2", STAGE2, "Master", { create: CREATE }),
     ).rejects.toThrow("Stage 1 must be submitted before Stage 2");
 
     expect(getDbMock().transaction).not.toHaveBeenCalled();
@@ -184,7 +194,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
     crewRepo.findByUuid.mockResolvedValue(undefined);
 
     await expect(
-      service.submitStage(UUID, "stage1", STAGE1, "Master", undefined, { create: CREATE }),
+      service.submitStage(UUID, "stage1", STAGE1, "Master", { create: CREATE }),
     ).rejects.toBeInstanceOf(CrewReferenceError);
 
     expect(getDbMock().transaction).not.toHaveBeenCalled();
@@ -202,7 +212,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
       formVersionUuid: "fv-7",
     });
 
-    await service.submitStage(UUID, "stage2", STAGE2, "Master", undefined, { create: CREATE, stage1: STAGE1 });
+    await service.submitStage(UUID, "stage2", STAGE2, "Master", { create: CREATE, stage1: STAGE1 });
     await flushPromises();
 
     expect(repo.createIfAbsent).not.toHaveBeenCalled();
@@ -213,7 +223,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
     repo.findByAppraisalUuidIncludingDeleted.mockResolvedValue({ appraisalUuid: UUID, crewMemberId: "someone-else", isDeleted: false });
 
     await expect(
-      service.submitStage(UUID, "stage1", STAGE1, "Master", undefined, { create: CREATE }),
+      service.submitStage(UUID, "stage1", STAGE1, "Master", { create: CREATE }),
     ).rejects.toBeInstanceOf(AppraisalIdConflictError);
 
     expect(getDbMock().transaction).not.toHaveBeenCalled();
@@ -223,7 +233,7 @@ describe("a stage submit of a new appraisal is one transaction (service)", () =>
     repo.createIfAbsent.mockResolvedValue(undefined);
 
     await expect(
-      service.submitStage(UUID, "stage1", STAGE1, "Master", undefined, { create: CREATE }),
+      service.submitStage(UUID, "stage1", STAGE1, "Master", { create: CREATE }),
     ).rejects.toBeInstanceOf(AppraisalIdConflictError);
 
     expect(repo.updateByAppraisalUuid).not.toHaveBeenCalled();
@@ -262,7 +272,7 @@ describe("a stage submit request carries `create` and `stage1` to the service (c
     const res = await submit("stage1", { data: STAGE1, create: CREATE });
 
     expect(res.status).not.toHaveBeenCalled();
-    expect(submitStage.mock.calls[0][5]).toEqual({ create: CREATE });
+    expect(submitStage.mock.calls[0][4]).toEqual({ create: CREATE });
   });
 
   it("Stage 2 passes `create` and `stage1` through whole", async () => {
@@ -271,7 +281,7 @@ describe("a stage submit request carries `create` and `stage1` to the service (c
     const res = await submit("stage2", { data: STAGE2, create: CREATE, stage1: STAGE1 });
 
     expect(res.status).not.toHaveBeenCalled();
-    expect(submitStage.mock.calls[0][5]).toEqual({ create: CREATE, stage1: STAGE1 });
+    expect(submitStage.mock.calls[0][4]).toEqual({ create: CREATE, stage1: STAGE1 });
   });
 
   it("answers 409 for an id conflict and 400 for an unknown crew member", async () => {

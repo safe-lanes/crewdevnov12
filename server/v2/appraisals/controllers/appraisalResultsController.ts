@@ -89,6 +89,8 @@ const stage2SubmissionSchema = z.object({
   // Stage 1, submitted in the same transaction when it is not done yet: the
   // form has no Stage 1 button when Part B2 is hidden.
   stage1: stage1DataSchema.optional(),
+  // Accepted so older clients can still submit, but ignored: the server derives
+  // the ratings from the Part C/D rows (APD-49).
   competenceRating: z.string().nullable().optional(),
   behavioralRating: z.string().nullable().optional(),
   overallRating: z.string().nullable().optional(),
@@ -251,7 +253,7 @@ export class AppraisalResultsController {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
       const { data, create } = validationResult.data;
-      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid: actor.userUuid }, actor.name, undefined, { create });
+      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid: actor.userUuid }, actor.name, { create });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -278,14 +280,8 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, competenceRating, behavioralRating, overallRating, create, stage1 } = validationResult.data;
-      // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
-      // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid: actor.userUuid }, actor.name, {
-        competenceRating,
-        behavioralRating,
-        overallRating,
-      }, { create, stage1 });
+      const { data, create, stage1 } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid: actor.userUuid }, actor.name, { create, stage1 });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }

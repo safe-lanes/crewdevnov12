@@ -8,6 +8,7 @@ import { STAGE_SECTIONS, type AppraisalStage } from "@shared/v2/appraisals/appra
 const { repo, getDbMock } = vi.hoisted(() => ({
   repo: {
     findByAppraisalUuid: vi.fn(),
+    findByAppraisalUuidIncludingDeleted: vi.fn(),
     findByAppraisalUuids: vi.fn(),
     updateByAppraisalUuid: vi.fn(),
     syncForAppraisal: vi.fn(),
@@ -132,6 +133,7 @@ describe("stage submit saves every section of its stage in one transaction (serv
     getDbMock.mockReturnValue({ transaction: (fn: (tx: unknown) => unknown) => fn(tx) });
     repo.syncForAppraisal.mockResolvedValue(0);
     repo.addAssignedReviewers.mockResolvedValue(0);
+    repo.findByAppraisalUuids.mockResolvedValue(new Map());
     vi.spyOn(AppraisalResultsService.prototype as any, "resolveAppraisalPinForSubmittedStatus").mockResolvedValue(null);
     vi.spyOn(AppraisalResultsService.prototype, "getByUuid").mockResolvedValue({ appraisalUuid: UUID } as any);
     storedAppraisal();

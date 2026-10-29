@@ -185,6 +185,7 @@ describe("a create sent with a stage submit is saved as the submit's actor (serv
     repo.createIfAbsent.mockImplementation(async (row: any) => ({ ...row, id: 1 }));
     repo.updateByAppraisalUuid.mockImplementation(async (_uuid: string, data: any) => data);
     repo.syncForAppraisal.mockResolvedValue(0);
+    repo.findByAppraisalUuids.mockResolvedValue(new Map());
     crewRepo.findByUuid.mockResolvedValue({ crewUuid: CREW });
     formsService.getFormForRank.mockResolvedValue({ formVersionId: 7, formVersionUuid: "fv-7", isLockForm: true });
     vi.spyOn(AppraisalResultsService.prototype, "getByUuid").mockResolvedValue({ appraisalUuid: UUID } as any);
@@ -192,7 +193,7 @@ describe("a create sent with a stage submit is saved as the submit's actor (serv
 
   it("ignores the submitter and audit id inside `create`", async () => {
     await service.submitStage(
-      UUID, "stage1", { ...STAGE1, auditUserUuid: ACTOR.userUuid }, ACTOR.name, undefined,
+      UUID, "stage1", { ...STAGE1, auditUserUuid: ACTOR.userUuid }, ACTOR.name,
       { create: { ...CREATE, submittedBy: "Current User", auditUserUuid: "forged-uuid" } },
     );
 

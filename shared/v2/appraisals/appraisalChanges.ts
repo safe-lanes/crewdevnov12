@@ -6,6 +6,7 @@
 // are identified by their row uuid, never by list position.
 
 import { v5 as uuidv5 } from "uuid";
+import type { AppraisalRatings } from "./appraisalRatings";
 
 export const SECTION_KEYS = [
   "trainings",
@@ -89,6 +90,11 @@ export const HEADER_FIELDS = [
 ] as const;
 
 export type AppraisalHeaderField = (typeof HEADER_FIELDS)[number];
+
+// The ratings are derived from the Part C/D rows on the server (APD-49). A
+// save draft that carries them (an older client) is still accepted, but they
+// are ignored.
+export const DERIVED_RATING_FIELDS = ["competenceRating", "behavioralRating", "overallRating"] as const satisfies readonly (AppraisalHeaderField & keyof AppraisalRatings)[];
 
 // A row of a section. An existing row carries its uuid and only the fields
 // that changed; a new row carries its (client-generated) uuid and every field

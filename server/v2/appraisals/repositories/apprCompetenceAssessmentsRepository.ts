@@ -20,10 +20,9 @@ const ROWS: ChildTableConfig = {
 };
 
 export class ApprCompetenceAssessmentsRepository {
-  async findByAppraisalUuids(appraisalUuids: string[]): Promise<Map<string, ApprCompetenceAssessmentV2[]>> {
+  async findByAppraisalUuids(appraisalUuids: string[], executor: Executor = getDb()): Promise<Map<string, ApprCompetenceAssessmentV2[]>> {
     if (appraisalUuids.length === 0) return new Map();
-    const db = getDb();
-    const rows = await db
+    const rows: ApprCompetenceAssessmentV2[] = await executor
       .select()
       .from(apprCompetenceAssessmentsV2)
       .where(and(
