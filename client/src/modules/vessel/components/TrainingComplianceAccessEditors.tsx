@@ -3,6 +3,28 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+function TrainingPolicyLabel({ id, controlId, title, description }: {
+  id: string;
+  controlId: string;
+  title: string;
+  description: string;
+}) {
+  return <>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <h3 id={`${id}-title`} tabIndex={0} className="text-sm font-semibold text-gray-800">
+          <label htmlFor={controlId} className="cursor-pointer">{title}</label>
+        </h3>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" className="max-w-sm text-sm leading-5">
+        {description}
+      </TooltipContent>
+    </Tooltip>
+    <p id={`${id}-description`} className="sr-only">{description}</p>
+  </>;
+}
 
 export function TrainingComplianceRolePermissionEditor({ roleUuid }: { roleUuid: string }) {
   const url = `/api/v2/admin/access-control/roles/${encodeURIComponent(roleUuid)}/training-compliance`;
@@ -70,7 +92,7 @@ export function TrainingCompliancePolicySetting() {
     } catch { setError("Unable to save the training policy. Please retry."); }
     finally { setSaving(false); }
   }
-  return <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="training-compliance-policy">
+  return <TooltipProvider delayDuration={200}><section className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="training-compliance-policy">
     <div className="border-b border-gray-200 bg-[#16569e] px-4 py-3 text-white"><h2 className="font-semibold">Training compliance policy</h2></div>
     <div className="space-y-4 p-4">
       {isLoading ? <div className="space-y-3" aria-label="Loading training policy">
@@ -91,8 +113,12 @@ export function TrainingCompliancePolicySetting() {
                 className="mt-0.5 shrink-0"
               />
               <div className="min-w-0">
-                <h3 id="training-expiring-title" className="text-sm font-semibold text-gray-800"><label htmlFor="training-block-expiring" className="cursor-pointer">Block mandatory courses expiring during contract</label></h3>
-                <p id="training-expiring-description" className="mt-1 text-sm leading-5 text-gray-600">A seafarer whose mandatory certificate expires before the planned sign-off cannot be deployed unless someone with Override training compliance permission approves it. This uses the planned contract end date, not an actual sign-off event. Recommended courses do not block.</p>
+                <TrainingPolicyLabel
+                  id="training-expiring"
+                  controlId="training-block-expiring"
+                  title="Block seafarer deployment when mandatory courses expiring during contract"
+                  description="A seafarer whose mandatory certificate expires before the planned sign-off cannot be deployed unless someone with Override training compliance permission approves it. This uses the planned contract end date, not an actual sign-off event. Recommended courses do not block."
+                />
                 <p className="mt-2 text-sm font-medium text-gray-800" data-testid="training-expiring-current-effect">
                   Current saved effect: {data?.blockExpiringDuringContract ? "Blocking" : "Warning only"}
                 </p>
@@ -111,8 +137,12 @@ export function TrainingCompliancePolicySetting() {
                 className="mt-0.5 shrink-0"
               />
               <div className="min-w-0">
-                <h3 id="training-missing-expiry-title" className="text-sm font-semibold text-gray-800"><label htmlFor="training-block-missing-expiry" className="cursor-pointer">Block when a mandatory certificate&apos;s expiry is not recorded</label></h3>
-                <p id="training-missing-expiry-description" className="mt-1 text-sm leading-5 text-gray-600">A seafarer whose mandatory certificate needs an expiry date but has none recorded cannot be deployed unless someone with Override training compliance permission approves it.</p>
+                <TrainingPolicyLabel
+                  id="training-missing-expiry"
+                  controlId="training-block-missing-expiry"
+                  title="Block seafarer deployment when a mandatory certificate's expiry is not recorded"
+                  description="A seafarer whose mandatory certificate needs an expiry date but has none recorded cannot be deployed unless someone with Override training compliance permission approves it."
+                />
                 <p className="mt-2 text-sm font-medium text-gray-800" data-testid="training-missing-expiry-current-effect">
                   Current saved effect: {data?.blockMissingExpiry ? "Blocking" : "Warning only"}
                 </p>
@@ -125,5 +155,5 @@ export function TrainingCompliancePolicySetting() {
             </div>
           </>}
     </div>
-  </section>;
+  </section></TooltipProvider>;
 }

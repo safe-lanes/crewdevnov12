@@ -76,6 +76,19 @@ async function review(role = "reviewer") {
   return screen.findByRole("alertdialog");
 }
 describe("Access Control configure-once panels", () => {
+  it("shows explanations in tooltips rather than inline while preserving accessible descriptions", async () => {
+    await boot();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    for (const id of ["training-expiring", "training-missing-expiry"]) {
+      const description = document.getElementById(`${id}-description`)!;
+      expect(description).toHaveClass("sr-only");
+      fireEvent.pointerMove(document.getElementById(`${id}-title`)!, { pointerType: "mouse" });
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(description.textContent!);
+      fireEvent.pointerLeave(document.getElementById(`${id}-title`)!, { pointerType: "mouse" });
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
+    }
+  });
   it("places both panels after the permission grid, retaining both top buttons", async () => {
     await boot();
     const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -90,13 +103,13 @@ describe("Access Control configure-once panels", () => {
   it("pairs each checkbox with its own heading and describes saved effects, not unsaved selections", async () => {
     await boot();
     const block = screen.getByTestId("training-expiring-policy-block");
-    expect(within(block).getByRole("checkbox")).toHaveAccessibleName("Block mandatory courses expiring during contract");
+    expect(within(block).getByRole("checkbox")).toHaveAccessibleName("Block seafarer deployment when mandatory courses expiring during contract");
     expect(screen.getByTestId("training-expiring-current-effect")).toHaveTextContent("Warning only");
     fireEvent.click(within(block).getByRole("checkbox"));
     expect(screen.getByTestId("training-expiring-current-effect")).toHaveTextContent("Warning only");
     expect(screen.getByTestId("training-expiring-unsaved")).toBeVisible();
     const missing = screen.getByTestId("training-missing-expiry-policy-block");
-    expect(within(missing).getByRole("checkbox")).toHaveAccessibleName("Block when a mandatory certificate's expiry is not recorded");
+    expect(within(missing).getByRole("checkbox")).toHaveAccessibleName("Block seafarer deployment when a mandatory certificate's expiry is not recorded");
     fireEvent.click(screen.getByTestId("save-training-compliance-policy"));
     await waitFor(() => expect(screen.getByTestId("training-expiring-current-effect")).toHaveTextContent("Blocking"));
     expect(mocks.request).toHaveBeenCalledWith("PUT", "/api/v2/admin/training-compliance/settings",
