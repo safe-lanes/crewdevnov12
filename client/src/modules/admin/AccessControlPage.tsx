@@ -4,6 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AccessAuditHistory } from "./AccessAuditHistory";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -133,6 +143,11 @@ export default function AccessControlPage() {
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
   const [managementDraft, setManagementDraft] = useState(false);
   const [managementError, setManagementError] = useState("");
+  const [managementConfirmation, setManagementConfirmation] = useState<{
+    roleUuid: string;
+    roleName: string;
+    allowed: boolean;
+  } | null>(null);
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
   const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -154,16 +169,17 @@ export default function AccessControlPage() {
     enabled: !!selectedRoleUuid,
   });
   const saveManagementMutation = useMutation({
-    mutationFn: (allowed: boolean) => adminApiV2.saveRoleManagementGrant(selectedRoleUuid!, allowed),
-    onSuccess: async () => {
+    mutationFn: ({ roleUuid, allowed }: { roleUuid: string; roleName: string; allowed: boolean }) =>
+      adminApiV2.saveRoleManagementGrant(roleUuid, allowed),
+    onSuccess: async (_data, variables) => {
       setManagementError("");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [roleManagementUrl] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.roleUuid)}/management`] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/state"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/audit"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/my-permissions"] }),
       ]);
-      toast({ title: "Management grant saved", description: `Updated management access for “${selectedRole?.assignedRole ?? "role"}”.` });
+      toast({ title: "Management grant saved", description: `Updated management access for “${variables.roleName}”.` });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : "Unable to save management access.";
@@ -398,96 +414,6 @@ export default function AccessControlPage() {
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
       <div className="flex flex-wrap items-center justify-end gap-3"><AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding /></div>
-      {accessControlManagement && <TrainingCompliancePolicySetting />}
-      <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading">
-        <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
-          <ShieldCheck size={18} aria-hidden="true" />
-          <h2 id="management-grants-heading" className="font-semibold">Management grants</h2>
-        </div>
-        {stateQuery.isLoading ? (
-          <div className="p-4 space-y-3" aria-label="Loading access control state">
-            <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse" />
-            <div className="h-10 rounded bg-gray-100 animate-pulse" />
-          </div>
-        ) : stateQuery.isError ? (
-          <div className="flex items-center justify-between gap-3 p-4" role="alert">
-            <p className="text-sm text-red-700">Unable to load management access state.</p>
-            <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button>
-          </div>
-        ) : (
-          <div className="p-4">
-            <div className="mb-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Control mode</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.mode.replace(/_/g, " ")}</div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Eligible managers</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.eligibleManagerCount ?? "—"} currently eligible</div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Category readiness</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.categoryReady ? "Ready" : "Not ready"}</div>
-              </div>
-            </div>
-            {stateQuery.data?.eligibleManagerCount === 0 && (
-              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
-                <strong>No eligible managers.</strong> Recovery path: <strong>{stateQuery.data.recoveryRoute === "parent_sail_admin" ? "Parent SAIL admin" : "Interim named managers"}</strong>.
-                {stateQuery.data.mode === "category_recovery" && " Grant editing is limited to recovery."}
-              </div>
-            )}
-            {stateQuery.data?.eligibleManagerCount !== 0 && (stateQuery.data?.mode === "category_recovery" || stateQuery.data?.mode === "name_bootstrap") && (
-              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
-                Recovery path: <strong>{stateQuery.data.recoveryRoute === "parent_sail_admin" ? "Parent SAIL admin" : "Interim named managers"}</strong>.
-              </div>
-            )}
-            <div className="grid gap-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(250px,1.2fr)_auto] md:items-end">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
-                <select
-                  id="management-role-select"
-                  value={selectedRoleUuid ?? ""}
-                  onChange={event => handleRoleSelect(event.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
-                  aria-label="Choose role for management grant"
-                >
-                  {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
-                </select>
-              </div>
-              <div>
-                <div className="mb-1 text-xs font-semibold text-gray-600">Parent category <span className="font-normal">(read-only)</span></div>
-                <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
-                  {selectedRole?.roletype || "Not assigned"}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {managementQuery.isLoading ? <div className="h-10 w-40 animate-pulse rounded bg-gray-100" /> : (
-                  <label className={`flex min-h-10 items-center gap-2 text-sm ${stateQuery.data?.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
-                    <Checkbox
-                      checked={managementDraft}
-                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isError}
-                      onCheckedChange={value => setManagementDraft(value === true)}
-                      aria-label="Management access granted"
-                    />
-                    Management access
-                  </label>
-                )}
-                <Button
-                  onClick={() => { setManagementError(""); saveManagementMutation.mutate(managementDraft); }}
-                  disabled={!stateQuery.data?.allowed || !selectedRoleUuid || managementQuery.isLoading || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
-                  className="bg-[#16569e] text-white hover:bg-[#0f4078]"
-                >
-                  {saveManagementMutation.isPending ? "Saving…" : "Save grant"}
-                </Button>
-              </div>
-            </div>
-            {!stateQuery.data?.allowed && <p className="mt-3 text-sm text-gray-600" role="status">Management grant editing is unavailable in the current server mode.</p>}
-            {managementQuery.isError && <p className="mt-3 text-sm text-red-700" role="alert">Unable to load this role’s management grant. <button className="underline" onClick={() => managementQuery.refetch()}>Retry</button></p>}
-            {managementError && <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{managementError}</p>}
-          </div>
-        )}
-      </section>
-
       <div className="flex gap-0 min-h-[440px] h-[calc(100vh-370px)] max-w-full" data-testid="access-control-permissions">
       <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
         <div className="bg-[#52baf3] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
@@ -554,6 +480,152 @@ export default function AccessControlPage() {
         </div>
       </div>
       </div>
+      {accessControlManagement && <TrainingCompliancePolicySetting />}
+      <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading" data-testid="management-grants-panel">
+        <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
+          <ShieldCheck size={18} aria-hidden="true" />
+          <h2 id="management-grants-heading" className="font-semibold">Management grants</h2>
+        </div>
+        <p className="border-b border-gray-200 px-4 py-3 text-sm text-gray-700">This controls which roles may administer Access Control itself, including granting permissions to other roles.</p>
+        {stateQuery.isLoading ? (
+          <div className="p-4 space-y-3" aria-label="Loading access control state">
+            <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse" />
+            <div className="h-10 rounded bg-gray-100 animate-pulse" />
+          </div>
+        ) : stateQuery.isError ? (
+          <div className="flex items-center justify-between gap-3 p-4" role="alert">
+            <p className="text-sm text-red-700">Unable to load management access state.</p>
+            <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button>
+          </div>
+        ) : (
+          <div className="p-4">
+            <div className="mb-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="text-xs text-gray-500">How access is assigned</div>
+                <div className="mt-1 text-sm font-medium text-gray-800" data-testid="management-mode-explanation">
+                  {stateQuery.data?.mode === "name_bootstrap"
+                    ? "No currently eligible role has an explicit management grant, so access currently follows role names: Admin, Super Admin or Sail Admin."
+                    : stateQuery.data?.mode === "management"
+                      ? "Management access follows explicit role grants."
+                      : stateQuery.data?.mode === "category_recovery"
+                        ? "The parent SAIL Admin category is ready, but no eligible role has explicit management access; recovery is routed through the parent application."
+                        : "Your role does not currently have management access."}
+                </div>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="text-xs text-gray-500">Roles with management access</div>
+                <div className="mt-1 text-sm font-medium text-gray-800">Usable explicit manager roles: {stateQuery.data?.eligibleManagerCount ?? "—"}.</div>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="text-xs text-gray-500">Parent SAIL Admin category</div>
+                <div className="mt-1 text-sm font-medium text-gray-800">
+                  {stateQuery.data?.categoryReady
+                    ? "Supplied by the parent application."
+                    : "Not supplied by the parent application; this is resolved there, not here."}
+                </div>
+              </div>
+            </div>
+            {(stateQuery.data?.mode === "name_bootstrap" || stateQuery.data?.mode === "category_recovery" || stateQuery.data?.eligibleManagerCount === 0) && (
+              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950" role="status" data-testid="management-recovery-banner">
+                <strong>Complete management access setup:</strong>{" "}
+                {stateQuery.data?.mode === "category_recovery"
+                  ? "Use this parent SAIL Admin recovery access to choose a role used by the intended administrator below, enable Management access and save the grant."
+                  : stateQuery.data?.mode === "name_bootstrap" && stateQuery.data.eligibleManagerCount === 0
+                    ? "Choose a role used by the intended administrator below, enable Management access and save the grant. Make sure the role is active and linked to that administrator’s user account."
+                    : stateQuery.data?.mode === "name_bootstrap"
+                      ? "Grant management access to a currently eligible role. This temporary role-name route will stop working once an eligible role has an explicit management grant."
+                      : stateQuery.data?.recoveryRoute === "parent_sail_admin"
+                        ? "Ask a parent SAIL administrator to restore an eligible manager through the parent SAIL Admin recovery route."
+                        : "Use an eligible named manager to restore access, then assign an explicit management grant."}
+                {stateQuery.data?.mode === "name_bootstrap" && (
+                  <span className="block mt-1">This is a temporary setup state. The name-based route closes only when an eligible role has an explicit grant; saving a grant for an ineligible role does not close it.</span>
+                )}
+              </div>
+            )}
+            <div className="grid gap-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(250px,1.2fr)_auto] md:items-end">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
+                <select
+                  id="management-role-select"
+                  value={selectedRoleUuid ?? ""}
+                  onChange={event => handleRoleSelect(event.target.value)}
+                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                  aria-label="Choose role for management grant"
+                >
+                  {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold text-gray-600">Parent category <span className="font-normal">(read-only)</span></div>
+                <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
+                  {selectedRole?.roletype || "Not assigned"}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {managementQuery.isLoading ? <div className="h-10 w-40 animate-pulse rounded bg-gray-100" /> : (
+                  <label className={`flex min-h-10 items-center gap-2 text-sm ${stateQuery.data?.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+                    <Checkbox
+                      checked={managementDraft}
+                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isError}
+                      onCheckedChange={value => setManagementDraft(value === true)}
+                      aria-label="Management access granted"
+                    />
+                    Management access
+                  </label>
+                )}
+                <Button
+                  onClick={() => {
+                    setManagementError("");
+                    if (selectedRoleUuid && selectedRole) {
+                      setManagementConfirmation({ roleUuid: selectedRoleUuid, roleName: selectedRole.assignedRole, allowed: managementDraft });
+                    }
+                  }}
+                  disabled={!stateQuery.data?.allowed || !selectedRoleUuid || managementQuery.isLoading || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
+                  className="bg-[#16569e] text-white hover:bg-[#0f4078]"
+                  data-testid="button-review-management-grant"
+                >
+                  {saveManagementMutation.isPending ? "Saving…" : "Save grant"}
+                </Button>
+              </div>
+            </div>
+            {!stateQuery.data?.allowed && <p className="mt-3 text-sm text-gray-600" role="status">Management grant editing is unavailable in the current server mode.</p>}
+            {managementQuery.isError && <p className="mt-3 text-sm text-red-700" role="alert">Unable to load this role’s management grant. <button className="underline" onClick={() => managementQuery.refetch()}>Retry</button></p>}
+            {managementError && <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{managementError}</p>}
+          </div>
+        )}
+      </section>
+      <AlertDialog open={!!managementConfirmation} onOpenChange={open => { if (!open) setManagementConfirmation(null); }}>
+        <AlertDialogContent data-testid="management-grant-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{managementConfirmation?.allowed ? "Grant management access?" : "Remove management access?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {managementConfirmation?.allowed
+                ? `Granting “${managementConfirmation.roleName}” management access lets this role administer Access Control and grant permissions to other roles.`
+                : `Removing management access from “${managementConfirmation?.roleName ?? "this role"}” revokes its explicit permission to administer Access Control and grant permissions to other roles. The server still prevents removal of the last eligible manager, and recovery rules remain unchanged.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-management-confirmation">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-management-change"
+              onClick={event => {
+                event.preventDefault();
+                const confirmation = managementConfirmation;
+                if (!confirmation) return;
+                setManagementConfirmation(null);
+                saveManagementMutation.mutate({
+                  roleUuid: confirmation.roleUuid,
+                  roleName: confirmation.roleName,
+                  allowed: confirmation.allowed,
+                });
+              }}
+              disabled={saveManagementMutation.isPending}
+            >
+              Confirm {managementConfirmation?.allowed ? "grant" : "removal"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

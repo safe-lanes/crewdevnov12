@@ -70,35 +70,60 @@ export function TrainingCompliancePolicySetting() {
     } catch { setError("Unable to save the training policy. Please retry."); }
     finally { setSaving(false); }
   }
-  return <section className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="training-compliance-policy">
+  return <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="training-compliance-policy">
     <div className="border-b border-gray-200 bg-[#16569e] px-4 py-3 text-white"><h2 className="font-semibold">Training compliance policy</h2></div>
-    <div className="flex flex-wrap items-center justify-between gap-4 p-4">
-      <div className="min-w-[240px] flex-1">
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-gray-800">Block mandatory courses expiring during contract</p>
-            <p className="mt-1 text-sm text-gray-600">Default off: these courses warn. When enabled, they block unless Override training compliance is used. Recommended courses never block.</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-800">Block when a mandatory certificate&apos;s expiry is not recorded</p>
-            <p className="mt-1 text-sm text-gray-600">Default off: missing expiry dates warn. When enabled, they block unless Override training compliance is used.</p>
-          </div>
-        </div>
-      </div>
-      {isLoading ? <div className="h-5 w-40 animate-pulse rounded bg-gray-100" aria-label="Loading training policy" /> :
-        isError ? <div className="flex items-center gap-2 text-sm text-red-700" role="alert">Unable to load the training policy. <button className="underline" onClick={() => refetch()}>Retry</button></div> :
-          <div className="flex flex-col items-start gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox data-testid="training-block-expiring" checked={blockExpiringDuringContract} disabled={saving} onCheckedChange={checked => setBlockExpiringDuringContract(checked === true)} />
-              Block courses expiring during contract
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox data-testid="training-block-missing-expiry" checked={blockMissingExpiry} disabled={saving} onCheckedChange={checked => setBlockMissingExpiry(checked === true)} />
-              Block missing expiry
-            </label>
-            <Button onClick={save} disabled={!data || saving || (blockExpiringDuringContract === data?.blockExpiringDuringContract && blockMissingExpiry === data?.blockMissingExpiry)}>{saving ? "Saving…" : "Save policy"}</Button>
-          </div>}
-      {error && <p className="w-full text-sm text-red-700" role="alert">{error}</p>}
+    <div className="space-y-4 p-4">
+      {isLoading ? <div className="space-y-3" aria-label="Loading training policy">
+        <div className="h-20 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-20 animate-pulse rounded-md bg-gray-100" />
+      </div> :
+        isError ? <div className="flex flex-wrap items-center gap-2 text-sm text-red-700" role="alert">Unable to load the training policy. <button className="underline" onClick={() => refetch()}>Retry</button></div> :
+          <>
+            <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4" data-testid="training-expiring-policy-block">
+              <Checkbox
+                id="training-block-expiring"
+                checked={blockExpiringDuringContract}
+                disabled={saving}
+                onCheckedChange={checked => setBlockExpiringDuringContract(checked === true)}
+                aria-labelledby="training-expiring-title"
+                aria-describedby="training-expiring-description"
+                data-testid="training-block-expiring"
+                className="mt-0.5 shrink-0"
+              />
+              <div className="min-w-0">
+                <h3 id="training-expiring-title" className="text-sm font-semibold text-gray-800"><label htmlFor="training-block-expiring" className="cursor-pointer">Block mandatory courses expiring during contract</label></h3>
+                <p id="training-expiring-description" className="mt-1 text-sm leading-5 text-gray-600">A seafarer whose mandatory certificate expires before the planned sign-off cannot be deployed unless someone with Override training compliance permission approves it. This uses the planned contract end date, not an actual sign-off event. Recommended courses do not block.</p>
+                <p className="mt-2 text-sm font-medium text-gray-800" data-testid="training-expiring-current-effect">
+                  Current saved effect: {data?.blockExpiringDuringContract ? "Blocking" : "Warning only"}
+                </p>
+                {data && blockExpiringDuringContract !== data.blockExpiringDuringContract && <p className="mt-1 text-xs font-medium text-amber-800" data-testid="training-expiring-unsaved">Unsaved selection — the current effect above has not changed.</p>}
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4" data-testid="training-missing-expiry-policy-block">
+              <Checkbox
+                id="training-block-missing-expiry"
+                checked={blockMissingExpiry}
+                disabled={saving}
+                onCheckedChange={checked => setBlockMissingExpiry(checked === true)}
+                aria-labelledby="training-missing-expiry-title"
+                aria-describedby="training-missing-expiry-description"
+                data-testid="training-block-missing-expiry"
+                className="mt-0.5 shrink-0"
+              />
+              <div className="min-w-0">
+                <h3 id="training-missing-expiry-title" className="text-sm font-semibold text-gray-800"><label htmlFor="training-block-missing-expiry" className="cursor-pointer">Block when a mandatory certificate&apos;s expiry is not recorded</label></h3>
+                <p id="training-missing-expiry-description" className="mt-1 text-sm leading-5 text-gray-600">A seafarer whose mandatory certificate needs an expiry date but has none recorded cannot be deployed unless someone with Override training compliance permission approves it.</p>
+                <p className="mt-2 text-sm font-medium text-gray-800" data-testid="training-missing-expiry-current-effect">
+                  Current saved effect: {data?.blockMissingExpiry ? "Blocking" : "Warning only"}
+                </p>
+                {data && blockMissingExpiry !== data.blockMissingExpiry && <p className="mt-1 text-xs font-medium text-amber-800" data-testid="training-missing-expiry-unsaved">Unsaved selection — the current effect above has not changed.</p>}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={save} disabled={!data || saving || (blockExpiringDuringContract === data?.blockExpiringDuringContract && blockMissingExpiry === data?.blockMissingExpiry)} data-testid="save-training-compliance-policy">{saving ? "Saving…" : "Save policy"}</Button>
+              {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+            </div>
+          </>}
     </div>
   </section>;
 }
