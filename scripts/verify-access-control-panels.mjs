@@ -74,11 +74,12 @@ try {
   if (positions.gridBottom > positions.policyTop || positions.policyBottom > positions.managementTop)
     throw Error("Configure-once panels do not follow the permission grid.");
   report.checks.push({ order: positions });
-  await capture("desktop-position");
+  await capture("desktop-grid");
   await policy.scrollIntoViewIfNeeded();
   await capture("desktop-training-policy", policy);
   await management.scrollIntoViewIfNeeded();
   await capture("desktop-management-grants", management);
+  await capture("desktop-position");
 
   // Unsaved controls must not claim that the live policy already changed.
   const savedEffect = await page.getByTestId("training-expiring-current-effect").innerText();
