@@ -21,7 +21,7 @@ describe("training checklist settings and saved evidence", () => {
       blockMissingExpiry: false,
     }));
     mount(<TrainingCompliancePolicySetting />);
-    expect(await screen.findByText("Block mandatory courses expiring during contract")).toBeTruthy();
+    expect(await screen.findByText("Block seafarer deployment when mandatory courses expiring during contract")).toBeTruthy();
     const checkbox = await screen.findByTestId("training-block-expiring");
     await waitFor(() => expect(checkbox.getAttribute("data-state")).toBe("unchecked"));
     fireEvent.click(checkbox);
