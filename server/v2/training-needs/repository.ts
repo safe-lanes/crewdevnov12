@@ -111,6 +111,10 @@ export class TrainingNeedsRepository {
       overlay_corresponding_in_db: string | null;
     })[];
 
+    // An appraisal's crew_member_id is a crew_uuid, or an emp_no in older rows.
+    // The serial crew id is never matched (APD-48): it differs between ship
+    // and shore, so an old numeric value could name a different crew member
+    // here. Such a row shows the name saved on the appraisal instead.
     const appraisalResult = await db.execute(sql`
       SELECT
         tf.training_followup_uuid AS source_ref_uuid,
@@ -129,7 +133,6 @@ export class TrainingNeedsRepository {
               AND (
                 cm.emp_no = ar.crew_member_id
                 OR cm.crew_uuid = ar.crew_member_id
-                OR cm.id::text = ar.crew_member_id
               )
             HAVING COUNT(*) = 1
           ),
