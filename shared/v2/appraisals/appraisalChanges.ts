@@ -54,7 +54,8 @@ export const SECTION_FIELDS: Record<AppraisalSectionKey, readonly string[]> = {
   targets: ["targetSetting", "evaluation", "comment"],
   competenceAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],
   behaviouralAssessments: ["assessmentCriteria", "weight", "effectiveness", "comment"],
-  trainingNeeds: ["training", "correspondingInDB", "identifiedByUuid", "comment", "addedFromDB"],
+  // addedFromDB is not sent: the server derives source from correspondingInDB (APD-44).
+  trainingNeeds: ["training", "correspondingInDB", "identifiedByUuid", "comment"],
   recommendations: ["question", "answer", "comment"],
   appraiserComments: ["name", "rank", "comment"],
   seafarerComments: ["name", "rank", "comment"],

@@ -16,7 +16,10 @@ const ROWS: ChildTableConfig = {
     { column: "correspondingInDb", from: ["correspondingInDB", "correspondingInDb"], normalize: (r) => r.correspondingInDB || r.correspondingInDb || null },
     textField("identifiedByUuid"),
     textField("comment"),
-    { column: "source", from: ["addedFromDB"], normalize: (r) => (r.addedFromDB === true ? "db" : "manual") },
+    // "db" when the row is linked to a company training (ct_uuid), "manual"
+    // otherwise (APD-44). Written together with the link, so the two always
+    // agree. The client's addedFromDB flag is never read.
+    { column: "source", from: ["correspondingInDB", "correspondingInDb"], normalize: (r) => (r.correspondingInDB || r.correspondingInDb ? "db" : "manual") },
   ],
 };
 

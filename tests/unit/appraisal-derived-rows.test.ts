@@ -14,8 +14,9 @@ vi.mock("@server/v2/db", () => ({ getDb: vi.fn() }));
 import { ApprOfficeReviewsRepository } from "@server/v2/appraisals/repositories/apprOfficeReviewsRepository";
 import { ApprTrainingsRepository } from "@server/v2/appraisals/repositories/apprTrainingsRepository";
 import { ApprReviewersRepository } from "@server/v2/appraisals/repositories/apprReviewersRepository";
+import { ApprTrainingNeedsRepository } from "@server/v2/appraisals/repositories/apprTrainingNeedsRepository";
 import { AppraisalRowFieldLockedError } from "@server/v2/appraisals/repositories/childRowSync";
-import { apprOfficeReviewsV2, apprTrainingsV2, apprReviewersV2 } from "@shared/v2/appraisals/schema";
+import { apprOfficeReviewsV2, apprTrainingsV2, apprReviewersV2, apprTrainingNeedsV2 } from "@shared/v2/appraisals/schema";
 
 const APPRAISAL = "a0000000-0000-4000-8000-000000000020";
 
@@ -273,6 +274,65 @@ describe("ApprTrainingsRepository stores an auto row's D3 course (APD-42)", () =
 
     expect(n).toBe(0);
     expect(db.rows[0].sourceTrainUuid).toBe("train-a");
+  });
+});
+
+function need(id: number, uuid: string, fields: Record<string, unknown>) {
+  return {
+    id, trainingNeedUuid: uuid, appraisalUuid: APPRAISAL, training: "ECDIS", correspondingInDb: null, identifiedByUuid: null,
+    comment: null, source: "manual", sortOrder: id - 1, isDeleted: false, updatedByUuid: null, ...fields,
+  };
+}
+
+// APD-44: a Part E row is "db" exactly when it is linked to a company training.
+describe("ApprTrainingNeedsRepository source comes from the course link (APD-44)", () => {
+  const repo = new ApprTrainingNeedsRepository();
+  const linked = () => need(1, "tn-db", { correspondingInDb: "ct-1", source: "db" });
+  const typed = () => need(2, "tn-typed", { training: "My course" });
+
+  it("a new row with a link is saved as db, whatever addedFromDB says", async () => {
+    const db = fakeDb(apprTrainingNeedsV2, []);
+    await repo.syncForAppraisal(APPRAISAL, [{ uuid: "tn-new", training: "GMDSS", correspondingInDB: "ct-2", addedFromDB: false }], "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert"]);
+    expect(db.writes[0].values).toMatchObject({ correspondingInDb: "ct-2", source: "db" });
+  });
+
+  it("a new row without a link gets the column default, whatever addedFromDB says", async () => {
+    const db = fakeDb(apprTrainingNeedsV2, []);
+    await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "tn-new", training: "My course", addedFromDB: true }] }, "me", db.executor);
+
+    expect(db.writes.map((w) => w.kind)).toEqual(["insert"]);
+    expect(db.writes[0].values).not.toHaveProperty("source");
+  });
+
+  it("save draft: a sent addedFromDB changes neither kind of row", async () => {
+    const db = fakeDb(apprTrainingNeedsV2, [linked(), typed()]);
+    const n = await repo.applyChanges(APPRAISAL, {
+      rows: [{ uuid: "tn-db", addedFromDB: false }, { uuid: "tn-typed", addedFromDB: true }],
+    }, "me", db.executor);
+
+    expect(n).toBe(0);
+    expect(db.writes).toEqual([]);
+    expect(db.rows.map((r) => r.source)).toEqual(["db", "manual"]);
+  });
+
+  it("stage submit: full rows with a stale addedFromDB write nothing", async () => {
+    const db = fakeDb(apprTrainingNeedsV2, [linked(), typed()]);
+    await repo.syncForAppraisal(APPRAISAL, [
+      { uuid: "tn-db", training: "ECDIS", correspondingInDB: "ct-1", addedFromDB: false },
+      { uuid: "tn-typed", training: "My course", correspondingInDB: "", addedFromDB: true },
+    ], "me", db.executor);
+
+    expect(db.writes).toEqual([]);
+  });
+
+  it("clearing the link makes the row manual in the same write", async () => {
+    const db = fakeDb(apprTrainingNeedsV2, [linked()]);
+    await repo.applyChanges(APPRAISAL, { rows: [{ uuid: "tn-db", correspondingInDB: "" }] }, "me", db.executor);
+
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].values).toMatchObject({ correspondingInDb: null, source: "manual" });
   });
 });
 

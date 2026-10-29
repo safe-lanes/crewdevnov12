@@ -64,16 +64,34 @@ describe("appraisal save-draft change set (APD-16)", () => {
 
   // APD-20: a B1 auto row has the same uuid in every session that adds it, so a
   // session sending it as new must not blank what another session saved in it.
-  it("keeps false and 0 on a new row, which are values, not empty fields", () => {
+  it("keeps 0 on a new row, which is a value, not an empty field", () => {
     const base = serverCopy();
     const current = formCopy(base);
-    current.sections.trainingNeeds = [{ id: "n", uuid: "tn-new", training: "ECDIS", comment: "", addedFromDB: false }];
     current.sections.competenceAssessments!.push({ id: "n", uuid: "c-new", assessmentCriteria: "Safety", weight: 0, effectiveness: "", comment: "" });
 
     expect(buildAppraisalChanges(base, current).sections).toEqual({
-      trainingNeeds: { rows: [{ uuid: "tn-new", training: "ECDIS", addedFromDB: false }] },
       competenceAssessments: { rows: [{ uuid: "c-new", assessmentCriteria: "Safety", weight: 0 }] },
     });
+  });
+
+  // APD-44: the server derives a Part E row's source from its course link.
+  it("never sends Part E addedFromDB", () => {
+    const base = serverCopy();
+    base.sections.trainingNeeds = [{ id: "1", uuid: "tn-1", training: "ECDIS", correspondingInDB: "ct-1", comment: "", addedFromDB: true }];
+    const current = formCopy(base);
+    current.sections.trainingNeeds![0].addedFromDB = false;
+    current.sections.trainingNeeds!.push(
+      { id: "n1", uuid: "tn-db", training: "GMDSS", correspondingInDB: "ct-2", comment: "", addedFromDB: true },
+      { id: "n2", uuid: "tn-typed", training: "My course", comment: "", addedFromDB: false },
+    );
+
+    expect(buildAppraisalChanges(base, current).sections).toEqual({
+      trainingNeeds: { rows: [
+        { uuid: "tn-db", training: "GMDSS", correspondingInDB: "ct-2" },
+        { uuid: "tn-typed", training: "My course" },
+      ] },
+    });
+    expect(stageSectionRows("trainingNeeds", base.sections.trainingNeeds, current.sections.trainingNeeds)[0]).toEqual({ uuid: "tn-1" });
   });
 
   // APD-41: only the server sets a G1 row's isAssigned, at Stage 2.
