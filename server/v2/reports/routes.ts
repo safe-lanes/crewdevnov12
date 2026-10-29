@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
 import { getReport } from "./registry";
 import { registerAllReports } from "./handlers";
+import { getActor } from "../accounts/controllers/_auth";
 import {
   reportRunRequestSchema,
   type ReportRunResponse,
@@ -53,6 +54,7 @@ router.post("/run", async (req: Request, res: Response) => {
       page: parsed.page,
       pageSize: parsed.pageSize,
       sort: parsed.sort ?? null,
+      actor: getActor(req),
     });
 
     const response: ReportRunResponse = {

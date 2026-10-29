@@ -3,9 +3,9 @@ import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { appraisalResultsV2 } from "../../../../shared/v2/appraisals/schema";
-import type { ReportHandler } from "../types";
+import type { ReportHandler, ReportHandlerContext } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
-import { dateExpr, dateFilter } from "./_shared";
+import { dateExpr, dateFilter, numericExpr, vesselMatchCond, vesselNameExpr, vesselScopeCond } from "./_shared";
 import { getRankNameGroup } from "../../../../shared/crew-mapping";
 
 // Base-rank comparison: strips a trailing "_<number>" variant suffix and
@@ -17,6 +17,20 @@ const rankGroupCond = (rank: string): SQL => {
 };
 
 const apprDate = dateExpr(appraisalResultsV2.appraisalDate);
+
+// appraisal_results_v2.vessel holds a master_vessels UUID (current writes) or
+// a vessel name (older / synced rows); always show and sort by the name.
+const apprVesselName = vesselNameExpr(appraisalResultsV2.vessel);
+
+// Ship users see only appraisals on their own vessels. Returns null when a
+// Ship user has no vessels, so the report returns nothing (fail closed).
+// Office users and dev requests without a token are unrestricted.
+function shipScopeConds(ctx: ReportHandlerContext): SQL[] | null {
+  const actor = ctx.actor;
+  if (!actor?.vesselUser) return [];
+  if (actor.vessels.length === 0) return null;
+  return [vesselScopeCond(appraisalResultsV2.vessel, actor.vessels)];
+}
 
 // ============================================================
 // appr-pending : status not in (completed, approved, closed).
@@ -42,12 +56,15 @@ export const apprPendingReport: ReportHandler<z.infer<typeof pendingFilters>> = 
   columns: pendingCols,
   filterSchema: pendingFilters,
   async run(filters, ctx) {
+    const scope = shipScopeConds(ctx);
+    if (!scope) return { total: 0, rows: [] };
     const db = getDb();
     const conds: SQL[] = [
       eq(appraisalResultsV2.isDeleted, false),
       sql`LOWER(COALESCE(${appraisalResultsV2.status}, '')) NOT IN ('completed', 'approved', 'closed', 'final')`,
+      ...scope,
     ];
-    if (filters.vessel) conds.push(eq(appraisalResultsV2.vessel, filters.vessel));
+    if (filters.vessel) conds.push(vesselMatchCond(appraisalResultsV2.vessel, filters.vessel));
     if (filters.rank) conds.push(rankGroupCond(filters.rank));
     const where = and(...conds);
 
@@ -57,7 +74,7 @@ export const apprPendingReport: ReportHandler<z.infer<typeof pendingFilters>> = 
     const sortMap: Record<string, PgColumn | SQL> = {
       name: appraisalResultsV2.seafarersName,
       rank: appraisalResultsV2.seafarersRank,
-      vessel: appraisalResultsV2.vessel,
+      vessel: apprVesselName,
       appraisalDate: apprDate,
       status: appraisalResultsV2.status,
     };
@@ -68,7 +85,7 @@ export const apprPendingReport: ReportHandler<z.infer<typeof pendingFilters>> = 
       .select({
         name: appraisalResultsV2.seafarersName,
         rank: appraisalResultsV2.seafarersRank,
-        vessel: appraisalResultsV2.vessel,
+        vessel: apprVesselName,
         appraisalDate: appraisalResultsV2.appraisalDate,
         status: appraisalResultsV2.status,
       })
@@ -112,9 +129,10 @@ const scoresCols: ReportColumn[] = [
 
 const rankExpr = sql<string>`COALESCE(NULLIF(TRIM(${appraisalResultsV2.seafarersRank}), ''), '—')`;
 const countExpr = sql<number>`COUNT(*)`;
-const avgOverallExpr = sql<number>`ROUND(AVG(NULLIF(${appraisalResultsV2.overallRating}, '')::numeric), 2)`;
-const avgCompetenceExpr = sql<number>`ROUND(AVG(NULLIF(${appraisalResultsV2.competenceRating}, '')::numeric), 2)`;
-const avgBehavioralExpr = sql<number>`ROUND(AVG(NULLIF(${appraisalResultsV2.behavioralRating}, '')::numeric), 2)`;
+// Ratings are text; a value that is not a plain number counts as no rating.
+const avgOverallExpr = sql<number>`ROUND(AVG(${numericExpr(appraisalResultsV2.overallRating)}), 2)`;
+const avgCompetenceExpr = sql<number>`ROUND(AVG(${numericExpr(appraisalResultsV2.competenceRating)}), 2)`;
+const avgBehavioralExpr = sql<number>`ROUND(AVG(${numericExpr(appraisalResultsV2.behavioralRating)}), 2)`;
 const totalGroupsExpr = sql<number>`COUNT(*) OVER ()`;
 
 export const apprScoresSummaryReport: ReportHandler<z.infer<typeof scoresFilters>> = {
@@ -123,8 +141,10 @@ export const apprScoresSummaryReport: ReportHandler<z.infer<typeof scoresFilters
   columns: scoresCols,
   filterSchema: scoresFilters,
   async run(filters, ctx) {
+    const scope = shipScopeConds(ctx);
+    if (!scope) return { total: 0, rows: [] };
     const db = getDb();
-    const conds: SQL[] = [eq(appraisalResultsV2.isDeleted, false)];
+    const conds: SQL[] = [eq(appraisalResultsV2.isDeleted, false), ...scope];
     if (filters.rank) conds.push(rankGroupCond(filters.rank));
     if (filters.dateFrom) conds.push(sql`${apprDate} >= ${filters.dateFrom}::date`);
     if (filters.dateTo) conds.push(sql`${apprDate} <= ${filters.dateTo}::date`);

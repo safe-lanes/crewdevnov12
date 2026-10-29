@@ -4,11 +4,14 @@ import type {
   ReportResultRow,
   ReportSort,
 } from "../../../shared/v2/reports/types";
+import type { RequestActor } from "../accounts/controllers/_auth";
 
 export interface ReportHandlerContext {
   page: number;
   pageSize: number;
   sort: ReportSort | null;
+  // Logged-in user, for ship (vessel-user) scoping. Absent means unrestricted.
+  actor?: RequestActor;
 }
 
 export interface ReportHandlerResult {

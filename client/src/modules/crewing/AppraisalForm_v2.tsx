@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { PART_A_FIELDS, PART_G_SECTIONS, SECTION_KEYS, isEmptyChanges } from "@shared/v2/appraisals/appraisalChanges";
+import { appraisalRatings, sectionRating } from "@shared/v2/appraisals/appraisalRatings";
 import { buildAppraisalChanges, snapshotFromServer, stageSectionRows, type AppraisalSnapshot } from "./appraisalChanges";
 import { buildB1AutoRows, type B1TrainingRow, type D3TrainingCourse } from "./b1AutoTrainings";
 import { Button } from "@/components/ui/button";
@@ -323,45 +324,6 @@ const appraisalSchema = z.object({
 });
 
 type AppraisalFormData = z.infer<typeof appraisalSchema>;
-
-// A Part C or D score in percent, from each row's rating weighted by its weight.
-function calcSectionScore(assessments: any[]): string | null {
-  let totalScore = 0;
-  let totalWeight = 0;
-  assessments?.forEach(assessment => {
-    if (assessment.effectiveness && assessment.weight) {
-      let rating = 0;
-      switch (assessment.effectiveness) {
-        case "5-exceeds-expectations": rating = 5; break;
-        case "4-meets-expectations": rating = 4; break;
-        case "3-somewhat-meets-expectations": rating = 3; break;
-        case "2-below-expectations": rating = 2; break;
-        case "1-significantly-below-expectations": rating = 1; break;
-      }
-      totalScore += (rating * assessment.weight) / 100;
-      totalWeight += assessment.weight;
-    }
-  });
-  return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
-}
-
-// The scores stored on the appraisal: Part C, Part D and the overall.
-function calcAppraisalScores(data: AppraisalFormData) {
-  const competenceScore = calcSectionScore(data.competenceAssessments);
-  const behavioralScore = calcSectionScore(data.behaviouralAssessments);
-
-  // Average only sections that have a real rating (> 0). Hidden, unrated,
-  // or zero-scoring sections are excluded from the overall.
-  const scores = [competenceScore, behavioralScore]
-    .map(s => (s !== null ? parseFloat(s) : 0))
-    .filter(score => score > 0);
-
-  const overallScore = scores.length > 0
-    ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
-    : null;
-
-  return { competenceScore, behavioralScore, overallScore };
-}
 
 // What a Stage 1 submit saves: Part A and Part B.
 function buildStage1Data(formData: AppraisalFormData) {
@@ -1029,24 +991,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // The body that creates this appraisal from the whole form: sent to POST /
   // by a save, or with the stage submit of a form that was never saved (the
   // create then commits with the stage, APD-30).
-  const buildCreateBody = (data: AppraisalFormData, status: string) => {
-    const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(data);
-    return {
-      crewMemberId: crewMember?.id,
-      appraisalUuid: newAppraisalUuid,
-      formId: 1, // Default form ID
-      appraisalType: data.appraisalType,
-      appraisalDate: new Date().toISOString().split('T')[0],
-      // Includes Part G's rank-config defaults. A create never overwrites
-      // existing rows (a repeat create writes nothing), so ship users may send it.
-      appraisalData: data, // Send as object - backend handles JSON.stringify
-      competenceRating: competenceScore,
-      behavioralRating: behavioralScore,
-      overallRating: overallScore,
-      // Who saved it comes from the login on the server (APD-31).
-      status,
-    };
-  };
+  const buildCreateBody = (data: AppraisalFormData, status: string) => ({
+    crewMemberId: crewMember?.id,
+    appraisalUuid: newAppraisalUuid,
+    formId: 1, // Default form ID
+    appraisalType: data.appraisalType,
+    appraisalDate: new Date().toISOString().split('T')[0],
+    // Includes Part G's rank-config defaults. A create never overwrites
+    // existing rows (a repeat create writes nothing), so ship users may send it.
+    appraisalData: data, // Send as object - backend handles JSON.stringify
+    // Who saved it comes from the login on the server (APD-31), and the
+    // ratings from the Part C/D rows it stores (APD-49).
+    status,
+  });
 
   const saveAppraisalMutation = useMutation({
     mutationFn: async (payload: { data: AppraisalFormData; status: string; existingUuid?: string | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
@@ -1060,7 +1017,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
 
       if (idToUse) {
-        const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(payload.data);
         const appraisalDate = new Date().toISOString().split('T')[0];
         // Existing appraisal: send only what changed since the form loaded it.
         const baseline = baselineRef.current;
@@ -1077,9 +1033,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
               // a change to save (APD-20).
               vessel: undefined,
               appraisalType: payload.data.appraisalType,
-              competenceRating: competenceScore,
-              behavioralRating: behavioralScore,
-              overallRating: overallScore,
+              // No ratings: the server derives them from the Part C/D rows (APD-49).
               status: payload.status,
             },
             sections: payload.data as any,
@@ -1188,11 +1142,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       create?: ReturnType<typeof buildCreateBody>;
       withStage1?: boolean;
     }) => {
-      // Calculate scores from current form data so the Crew Appraisals table
-      // reflects the Overall score immediately on direct Stage 2 submit
-      // (same logic as saveAppraisalMutation / Save Draft).
-      const { competenceScore, behavioralScore, overallScore } = calcAppraisalScores(formData);
-
+      // The server stores the ratings from the Part C/D rows it saves here
+      // (APD-49), so the Crew Appraisals table shows them right after the submit.
       const stageData = {
         // Task #500: snapshot the current B1 trainings (auto + manual) and
         // Stage-1 targets at Stage 2 submission so the live D3 re-sync that
@@ -1211,9 +1162,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${uuid}/submit-stage2`, {
         data: stageData,
-        competenceRating: competenceScore,
-        behavioralRating: behavioralScore,
-        overallRating: overallScore,
         create,
         stage1: withStage1 ? buildStage1Data(formData) : undefined,
       });
@@ -1701,52 +1649,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   };
 
   // Calculate section score based on weight and effectiveness
-  const calculateSectionScore = () => {
-    const assessments = form.watch("competenceAssessments");
-    let totalScore = 0;
-    let totalWeight = 0;
-    
-    assessments.forEach(assessment => {
-      if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
-        totalScore += (rating * assessment.weight) / 100;
-        totalWeight += assessment.weight;
-      }
-    });
-    
-    return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  };
+  // The live Part C and D scores, with the formula the server stores (APD-49).
+  const calculateSectionScore = () => sectionRating(form.watch("competenceAssessments")) ?? "0.0";
 
   // Calculate behavioural section score
-  const calculateBehaviouralSectionScore = () => {
-    const assessments = form.watch("behaviouralAssessments");
-    let totalScore = 0;
-    let totalWeight = 0;
-    
-    assessments.forEach(assessment => {
-      if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
-        totalScore += (rating * assessment.weight) / 100;
-        totalWeight += assessment.weight;
-      }
-    });
-    
-    return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  };
+  const calculateBehaviouralSectionScore = () => sectionRating(form.watch("behaviouralAssessments")) ?? "0.0";
 
   // Comment management helper functions
   const deleteTrainingComment = (id: string) => {
@@ -2082,16 +1989,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Calculate overall score (F1) — average only sections that have a real
   // rating (> 0). Hidden, unrated, or zero-scoring sections are excluded.
-  const calculateOverallScore = () => {
-    const scores = [
-      parseFloat(calculateSectionScore()),
-      parseFloat(calculateBehaviouralSectionScore()),
-    ].filter(score => score > 0);
-
-    return scores.length > 0
-      ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
-      : "0.0";
-  };
+  const calculateOverallScore = () => appraisalRatings({
+    competenceAssessments: form.watch("competenceAssessments"),
+    behaviouralAssessments: form.watch("behaviouralAssessments"),
+  }).overallRating ?? "0.0";
 
   // Recommendation management functions
   const updateRecommendation = (id: string, field: string, value: string) => {

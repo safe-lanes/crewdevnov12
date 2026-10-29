@@ -10,6 +10,8 @@ import {
 const { repo, getDbMock } = vi.hoisted(() => ({
   repo: {
     findByAppraisalUuid: vi.fn(),
+    findByAppraisalUuidIncludingDeleted: vi.fn(),
+    findByAppraisalUuids: vi.fn(),
     updateByAppraisalUuid: vi.fn(),
     syncForAppraisal: vi.fn(),
     addAssignedReviewers: vi.fn(),
@@ -149,6 +151,7 @@ describe("Stage 2 adds the assigned reviewers' G1 rows (submitStage)", () => {
     getDbMock.mockReturnValue({ transaction: (fn: (tx: unknown) => unknown) => fn(tx) });
     repo.syncForAppraisal.mockResolvedValue(0);
     repo.addAssignedReviewers.mockResolvedValue(1);
+    repo.findByAppraisalUuids.mockResolvedValue(new Map());
     vi.spyOn(AppraisalResultsService.prototype as any, "resolveAppraisalPinForSubmittedStatus").mockResolvedValue(null);
     vi.spyOn(AppraisalResultsService.prototype, "getByUuid").mockResolvedValue({ appraisalUuid: UUID } as any);
   });
