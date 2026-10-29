@@ -10118,7 +10118,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               Toggle between Active and Inactive status. Active crew members can be "On Board" (on vessel) or "On Leave" (not on vessel).
             </p>
             <Button
-              variant={statusData?.isActive !== false ? "default" : "outline"}
+              variant={!isCrewTerminated && statusData?.isActive !== false ? "default" : "outline"}
               className="w-full justify-start"
               onClick={() => handleToggleActiveStatus(true)}
               data-testid="button-set-active"
@@ -10127,7 +10127,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               {isCrewTerminated ? 'Active (On Leave)' : 'Active (On Board / On Leave)'}
             </Button>
             <Button
-              variant={statusData?.isActive === false ? "default" : "outline"}
+              variant={!isCrewTerminated && statusData?.isActive === false ? "default" : "outline"}
               className="w-full justify-start"
               disabled={isCheckingStatus}
               onClick={async () => {
