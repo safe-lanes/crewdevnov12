@@ -6,10 +6,13 @@ import { AccessControlError, appendAudit, lockAccessControl, managementSnapshot,
 
 export async function parentSyncActor(req: Request, host: string): Promise<AuditActor> {
   if (!req.user) throw new AccessControlError("Authenticated sync source required.");
-  const user = (await getDb().execute(sql`SELECT id,user_type FROM master_users WHERE id=${req.user.id}`)).rows[0];
+  const user = (await getDb().execute(sql`SELECT id,user_type,
+    coalesce(nullif(btrim(fullname),''),nullif(btrim(display_name),''),nullif(trim(concat_ws(' ',firstname,lastname)),'')) AS actor_name
+    FROM master_users WHERE id=${req.user.id}`)).rows[0];
   if (!user || !user.user_type || normalizeRole(user.user_type) !== normalizeRole(req.user.userType))
     throw new AccessControlError("Sync actor identity mismatch.");
-  return { masterUserId: user.id, userType: user.user_type, source: `trusted_parent_sync:${host}` };
+  return { masterUserId: user.id, userType: user.user_type, source: `trusted_parent_sync:${host}`,
+    displayName: user.actor_name ?? null };
 }
 export class UnrecoverableSnapshotError extends Error {
   constructor(public details: unknown) {

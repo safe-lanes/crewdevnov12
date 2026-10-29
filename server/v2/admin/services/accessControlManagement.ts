@@ -8,7 +8,9 @@ export class AccessControlError extends Error {
 }
 export const normalizeRole = (value: string) => value.trim().toLowerCase();
 const interimNames = new Set(["admin", "super admin", "sail admin"]);
-export type AuditActor = { masterUserId: number; roleId?: string; roleName?: string; userType: string; source: string };
+export type AuditActor = { masterUserId: number; roleId?: string; roleName?: string; userType: string; source: string;
+  /** Server-derived snapshot, never copied from a request body. */
+  displayName?: string | null };
 export async function lockAccessControl(tx: any) {
   // Database-local key: one lock per tenant DB, shared by all grant writes and parent sync.
   await tx.execute(sql`SELECT pg_advisory_xact_lock(382, 1)`);
@@ -67,13 +69,25 @@ export async function authenticatedActor(req: Request, tx: any): Promise<AuditAc
   if (!resolution.ok) throw new AccessControlError("Trusted authenticated editor unavailable.");
   const r = resolution.role;
   return { masterUserId: r.masterUserId, roleId: r.roleId, roleName: r.roleName,
-    userType: r.masterUserType, source: "access_control" };
+    userType: r.masterUserType, source: "access_control",
+    displayName: await auditActorDisplayName(tx, r.masterUserId) };
+}
+async function auditActorDisplayName(tx: any, masterUserId: number): Promise<string | null> {
+  const result = await tx.execute(sql`SELECT coalesce(nullif(btrim(fullname),''),nullif(btrim(display_name),''),
+    nullif(trim(concat_ws(' ',firstname,lastname)),'')) AS name
+    FROM master_users WHERE id=${masterUserId}`);
+  return result.rows[0]?.name ?? null;
 }
 export async function appendAudit(tx: any, actor: AuditActor, event: string, roleId: string | null,
   resource: string, action: string, before: unknown, after: unknown, details: unknown = {}) {
+  // Parent sync snapshots this before replacing users. Other internal writers
+  // without a snapshot are resolved here, using this transaction's database.
+  const { displayName, ...identifiers } = actor;
+  const frozenName = displayName === undefined ? await auditActorDisplayName(tx, actor.masterUserId) : displayName;
   await tx.execute(sql`INSERT INTO adm_access_control_audit
-    (event,actor,role_id,resource,action,before_value,after_value,details)
-    VALUES (${event},${JSON.stringify(actor)}::jsonb,${roleId},${resource},${action},
+    (event,actor,actor_display_name,role_id,resource,action,before_value,after_value,details)
+    VALUES (${event},${JSON.stringify(identifiers)}::jsonb,
+      ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},${resource},${action},
       ${before === null ? null : JSON.stringify(before)}::jsonb,
       ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb)`);
 }

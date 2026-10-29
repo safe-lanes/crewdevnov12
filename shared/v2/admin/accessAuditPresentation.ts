@@ -5,6 +5,7 @@ export interface AccessAuditEntry {
   resource?: string | null; action?: string | null; before_value?: unknown;
   after_value?: unknown; details?: unknown; recorded_at?: string | null;
   actor_name?: string | null; role_name?: string | null; menu_name?: string | null;
+  actor_display_name?: string | null;
 }
 export const AUDIT_SETTING_LABELS: Record<string, string> = {
   block_expiring_during_contract: "Block mandatory courses expiring during contract",
@@ -47,7 +48,8 @@ export function auditDate(value?: string | null): string {
 }
 export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; unmapped: string[] } {
   const actor = object(row.actor), details = object(row.details);
-  const who = safeLabel(row.actor_name) ?? safeLabel(actor.roleName) ??
+  const frozenName = typeof row.actor_display_name === "string" ? row.actor_display_name.trim() : "";
+  const who = frozenName || safeLabel(row.actor_name) || safeLabel(actor.roleName) ||
     (String(actor.source ?? "").startsWith("trusted_parent_sync") ? "The parent application" : "A user whose name was not recorded");
   const role = safeLabel(row.role_name) ? `the ${row.role_name} role` : "a role no longer available";
   const label = auditActionLabel(row);

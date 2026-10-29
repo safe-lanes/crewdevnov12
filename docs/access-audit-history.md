@@ -38,8 +38,8 @@ values are blank and explicit null is `null`. Potential spreadsheet-formula
 prefixes are escaped with an apostrophe. Export errors show a plain retry
 sentence. Export does not write audit records.
 
-The capture format and identity limitations described below remain unchanged:
-actor names have not been frozen in this task.
+The person column is a current-name lookup. A separate recorded-name column now
+contains the frozen actor name; legacy entries remain blank there.
 
 An audit record whose before and after values are identical says the setting
 was kept on/off or the permission remained granted/not granted. It does not
@@ -94,19 +94,55 @@ not printed in the resting sentence.
   page. Search is not silently restricted to the old 500-row limit.
 - Existing callers without a page parameter retain the legacy array response.
 
-## What the existing audit identifies — no capture changes
+## Frozen actor identity
 
-`server/v2/admin/services/accessControlManagement.ts:65–77` derives the actor from
+`server/v2/admin/services/accessControlManagement.ts` derives the actor from
 the authenticated server-side role resolution and stores:
 
 - `actor.masterUserId`: the **individual user's identifier**, not merely a role;
 - `actor.roleId` and `actor.roleName`: the role recorded when the event occurred;
 - `actor.userType` and `actor.source`.
 
-A name is **not frozen in the audit actor**. The read-only history query resolves
-`actor.masterUserId` against `master_users.id` and displays the available current
-full name, display name, or first/last name. All 51 entries checked have both an
-individual identifier and an available current name.
+A new nullable text column, **`adm_access_control_audit.actor_display_name`**,
+stores the server-derived name when the entry is inserted. The authenticated
+actor is resolved from the tenant's user master, not browser input. All existing
+event writers pass through `appendAudit`; no event-selection logic changed.
+The name is kept outside the existing actor JSON, whose identifiers remain.
+
+The history sentence prefers the frozen name. Only entries with no stored name
+use the existing live lookup against `master_users.id`. The CSV includes both
+**Person (recorded at event)** and **Person (current name)** as separate columns.
+Changing or deleting the account cannot change an entry's frozen-name sentence.
+New events with no available name explicitly record “A user whose name was not
+recorded”; they must not acquire a different identity from a later lookup.
+
+Parent synchronization snapshots its operator's name before replacing users,
+so deleting or renaming the operator within that transaction does not lose the
+name. Other internal callers without a prior snapshot resolve it in the audit
+insertion transaction.
+
+**Role answer:** `actor.roleName` is already a frozen text value from trusted
+role resolution when the event is captured. It is not resolved live. No extra
+actor-role column is needed. The **affected** role's name (`role_name`) is a
+separate live enrichment, not the actor's captured role.
+
+### Preflight, migration and backfill decision
+
+Read-only preflight finished before adding any migration or editing watched
+server files. Its report is retained outside Git at
+`.local/verification/frozen-audit-actor/preflight.json`. This ordering prevents
+the development watcher from applying a migration before preflight passes.
+
+Migration **`0267_access_audit_actor_name.sql`** adds only the nullable text column
+and its explanatory comment. It leaves all existing values untouched and does
+not weaken the append-only trigger. It is idempotent. Dropping the column after
+capture begins would destroy historical facts and is not a safe rollback.
+
+Preflight found **51 entries across 2 accounts**; all 51 currently resolve names,
+and all 51 have captured actor-role names. None is backfilled; all 51 continue to
+use live-name fallback. Today's names cannot prove the accounts were not renamed
+after the events. **Recommendation: do not backfill without independent historical
+evidence and explicit approval.**
 
 If the person's master record/name becomes unavailable, the UI uses the captured
 role name, explicitly falling back to an unnamed user if that too is absent.
@@ -114,7 +150,10 @@ It does not invent a person's name. Name and affected-role-name enrichment is
 read-time presentation, not a rewrite of historical audit data; current master
 names are not evidence of the spelling at the time of the event.
 
-No audit writer, identity capture, permission guard, schema or migration changed.
+The authorized migration and its migration-ledger entry are the only intended
+development database changes. No development audit records or acceptance fixtures
+are created, updated or deleted. Rename/deletion/new-event verification uses only
+the isolated automated-test database. Permission guards remain unchanged.
 
 ## Verification
 

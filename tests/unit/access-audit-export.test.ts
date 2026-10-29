@@ -53,4 +53,9 @@ describe("audit screen comparisons and CSV export", () => {
       .toMatchObject({ before: '{"active":true}', after: "null" });
     expect(accessAuditExportRow({ ...row, before_value: undefined }).before).toBe("");
   });
+  it("exports the frozen name separately from the current name", () => {
+    expect(accessAuditExportRow({ ...row, actor_display_name: "Original Person" }))
+      .toMatchObject({ person: 'Jane, "Smith"', frozenPerson: "Original Person" });
+    expect(accessAuditExportRow(row).frozenPerson).toBe("");
+  });
 });

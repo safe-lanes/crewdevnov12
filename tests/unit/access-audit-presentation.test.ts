@@ -53,4 +53,13 @@ describe("plain Access audit sentences", () => {
     expect(auditValueWords({ active: false })).toContain('"No"');
     expect(auditValueWords(null)).toBe("Not recorded");
   });
+  it("uses the frozen actor name even after the current name changes or disappears", () => {
+    for (const actor_name of ["Renamed Person", null]) {
+      const result = presentAccessAudit({ ...row, actor_display_name: "Captured Person", actor_name });
+      expect(result.sentence).toContain("Captured Person granted");
+      expect(result.sentence).not.toContain("Renamed Person");
+    }
+    expect(presentAccessAudit({ ...row, actor_display_name: null, actor_name: "Legacy Person" }).sentence)
+      .toContain("Legacy Person granted");
+  });
 });

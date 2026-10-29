@@ -15,6 +15,8 @@ import { writeCatalogue, writeMenuGrants } from "@server/v2/admin/services/acces
 import { accessControlController } from "@server/v2/admin/controllers/accessControlController";
 import { actionPermissionsController } from "@server/v2/admin/controllers/actionPermissionsController";
 import { MastersRepository } from "@server/v2/masters/repositories/mastersRepository";
+import { readAccessAuditPage } from "@server/v2/admin/services/accessAuditRead";
+import { accessAuditExportRow } from "../../shared/v2/admin/accessAuditExport";
 
 const schema = `test_ac_${randomUUID().replaceAll("-", "")}`;
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}`, max: 6 });
@@ -57,6 +59,7 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0233_resource_action_permissions.sql", "utf8"));
   await pool.query(await readFile("migrations/0235_preserve_company_grants_on_role_sync.sql", "utf8"));
   await pool.query(await readFile("migrations/0236_access_control_management.sql", "utf8"));
+  await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -65,6 +68,66 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_menumaster_ac(muid,name,route) VALUES ('crew','Crew Database','/crew'),('admin-menu','Admin','/admin')");
 });
 describe("Access Control real database authority, audit and parent synchronization", () => {
+  it("freezes a server-derived actor name and role across rename, reassignment and deletion", async () => {
+    await pool.query("UPDATE master_users SET fullname='Original Person' WHERE id=1");
+    await saveActionDecisions(req(1, { actor_display_name: "Browser forgery",
+      actor: { displayName: "Browser forgery" } }), "ordinary", "access_control", { manage: true });
+    const original = (await audit())[0];
+    expect(original.actor_display_name).toBe("Original Person");
+    expect(original.actor).toMatchObject({ masterUserId: 1, roleName: "Admin" });
+    expect(original.actor).not.toHaveProperty("displayName");
+    await pool.query("UPDATE master_users SET fullname='Renamed Person',role='Documentation Reviewer' WHERE id=1");
+    await pool.query("UPDATE adm_rolemaster_ac SET assigned_role='Renamed Admin' WHERE ruid='admin'");
+    const read = () => readAccessAuditPage({ query: { page: "1", search: "Original Person" } } as unknown as Request);
+    const renamed = (await read()).items[0];
+    expect(renamed.actor_display_name).toBe("Original Person");
+    expect(renamed.actor_name).toBe("Renamed Person");
+    expect(renamed.sentence).toContain("Original Person granted");
+    expect(renamed.sentence).not.toContain("Renamed Person");
+    expect(accessAuditExportRow(renamed)).toMatchObject({ person: "Renamed Person", frozenPerson: "Original Person" });
+    await pool.query("DELETE FROM master_users WHERE id=1");
+    const deleted = (await read()).items[0];
+    expect(deleted.actor_name).toBeNull();
+    expect(deleted.sentence).toBe(renamed.sentence);
+    expect(accessAuditExportRow(deleted)).toMatchObject({ person: "", frozenPerson: "Original Person" });
+    expect((await audit())[0]).toEqual(original);
+  });
+  it("keeps legacy entries null and uses their live lookup without a backfill", async () => {
+    await pool.query("UPDATE master_users SET fullname='Legacy Person' WHERE id=1");
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value)
+      VALUES ('grant_change','{"masterUserId":1,"roleName":"Admin"}','ordinary','company_forms','view','false','true')`);
+    const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+    expect(result.items[0].actor_display_name).toBeNull();
+    expect(result.items[0].sentence).toContain("Legacy Person granted");
+    expect(accessAuditExportRow(result.items[0])).toMatchObject({ person: "Legacy Person", frozenPerson: "" });
+  });
+  it("snapshots parent-sync identity before the source user is removed by replacement", async () => {
+    await pool.query("UPDATE master_users SET fullname='Parent Operator' WHERE id=1");
+    const captured = await parentSyncActor(req(1), "fixture.invalid");
+    await holder.db.transaction(async (tx: any) => {
+      await tx.execute(sql`DELETE FROM master_users WHERE id=1`);
+      await appendAudit(tx, captured, "parent_sync_category_readiness", null, "access_control",
+        "category_readiness", false, true);
+    });
+    expect((await audit())[0]).toMatchObject({ actor_display_name: "Parent Operator",
+      actor: { masterUserId: 1, source: "trusted_parent_sync:fixture.invalid" } });
+  });
+  it("the additive migration is idempotent and does not backfill or rewrite existing audit rows", async () => {
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,resource,action)
+      VALUES ('grant_change','{"masterUserId":1}','company_forms','view')`);
+    const before = await audit();
+    await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
+    expect(await audit()).toEqual(before);
+    expect(before[0].actor_display_name).toBeNull();
+  });
+  it("records an unavailable name explicitly instead of borrowing a later name", async () => {
+    await management(1, "ordinary", true);
+    expect((await audit())[0].actor_display_name).toBe("A user whose name was not recorded");
+    await pool.query("UPDATE master_users SET fullname='Later Name' WHERE id=1");
+    const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+    expect(result.items[0].sentence).toContain("A user whose name was not recorded granted");
+    expect(result.items[0].sentence).not.toContain("Later Name");
+  });
   it("fresh bootstrap uses exactly the original normalized whitelist", async () => {
     for (const id of [1, 2, 3]) expect((await authority(id)).mode).toBe("name_bootstrap");
     expect((await authority(4)).allowed).toBe(false);
@@ -370,8 +433,10 @@ describe("Access Control real database authority, audit and parent synchronizati
     else expect((await authority(4)).mode).toBe("management");
   });
   it("sync audit identity comes from authenticated master user and configured host", async () => {
-    const request = req(1, { auditUserUuid: "spoof", actor: { id: 99 } });
-    expect(await parentSyncActor(request, "parent.example")).toEqual({ masterUserId: 1, userType: "Office", source: "trusted_parent_sync:parent.example" });
+    await pool.query("UPDATE master_users SET fullname='Parent Account' WHERE id=1");
+    const request = req(1, { auditUserUuid: "spoof", actor: { id: 99, displayName: "Browser forgery" } });
+    expect(await parentSyncActor(request, "parent.example")).toEqual({ masterUserId: 1, userType: "Office",
+      source: "trusted_parent_sync:parent.example", displayName: "Parent Account" });
     await expect(parentSyncActor({ ...request, user: { id: 1, userType: "Ship" } } as Request, "parent.example")).rejects.toThrow("identity mismatch");
     await expect(new MastersRepository().syncMasterData("roles", snapshotRows())).rejects.toThrow("source required");
   });
