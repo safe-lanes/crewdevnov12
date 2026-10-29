@@ -14,6 +14,8 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
@@ -27,8 +29,19 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2, useManningAgentsWithActiveCrewV2 } from '@/hooks/v2/useMasterDataV2';
-import { useCrewListV2, useDeleteCrewV2, useTerminatedCrewListV2 } from './hooks/useCrewPoolV2';
 import { useToast } from '@/hooks/use-toast';
+import { useCrewListV2, useDeleteCrewV2, useTerminatedCrewListV2, useReactivatedCrewListV2 } from './hooks/useCrewPoolV2';
+
+const ReactivationReasonCell = ({ value }: { value?: string | null }) => (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <span className="block whitespace-pre-wrap break-words">{value || '—'}</span>
+            </TooltipTrigger>
+            {value && <TooltipContent side="right" align="start" className="max-w-xs whitespace-pre-wrap break-words text-xs">{value}</TooltipContent>}
+        </Tooltip>
+    </TooltipProvider>
+);
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -1167,6 +1180,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     // TERMINATED SCREEN — backed by real crew_terminations data.
     // ============================================================
     const { data: terminatedCrewData = [] } = useTerminatedCrewListV2();
+    const [showReactivated, setShowReactivated] = useState(false);
+    const reactivatedQuery = useReactivatedCrewListV2(selectedCrewPoolPage === 'terminated' && showReactivated);
     const realTerminatedRows = useMemo(() => {
         // Map raw termination category ("UT" | "BT" | "general") to the short
         // display token used in the Status badge; empty when no category.
@@ -1178,7 +1193,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             if (v === 'general') return 'Gen';
             return '';
         };
-        return (terminatedCrewData || []).map((c: any) => {
+        return (showReactivated ? reactivatedQuery.data || [] : terminatedCrewData || []).map((c: any) => {
             const token = catToken(c.lastTerminationCategory);
             const base = token ? `Terminated(${token})` : 'Terminated';
             const statusLabel = c.notForHire ? `${base}-NFR` : base;
@@ -1200,11 +1215,14 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             notForHire: !!c.notForHire,
             crewPool: c.crewPool || '',
             manningAgent: c.manningAgent || '',
-            status: statusLabel,
+            status: showReactivated ? 'Reactivated' : statusLabel,
+            reactivationDate: c.reactivation?.date || '',
+            reactivatedByName: c.reactivation?.by || '',
+            reactivationReason: c.reactivation?.reason || '',
             crewUuid: c.crewUuid,
             };
         });
-    }, [terminatedCrewData]);
+    }, [terminatedCrewData, reactivatedQuery.data, showReactivated]);
 
     const [terminatedFilters, setTerminatedFilters] = useState({
         searchName: "",
@@ -1305,7 +1323,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <span style={{
                                 display: 'inline-block', padding: '4px 10px', borderRadius: '4px',
                                 fontSize: '11px', fontWeight: 600,
-                                backgroundColor: '#ef4444', color: '#ffffff',
+                                backgroundColor: showReactivated ? '#22c55e' : '#ef4444', color: '#ffffff',
                                 lineHeight: '1.2', whiteSpace: 'normal',
                             }}>
                                 {label}
@@ -1325,12 +1343,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             ],
         },
         {
-            headerName: 'Details of Termination',
+            headerName: showReactivated ? 'Details of Reactivation' : 'Details of Termination',
             headerClass: 'center-group-header',
             children: [
-                { headerName: 'Date', field: 'terminationDate', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => formatCompactDate(p.value) || '—' },
-                { headerName: 'By', field: 'terminationInitiatedBy', width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => (p.value === 'company' ? 'Company' : p.value === 'crew_member' ? 'Crew Member (resignation)' : p.value || '—') },
-                { headerName: 'Reason', field: 'terminationReason', width: viewportConfig.isDesktopOrLaptop ? undefined : 140, minWidth: 140, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
+                { headerName: 'Date', field: showReactivated ? 'reactivationDate' : 'terminationDate', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => formatCompactDate(p.value) || '—' },
+                { headerName: 'By', field: showReactivated ? 'reactivatedByName' : 'terminationInitiatedBy', width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => showReactivated ? p.value || '—' : (p.value === 'company' ? 'Company' : p.value === 'crew_member' ? 'Crew Member (resignation)' : p.value || '—') },
+                { headerName: 'Reason', field: showReactivated ? 'reactivationReason' : 'terminationReason', cellRenderer: showReactivated ? ReactivationReasonCell : undefined, width: viewportConfig.isDesktopOrLaptop ? undefined : 140, minWidth: 140, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
             ],
         },
         {
@@ -1340,7 +1358,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             cellClass: 'flex items-center justify-center',
             suppressHeaderMenuButton: true, suppressColumnsToolPanel: true,
         },
-    ], [ActionsCellRenderer, viewportConfig, getVesselName]);
+    ], [ActionsCellRenderer, viewportConfig, getVesselName, showReactivated]);
 
     const onTerminatedGridReady = useCallback((params: GridReadyEvent) => {
         setTerminatedGridApi(params.api);
@@ -1350,8 +1368,14 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         const clearTerminated = () => setTerminatedFilters({ searchName: "", vessel: "", rank: "", nationality: "", pool: "", manningAgent: isManningAgentUser ? userManningAgent || "" : "", terminationBy: "", nfr: "" });
         return (
             <>
+                {showReactivated && reactivatedQuery.isLoading && <p role="status">Loading reactivated crew...</p>}
+                {showReactivated && reactivatedQuery.isError && <div role="alert" className="mb-3 text-red-600">
+                    Unable to load reactivated crew.
+                    <Button variant="outline" onClick={() => reactivatedQuery.refetch()}>Retry</Button>
+                </div>}
+                <div className="mb-4 flex flex-col gap-2 2xl:flex-row 2xl:items-center">
                 {showFilters && (
-                    <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+                    <div className="min-w-0 flex-1 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
                         {!isSmallScreen && (
                             <div className="flex flex-nowrap items-center gap-2">
                                 <div className="relative shrink-0 w-40">
@@ -1472,6 +1496,23 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         )}
                     </div>
                 )}
+                    <div className="ml-auto shrink-0">
+                        <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+                            <Checkbox
+                                id="show-reactivated-crew"
+                                checked={showReactivated}
+                                onCheckedChange={(checked) => setShowReactivated(checked === true)}
+                                data-testid="toggle-show-reactivated"
+                            />
+                            <label
+                                htmlFor="show-reactivated-crew"
+                                className="text-sm text-gray-700 cursor-pointer select-none"
+                            >
+                                Show Reactivated
+                            </label>
+                        </div>
+                    </div>
+                </div>
                 <div className="flex flex-col flex-1">
                     <AgGridTable
                         rowData={terminatedRowData}

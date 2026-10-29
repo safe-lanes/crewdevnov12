@@ -107,7 +107,6 @@ const VIEW_ONLY_SECTION_MENUS = new Set([
   "ap training needs", "ap summary", "ap office review",
   // Phase 1 RBAC additions (view-only until Phase 2 wires Create/Edit/Delete)
   "dashboard",
-  "terminated",
   "training & ret.", "training", "retention"
 ]);
 const VIEW_ONLY_DISABLED_KEYS = new Set<keyof Permission>(["cancreate", "canedit", "candelete"]);
@@ -266,14 +265,14 @@ export default function AccessControlPage() {
   );
 
   const handleSelectAll = useCallback(
-    (menuMuid: string, checked: boolean, restricted = false, noDelete = false, viewOnly = false) => {
+    (menuMuid: string, checked: boolean, restricted = false, noDelete = false, viewOnly = false, viewAndEditOnly = false) => {
       setLocalPermissions((prev) => ({
         ...prev,
         [menuMuid]: {
           canview: checked,
-          cancreate: viewOnly ? false : checked,
+          cancreate: (viewOnly || viewAndEditOnly) ? false : checked,
           canedit: (restricted || viewOnly) ? false : checked,
-          candelete: (restricted || noDelete || viewOnly) ? false : checked,
+          candelete: (restricted || noDelete || viewOnly || viewAndEditOnly) ? false : checked,
         },
       }));
       setIsDirty(true);
@@ -319,20 +318,21 @@ export default function AccessControlPage() {
     const isLockMenu = LOCK_ACTION_MENUS.has(item.name.toLowerCase());
     const isCpFormMenu = CP_FORM_SECTION_MENUS.has(item.name.toLowerCase());
     const isViewOnlyMenu = VIEW_ONLY_SECTION_MENUS.has(item.name.toLowerCase());
+    const isTerminatedMenu = item.name.toLowerCase() === "terminated";
     const perms = localPermissions[item.muid] || {
       canview: false,
       cancreate: false,
       canedit: false,
       candelete: false,
     };
-    const allSelected = isViewOnlyMenu
+    const allSelected = isTerminatedMenu ? perms.canview && perms.canedit : isViewOnlyMenu
       ? perms.canview
       : isLockMenu
         ? perms.canview && perms.cancreate
         : isCpFormMenu
           ? perms.canview && perms.cancreate && perms.canedit
           : perms.canview && perms.cancreate && perms.canedit && perms.candelete;
-    const someSelected = !allSelected && (perms.canview || (!isViewOnlyMenu && (perms.cancreate || (!isLockMenu && (perms.canedit || (!isCpFormMenu && perms.candelete))))));
+    const someSelected = isTerminatedMenu ? !allSelected && (perms.canview || perms.canedit) : !allSelected && (perms.canview || (!isViewOnlyMenu && (perms.cancreate || (!isLockMenu && (perms.canedit || (!isCpFormMenu && perms.candelete))))));
 
     return (
       <div key={item.muid}>
@@ -367,14 +367,14 @@ export default function AccessControlPage() {
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
               onCheckedChange={() =>
-                handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isViewOnlyMenu)
+                handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isViewOnlyMenu, isTerminatedMenu)
               }
               className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3] data-[state=indeterminate]:bg-[#52baf3] data-[state=indeterminate]:border-[#52baf3]"
               data-testid={`checkbox-select-all-${item.muid}`}
             />
           </div>
           {PERMISSION_KEYS.map((key) => {
-            const isDisabledKey = (isLockMenu && LOCK_ACTION_DISABLED_KEYS.has(key)) || (isCpFormMenu && CP_FORM_DISABLED_KEYS.has(key)) || (isViewOnlyMenu && VIEW_ONLY_DISABLED_KEYS.has(key));
+            const isDisabledKey = (isTerminatedMenu && (key === "cancreate" || key === "candelete")) || (isLockMenu && LOCK_ACTION_DISABLED_KEYS.has(key)) || (isCpFormMenu && CP_FORM_DISABLED_KEYS.has(key)) || (isViewOnlyMenu && VIEW_ONLY_DISABLED_KEYS.has(key));
             return (
               <div
                 key={key}

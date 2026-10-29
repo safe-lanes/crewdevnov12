@@ -4,7 +4,7 @@ import { attachmentGuard, AttachmentAccessError, authorizeAttachmentMenu, author
 import { scopeAttachmentJson } from "./attachmentJsonAccess";
 
 export const crewAggregateAttachmentAccess = attachmentGuard(async req => {
-  if (!["GET", "HEAD"].includes(req.method) || !/^\/crew(?:\/enriched|\/details)?\/?$/i.test(req.path)) return;
+  if (!["GET", "HEAD"].includes(req.method) || !/^\/crew(?:\/enriched|\/details|\/reactivated)?\/?$/i.test(req.path)) return;
   const { ship } = await authorizeAttachmentMenu(req, "Crew Database");
   if (ship) scopeAttachmentJson(req.res!, row => authorizeAttachmentSubject(req, "Crew Database", row.crewUuid));
 });

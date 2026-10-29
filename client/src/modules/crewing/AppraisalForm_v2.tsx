@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
+import {
+  readEffectivenessOptions,
+  getEffectivenessScore,
+  effectivenessSelectValue,
+  validateEffectivenessSelections,
+  type EffectivenessOption,
+  type EffectivenessSelections,
+} from "@shared/appraisal-effectiveness";
+import { EffectivenessRatingItems } from "@/components/EffectivenessRatingItems";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -527,7 +536,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
-  const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
+  const {
+    data: existingAppraisal,
+    isSuccess: existingAppraisalLoaded,
+    isError: existingAppraisalFailed,
+  } = useQuery<ExistingAppraisal | undefined>({
     queryKey: [`/api/v2/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
@@ -539,6 +552,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // - Existing appraisal with NO pinned formVersionId (historical row): fall back
   //   to the latest released version for the rank.
   type FormForRankResponse = {
+    formVersionId?: number | null;
     rankGroupConfig?: any;
     noReleasedVersion?: boolean;
     noReleasedVersionReason?: string;
@@ -558,12 +572,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const useLatest = useLatestForNew || useLatestForEditing;
   const usePinned = isEditing && !!pinnedFormVersionId;
 
-  const { data: latestFormConfig, isLoading: isLoadingLatestConfig, error: latestFormError } = useQuery<FormForRankResponse>({
+  const {
+    data: latestFormConfig, isLoading: isLoadingLatestConfig,
+    error: latestFormError,
+    isSuccess: latestConfigLoaded, isError: latestConfigFailed,
+  } = useQuery<FormForRankResponse>({
     queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
     enabled: !!crewMember?.rank && useLatest,
   });
 
-  const { data: pinnedFormConfig, isLoading: isLoadingPinnedConfig } = useQuery<FormVersionConfigResponse>({
+  const {
+    data: pinnedFormConfig, isLoading: isLoadingPinnedConfig,
+    isSuccess: pinnedConfigLoaded, isError: pinnedConfigFailed,
+  } = useQuery<FormVersionConfigResponse>({
     queryKey: [`/api/v2/admin/form-versions/${pinnedFormVersionId}/configuration`],
     enabled: usePinned,
   });
@@ -574,6 +595,85 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         : undefined)
     : latestFormConfig;
   const isLoadingFormConfig = usePinned ? isLoadingPinnedConfig : isLoadingLatestConfig;
+  type RatingConfigState =
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "ready"; options: EffectivenessOption[] | null; expectedVersionId?: number };
+  type ReadyRatingConfig = Extract<RatingConfigState, { status: "ready" }>;
+
+  const historicalDraftHasNoForm = isEditing
+    && !pinnedFormVersionId
+    && !existingAppraisal?.formVersionUuid
+    && existingAppraisal?.status?.trim().toLowerCase() === "draft"
+    && (
+      !crewMember?.rank?.trim()
+      || (latestConfigFailed && latestFormError?.message.startsWith("404:"))
+      || (latestConfigLoaded && latestFormConfig?.noReleasedVersion === true)
+    );
+
+  const ratingConfigState: RatingConfigState = (() => {
+    if (isEditing) {
+      if (existingAppraisalFailed) {
+        return { status: "error", message: "The appraisal could not be loaded." };
+      }
+      if (!existingAppraisalLoaded) return { status: "loading" };
+      if (!existingAppraisal) {
+        return { status: "error", message: "The appraisal is unavailable." };
+      }
+    }
+    // Existing legacy drafts remain editable when no current form exists.
+    // Fetch failures and malformed released configurations still block editing.
+    if (historicalDraftHasNoForm) return { status: "ready", options: null };
+    if (!usePinned && !crewMember?.rank) {
+      return { status: "error", message: "A crew rank is required to load the form configuration." };
+    }
+    const failed = usePinned ? pinnedConfigFailed : latestConfigFailed;
+    const loaded = usePinned ? pinnedConfigLoaded : latestConfigLoaded;
+    if (failed) {
+      return {
+        status: "error",
+        message: "The form configuration could not be loaded. Close and reopen the appraisal to try again.",
+      };
+    }
+    if (!loaded) return { status: "loading" };
+    if (formConfig?.noReleasedVersion) {
+      return {
+        status: "error",
+        message: formConfig.noReleasedVersionReason || "No released form configuration is available.",
+      };
+    }
+    try {
+      const options = readEffectivenessOptions(formConfig?.rankGroupConfig);
+      if (!usePinned) {
+        const id = latestFormConfig?.formVersionId;
+        if (!Number.isInteger(id) || !id || id < 1) {
+          return { status: "error", message: "The released form version could not be identified." };
+        }
+        return { status: "ready", options, expectedVersionId: id };
+      }
+      return { status: "ready", options, expectedVersionId: pinnedFormVersionId ?? undefined };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "The form configuration is invalid.",
+      };
+    }
+  })();
+
+  const effectivenessOptions =
+    ratingConfigState.status === "ready" ? ratingConfigState.options : null;
+
+  const requireRatingConfiguration = (data: EffectivenessSelections) => {
+    if (ratingConfigState.status !== "ready") {
+      throw new Error(
+        ratingConfigState.status === "error"
+          ? ratingConfigState.message
+          : "Please wait for the form configuration to finish loading."
+      );
+    }
+    validateEffectivenessSelections(data, ratingConfigState.options);
+    return ratingConfigState;
+  };
 
   // Task #500: lock-form flag — once Stage 2 is submitted we trust the
   // snapshot stored on the appraisal record; before that we read the live
@@ -1007,7 +1107,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean; ratingConfig?: ReadyRatingConfig }) => {
+      const ratingConfig = payload.ratingConfig ?? requireRatingConfiguration(payload.data);
+      validateEffectivenessSelections(payload.data, ratingConfig.options);
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -1018,14 +1120,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         let totalWeight = 0;
         assessments?.forEach(assessment => {
           if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
+            const rating = getEffectivenessScore(assessment.effectiveness, ratingConfig.options);
             totalScore += (rating * assessment.weight) / 100;
             totalWeight += assessment.weight;
           }
@@ -1039,14 +1134,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         let totalWeight = 0;
         assessments?.forEach(assessment => {
           if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
+            const rating = getEffectivenessScore(assessment.effectiveness, ratingConfig.options);
             totalScore += (rating * assessment.weight) / 100;
             totalWeight += assessment.weight;
           }
@@ -1085,11 +1173,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
       // Use PUT for existing appraisals, POST for new ones
       const idToUse = payload.existingId || appraisalId;
+      if (!idToUse && !ratingConfig.expectedVersionId) {
+        throw new Error("The form version must be resolved before creating an appraisal.");
+      }
       const method = idToUse ? 'PUT' : 'POST';
       const url = idToUse ? `/api/v2/appraisals/${idToUse}` : '/api/v2/appraisals';
       
       console.log(`📤 ${method} ${url}:`, appraisalPayload);
-      const response = await apiRequest(method, url, appraisalPayload);
+      const response = await apiRequest(method, url, {
+        ...appraisalPayload,
+        expectedFormVersionId: ratingConfig.expectedVersionId,
+      });
       const result = await response.json();
       console.log('✅ Appraisal saved successfully:', result);
       return result;
@@ -1126,7 +1220,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 1 mutation (Parts A & B) - accepts synced form data to ensure comment persistence
   const stage1Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ id, formData, ratingConfig }: { id: number; formData: AppraisalFormData; ratingConfig: ReadyRatingConfig }) => {
+      validateEffectivenessSelections(formData, ratingConfig.options);
       const stageData = {
         seafarersName: formData.seafarersName,
         seafarersRank: formData.seafarersRank,
@@ -1143,6 +1238,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage1`, {
+        expectedFormVersionId: ratingConfig.expectedVersionId,
         data: stageData,
         submittedBy: 'Current User',
         auditUserUuid: getCrewUserId(),
@@ -1165,7 +1261,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
   const stage2Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ id, formData, ratingConfig }: { id: number; formData: AppraisalFormData; ratingConfig: ReadyRatingConfig }) => {
+      validateEffectivenessSelections(formData, ratingConfig.options);
       // Calculate scores from current form data so the Crew Appraisals table
       // reflects the Overall score immediately on direct Stage 2 submit
       // (mirrors logic used by saveAppraisalMutation / Save Draft).
@@ -1174,14 +1271,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         let totalWeight = 0;
         assessments?.forEach(assessment => {
           if (assessment.effectiveness && assessment.weight) {
-            let rating = 0;
-            switch (assessment.effectiveness) {
-              case "5-exceeds-expectations": rating = 5; break;
-              case "4-meets-expectations": rating = 4; break;
-              case "3-somewhat-meets-expectations": rating = 3; break;
-              case "2-below-expectations": rating = 2; break;
-              case "1-significantly-below-expectations": rating = 1; break;
-            }
+            const rating = getEffectivenessScore(assessment.effectiveness, ratingConfig.options);
             totalScore += (rating * assessment.weight) / 100;
             totalWeight += assessment.weight;
           }
@@ -1218,6 +1308,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage2`, {
+        expectedFormVersionId: ratingConfig.expectedVersionId,
         data: stageData,
         submittedBy: 'Current User',
         competenceRating: competenceScore,
@@ -1242,7 +1333,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Stage 3 mutation (Part G) - accepts synced form data to ensure comment persistence
   const stage3Mutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+    mutationFn: async ({ id, formData, ratingConfig }: { id: number; formData: AppraisalFormData; ratingConfig: ReadyRatingConfig }) => {
+      validateEffectivenessSelections(formData, ratingConfig.options);
       const stageData = {
         // Task #500: B1 Evaluation stays editable through Stage 3, so we must
         // ship the latest `trainings` array along with Section G payloads so
@@ -1254,6 +1346,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage3`, {
+        expectedFormVersionId: ratingConfig.expectedVersionId,
         data: stageData,
         submittedBy: 'Current User',
         auditUserUuid: getCrewUserId(),
@@ -1387,6 +1480,22 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     stage: 'stage1' | 'stage2' | 'stage3',
     options?: { skipLockConfirm?: boolean },
   ) => {
+    // Draft creation switches to the pinned-config query. Keep the validated
+    // configuration for this submission while that query loads.
+    let ratingConfig: ReadyRatingConfig;
+    try {
+      ratingConfig = requireRatingConfiguration(getFormDataWithSyncedComments());
+      if (!ratingConfig.expectedVersionId) {
+        throw new Error("A released form version is required before submitting this appraisal.");
+      }
+    } catch (error) {
+      toast({
+        title: "Form configuration unavailable",
+        description: error instanceof Error ? error.message : "Please reopen the appraisal.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Show a confirmation modal before any stage submission. Stage 2 uses
     // the spec-mandated lock-warning copy; Stage 1 and Stage 3 use a generic
     // "are you sure" prompt. The handler re-enters with `skipLockConfirm:
@@ -1539,7 +1648,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // If no appraisalId, save as draft first
     if (!idToUse) {
       try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true });
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true, ratingConfig });
         if (result && result.id) {
           idToUse = result.id;
           setAppraisalId(result.id);
@@ -1561,11 +1670,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     
     // Trigger the appropriate stage mutation with guaranteed non-null ID and synced form data
     if (stage === 'stage1') {
-      stage1Mutation.mutate({ id: idToUse, formData });
+      stage1Mutation.mutate({ id: idToUse, formData, ratingConfig });
     } else if (stage === 'stage2') {
       if (!isPostStage1 && !isSectionVisible('partB2')) {
         try {
           await apiRequest('POST', `/api/v2/appraisals/${idToUse}/submit-stage1`, {
+            expectedFormVersionId: ratingConfig.expectedVersionId,
             data: {
               seafarersName: formData.seafarersName,
               seafarersRank: formData.seafarersRank,
@@ -1590,9 +1700,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           return;
         }
       }
-      stage2Mutation.mutate({ id: idToUse, formData });
+      stage2Mutation.mutate({ id: idToUse, formData, ratingConfig });
     } else if (stage === 'stage3') {
-      stage3Mutation.mutate({ id: idToUse, formData });
+      stage3Mutation.mutate({ id: idToUse, formData, ratingConfig });
     }
   };
 
@@ -1768,20 +1878,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Calculate section score based on weight and effectiveness
   const calculateSectionScore = () => {
+    if (ratingConfigState.status !== "ready") return "—";
     const assessments = form.watch("competenceAssessments");
     let totalScore = 0;
     let totalWeight = 0;
     
     assessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
+        const rating = getEffectivenessScore(assessment.effectiveness, effectivenessOptions);
         totalScore += (rating * assessment.weight) / 100;
         totalWeight += assessment.weight;
       }
@@ -1792,20 +1896,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Calculate behavioural section score
   const calculateBehaviouralSectionScore = () => {
+    if (ratingConfigState.status !== "ready") return "—";
     const assessments = form.watch("behaviouralAssessments");
     let totalScore = 0;
     let totalWeight = 0;
     
     assessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
-        let rating = 0;
-        switch (assessment.effectiveness) {
-          case "5-exceeds-expectations": rating = 5; break;
-          case "4-meets-expectations": rating = 4; break;
-          case "3-somewhat-meets-expectations": rating = 3; break;
-          case "2-below-expectations": rating = 2; break;
-          case "1-significantly-below-expectations": rating = 1; break;
-        }
+        const rating = getEffectivenessScore(assessment.effectiveness, effectivenessOptions);
         totalScore += (rating * assessment.weight) / 100;
         totalWeight += assessment.weight;
       }
@@ -2548,6 +2646,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         {/* Part B: Information at Start of Appraisal Period - Extracted Component */}
         {canViewSection('B') && (
         <PartB
+          effectivenessOptions={effectivenessOptions}
           form={form}
           partRef={partBRef}
           appraisalStatus={appraisalStatus}
@@ -2610,6 +2709,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       <div className="flex flex-col gap-6 sm:gap-8">
         {canViewSection('C') && (
         <PartC
+          effectivenessOptions={effectivenessOptions}
           form={form}
           partRef={partCRef}
           appraisalStatus={appraisalStatus}
@@ -2632,6 +2732,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
         {canViewSection('D') && (
         <PartD
+          effectivenessOptions={effectivenessOptions}
           form={form}
           partRef={partDRef}
           appraisalStatus={appraisalStatus}
@@ -2723,7 +2824,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   const noReleasedVersion = !!formConfig?.noReleasedVersion;
   const noFormConfigured = !usePinned && latestFormError?.message.startsWith('404:');
-  if ((noReleasedVersion && !appraisalId) || noFormConfigured) {
+  if (((noReleasedVersion && !appraisalId) || noFormConfigured) && !historicalDraftHasNoForm) {
     const reason = noFormConfigured
       ? `No appraisal form configured for rank "${crewMember?.rank}". Ask an administrator to assign this rank to an active appraisal rank group.`
       : formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';
@@ -2743,6 +2844,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           <div className="flex justify-end">
             <Button onClick={onClose} data-testid="button-dismiss-no-released">Close</Button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (ratingConfigState.status !== "ready") {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div
+          className="bg-white rounded-lg w-full max-w-md p-6 space-y-4"
+          role={ratingConfigState.status === "error" ? "alert" : "status"}
+        >
+          <h2 className="text-lg font-semibold">
+            {ratingConfigState.status === "loading"
+              ? "Loading form configuration" : "Form configuration unavailable"}
+          </h2>
+          <p className="text-sm text-gray-700">
+            {ratingConfigState.status === "loading"
+              ? "Please wait before editing or saving this appraisal."
+              : ratingConfigState.message}
+          </p>
+          <Button type="button" onClick={onClose}>Close</Button>
         </div>
       </div>
     );
@@ -3308,18 +3431,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     {showEvaluation && (
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                         <Select
-                                          value={training.evaluation}
+                                          value={effectivenessSelectValue(training.evaluation, effectivenessOptions)}
                                           onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
                                         >
                                           <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                             <SelectValue placeholder="Select Rating" />
                                           </SelectTrigger>
                                           <SelectContent>
+                                            <EffectivenessRatingItems options={effectivenessOptions}>
                                             <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
                                             <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
                                             <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
                                             <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
                                             <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                            </EffectivenessRatingItems>
                                           </SelectContent>
                                         </Select>
                                       </td>
@@ -3453,18 +3578,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     {showEvaluation && (
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                         <Select
-                                          value={target.evaluation}
+                                          value={effectivenessSelectValue(target.evaluation, effectivenessOptions)}
                                           onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
                                         >
                                           <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                             <SelectValue placeholder="Select Rating" />
                                           </SelectTrigger>
                                           <SelectContent>
+                                            <EffectivenessRatingItems options={effectivenessOptions}>
                                             <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
                                             <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
                                             <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
                                             <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
                                             <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
+                                            </EffectivenessRatingItems>
                                           </SelectContent>
                                         </Select>
                                       </td>
@@ -3603,18 +3730,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
                                   <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                     <Select
-                                      value={assessment.effectiveness}
+                                      value={effectivenessSelectValue(assessment.effectiveness, effectivenessOptions)}
                                       onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}
                                     >
                                       <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                         <SelectValue placeholder="Select Rating" />
                                       </SelectTrigger>
                                       <SelectContent>
+                                        <EffectivenessRatingItems options={effectivenessOptions}>
                                         <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
                                         <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
                                         <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
                                         <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
                                         <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                        </EffectivenessRatingItems>
                                       </SelectContent>
                                     </Select>
                                   </td>
@@ -3740,18 +3869,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">{assessment.weight}%</td>
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                   <Select
-                                    value={assessment.effectiveness}
+                                    value={effectivenessSelectValue(assessment.effectiveness, effectivenessOptions)}
                                     onValueChange={(value) => updateBehaviouralAssessment(assessment.id, "effectiveness", value)}
                                   >
                                     <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                       <SelectValue placeholder="Select Rating" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                      <EffectivenessRatingItems options={effectivenessOptions}>
                                       <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
                                       <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
                                       <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
                                       <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
                                       <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                      </EffectivenessRatingItems>
                                     </SelectContent>
                                   </Select>
                                 </td>

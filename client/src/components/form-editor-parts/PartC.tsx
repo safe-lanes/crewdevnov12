@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartCProps } from "./types";
+import { effectivenessSelectValue } from "@shared/appraisal-effectiveness";
 
 const PartCComponent: React.FC<PartCProps> = ({
   formMethods,
@@ -105,8 +106,9 @@ const PartCComponent: React.FC<PartCProps> = ({
                     </td>
                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                       <Select
-                        value={assessment.effectiveness}
-                        onValueChange={(value) => updateCompetenceCriterion(assessment.id, "effectiveness", value)}
+                        value={effectivenessSelectValue(assessment.effectiveness, effectivenessOptions)}
+                        open={false}
+                        disabled={!isConfigMode || index !== 0}
                         onOpenChange={(open) => {
                           if (isConfigMode && open && index === 0) {
                             setShowEffectivenessDialog(true);
@@ -121,9 +123,9 @@ const PartCComponent: React.FC<PartCProps> = ({
                           <SelectValue placeholder="Select Rating" />
                         </SelectTrigger>
                         <SelectContent>
-                          {effectivenessOptions.map((option, optionIndex) => (
-                            <SelectItem key={optionIndex} value={option.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}>
-                              {option}
+                          {effectivenessOptions.map(option => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.label}
                             </SelectItem>
                           ))}
                         </SelectContent>

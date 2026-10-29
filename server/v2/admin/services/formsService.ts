@@ -10,6 +10,7 @@ import { frmSubjectStages } from "../../../../shared/v2/forms-engine/subjectRegi
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2, CreateCompanyFormV2Response } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
+import { validateStoredEffectivenessConfiguration } from "../../../../shared/appraisal-effectiveness";
 import { v4 as uuidv4 } from "uuid";
 import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
 import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
@@ -536,6 +537,7 @@ export const formsService = {
       if (!isCompanyForm && !data.rankGroupId) {
         throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
       }
+      validateStoredEffectivenessConfiguration(data.configuration);
       const rankGroupId = isCompanyForm ? null : data.rankGroupId!;
       const stageWasSupplied = Object.prototype.hasOwnProperty.call(data, "stageKey");
       const requestedStage = stageWasSupplied ? (data as any).stageKey as string | null : undefined;
@@ -617,6 +619,9 @@ export const formsService = {
     return getDb().transaction(async (tx: any) => {
       assertImmutableVersionOwnership(data as Record<string, unknown>);
       const { form, version: existing } = await lockWritableVersion(tx, id);
+      validateStoredEffectivenessConfiguration(
+        data.configuration !== undefined ? data.configuration : existing.configuration,
+      );
       const update: Record<string, unknown> = { ...data };
       if (Object.prototype.hasOwnProperty.call(data, "stageKey")) {
         if (existing.status !== "draft") {
@@ -634,6 +639,7 @@ export const formsService = {
     return getDb().transaction(async (tx: any) => {
       const { form, version: existing } = await lockWritableVersion(tx, id);
       if (existing.status !== "draft") throw new Error("Only draft versions can be released.");
+      validateStoredEffectivenessConfiguration(existing.configuration);
       if (form.category === "dynamic") {
         await validatePersistedCompanyFormStructure(existing.fvUuid, form.subjectType, tx);
         await validateApplicabilityRelease(existing.fvUuid, tx);

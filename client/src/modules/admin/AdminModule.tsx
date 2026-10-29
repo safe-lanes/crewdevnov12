@@ -21,6 +21,7 @@ import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarch
 import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
 import { VesselZipUploadDialog } from "./components/VesselZipUploadDialog";
 import { CrewImportDialog } from "@/modules/crew-pool/CrewImportDialog";
+import { ClientAttachmentConverterDialog } from "@/modules/crew-pool/ClientAttachmentConverterDialog";
 import { VesselAssignmentImportDialog } from "@/modules/crew-pool/VesselAssignmentImportDialog";
 import {
   Table,
@@ -608,6 +609,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);
   const [isCrewImportOpen, setIsCrewImportOpen] = useState(false);
+  const [isAttachmentConverterOpen, setIsAttachmentConverterOpen] = useState(false);
   const [isVesselAssignmentImportOpen, setIsVesselAssignmentImportOpen] = useState(false);
   const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
   const [isTrainingMasterEditing, setIsTrainingMasterEditing] = useState(false);
@@ -4021,6 +4023,9 @@ const AdminModuleInner = (): JSX.Element => {
       trainingFollowups: formData.trainingFollowups || [],
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
+      ...(formData.effectivenessOptions !== undefined
+        ? { effectivenessOptions: formData.effectivenessOptions }
+        : {}),
     };
 
     if (rankGroup) {
@@ -4596,6 +4601,16 @@ const AdminModuleInner = (): JSX.Element => {
                         </>
                       )}
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                        onClick={() => setIsAttachmentConverterOpen(true)}
+                        data-testid="button-attachment-convertor-mobile"
+                      >
+                        <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                        Attachment Convertor
+                      </Button>
+                      <Button
                         onClick={handleRevision}
                         disabled={selectedVessels.length === 0}
                         className={`h-8 text-xs ${
@@ -4734,6 +4749,16 @@ const AdminModuleInner = (): JSX.Element => {
                         </Button>
                       </>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                      onClick={() => setIsAttachmentConverterOpen(true)}
+                      data-testid="button-attachment-convertor"
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                      Attachment Convertor
+                    </Button>
                     <Button
                       onClick={handleRevision}
                       disabled={selectedVessels.length === 0}
@@ -5355,6 +5380,10 @@ const AdminModuleInner = (): JSX.Element => {
             <CrewImportDialog
               isOpen={isCrewImportOpen}
               onClose={() => setIsCrewImportOpen(false)}
+            />
+            <ClientAttachmentConverterDialog
+              isOpen={isAttachmentConverterOpen}
+              onClose={() => setIsAttachmentConverterOpen(false)}
             />
             <VesselAssignmentImportDialog
               isOpen={isVesselAssignmentImportOpen}

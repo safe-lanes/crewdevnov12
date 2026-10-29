@@ -23,6 +23,13 @@ import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { sendEmail, logEmailEvent } from "../../shared/emailService";
 import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
 import { apprOfficeReviewsV2 } from "../../../../shared/v2/appraisals/schema";
+import {
+  AppraisalRatingVersionError,
+  readEffectivenessOptions,
+  validateEffectivenessSelections,
+  type EffectivenessOption,
+  type EffectivenessSelections,
+} from "../../../../shared/appraisal-effectiveness";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -47,8 +54,15 @@ const APPRAISAL_PINNED_STATUSES = new Set([
   "stage3_submitted",
 ]);
 
+type ResolvedAppraisalFormVersion = {
+  formVersionId: number;
+  formVersionUuid: string;
+  rankGroupConfig: unknown;
+  isLockForm?: boolean;
+};
+
 export class FormVersionPinError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly reason?: "no_rank" | "unconfigured_rank" | "no_release") {
     super(message);
     this.name = "FormVersionPinError";
   }
@@ -204,11 +218,12 @@ async function triggerAppraisalReviewNotification(
 export class AppraisalResultsService {
   private async resolveRequiredAppraisalFormVersion(
     rank: string | null | undefined,
-  ): Promise<{ formVersionId: number; formVersionUuid: string }> {
+  ): Promise<ResolvedAppraisalFormVersion> {
     const normalizedRank = (rank ?? "").trim();
     if (!normalizedRank) {
       throw new FormVersionPinError(
         "Cannot save this appraisal without a seafarer rank and a released appraisal form version.",
+        "no_rank",
       );
     }
 
@@ -217,20 +232,28 @@ export class AppraisalResultsService {
       if (!formForRank) {
         throw new FormVersionPinError(
           `No appraisal form configured for rank "${normalizedRank}". Assign the rank to an active appraisal rank group before saving this appraisal.`,
+          "unconfigured_rank",
         );
       }
       const formVersionId = formForRank?.formVersionId;
       const formVersionUuid = formForRank?.formVersionUuid;
+      if (formForRank.noReleasedVersion) {
+        throw new FormVersionPinError(
+          `No released appraisal form version exists for rank "${normalizedRank}". Release a form version before saving this appraisal.`,
+          "no_release",
+        );
+      }
       if (
-        formForRank?.noReleasedVersion ||
+        typeof formVersionId !== "number" ||
         !Number.isInteger(formVersionId) ||
+        formVersionId < 1 ||
         !formVersionUuid
       ) {
         throw new FormVersionPinError(
           `No released appraisal form version exists for rank "${normalizedRank}". Release a form version before saving this appraisal.`,
         );
       }
-      return { formVersionId, formVersionUuid };
+      return { formVersionId, formVersionUuid, rankGroupConfig: formForRank.rankGroupConfig, isLockForm: formForRank.isLockForm };
     } catch (error) {
       if (error instanceof FormVersionPinError) throw error;
       throw new FormVersionPinError(
@@ -239,24 +262,74 @@ export class AppraisalResultsService {
     }
   }
 
-  private async resolveAppraisalPinForSubmittedStatus(params: {
+  private async resolveAppraisalRatingVersion(params: {
     status: string | null | undefined;
     rank: string | null | undefined;
     formVersionId: number | null | undefined;
     formVersionUuid: string | null | undefined;
-  }): Promise<{ formVersionId: number; formVersionUuid: string } | null> {
-    if (!statusRequiresAppraisalVersionPin(params.status)) return null;
-
+    expectedFormVersionId: unknown;
+  }) {
     const hasId = params.formVersionId != null;
     const hasUuid = !!params.formVersionUuid;
-    if (hasId !== hasUuid) {
+    if (hasId !== hasUuid || (hasId && (!Number.isInteger(params.formVersionId) || params.formVersionId! < 1))) {
       throw new FormVersionPinError(
-        "This appraisal has an incomplete form-version pin. Both form-version values are required before it can be submitted.",
+        "This appraisal has an incomplete form-version pin. Both valid form-version values are required before it can be saved or submitted.",
       );
     }
-    if (hasId && hasUuid) return null;
+    const expected = params.expectedFormVersionId;
+    if (expected !== undefined && (typeof expected !== "number" || !Number.isInteger(expected) || expected < 1)) {
+      throw new AppraisalRatingVersionError("The appraisal form version could not be confirmed. Reopen the form.");
+    }
+    let version: ResolvedAppraisalFormVersion;
+    try {
+      version = hasId
+        ? await formsService.getVersionConfiguration(params.formVersionId!)
+        : await this.resolveRequiredAppraisalFormVersion(params.rank);
+    } catch (error) {
+      if (
+        !hasId && expected === undefined && !statusRequiresAppraisalVersionPin(params.status) &&
+        error instanceof FormVersionPinError && error.reason !== undefined
+      ) {
+        // Historical drafts may predate rank mapping or released forms.
+        // Only explicit missing-configuration results preserve that path.
+        return { version: null, options: null, newPin: null };
+      }
+      if (expected !== undefined) {
+        throw new AppraisalRatingVersionError("The appraisal form version is unavailable. Reopen the appraisal before saving.");
+      }
+      if (error instanceof FormVersionPinError) throw error;
+      throw new FormVersionPinError("The pinned appraisal form configuration could not be loaded. This appraisal was not saved.");
+    }
+    if (hasId && (version.formVersionId !== params.formVersionId || version.formVersionUuid !== params.formVersionUuid)) {
+      throw new FormVersionPinError("The stored appraisal form-version pin does not match its configuration. This appraisal was not saved.");
+    }
+    if (expected !== undefined && version.formVersionId !== expected) {
+      throw new AppraisalRatingVersionError("The appraisal form version has changed. Reopen the appraisal before saving.");
+    }
+    const options = readEffectivenessOptions(version.rankGroupConfig);
+    if (!hasId && options !== null && expected === undefined) {
+      throw new AppraisalRatingVersionError("This form uses configurable ratings. Reopen it before saving.");
+    }
+    return {
+      version,
+      options,
+      newPin: !hasId && (statusRequiresAppraisalVersionPin(params.status) || options !== null) ? version : null,
+    };
+  }
 
-    return this.resolveRequiredAppraisalFormVersion(params.rank);
+  private async validatePersistedAppraisalRatings(
+    appraisalUuid: string,
+    incoming: EffectivenessSelections,
+    options: readonly EffectivenessOption[] | null,
+  ) {
+    if (options === null) return;
+    const [trainings, targets, competenceAssessments, behaviouralAssessments] = await Promise.all([
+      incoming.trainings ?? trainingsRepo.findByAppraisalUuids([appraisalUuid]).then(rows => rows.get(appraisalUuid) || []),
+      incoming.targets ?? targetsRepo.findByAppraisalUuids([appraisalUuid]).then(rows => rows.get(appraisalUuid) || []),
+      incoming.competenceAssessments ?? competenceAssessmentsRepo.findByAppraisalUuids([appraisalUuid]).then(rows => rows.get(appraisalUuid) || []),
+      incoming.behaviouralAssessments ?? behaviouralAssessmentsRepo.findByAppraisalUuids([appraisalUuid]).then(rows => rows.get(appraisalUuid) || []),
+    ]);
+    validateEffectivenessSelections({ trainings, targets, competenceAssessments, behaviouralAssessments }, options);
   }
 
   async getAll() {
@@ -364,10 +437,45 @@ export class AppraisalResultsService {
 
     const appraisalUuid = uuidv4();
 
-    // Appraisals are pinned at creation time. Never create a record that can
-    // later become a submitted appraisal without a frozen form version.
-    const { formVersionId, formVersionUuid } =
-      await this.resolveRequiredAppraisalFormVersion(appraisalData?.seafarersRank);
+    const expectedVersionId: unknown = auditData.expectedFormVersionId;
+    if (expectedVersionId !== undefined && (
+      typeof expectedVersionId !== "number" ||
+      !Number.isInteger(expectedVersionId) ||
+      expectedVersionId < 1
+    )) {
+      throw new AppraisalRatingVersionError(
+        "The appraisal form version could not be confirmed. Reopen the form."
+      );
+    }
+
+    // Pin and validate against one resolved released version, including for
+    // legacy callers that do not send an expected version.
+    let resolvedForm: ResolvedAppraisalFormVersion;
+    try {
+      resolvedForm = await this.resolveRequiredAppraisalFormVersion(appraisalData?.seafarersRank);
+    } catch (error) {
+      if (expectedVersionId !== undefined && error instanceof FormVersionPinError) {
+        throw new AppraisalRatingVersionError(
+          "The released form version has changed or is unavailable. " +
+          "Reopen the appraisal before saving."
+        );
+      }
+      throw error;
+    }
+    const { formVersionId, formVersionUuid, rankGroupConfig } = resolvedForm;
+    if (expectedVersionId !== undefined && formVersionId !== expectedVersionId) {
+      throw new AppraisalRatingVersionError(
+        "The released form version has changed or is unavailable. " +
+        "Reopen the appraisal before saving."
+      );
+    }
+    const options = readEffectivenessOptions(rankGroupConfig);
+    if (expectedVersionId === undefined && options !== null) {
+      throw new AppraisalRatingVersionError(
+        "This form uses configurable ratings. Reopen it before saving."
+      );
+    }
+    validateEffectivenessSelections(appraisalData, options);
 
     const created = await appraisalResultsRepo.createWithUuid({
       appraisalUuid,
@@ -469,12 +577,19 @@ export class AppraisalResultsService {
       ? auditData.status
       : existing.status;
     const effectiveRank = appraisalData?.seafarersRank ?? existing.seafarersRank;
-    const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
+    const ratingVersion = await this.resolveAppraisalRatingVersion({
       status: effectiveStatus,
       rank: effectiveRank,
       formVersionId: existing.formVersionId,
       formVersionUuid: existing.formVersionUuid,
+      expectedFormVersionId: auditData.expectedFormVersionId,
     });
+    const resolvedPin = ratingVersion.newPin;
+    if (appraisalData) {
+      validateEffectivenessSelections(appraisalData, ratingVersion.options);
+    } else {
+      await this.validatePersistedAppraisalRatings(existing.appraisalUuid, {}, ratingVersion.options);
+    }
     if (resolvedPin) {
       updateFields.formVersionId = resolvedPin.formVersionId;
       updateFields.formVersionUuid = resolvedPin.formVersionUuid;
@@ -535,10 +650,12 @@ export class AppraisalResultsService {
     // validating the incoming payload (which carries any post-Stage-2 B1
     // Evaluation edits) and fall back to the persisted rows if the client
     // omits `trainings` (legacy callers).
+    let stage3Trainings: any[] | undefined;
     if (stage === "stage3") {
       const incoming = Array.isArray((data as any)?.trainings) ? (data as any).trainings as any[] : null;
       const source = incoming
         ?? ((await trainingsRepo.findByAppraisalUuids([appraisal.appraisalUuid])).get(appraisal.appraisalUuid) || []);
+      stage3Trainings = source;
       const missing = source.findIndex((t: any) => !((t?.evaluation ?? "").toString().trim()));
       if (missing !== -1) {
         throw new Error(
@@ -583,12 +700,25 @@ export class AppraisalResultsService {
     const rankForVersionResolution = stage === "stage1"
       ? data.seafarersRank
       : appraisal.seafarersRank;
-    const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
+    const ratingVersion = await this.resolveAppraisalRatingVersion({
       status: newStatus,
       rank: rankForVersionResolution,
       formVersionId: appraisal.formVersionId,
       formVersionUuid: appraisal.formVersionUuid,
+      expectedFormVersionId: data.expectedFormVersionId,
     });
+    const resolvedPin = ratingVersion.newPin;
+    const incomingRatings: EffectivenessSelections = stage === "stage1"
+      ? { trainings: data.trainings || [], targets: data.targets || [] }
+      : stage === "stage2"
+        ? {
+            competenceAssessments: data.competenceAssessments || [],
+            behaviouralAssessments: data.behaviouralAssessments || [],
+            ...(Array.isArray(data.trainings) ? { trainings: data.trainings } : {}),
+            ...(Array.isArray(data.targets) ? { targets: data.targets } : {}),
+          }
+        : { trainings: stage3Trainings };
+    await this.validatePersistedAppraisalRatings(appraisal.appraisalUuid, incomingRatings, ratingVersion.options);
 
     const stageUpdate: any = {
       status: newStatus,
@@ -629,21 +759,7 @@ export class AppraisalResultsService {
       // Task #500: snapshot the form's current lock-form flag onto this
       // appraisal so admin-side toggles after Stage 2 do not retroactively
       // unlock (or lock) already-submitted appraisals.
-      try {
-        const rank = (appraisal as any).seafarersRank as string | null | undefined;
-        if (rank) {
-          const formForRank = await formsService.getFormForRank(rank, "appraisal");
-          if (!formForRank) {
-            throw new FormVersionPinError(
-              `No appraisal form configured for rank "${rank}". Assign the rank to an active appraisal rank group before submitting Stage 2.`,
-            );
-          }
-          stageUpdate.isLockForm = !!formForRank.isLockForm;
-        }
-      } catch (e) {
-        if (e instanceof FormVersionPinError) throw e;
-        console.warn("[Appraisals V2] Failed to resolve isLockForm for stage2 snapshot:", e);
-      }
+      stageUpdate.isLockForm = !!ratingVersion.version?.isLockForm;
     } else if (stage === "stage3") {
       stageUpdate.stage3Status = "completed";
       stageUpdate.stage3SubmittedAt = new Date().toISOString();
