@@ -65,6 +65,23 @@ export async function accessControlAuthority(req: Request, executor?: any) {
   const resolved = await resolveRequestRole(req, tx);
   return authorityFor(resolved.ok ? resolved.role : undefined, await managementSnapshot(tx));
 }
+/** Read-only display information; authority and grant-write safeguards are unchanged. */
+export async function accessControlDisplayState(req: Request) {
+  return getDb().transaction(async (tx: any) => {
+    await lockAccessControl(tx);
+    const resolved = await resolveRequestRole(req, tx);
+    const snapshot = await managementSnapshot(tx);
+    return {
+      ...authorityFor(resolved.ok ? resolved.role : undefined, snapshot),
+      currentRoleId: resolved.ok ? resolved.role.roleId : null,
+      // Stored explicit grants are not the same as the eligible-manager count.
+      // Do not silently omit a holder because it currently lacks a linked user.
+      explicitManagers: snapshot.roles.filter(r => r.decision === true)
+        .map(r => ({ roleId: r.ruid as string, roleName: r.assigned_role as string }))
+        .sort((a, b) => a.roleName.localeCompare(b.roleName) || a.roleId.localeCompare(b.roleId)),
+    };
+  });
+}
 export async function authenticatedActor(req: Request, tx: any): Promise<AuditActor> {
   const resolution = await resolveRequestRole(req, tx);
   if (!resolution.ok) throw new AccessControlError("Trusted authenticated editor unavailable.");

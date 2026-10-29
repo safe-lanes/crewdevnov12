@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getDb } from "../../db";
 import { accessControlService } from "../services";
 import { resolveRequestRole } from "../../auth/roleResolutionService";
-import { accessControlAuthority, saveActionDecisions } from "../services/accessControlManagement";
+import { accessControlAuthority, accessControlDisplayState, saveActionDecisions } from "../services/accessControlManagement";
 import { writeCatalogue, writeMenuGrants } from "../services/accessControlWrites";
 import { readAccessAuditPage } from "../services/accessAuditRead";
 
@@ -39,7 +39,7 @@ export const accessControlController = {
   },
   getPermissions: accessControlHandler(req => accessControlService.getPermissionsByRoleUuid(req.params.ruid)),
   savePermissions: accessControlHandler(req => writeMenuGrants(req, req.params.ruid)),
-  state: accessControlHandler(req => accessControlAuthority(req)),
+  state: accessControlHandler(req => accessControlDisplayState(req)),
   getManagement: accessControlHandler(async req => {
     const row = (await getDb().execute(sql`SELECT allowed FROM adm_resource_action_grants
       WHERE role_id=${req.params.ruid} AND resource='access_control' AND action='manage'`)).rows[0];

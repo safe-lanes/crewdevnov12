@@ -70,6 +70,41 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_menumaster_ac(muid,name,route) VALUES ('crew','Crew Database','/crew'),('admin-menu','Admin','/admin')");
 });
 describe("Access Control real database authority, audit and parent synchronization", () => {
+  it("returns an empty explicit list and the server-resolved role during name bootstrap", async () => {
+    const result = await response(accessControlController.state, req(1));
+    expect(result.statusCode).toBe(200);
+    expect(result.data).toMatchObject({ mode: "name_bootstrap", explicitManagers: [], currentRoleId: "admin" });
+  });
+  it("lists all explicit holders, including unlinked roles, without trusting browser identity or writing audit", async () => {
+    await management(1, "ordinary", true);
+    await management(4, "support", true);
+    await pool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned)
+      VALUES ('unlinked','Orphaned Manager','Office',true);
+      INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES ('unlinked','access_control','manage',true)`);
+    const before = await audit();
+    const grantsBefore = (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows;
+    const result = await response(accessControlController.state,
+      req(4, { currentRoleId: "support", explicitManagers: [{ roleId: "fake", roleName: "Fake" }] }));
+    expect(result.data).toMatchObject({ mode: "management", currentRoleId: "ordinary", eligibleManagerCount: 2 });
+    expect(result.data.explicitManagers).toEqual([
+      { roleId: "ordinary", roleName: "Crewing Coordinator" },
+      { roleId: "unlinked", roleName: "Orphaned Manager" },
+      { roleId: "support", roleName: "Sail Admin" },
+    ]);
+    expect(await audit()).toEqual(before);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(grantsBefore);
+  });
+  it("keeps the actual fallback authority unchanged when only an unlinked explicit holder exists", async () => {
+    await pool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned)
+      VALUES ('unlinked','Unlinked Manager','Office',true);
+      INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES ('unlinked','access_control','manage',true)`);
+    const result = await response(accessControlController.state, req(1));
+    expect(result.data).toMatchObject({ mode: "name_bootstrap", eligibleManagerCount: 0,
+      explicitManagers: [{ roleId: "unlinked", roleName: "Unlinked Manager" }] });
+    expect(await authority(1)).toMatchObject({ mode: "name_bootstrap", allowed: true });
+  });
   it("saves both training settings successfully without an audit entry for unchanged values, then records only the changed setting", async () => {
     await pool.query(`CREATE TABLE adm_training_compliance_settings(singleton boolean PRIMARY KEY,
       block_expiring_during_contract boolean NOT NULL, block_missing_expiry boolean NOT NULL);

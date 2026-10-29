@@ -62,6 +62,8 @@ interface AccessControlState {
   eligibleManagerCount: number;
   categoryReady: boolean;
   recoveryRoute: "parent_sail_admin" | "interim_names";
+  explicitManagers?: { roleId: string; roleName: string }[];
+  currentRoleId?: string | null;
 }
 
 
@@ -232,6 +234,9 @@ export default function AccessControlPage() {
     () => (rolesData as RoleApi[]).find((r) => r.ruid === selectedRoleUuid),
     [rolesData, selectedRoleUuid]
   );
+  const explicitManagers = Array.isArray(stateQuery.data?.explicitManagers)
+    ? stateQuery.data.explicitManagers
+    : undefined;
 
   const handleRoleSelect = useCallback((ruid: string) => {
     setSelectedRoleUuid(ruid);
@@ -499,49 +504,6 @@ export default function AccessControlPage() {
           </div>
         ) : (
           <div className="p-4">
-            <div className="mb-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">How access is assigned</div>
-                <div className="mt-1 text-sm font-medium text-gray-800" data-testid="management-mode-explanation">
-                  {stateQuery.data?.mode === "name_bootstrap"
-                    ? "No currently eligible role has an explicit management grant, so access currently follows role names: Admin, Super Admin or Sail Admin."
-                    : stateQuery.data?.mode === "management"
-                      ? "Management access follows explicit role grants."
-                      : stateQuery.data?.mode === "category_recovery"
-                        ? "The parent SAIL Admin category is ready, but no eligible role has explicit management access; recovery is routed through the parent application."
-                        : "Your role does not currently have management access."}
-                </div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Roles with management access</div>
-                <div className="mt-1 text-sm font-medium text-gray-800">Usable explicit manager roles: {stateQuery.data?.eligibleManagerCount ?? "—"}.</div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Parent SAIL Admin category</div>
-                <div className="mt-1 text-sm font-medium text-gray-800">
-                  {stateQuery.data?.categoryReady
-                    ? "Supplied by the parent application."
-                    : "Not supplied by the parent application; this is resolved there, not here."}
-                </div>
-              </div>
-            </div>
-            {(stateQuery.data?.mode === "name_bootstrap" || stateQuery.data?.mode === "category_recovery" || stateQuery.data?.eligibleManagerCount === 0) && (
-              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950" role="status" data-testid="management-recovery-banner">
-                <strong>Complete management access setup:</strong>{" "}
-                {stateQuery.data?.mode === "category_recovery"
-                  ? "Use this parent SAIL Admin recovery access to choose a role used by the intended administrator below, enable Management access and save the grant."
-                  : stateQuery.data?.mode === "name_bootstrap" && stateQuery.data.eligibleManagerCount === 0
-                    ? "Choose a role used by the intended administrator below, enable Management access and save the grant. Make sure the role is active and linked to that administrator’s user account."
-                    : stateQuery.data?.mode === "name_bootstrap"
-                      ? "Grant management access to a currently eligible role. This temporary role-name route will stop working once an eligible role has an explicit management grant."
-                      : stateQuery.data?.recoveryRoute === "parent_sail_admin"
-                        ? "Ask a parent SAIL administrator to restore an eligible manager through the parent SAIL Admin recovery route."
-                        : "Use an eligible named manager to restore access, then assign an explicit management grant."}
-                {stateQuery.data?.mode === "name_bootstrap" && (
-                  <span className="block mt-1">This is a temporary setup state. The name-based route closes only when an eligible role has an explicit grant; saving a grant for an ineligible role does not close it.</span>
-                )}
-              </div>
-            )}
             <div className="grid gap-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(250px,1.2fr)_auto] md:items-end">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
@@ -591,6 +553,46 @@ export default function AccessControlPage() {
             {!stateQuery.data?.allowed && <p className="mt-3 text-sm text-gray-600" role="status">Management grant editing is unavailable in the current server mode.</p>}
             {managementQuery.isError && <p className="mt-3 text-sm text-red-700" role="alert">Unable to load this role’s management grant. <button className="underline" onClick={() => managementQuery.refetch()}>Retry</button></p>}
             {managementError && <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{managementError}</p>}
+            <div className="mt-5 border-t border-gray-200 pt-4" data-testid="management-explicit-managers">
+              <h3 className="text-sm font-semibold text-gray-800">Roles with management access</h3>
+              {explicitManagers === undefined ? (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-3" role="status">
+                  <p className="text-sm text-gray-600">Management role list is unavailable.</p>
+                  <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />Retry
+                  </Button>
+                </div>
+              ) : stateQuery.data?.mode === "name_bootstrap" && explicitManagers.length === 0 ? (
+                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950" role="status" data-testid="management-fallback-warning">
+                  <p>
+                    Management access is currently granted by role name — Admin, Super Admin or Sail Admin — because no role holds an explicit grant.
+                  </p>
+                  <p className="mt-1">
+                    This is a temporary setup state. Granting an explicit manager closes it, and the name-based route then stops working.
+                  </p>
+                  {!stateQuery.data.categoryReady && (
+                    <p className="mt-1">
+                      The parent SAIL Admin category has not been supplied. This is resolved in the parent application, not here.
+                    </p>
+                  )}
+                </div>
+              ) : explicitManagers.length > 0 ? (
+                <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200" aria-label="Roles with explicit management access">
+                  {explicitManagers.map(manager => (
+                    <li key={manager.roleId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm">
+                      <span className="font-medium text-gray-800">{manager.roleName}</span>
+                      {manager.roleId === stateQuery.data?.currentRoleId && (
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">Your role</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-600" role="status">
+                  No explicit management grants are recorded.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -603,6 +605,11 @@ export default function AccessControlPage() {
                 ? `Granting “${managementConfirmation.roleName}” management access lets this role administer Access Control and grant permissions to other roles.`
                 : `Removing management access from “${managementConfirmation?.roleName ?? "this role"}” revokes its explicit permission to administer Access Control and grant permissions to other roles. The server still prevents removal of the last eligible manager, and recovery rules remain unchanged.`}
             </AlertDialogDescription>
+            {!managementConfirmation?.allowed && managementConfirmation?.roleUuid === stateQuery.data?.currentRoleId && (
+              <div className="mt-3 rounded-md border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" role="alert" data-testid="management-own-role-warning">
+                This is your own role. Removing its management access may lock you out of Access Control, even if other manager roles remain. The server will decide whether this change is allowed.
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-management-confirmation">Cancel</AlertDialogCancel>

@@ -6,17 +6,32 @@ Presentation and a client-side confirmation only. The permission grid and its
 Save Changes footer precede Training compliance policy and Management grants.
 Access audit history and Company PDF branding remain at the top.
 
-Each training checkbox is beside its own heading and explanation. The effect
+Each training checkbox is beside its own heading, with its explanation on hover
+or keyboard focus and retained for screen readers. The effect
 line reflects the last saved response, not a draft checkbox selection; unsaved
 selections are labelled. Loading/failure states never invent an effect.
 Descriptions retain the separate Override training compliance permission and
 refer to planned contract end, not an actual sign-off event.
 
-Management grants explains its purpose, usable explicit-manager role count,
-temporary name-based recovery and parent-owned category. Zero usable managers
-does not necessarily mean zero stored grants: a granted role without a usable
-matching user is not an eligible manager. The parent category cannot be edited.
-The recovery banner asks the operator to complete setup.
+Management grants shows its purpose, the existing grant controls, then a named
+list of every role with a stored explicit true management grant. It no longer
+shows the three status boxes or an eligible-manager count. The current user's
+role is marked **Your role**, using the server-resolved role UUID rather than
+the selected role, a name comparison or a browser identity claim.
+
+The read-only state endpoint adds `explicitManagers` and `currentRoleId`; its
+original authority fields still come from the unchanged `authorityFor` function.
+The list comes from the existing tenant-local snapshot under its existing lock.
+An explicit but currently unusable grant is still listed, not confused with an
+empty grant list. Missing display data shows an unavailable message with Retry.
+
+The warning strip appears only if **both** the server mode is `name_bootstrap`
+and the returned explicit-grant list is present and empty. Category availability
+is mentioned only inside that strip, when the category has not been supplied.
+If an explicit grant exists, no fallback/category warning appears. The server
+continues to decide fallback using eligible managers, so an unusable explicit
+holder can leave the server's recovery route open without making the display
+claim that no explicit grants exist. No recovery or eligibility rules changed.
 
 Save grant opens a confirmation for both granting and removing management.
 It names the role and freezes the selected role UUID and decision for that
@@ -24,6 +39,21 @@ confirmation. Cancel/Escape sends nothing. Confirm sends the existing
 `{allowed: boolean}` request to the existing role-management endpoint.
 Existing disabled controls, permission checks, last-manager protection, audit
 capture and no-change suppression are unchanged.
+Removing the server-identified current role adds a prominent self-lockout
+warning to the existing confirmation; it does not add a client-side refusal.
+
+## Named-list preview evidence
+
+Run `node scripts/verify-management-role-list.mjs` for desktop and narrow-width
+screenshots of the real named list and own-role removal confirmation. It uses an
+existing authorised office development persona and cancels every confirmation.
+All API mutations are blocked, and SQL is read-only.
+
+The fallback screenshots are **browser response fixtures**, not proof that the
+live tenant is in bootstrap. Only that browser's state GET is replaced with a
+consistent empty explicit list and `name_bootstrap` response, and its selected
+role management GETs return false. Normal-state GETs are unmodified. No roles,
+grants, audit entries, category state or other development records are changed.
 
 ## What the five Save buttons save
 

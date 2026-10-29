@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mocks = vi.hoisted(() => ({
-  state: { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names" },
+  state: { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names",
+    currentRoleId: "reviewer", explicitManagers: [] as { roleId: string; roleName: string }[] },
   grants: { reviewer: false, manager: true } as Record<string, boolean>,
   policy: { blockExpiringDuringContract: false, blockMissingExpiry: false },
   saveManagement: vi.fn(), request: vi.fn(), saveMenu: vi.fn(), toast: vi.fn(),
@@ -42,7 +43,8 @@ import AccessControlPage from "@/modules/admin/AccessControlPage";
 let client: QueryClient;
 beforeEach(() => {
   vi.clearAllMocks();
-  Object.assign(mocks.state, { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names" });
+  Object.assign(mocks.state, { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names",
+    currentRoleId: "reviewer", explicitManagers: [] });
   Object.assign(mocks.policy, { blockExpiringDuringContract: false, blockMissingExpiry: false });
   mocks.saveManagement.mockImplementation(async (role: string, allowed: boolean) => {
     mocks.grants[role] = allowed;
@@ -119,10 +121,52 @@ describe("Access Control configure-once panels", () => {
   });
   it("explains the temporary name route and parent-owned category in plain words", async () => {
     await boot();
-    expect(screen.getByTestId("management-mode-explanation")).toHaveTextContent("Admin, Super Admin or Sail Admin");
-    expect(screen.getByTestId("management-recovery-banner")).toHaveTextContent("enable Management access and save");
-    expect(screen.getByTestId("management-recovery-banner")).toHaveTextContent("name-based route closes");
-    expect(screen.getByText(/Not supplied by the parent application/)).toBeVisible();
+    const strip = screen.getByTestId("management-fallback-warning");
+    expect(strip).toHaveTextContent("Admin, Super Admin or Sail Admin");
+    expect(strip).toHaveTextContent("temporary setup state");
+    expect(strip).toHaveTextContent("parent application");
+    expect(screen.queryByRole("list", { name: "Roles with explicit management access" })).not.toBeInTheDocument();
+    expect(screen.queryByText("How access is assigned")).not.toBeInTheDocument();
+    expect(screen.queryByText("Parent SAIL Admin category")).not.toBeInTheDocument();
+  });
+  it("lists every explicit holder by name, marks the server-resolved own role, and places the list after controls", async () => {
+    Object.assign(mocks.state, { mode: "management", eligibleManagerCount: 1, currentRoleId: "manager",
+      explicitManagers: [{ roleId: "manager", roleName: "Fixture Manager" }, { roleId: "unlinked", roleName: "Marine Manager" }] });
+    await boot();
+    const list = screen.getByTestId("management-explicit-managers");
+    expect(list).toHaveTextContent("Fixture Manager");
+    expect(list).toHaveTextContent("Marine Manager");
+    expect(within(list).getByText("Your role").parentElement).toHaveTextContent("Fixture Manager");
+    expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText(/not supplied by the parent/i)).not.toBeInTheDocument();
+    expect(Boolean(screen.getByTestId("button-review-management-grant").compareDocumentPosition(list)
+      & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+  it("warns plainly about removing one's own role without preventing the confirmed server request", async () => {
+    Object.assign(mocks.state, { mode: "management", currentRoleId: "manager",
+      explicitManagers: [{ roleId: "manager", roleName: "Fixture Manager" }] });
+    const dialog = await review("manager");
+    expect(within(dialog).getByTestId("management-own-role-warning")).toHaveTextContent(/lock you out/i);
+    expect(mocks.saveManagement).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByTestId("button-confirm-management-change"));
+    await waitFor(() => expect(mocks.saveManagement).toHaveBeenCalledExactlyOnceWith("manager", false));
+  });
+  it("does not show a self-removal warning for another role", async () => {
+    const dialog = await review("manager");
+    expect(within(dialog).queryByTestId("management-own-role-warning")).not.toBeInTheDocument();
+  });
+  it("does not claim bootstrap is empty when an explicit but ineligible holder exists", async () => {
+    mocks.state.explicitManagers = [{ roleId: "unlinked", roleName: "Unlinked Manager" }];
+    await boot();
+    expect(screen.getByTestId("management-explicit-managers")).toHaveTextContent("Unlinked Manager");
+    expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
+  });
+  it("shows Retry instead of inventing an empty list when the display list is unavailable", async () => {
+    delete (mocks.state as { explicitManagers?: unknown }).explicitManagers;
+    await boot();
+    expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
+    expect(screen.getByTestId("management-grants-panel")).toHaveTextContent(/unable|unavailable|could not/i);
+    expect(within(screen.getByTestId("management-grants-panel")).getByRole("button", { name: "Retry" })).toBeVisible();
   });
   it.each([["reviewer", true, "Fixture Reviewer"], ["manager", false, "Fixture Manager"]] as const)(
     "requires confirmation before changing management for %s", async (role, allowed, name) => {
@@ -158,13 +202,13 @@ describe("Access Control configure-once panels", () => {
     await boot();
     expect(screen.getByRole("checkbox", { name: "Management access granted" })).toBeDisabled();
     expect(screen.getByTestId("button-review-management-grant")).toBeDisabled();
-    expect(screen.getByTestId("management-mode-explanation")).toHaveTextContent("Your role");
+    expect(screen.getByText("Management grant editing is unavailable in the current server mode.")).toBeVisible();
     expect(mocks.saveManagement).not.toHaveBeenCalled();
   });
   it("describes parent-category recovery as ready, not missing", async () => {
     Object.assign(mocks.state, { mode: "category_recovery", categoryReady: true, recoveryRoute: "parent_sail_admin" });
     await boot();
-    expect(screen.getByTestId("management-mode-explanation")).toHaveTextContent("category is ready");
-    expect(screen.getByText("Supplied by the parent application.")).toBeVisible();
+    expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText(/not supplied by the parent/i)).not.toBeInTheDocument();
   });
 });
