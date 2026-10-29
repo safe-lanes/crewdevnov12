@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
@@ -57,6 +57,10 @@ import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
+import {
+  LOCKED_DATE_INLINE,
+  useCashPeriodLock,
+} from "../hooks/useCashPeriodLock";
 
 // Advances & Bond are governed by the combined "Allotments & Cash" screen's
 // menu row (Account Allotments) since the Cash & Bond menu row was retired.
@@ -64,7 +68,7 @@ const MENU = "Account Allotments";
 
 type CashBondDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "calendarDisabledPeriods" | "className"
 >;
 
 function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInputProps) {
@@ -98,7 +102,7 @@ function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInpu
         <FormattedDateInput
           {...props}
           mode="date"
-          className="min-w-0 border-input text-base md:text-sm"
+          className={`min-w-0 ${props.className || "border-input"} text-base md:text-sm`}
           acceptCalendarInputEvents
           retainInvalidDraftOnBlur
           onDraftValidityChange={onDraftValidityChange}
@@ -174,11 +178,26 @@ export function AdvancesTab({
   const { canCreate, canEdit } = usePermissions();
   const mayCreate = canCreate(MENU);
   const mayEdit = canEdit(MENU);
+  const hasFilter = !!vesselUuid && !!period;
+  const locks = useCashPeriodLock(vesselUuid, period);
+  const lockContext = { vesselUuid, period };
 
   const listKey = [`${ACCOUNTS_BASE}/advances`];
   const { data: advances = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    enabled: hasFilter,
   });
+
+  const filteredAdvances = useMemo(() => {
+    if (!hasFilter) return [];
+
+    return advances.filter(
+      (advance) =>
+        advance.vesselUuid === vesselUuid &&
+        (!advance.validFrom || advance.validFrom <= period) &&
+        (!advance.validTo || advance.validTo >= period),
+    );
+  }, [advances, hasFilter, vesselUuid, period]);
 
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
@@ -199,10 +218,17 @@ export function AdvancesTab({
   const requestDateIsValid = useRef(true);
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
+  const [cancelPeriod, setCancelPeriod] = useState("");
   const [closeTarget, setCloseTarget] = useState<any | null>(null);
   const [closeRemark, setCloseRemark] = useState("");
   const [closePeriod, setClosePeriod] = useState("");
   const [acting, setActing] = useState(false);
+
+  useEffect(() => {
+    setDialogOpen(false);
+    setCancelTarget(null);
+    setCloseTarget(null);
+  }, [vesselUuid, period]);
 
   const set = <K extends keyof AdvanceForm>(key: K, value: AdvanceForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -229,6 +255,15 @@ export function AdvancesTab({
 
   const save = async () => {
     setValidationAttempted(true);
+    if (locks.blocked) return;
+
+    if (
+      requestDateIsValid.current &&
+      locks.isDateBlocked(form.requestDate)
+    ) {
+      locks.showDateError();
+      return;
+    }
     if (Object.keys(requiredErrors).length > 0) {
       toast({
         title: "Validation Error",
@@ -268,11 +303,12 @@ export function AdvancesTab({
         reason: form.reason.trim() || null,
         approver: form.approver.trim() || null,
         period,
-      });
+      }, lockContext);
       queryClient.invalidateQueries({ queryKey: listKey });
       setDialogOpen(false);
       toast({ title: "Advance created" });
     } catch (err) {
+      if (locks.handleServerError(err, form.requestDate)) return;
       toast({
         title: "Save failed",
         description: parseApiError(err).message,
@@ -284,13 +320,19 @@ export function AdvancesTab({
   };
 
   const doCancel = async () => {
+    if (locks.blocked) return;
     if (!cancelTarget) return;
     setActing(true);
     try {
-      await accountsApiV2.advances.cancel(cancelTarget.advanceUuid);
+      await accountsApiV2.advances.cancel(
+        cancelTarget.advanceUuid,
+        cancelPeriod,
+        { vesselUuid, period: cancelPeriod },
+      );
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({ title: "Advance cancelled" });
     } catch (err) {
+      locks.handleServerError(err);
       toast({
         title: "Cancel failed",
         description: parseApiError(err).message,
@@ -303,6 +345,7 @@ export function AdvancesTab({
   };
 
   const doClose = async () => {
+    if (locks.blocked) return;
     if (!closeTarget || !closeRemark.trim()) return;
     setActing(true);
     try {
@@ -310,10 +353,12 @@ export function AdvancesTab({
         closeTarget.advanceUuid,
         closeRemark.trim(),
         closePeriod,
+        { vesselUuid, period: closePeriod },
       );
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({ title: "Advance closed (remainder written off)" });
     } catch (err) {
+      locks.handleServerError(err);
       toast({
         title: "Close failed",
         description: parseApiError(err).message,
@@ -337,6 +382,18 @@ export function AdvancesTab({
         width: 110,
         cellRenderer: (p: { value: string | null | undefined }) =>
           formatDate(p.value),
+      },
+      {
+        headerName: "Valid From",
+        field: "validFrom",
+        width: 110,
+        valueFormatter: (p) => (p.value ? formatPeriod(p.value) : ""),
+      },
+      {
+        headerName: "Valid To",
+        field: "validTo",
+        width: 110,
+        valueFormatter: (p) => (p.value ? formatPeriod(p.value) : ""),
       },
       {
         headerName: "Amount",
@@ -408,8 +465,11 @@ export function AdvancesTab({
                     variant="ghost"
                     className="h-7 w-7 text-red-600"
                     title="Cancel (no recoveries posted)"
-                    disabled={acting}
-                    onClick={() => setCancelTarget(row)}
+                    disabled={acting || locks.blocked}
+                    onClick={() => {
+                      setCancelPeriod(period);
+                      setCancelTarget(row);
+                    }}
                     data-testid={`button-cancel-advance-${row.advanceUuid}`}
                   >
                     <Ban size={14} />
@@ -419,7 +479,7 @@ export function AdvancesTab({
                     variant="ghost"
                     className="h-7 w-7 text-amber-600"
                     title="Close (write off remainder)"
-                    disabled={acting}
+                    disabled={acting || locks.blocked}
                     onClick={() => {
                       setCloseRemark("");
                       setClosePeriod(period);
@@ -436,12 +496,21 @@ export function AdvancesTab({
         },
       },
     ],
-    [mayEdit, acting, period],
+    [mayEdit, acting, period, locks.blocked],
   );
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {hasFilter && locks.isLocked && (
+          <Badge
+            variant="outline"
+            className="gap-1"
+            data-testid="badge-advances-locked"
+          >
+            <Lock size={12} /> Period locked — read only
+          </Badge>
+        )}
         {mayCreate && (
           <Button
             size="sm"
@@ -451,25 +520,39 @@ export function AdvancesTab({
               setDateFormVersion((version) => version + 1);
               setForm({
                 ...emptyAdvanceForm,
-                requestDate: new Date().toISOString().slice(0, 10),
+                requestDate: locks.getDefaultDate(),
               });
               setDialogOpen(true);
             }}
-            className="bg-[#16569e] hover:bg-[#1e5fa8]"
+            className="ml-auto bg-[#16569e] hover:bg-[#1e5fa8]"
             data-testid="button-add-advance"
+            disabled={!hasFilter || locks.blocked}
           >
             <Plus size={14} className="mr-1" /> New Advance
           </Button>
         )}
       </div>
 
+      {locks.notice && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {locks.notice}
+        </p>
+      )}
+
       <div className="border rounded-md bg-white p-2">
-        {isLoading ? (
+        {!hasFilter ? (
+          <div
+            className="p-8 text-center text-sm text-muted-foreground"
+            data-testid="text-advances-select-prompt"
+          >
+            Select a vessel and period to view Advances.
+          </div>
+        ) : isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             Loading advances…
           </div>
         ) : (
-          <AgGridTable rowData={advances} columnDefs={cols} height="440px" />
+          <AgGridTable rowData={filteredAdvances} columnDefs={cols} height="440px" />
         )}
       </div>
 
@@ -559,7 +642,18 @@ export function AdvancesTab({
                   requestDateIsValid.current = valid;
                 }}
                 data-testid="input-advance-date"
+                calendarDisabledPeriods={locks.calendarDisabledPeriods}
+                className={
+                  validationAttempted && locks.isDateBlocked(form.requestDate)
+                    ? "border-red-500"
+                    : undefined
+                }
               />
+              {validationAttempted && locks.isDateBlocked(form.requestDate) && (
+                <p role="alert" className="text-xs text-red-500">
+                  {LOCKED_DATE_INLINE}
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Recovery per Month <span className="text-red-500">*</span></Label>
@@ -632,7 +726,7 @@ export function AdvancesTab({
             </Button>
             <Button
               onClick={save}
-              disabled={saving}
+              disabled={saving || locks.blocked}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-save-advance"
             >
@@ -755,7 +849,7 @@ export function AdvancesTab({
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              disabled={acting}
+              disabled={acting || locks.blocked}
               onClick={doCancel}
               data-testid="button-confirm-cancel-advance"
             >
@@ -807,7 +901,7 @@ export function AdvancesTab({
             </Button>
             <Button
               onClick={doClose}
-              disabled={acting || !closeRemark.trim()}
+              disabled={acting || !closeRemark.trim() || locks.blocked}
               className="bg-amber-600 hover:bg-amber-700"
               data-testid="button-confirm-close"
             >

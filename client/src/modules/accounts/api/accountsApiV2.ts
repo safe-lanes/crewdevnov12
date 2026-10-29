@@ -2,6 +2,20 @@ import { apiRequest } from "@/lib/queryClient";
 
 export const ACCOUNTS_BASE = "/api/v2/accounts";
 
+export interface CashLockContext {
+  vesselUuid: string;
+  period: string;
+}
+
+function cashUrl(path: string, context: CashLockContext): string {
+  const query = new URLSearchParams({
+    vesselUuid: context.vesselUuid,
+    period: context.period,
+  });
+
+  return `${ACCOUNTS_BASE}/${path}?${query.toString()}`;
+}
+
 /** Structured view of an apiRequest error string (`"<status>: <body>"`). */
 export interface ApiErrorInfo {
   status: number | null;
@@ -208,30 +222,32 @@ export const accountsApiV2 = {
       }),
   },
   allotments: {
-    create: (data: Record<string, unknown>) =>
-      req("POST", `${ACCOUNTS_BASE}/allotments`, data),
-    update: (uuid: string, data: Record<string, unknown>) =>
-      req("PATCH", `${ACCOUNTS_BASE}/allotments/${uuid}`, data),
-    suspend: (uuid: string) =>
-      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/suspend`),
-    reactivate: (uuid: string) =>
-      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/reactivate`),
-    end: (uuid: string, validTo?: string) =>
-      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/end`, { validTo }),
-    remove: (uuid: string) =>
-      req("DELETE", `${ACCOUNTS_BASE}/allotments/${uuid}`),
+    create: (data: Record<string, unknown>, context: CashLockContext) =>
+      req("POST", cashUrl("allotments", context), data),
+    update: (uuid: string, data: Record<string, unknown>, context: CashLockContext) =>
+      req("PATCH", cashUrl(`allotments/${uuid}`, context), data),
+    suspend: (uuid: string, context: CashLockContext) =>
+      req("POST", cashUrl(`allotments/${uuid}/suspend`, context)),
+    reactivate: (uuid: string, context: CashLockContext) =>
+      req("POST", cashUrl(`allotments/${uuid}/reactivate`, context)),
+    end: (uuid: string, validTo: string | undefined, context: CashLockContext) =>
+      req("POST", cashUrl(`allotments/${uuid}/end`, context), { validTo }),
+    remove: (uuid: string, context: CashLockContext) =>
+      req("DELETE", cashUrl(`allotments/${uuid}`, context)),
   },
   advances: {
-    create: (data: Record<string, unknown>) =>
-      req("POST", `${ACCOUNTS_BASE}/advances`, data),
-    update: (uuid: string, data: Record<string, unknown>) =>
-      req("PATCH", `${ACCOUNTS_BASE}/advances/${uuid}`, data),
-    cancel: (uuid: string) =>
-      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/cancel`),
-    close: (uuid: string, remark: string, writeOffPeriod: string) =>
-      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/close`, { remark, writeOffPeriod }),
-    remove: (uuid: string) =>
-      req("DELETE", `${ACCOUNTS_BASE}/advances/${uuid}`),
+    create: (data: Record<string, unknown>, context: CashLockContext) =>
+      req("POST", cashUrl("advances", context), data),
+    update: (uuid: string, data: Record<string, unknown>, context: CashLockContext) =>
+      req("PATCH", cashUrl(`advances/${uuid}`, context), data),
+    cancel: (uuid: string, cancelledPeriod: string, context: CashLockContext) =>
+      req("POST", cashUrl(`advances/${uuid}/cancel`, context), {
+        cancelledPeriod,
+      }),
+    close: (uuid: string, remark: string, writeOffPeriod: string, context: CashLockContext) =>
+      req("POST", cashUrl(`advances/${uuid}/close`, context), { remark, writeOffPeriod }),
+    remove: (uuid: string, context: CashLockContext) =>
+      req("DELETE", cashUrl(`advances/${uuid}`, context)),
   },
   bondItems: {
     create: (data: Record<string, unknown>) =>

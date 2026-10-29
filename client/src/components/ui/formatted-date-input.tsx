@@ -3,6 +3,12 @@ import { cn } from "../../lib/utils";
 import { CalendarDays } from "lucide-react";
 import { Input } from "./input";
 import { MonthOnlyInput, type MonthDraft } from "./formatted-month-input";
+import { Calendar } from "./calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./popover";
 
 interface FormattedDateInputProps {
   value: string;
@@ -14,6 +20,7 @@ interface FormattedDateInputProps {
   max?: string;
   placeholder?: string;
   disabled?: boolean;
+  calendarDisabledPeriods?: readonly string[];
   /** Accept native calendar input before a later blur/change event. */
   acceptCalendarInputEvents?: boolean;
   retainInvalidDraftOnBlur?: boolean;
@@ -80,9 +87,37 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, calendarDisabledPeriods, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const manualInputRef = React.useRef<HTMLInputElement>(null);
+    const [calendarOpen, setCalendarOpen] = React.useState(false);
+
+    const calendarIso = (date: Date) =>
+      `${String(date.getFullYear()).padStart(4, "0")}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const selectedCalendarDate = (() => {
+      if (!formatIsoDate(value)) return undefined;
+
+      const [year, month, day] = value.split("-").map(Number);
+      const date = new Date(0);
+      date.setFullYear(year, month - 1, day);
+      date.setHours(12, 0, 0, 0);
+      return date;
+    })();
+
+    const calendarDayDisabled = (date: Date) => {
+      const iso = calendarIso(date);
+
+      return (
+        disabled ||
+        !formatIsoDate(iso) ||
+        Boolean(min && iso < min) ||
+        Boolean(max && iso > max) ||
+        Boolean(calendarDisabledPeriods?.includes(iso.slice(0, 7)))
+      );
+    };
     const [draft, setDraft] = React.useState(
       () => initialDraft ?? formatIsoDate(value),
     );
@@ -232,6 +267,11 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
 
     const openCalendar = () => {
       if (disabled) return;
+      if (calendarDisabledPeriods !== undefined) {
+        openingCalendarRef.current = true;
+        setCalendarOpen(true);
+        return;
+      }
       calendarChangedRef.current = false;
       openingCalendarRef.current = true;
       calendarInputRef.current?.focus();
@@ -257,7 +297,8 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         (nextValue !== "" && (
           !formatIsoDate(nextValue) ||
           Boolean(min && nextValue < min) ||
-          Boolean(max && nextValue > max)
+          Boolean(max && nextValue > max) ||
+          Boolean(calendarDisabledPeriods?.includes(nextValue.slice(0, 7)))
         ))
       ) {
         event.currentTarget.value = valueRef.current;
@@ -274,6 +315,21 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         calendarInputRef.current?.blur();
       }
     };
+
+    const calendarButton = (
+      <button
+        type="button"
+        onMouseDown={() => {
+          openingCalendarRef.current = true;
+        }}
+        onClick={openCalendar}
+        disabled={disabled}
+        aria-label="Choose date from calendar"
+        className="flex h-full w-9 flex-shrink-0 items-center justify-center rounded-r-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed"
+      >
+        <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+    );
 
     return (
       <div className={cn("flex w-full min-w-[5.5rem] flex-col", widthClasses)}>
@@ -303,18 +359,52 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
           data-testid={dataTestId ? `${dataTestId}-manual` : undefined}
           className="h-full min-w-0 flex-1 bg-transparent px-3 py-1 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
-        <button
-          type="button"
-          onMouseDown={() => {
-            openingCalendarRef.current = true;
-          }}
-          onClick={openCalendar}
-          disabled={disabled}
-          aria-label="Choose date from calendar"
-          className="flex h-full w-9 flex-shrink-0 items-center justify-center rounded-r-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed"
-        >
-          <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        {calendarDisabledPeriods === undefined ? (
+          calendarButton
+        ) : (
+          <Popover
+            open={calendarOpen}
+            onOpenChange={(open) => {
+              setCalendarOpen(open);
+              openingCalendarRef.current = open;
+            }}
+          >
+            <PopoverTrigger asChild>{calendarButton}</PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-0"
+              align="start"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                manualInputRef.current?.focus();
+              }}
+            >
+              <Calendar
+                mode="single"
+                selected={selectedCalendarDate}
+                defaultMonth={selectedCalendarDate}
+                disabled={calendarDayDisabled}
+                initialFocus
+                onSelect={(date) => {
+                  if (!date || calendarDayDisabled(date)) return;
+
+                  const input = calendarInputRef.current;
+                  if (!input) return;
+
+                  const setter = Object.getOwnPropertyDescriptor(
+                    HTMLInputElement.prototype,
+                    "value",
+                  )!.set!;
+
+                  setter.call(input, calendarIso(date));
+                  input.dispatchEvent(new Event("change", { bubbles: true }));
+
+                  openingCalendarRef.current = false;
+                  setCalendarOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
         <input
           ref={calendarInputRef}
           type="date"
