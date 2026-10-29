@@ -123,7 +123,7 @@
       "answerAll": ["nadira", "oswin"] }] },
     { "id": "N02", "cat": "planned reliever (A1)", "turns": [{ "q": "Is Kestrel Duvanne on board a vessel at the moment?",
       "calls": [{ "tool": "crewing_find_crew", "result": { "total": 1 } }],
-      "answerAll": ["(not (currently )?on board|not signed on|no vessel|not assigned|isn.t on board|is not on board)"], "answerNone": ["on board mv alpha star"] }] },
+      "answerAll": ["(not( currently)?( shown as)? on board|not signed on|no (current )?vessel|vessel is (recorded as )?blank|not assigned|isn.t on board|is not on board)"], "answerNone": ["on board mv alpha star"] }] },
     { "id": "N03", "cat": "rank config (A5)", "turns": [{ "q": "How many engineers are on MV Alpha Trader?",
       "calls": [{ "tool": "crewing_query_assignments", "args": { "vessels": "alpha trader" }, "result": { "totals.people": 1, "rankConfig.unclassifiedOnBoard.people": 2 } }],
       "answerAll": ["\\b1\\b", "(gas engineer|deck cadet|no category|not classified|unclassified|rank administration)"] }] },
