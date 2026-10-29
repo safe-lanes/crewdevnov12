@@ -9,6 +9,7 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value =>
 const querySchema = z.object({
   page: z.coerce.number().int().min(1), pageSize: z.coerce.number().int().min(1).max(50).default(20),
   filter: z.enum(["all", "management", "void_completed", "parent_sync"]).default("all"),
+  export: z.literal("all").optional(),
   roleId: z.string().optional(), from: day.optional(), to: day.optional(), search: z.string().max(250).default(""),
 }).refine(value => !value.from || !value.to || value.from <= value.to);
 
@@ -24,7 +25,7 @@ export async function readAccessAuditPage(req: Request) {
   const from = q.from ? sql`AND a.recorded_at >= ${`${q.from}T00:00:00Z`}::timestamptz` : sql``;
   const to = q.to ? sql`AND a.recorded_at < ${`${q.to}T00:00:00Z`}::timestamptz + interval '1 day'` : sql``;
   // Search the same sentences the user sees, including resolved names, not JSON.
-  // Read in bounded batches, keeping only the requested page in memory.
+  // Read in bounded batches. Only an explicit export retains all matching rows.
   const items: Array<AccessAuditEntry & { sentence: string }> = [];
   const unmapped = new Set<string>();
   let cursor: string | undefined, total = 0;
@@ -45,7 +46,9 @@ export async function readAccessAuditPage(req: Request) {
       const presentation = presentAccessAudit(row);
       presentation.unmapped.forEach(key => unmapped.add(key));
       if (needle && !presentation.sentence.toLocaleLowerCase("en-GB").includes(needle)) continue;
-      if (total >= (q.page - 1) * q.pageSize && items.length < q.pageSize) items.push({ ...row, sentence: presentation.sentence });
+      if (q.export === "all" || (total >= (q.page - 1) * q.pageSize && items.length < q.pageSize)) {
+        items.push({ ...row, sentence: presentation.sentence });
+      }
       total++;
     }
     if (rows.length < 250) break;

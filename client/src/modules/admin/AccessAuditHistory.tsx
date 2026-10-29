@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History } from "lucide-react";
+import { Download, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminApiV2 } from "./api/adminApiV2";
-import { auditActionLabel, auditValueWords, type AccessAuditEntry } from "@shared/v2/admin/accessAuditPresentation";
+import { auditActionLabel, type AccessAuditEntry } from "@shared/v2/admin/accessAuditPresentation";
+import { ACCESS_AUDIT_CSV_COLUMNS, accessAuditExportRow, auditScreenValue } from "@shared/v2/admin/accessAuditExport";
+import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
 
 type AuditPage = { items: Array<AccessAuditEntry & { sentence: string }>; total: number; page: number; pageSize: number };
 export function AccessAuditHistory({ roles }: { roles: Array<{ ruid: string; assignedRole: string }> }) {
@@ -13,6 +15,8 @@ export function AccessAuditHistory({ roles }: { roles: Array<{ ruid: string; ass
   const [from, setFrom] = useState(""), [to, setTo] = useState("");
   const [search, setSearch] = useState(""), [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   useEffect(() => {
     const timeout = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 250);
     return () => clearTimeout(timeout);
@@ -26,6 +30,20 @@ export function AccessAuditHistory({ roles }: { roles: Array<{ ruid: string; ass
     enabled: open && !invalidRange,
   });
   const change = (setter: (value: string) => void, value: string) => { setter(value); setPage(1); };
+  const exportHistory = async () => {
+    setExporting(true);
+    setExportError("");
+    try {
+      const result: AuditPage = await adminApiV2.getAccessControlAudit(filter, role || undefined, {
+        page: "1", export: "all", ...(from ? { from } : {}), ...(to ? { to } : {}), search: debouncedSearch,
+      });
+      downloadCsv("access-audit-history", rowsToCsv(ACCESS_AUDIT_CSV_COLUMNS, result.items.map(accessAuditExportRow)));
+    } catch {
+      setExportError("Could not export audit history. Please try Export CSV again.");
+    } finally {
+      setExporting(false);
+    }
+  };
   return <>
     <Button variant="outline" onClick={() => setOpen(true)} data-testid="button-access-audit-history"><History className="mr-2 h-4 w-4" />Access audit history</Button>
     <Dialog open={open} onOpenChange={setOpen}>
@@ -35,6 +53,13 @@ export function AccessAuditHistory({ roles }: { roles: Array<{ ruid: string; ass
           <DialogDescription>Who changed access and policy settings. Dates and times are in UTC.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 px-6 pb-5">
+          <div className="flex justify-end pt-3">
+            <Button variant="outline" onClick={exportHistory}
+              disabled={invalidRange || query.isFetching || !query.isSuccess || exporting || search !== debouncedSearch}>
+              <Download className="mr-2 h-4 w-4" />{exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          </div>
+          {exportError && <p role="alert" className="text-sm text-red-700">{exportError}</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-sm">Event filter<select aria-label="Event filter" value={filter} onChange={e => change(setFilter, e.target.value)} className="mt-1 h-10 w-full rounded border bg-white px-2">
               <option value="all">All events</option><option value="management">Management</option><option value="void_completed">Void completed</option><option value="parent_sync">Parent sync</option>
@@ -56,13 +81,9 @@ export function AccessAuditHistory({ roles }: { roles: Array<{ ruid: string; ass
                 <details className="mt-1 text-sm">
                   <summary className="cursor-pointer text-[#16569e]">Details</summary>
                   <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                    <div><dt className="font-semibold">{auditActionLabel(row)} — before</dt><dd className="whitespace-pre-wrap">{auditValueWords(row.before_value, row.event === "grant_change")}</dd></div>
-                    <div><dt className="font-semibold">{auditActionLabel(row)} — after</dt><dd className="whitespace-pre-wrap">{auditValueWords(row.after_value, row.event === "grant_change")}</dd></div>
+                    <div><dt className="font-semibold">{auditActionLabel(row)} — before</dt><dd className="whitespace-pre-wrap">{auditScreenValue(row.before_value, row.event === "grant_change")}</dd></div>
+                    <div><dt className="font-semibold">{auditActionLabel(row)} — after</dt><dd className="whitespace-pre-wrap">{auditScreenValue(row.after_value, row.event === "grant_change")}</dd></div>
                   </dl>
-                  <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs">{JSON.stringify({
-                    auditId: row.id, event: row.event, actor: row.actor, roleId: row.role_id,
-                    resource: row.resource, action: row.action, recordedAt: row.recorded_at, details: row.details,
-                  }, null, 2)}</pre>
                 </details>
               </article>)}
             </div>}

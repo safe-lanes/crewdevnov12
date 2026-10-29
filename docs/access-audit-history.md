@@ -8,10 +8,38 @@ until the popup opens. The popup uses the same shared Dialog components, width,
 height limit, scrolling and background as Training Matrix Compliance.
 
 Each resting entry is one plain sentence containing the recorded time (UTC),
-the person or recorded actor role, and what changed. Technical identifiers,
-actor JSON, event/resource/action keys and the recorded details are inside the
-native Details expander. Named before/after displays use On/Off or Granted/Not
-granted, not booleans. Nested before/after booleans are displayed as Yes/No.
+the person or recorded actor role, and what changed. Details contains only the
+named before/after comparisons, with the existing On/Off and Granted/Not granted
+wording unchanged. No technical payload or raw JSON is rendered in the popup.
+Structured before/after values point to the export rather than exposing JSON.
+
+**Recommendation:** retain the Details expander. It keeps the list compact while
+allowing an office user to inspect the useful named comparisons when needed.
+Those comparisons were not moved inline.
+
+## Export
+
+**Export CSV** downloads every entry matching the current event, role, inclusive
+UTC date range and sentence-search filters, not just the displayed page. It uses
+the same protected read endpoint and the same filtering/presentation code as the
+list, with an explicit export flag. Ordinary page requests remain paginated.
+
+The existing `rowsToCsv` and `downloadCsv` helpers in `client/src/lib/csvExport.ts`
+are reused unchanged, exactly as `ReportResultsTable` does for Reports.
+Crew/promotions tables use AG Grid's CSV export, which requires a grid API;
+this popup is not a grid. No new CSV library or grid was introduced.
+
+Columns include the plain sentence, UTC timestamp, current person name, current
+affected-role name, event key, resource, setting/action key, raw before and after
+values, audit ID, actor account ID, affected role UUID, recorded actor JSON and
+recorded details JSON. Unknown person names remain blank, not substituted with a
+role name. Structured values are serialized as JSON in the file only. Missing
+values are blank and explicit null is `null`. Potential spreadsheet-formula
+prefixes are escaped with an apostrophe. Export errors show a plain retry
+sentence. Export does not write audit records.
+
+The capture format and identity limitations described below remain unchanged:
+actor names have not been frozen in this task.
 
 An audit record whose before and after values are identical says the setting
 was kept on/off or the permission remained granted/not granted. It does not
@@ -47,7 +75,7 @@ to its name or the menu name already captured in audit details.
 
 No current key was left unmapped in the 51-entry development history checked.
 Future unknown events/actions receive a non-technical sentence pointing to
-Details; their keys are reported in the read response's `unmappedKeys` metadata,
+the export; their keys are reported in the read response's `unmappedKeys` metadata,
 not printed in the resting sentence.
 
 ## Filters and pagination
@@ -94,17 +122,21 @@ No audit writer, identity capture, permission guard, schema or migration changed
 persona and real read responses. Every API mutation is blocked.
 
 Screenshots and the request report are under the ignored directory
-`.local/verification/access-audit-popup/`:
+`.local/verification/access-audit-export/`:
 
 - `button.jpg`: main page without the old history section;
 - `popup.jpg`: normal resting sentences;
-- `details.jpg`: expanded technical information and named On/Off values;
+- `details.jpg`: expanded named On/Off values with no technical payload;
+- `export-opened.jpg`: the actual downloaded CSV opened as a table, with both
+  the sentence and technical columns;
+- `all-history.csv` and `filtered-history.csv`: actual downloads clicked in
+  the popup, verified against the protected export response;
 - `event-filter.jpg`, `role-filter.jpg`, `date-filter.jpg`,
   `search-filter.jpg`: each filter in use;
 - `pagination.jpg`: the next page.
 
 The check asserts no history fetch while closed, no technical keys/UUIDs/booleans
-in resting sentences, hidden payload until expansion, no entries after closing,
+in resting sentences, no technical payload even after expansion, no entries after closing,
 and no browser errors or attempted writes. This is development-persona
 verification, not parent-authenticated production sign-in verification.
 

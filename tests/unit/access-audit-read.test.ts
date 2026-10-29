@@ -27,6 +27,23 @@ describe("read-only audit pagination and sentence search", () => {
     expect(result.total).toBe(1);
     expect(result.items[0].sentence).toContain("Void completed");
   });
+  it("exports every matching entry, not just the visible page or first batch", async () => {
+    const result = await readAccessAuditPage(request({ page: "2", export: "all" }));
+    expect(result.total).toBe(251);
+    expect(result.items).toHaveLength(251);
+    expect(result.items.at(-1)?.id).toBe("1");
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+  it("applies the same sentence search to exports", async () => {
+    const result = await readAccessAuditPage(request({ page: "1", export: "all", search: "void completed" }));
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].action).toBe("void_completed");
+  });
+  it("returns an empty export when no sentences match", async () => {
+    const result = await readAccessAuditPage(request({ page: "1", export: "all", search: "unmatched phrase" }));
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
   it.each([{ page: "0" }, { page: "1", pageSize: "51" }, { page: "1", from: "2026-02-30" },
     { page: "1", from: "2026-10-23", to: "2026-10-20" }])("refuses invalid filters %j", async query => {
     await expect(readAccessAuditPage(request(query))).rejects.toMatchObject({ status: 400 });

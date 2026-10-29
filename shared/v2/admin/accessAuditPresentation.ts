@@ -80,7 +80,7 @@ export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; u
     case "parent_sync_management_eligibility": change = `updated whether ${role} is eligible to manage Access Control`; break;
     case "parent_sync_category_readiness": change = `${row.after_value === true ? "made" : "marked"} the parent support category ${row.after_value === true ? "available" : "unavailable"}`; break;
     case "parent_sync_rejected": change = "submitted a parent role update that was refused; existing access was preserved"; break;
-    default: change = `updated access${row.role_id ? ` for ${role}` : ""}; open Details for the recorded information`;
+    default: change = `updated access${row.role_id ? ` for ${role}` : ""}; export the history for the recorded information`;
   }
   return { sentence: `${auditDate(row.recorded_at)} — ${who} ${change}.`, unmapped };
 }
