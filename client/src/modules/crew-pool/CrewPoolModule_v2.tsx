@@ -14,6 +14,7 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -1359,21 +1360,14 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         const clearTerminated = () => setTerminatedFilters({ searchName: "", vessel: "", rank: "", nationality: "", pool: "", manningAgent: isManningAgentUser ? userManningAgent || "" : "", terminationBy: "", nfr: "" });
         return (
             <>
-                <div className="flex justify-end mb-3">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" checked={showReactivated}
-                            onChange={(event) => setShowReactivated(event.target.checked)}
-                            data-testid="toggle-show-reactivated" />
-                        Show Reactivated
-                    </label>
-                </div>
                 {showReactivated && reactivatedQuery.isLoading && <p role="status">Loading reactivated crew...</p>}
                 {showReactivated && reactivatedQuery.isError && <div role="alert" className="mb-3 text-red-600">
                     Unable to load reactivated crew.
                     <Button variant="outline" onClick={() => reactivatedQuery.refetch()}>Retry</Button>
                 </div>}
+                <div className="mb-4 flex flex-col gap-2 2xl:flex-row 2xl:items-center">
                 {showFilters && (
-                    <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+                    <div className="min-w-0 flex-1 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
                         {!isSmallScreen && (
                             <div className="flex flex-nowrap items-center gap-2">
                                 <div className="relative shrink-0 w-40">
@@ -1494,6 +1488,23 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         )}
                     </div>
                 )}
+                    <div className="ml-auto shrink-0">
+                        <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+                            <Checkbox
+                                id="show-reactivated-crew"
+                                checked={showReactivated}
+                                onCheckedChange={(checked) => setShowReactivated(checked === true)}
+                                data-testid="toggle-show-reactivated"
+                            />
+                            <label
+                                htmlFor="show-reactivated-crew"
+                                className="text-sm text-gray-700 cursor-pointer select-none"
+                            >
+                                Show Reactivated
+                            </label>
+                        </div>
+                    </div>
+                </div>
                 <div className="flex flex-col flex-1">
                     <AgGridTable
                         rowData={terminatedRowData}
