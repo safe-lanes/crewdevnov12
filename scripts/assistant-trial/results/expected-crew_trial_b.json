@@ -1,0 +1,108 @@
+{
+  "db": "crew_trial_b",
+  "asOf": "2026-11-01",
+  "derivedAt": "2026-10-29T14:18:31.946Z",
+  "fingerprint": {
+    "crew": "8",
+    "plans": "9",
+    "licences": "1",
+    "trainings": "1",
+    "company_ranks": "40",
+    "data_md5": "2f8c4ec2b6d79a39354d511d9b460998"
+  },
+  "answers": {
+    "Q01": {
+      "text": "Fleet on board: people and assignments",
+      "people": 8,
+      "assignments": 9
+    },
+    "Q02": {
+      "text": "On board per vessel (people)",
+      "per_vessel": {
+        "MV Delta Sky": 4,
+        "MV Alpha Star": 5
+      }
+    },
+    "Q03": {
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "secondary": 1
+    },
+    "Q04": {
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "engineers": 3,
+      "unclassified_people": 0
+    },
+    "Q05": {
+      "text": "Officers / ratings / deck ratings / catering on board (people)",
+      "officers": 8,
+      "ratings": 0,
+      "deck_ratings": 0,
+      "catering": 0
+    },
+    "Q06": {
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "people": 1,
+      "unreadable": 0
+    },
+    "Q07": {
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "documents": 2,
+      "people": 2,
+      "inactive_docs": 0,
+      "missing": 0,
+      "unreadable": 0
+    },
+    "Q08": {
+      "text": "Documents of terminated crew that must NOT be listed (sanity: count in raw tables)",
+      "terminated_docs": 0
+    },
+    "Q09": {
+      "text": "Expired documents (any age)",
+      "documents": 0,
+      "people": 0
+    },
+    "Q10": {
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "documents": 1,
+      "people": 1,
+      "expired_docs": 0,
+      "upcoming_docs": 1,
+      "upcoming_people": 1
+    },
+    "Q11": {
+      "text": "Upcoming only, 30 days",
+      "documents": 1,
+      "people": 1
+    },
+    "Q12": {
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "documents": 2,
+      "people": 2,
+      "upcoming_docs": 2
+    },
+    "Q13": {
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "documents": 2
+    },
+    "Q14": {
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "documents": 2,
+      "people": 2,
+      "expired_docs": 0,
+      "per_vessel": {
+        "MV Delta Sky": 1,
+        "MV Alpha Star": 1
+      }
+    },
+    "Q15": {
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "documents": 2,
+      "people": 2,
+      "unclassified_people": 0
+    },
+    "Q16": {
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "on_as_of_day": 0
+    }
+  }
+}

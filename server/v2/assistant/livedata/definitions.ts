@@ -3,7 +3,8 @@
  *
  * Each definition says where it comes from:
  *   CODE        — taken unchanged from an existing Crewing screen/service (cited);
- *   PROVISIONAL — the code is silent or conflicting; a trial rule pending Sahil/Sagar (docs/output questionnaire).
+ *   CONFIRMED   — decided by Sahil in the business-rules questionnaire (responses of 29-Oct-2026, question number cited);
+ *   PROVISIONAL — the code is silent or conflicting and the question is still open.
  * The existing reports are NOT changed; several of them disagree with these rules (see the architecture proposal §1).
  *
  * All SQL here is static text or drizzle `sql` parameters — never caller-supplied identifiers.
@@ -12,12 +13,19 @@ import { sql, type SQL } from "drizzle-orm";
 
 export const DEFINITIONS = {
   onBoard:
-    "CODE (Vessel screen crew count, vesselCrewCountController.ts): crew_status primary or secondary, assignment not archived/deleted, crew and vessel set, sign-on date set.",
-  onBoardSecondary: "PROVISIONAL: secondary assignments count as on board (as the Vessel screen count does) — pending decision D1.",
+    "CODE (Vessel screen crew count, vesselCrewCountController.ts): an assignment with crew status primary or secondary, not archived/deleted, " +
+    "crew and vessel set, sign-on date set. CONFIRMED (A1): during a handover the person on board is 'primary' and the reliever who has " +
+    "signed on is 'secondary'; both count while both are on board. A planned reliever who has not signed on does not count.",
   documents:
-    "PROVISIONAL: licences/certificates (archived licences excluded) and training courses; crew who are deleted or archived are excluded.",
-  expired: "PROVISIONAL: expired = expiry date before the as-of date; expiring = expiry date from the as-of date up to the end of the window.",
-  rankGroups: "PROVISIONAL: rank groups are a fixed trial list (rank categories in the data are inconsistent) — pending decision D1.",
+    "CONFIRMED (A2): 'certificates' means both kinds — licences/certificates (archived ones excluded) and training-course certificates. " +
+    "CONFIRMED (A6): terminated crew (status starting with 'Terminated') are excluded; inactive crew are included; deleted or archived crew are excluded.",
+  expired:
+    "CONFIRMED (A4): a question about documents expiring in a period lists the documents already expired TOGETHER with those expiring " +
+    "by the end of the period; each record is marked expired or upcoming and both counts are given. Expired = expiry date before the as-of date. " +
+    "PROVISIONAL: no lower bound — a document that expired years ago is still listed as expired.",
+  rankGroups:
+    "CONFIRMED (A5): rank groups (officers, engineers, ratings, deck/engine officers and ratings, catering…) come from Admin → Rank " +
+    "Administration → Company tab, not from a fixed list. A rank with no category there is 'unclassified' and is reported, never guessed.",
   dates: "Dates are stored as text; only YYYY-MM-DD values are read. Records with other date text are counted under 'excluded', never silently dropped.",
 } as const;
 
@@ -45,6 +53,9 @@ export const ON_BOARD_VP: SQL = sql`(vp.crew_status IN ('primary', 'secondary') 
 /** Same predicate for an inner alias `ob` (used in EXISTS subqueries). */
 export const ON_BOARD_OB: SQL = sql`(ob.crew_status IN ('primary', 'secondary') AND ob.is_archived = false AND ob.is_deleted = false
   AND ob.crew_uuid IS NOT NULL AND ob.vessel_uuid IS NOT NULL AND ob.sign_on_date IS NOT NULL)`;
+
+/** CONFIRMED (A6): terminated = crew status starting with 'Terminated' (covers the UT / BT / General / NFR variants). Alias `cm`. */
+export const NOT_TERMINATED_CM: SQL = sql`(cm.status IS NULL OR cm.status NOT ILIKE 'Terminated%')`;
 
 /** Vessel name by uuid without join fan-out (master_vessels.vessel_uuid is not declared unique). */
 export function vesselNameOf(uuidCol: SQL): SQL {
@@ -81,44 +92,6 @@ export function rankKeyOf(col: SQL): SQL {
     '\\m1st\\M', 'first', 'g'), '\\m2nd\\M', 'second', 'g'), '\\m3rd\\M', 'third', 'g'), '\\m4th\\M', 'fourth', 'g'), '\\m5th\\M', 'fifth', 'g')`;
 }
 
-/** PROVISIONAL rank groups (D1). Keys are normalised rank names. */
-export const RANK_GROUPS: Record<string, string[]> = {
-  deck_officers: ["master", "chief officer", "second officer", "third officer"],
-  engine_officers: ["chief engineer", "second engineer", "third engineer", "fourth engineer", "fifth engineer", "electrical officer", "gas engineer"],
-  deck_ratings: ["bosun", "able bodied seaman", "ordinary seaman", "pumpman"],
-  engine_ratings: ["fitter", "motorman", "oiler", "wiper"],
-  catering: ["chief cook", "messman"],
-  cadets: ["deck cadet", "engine cadet"],
-};
-export const RANK_GROUP_UNIONS: Record<string, string[]> = {
-  // "engineers" in everyday speech = the engine officers (PROVISIONAL, decision 5). A named group, so the word maps to
-  // ONE server rule instead of the model choosing a combination (trial run 3 once combined officers + ratings).
-  engineers: ["engine_officers"],
-  officers: ["deck_officers", "engine_officers"],
-  ratings: ["deck_ratings", "engine_ratings"],
-  deck: ["deck_officers", "deck_ratings"],
-  engine: ["engine_officers", "engine_ratings"],
-};
-export const RANK_GROUP_NAMES = [...Object.keys(RANK_GROUPS), ...Object.keys(RANK_GROUP_UNIONS)] as const;
-
-export function ranksForGroups(groups: string[]): string[] {
-  const out = new Set<string>();
-  for (const g of groups) {
-    for (const base of RANK_GROUP_UNIONS[g] ?? [g]) for (const r of RANK_GROUPS[base] ?? []) out.add(r);
-  }
-  if (groups.includes("deck")) out.add("deck cadet");
-  if (groups.includes("engine")) out.add("engine cadet");
-  return [...out];
-}
-
-/** Rank → primary group label (for grouping). */
-export function rankGroupLabelOf(rankKey: SQL): SQL {
-  const whens = Object.entries(RANK_GROUPS).map(
-    ([g, ranks]) => sql`WHEN ${rankKey} IN (${sql.join(ranks.map((r) => sql`${r}`), sql`, `)}) THEN ${g}`,
-  );
-  return sql`(CASE ${sql.join(whens, sql` `)} ELSE 'other' END)`;
-}
-
 /** A date window relative to the as-of date: next/last N days or calendar months (never mixed). */
 export interface Window {
   direction: "next" | "last";
@@ -132,4 +105,39 @@ export function windowBounds(asOf: string, w: Window): { from: SQL; to: SQL } {
   return w.direction === "next"
     ? { from: base, to: sql`(${base} + ${shift})::date` }
     : { from: sql`(${base} - ${shift})::date`, to: base };
+}
+
+/**
+ * Expiry states a question can ask for (CONFIRMED A4, 29-Oct-2026):
+ *   expired              expiry date before the as-of date
+ *   not_expired          expiry date on or after the as-of date ("upcoming only")
+ *   expired_or_expiring  already expired PLUS expiring by the end of the window — the DEFAULT for "expiring in N days / months"
+ *   any                  no expiry condition
+ */
+export type ExpiryState = "expired" | "not_expired" | "expired_or_expiring" | "any";
+export const EXPIRY_STATES: [ExpiryState, ...ExpiryState[]] = ["expired", "not_expired", "expired_or_expiring", "any"];
+
+export function effectiveExpiryState(state: ExpiryState | undefined, win: Window | undefined): ExpiryState {
+  if (state) return state;
+  return win && win.direction === "next" ? "expired_or_expiring" : "any";
+}
+
+/** Conditions on an expiry-date expression for a state + optional window (empty = no condition). */
+export function expiryConditions(asOf: string, expiry: SQL, state: ExpiryState, win: Window | undefined): SQL[] {
+  const out: SQL[] = [];
+  const w = win ? windowBounds(asOf, win) : null;
+  if (state === "expired") {
+    // a FUTURE window never narrows "expired" (expired documents lie before the as-of date); a "last N" window does
+    out.push(sql`${expiry} < ${asOf}::date`);
+    if (w && win?.direction === "last") out.push(sql`${expiry} >= ${w.from} AND ${expiry} <= ${w.to}`);
+    return out;
+  }
+  if (state === "not_expired") out.push(sql`${expiry} >= ${asOf}::date`);
+  if (state === "expired_or_expiring") {
+    // expired (any age) together with the ones expiring by the window end; without a window = everything dated
+    out.push(w ? sql`${expiry} <= ${w.to}` : sql`${expiry} IS NOT NULL`);
+    return out;
+  }
+  if (w) out.push(sql`${expiry} >= ${w.from} AND ${expiry} <= ${w.to}`);
+  return out;
 }

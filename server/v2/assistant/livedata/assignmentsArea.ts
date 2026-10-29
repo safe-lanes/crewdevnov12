@@ -2,15 +2,17 @@
  * Live-data area: crew assignments — who is on board (stage 2, PILOT TRIAL).
  *
  * One base row = ONE on-board assignment (vessel_planning_v2 row, Vessel-screen rule). People = distinct crew
- * (a person may hold a primary and a secondary assignment). Names come from scalar subqueries (no fan-out);
- * the cross-area document condition is an EXISTS over the documents rules.
+ * (during a handover the vessel has the person on board as primary and the signed-on reliever as secondary — two rows,
+ * two people). Names come from scalar subqueries (no fan-out); the cross-area document condition is an EXISTS over the
+ * documents rules. Rank groups come from Rank Administration (rankConfig.ts), never from a fixed list.
  */
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
-  DEFINITIONS, ON_BOARD_VP, RANK_GROUP_NAMES, dateOf, fullNameOf, hasText, nationalityOf, normalizeRankText,
-  rankGroupLabelOf, rankKeyOf, ranksForGroups, vesselNameOf, windowBounds,
+  DEFINITIONS, EXPIRY_STATES, NOT_TERMINATED_CM, ON_BOARD_VP, dateOf, effectiveExpiryState, expiryConditions, fullNameOf, hasText,
+  nationalityOf, normalizeRankText, rankKeyOf, vesselNameOf, windowBounds,
 } from "./definitions";
+import { RANK_GROUP_NAMES, classifiedCondition, groupCondition, groupLabelExpr, loadRankConfig, rankConfigReport } from "./rankConfig";
 import {
   inList, isoDate, num, pagingSchema, resolveNationalities, resolveRanks, resolveVesselNames, runArea, windowSchema,
   type AreaQuery, type ToolContext,
@@ -23,7 +25,7 @@ const documentCondition = z
   .object({
     documentTypes: z.array(z.enum(["licence", "training"])).min(1).optional(),
     documentNameContains: z.string().trim().min(2).max(80).optional(),
-    expiryState: z.enum(["expired", "not_expired", "any"]).default("any"),
+    expiryState: z.enum(EXPIRY_STATES).optional(),
     expiryWithin: windowSchema.optional(),
   })
   .strict();
@@ -54,27 +56,18 @@ export const assignmentsArgs = z
   });
 export type AssignmentsArgs = z.infer<typeof assignmentsArgs>;
 
-function docExistsCondition(asOf: string, c: z.infer<typeof documentCondition>): SQL {
+/** EXISTS over the documents rules for the crew of the `vp` row; `state` overrides the condition's state (breakdown). */
+function docExistsCondition(asOf: string, c: z.infer<typeof documentCondition>, state = effectiveExpiryState(c.expiryState, c.expiryWithin)): SQL {
   const parts: SQL[] = [];
   const lic: SQL[] = [sql`l.crew_uuid = vp.crew_uuid`, sql`l.is_deleted = false`, sql`l.archived_at IS NULL`];
   const trn: SQL[] = [sql`t.crew_uuid = vp.crew_uuid`, sql`t.is_deleted = false`];
-  const expiryParts = (e: SQL): SQL[] => {
-    const out: SQL[] = [];
-    if (c.expiryState === "expired") out.push(sql`${e} < ${asOf}::date`);
-    if (c.expiryState === "not_expired") out.push(sql`${e} >= ${asOf}::date`);
-    if (c.expiryWithin) {
-      const w = windowBounds(asOf, c.expiryWithin);
-      out.push(sql`${e} >= ${w.from} AND ${e} <= ${w.to}`);
-    }
-    return out;
-  };
   const nameLike = c.documentNameContains ? "%" + c.documentNameContains.replace(/[%_\\]/g, "\\$&") + "%" : null;
   if (nameLike) {
     lic.push(sql`COALESCE(NULLIF(btrim(l.certificate_document), ''), l.abbr) ILIKE ${nameLike}`);
     trn.push(sql`COALESCE(NULLIF(btrim(t.training_course), ''), t.abbr) ILIKE ${nameLike}`);
   }
-  lic.push(...expiryParts(dateOf(sql`l.expiry`)));
-  trn.push(...expiryParts(dateOf(sql`t.expiry`)));
+  lic.push(...expiryConditions(asOf, dateOf(sql`l.expiry`), state, c.expiryWithin));
+  trn.push(...expiryConditions(asOf, dateOf(sql`t.expiry`), state, c.expiryWithin));
   const types = c.documentTypes ?? ["licence", "training"];
   if (types.includes("licence")) parts.push(sql`EXISTS (SELECT 1 FROM crew_licenses l WHERE ${sql.join(lic, sql` AND `)})`);
   if (types.includes("training")) parts.push(sql`EXISTS (SELECT 1 FROM crew_training_courses t WHERE ${sql.join(trn, sql` AND `)})`);
@@ -85,16 +78,21 @@ export async function queryAssignments(q: Query, ctx: ToolContext, a: Assignment
   const vessels = a.vessels ? await resolveVesselNames(q, a.vessels) : undefined;
   const ranks = a.ranks ? await resolveRanks(q, a.ranks, normalizeRankText, rankKeyOf) : undefined;
   const nationalities = a.nationalities ? await resolveNationalities(q, a.nationalities) : undefined;
+  const cfg = await loadRankConfig(q);
+  const usesGroups = !!a.rankGroups || !!a.groupBy?.includes("rankGroup");
   const signOn = dateOf(sql`vp.sign_on_date`);
   const reliefDue = dateOf(sql`vp.relief_due`);
+  const rankKey = rankKeyOf(sql`vp.rank`);
+  const rankId = sql`btrim(vp.rank_id)`;
+  const docState = a.hasDocument ? effectiveExpiryState(a.hasDocument.expiryState, a.hasDocument.expiryWithin) : undefined;
 
   const conds: SQL[] = [ON_BOARD_VP];
   if (vessels) conds.push(inList(sql`vp.vessel_uuid`, vessels.map((v) => v.vesselId)));
-  if (ranks) conds.push(inList(rankKeyOf(sql`vp.rank`), ranks));
-  if (a.rankGroups) conds.push(inList(rankKeyOf(sql`vp.rank`), ranksForGroups(a.rankGroups)));
+  if (ranks) conds.push(inList(rankKey, ranks));
   if (a.crewStatus) conds.push(inList(sql`vp.crew_status`, a.crewStatus));
   if (nationalities) conds.push(inList(sql`lower(${nationalityOf(sql`cm.nationality_uuid`)})`, nationalities));
   if (a.hasDocument) conds.push(docExistsCondition(ctx.asOf, a.hasDocument));
+  const groupCond = a.rankGroups ? groupCondition(cfg, a.rankGroups, rankId, rankKey) : null;
 
   const dateConds: SQL[] = [];
   if (a.signOnWithin) {
@@ -111,12 +109,13 @@ export async function queryAssignments(q: Query, ctx: ToolContext, a: Assignment
 
   const from = sql`FROM vessel_planning_v2 vp LEFT JOIN crew_members_v2 cm ON cm.crew_uuid = vp.crew_uuid`;
   const where = (extra: SQL[]) => sql`WHERE ${sql.join([...conds, ...extra], sql` AND `)}`;
+  const withGroup = groupCond ? [groupCond] : [];
 
   const base = sql`SELECT 'A' || vp.id AS row_id, vp.crew_uuid, vp.vessel_uuid, ${vesselNameOf(sql`vp.vessel_uuid`)} AS vessel_name,
       COALESCE(NULLIF(${fullNameOf("cm")}, ''), '(no crew record)') AS full_name, regexp_replace(btrim(vp.rank), '_[0-9]+$', '') AS rank,
-      ${rankGroupLabelOf(rankKeyOf(sql`vp.rank`))} AS rank_group, ${nationalityOf(sql`cm.nationality_uuid`)} AS nationality,
+      ${groupLabelExpr(cfg, rankId, rankKey)} AS rank_group, ${nationalityOf(sql`cm.nationality_uuid`)} AS nationality,
       vp.crew_status, ${signOn} AS sign_on, ${reliefDue} AS relief_due
-    ${from} ${where(dateConds)}`;
+    ${from} ${where([...dateConds, ...withGroup])}`;
 
   const area: AreaQuery = {
     base,
@@ -158,11 +157,41 @@ export async function queryAssignments(q: Query, ctx: ToolContext, a: Assignment
         count(*) FILTER (WHERE ${hasText(sql`vp.sign_on_date`)} AND ${signOn} IS NULL)::int AS sign_on_unreadable,
         count(*) FILTER (WHERE ${hasText(sql`vp.relief_due`)} AND ${reliefDue} IS NULL)::int AS relief_unreadable,
         count(*) FILTER (WHERE NOT ${hasText(sql`vp.relief_due`)})::int AS relief_missing
-      ${from} ${where([])}`);
+      ${from} ${where(withGroup)}`);
     excluded = {
       ...(a.signOnWithin || a.signOnFrom || a.signOnTo ? { unreadableSignOnDate: num(x?.sign_on_unreadable) } : {}),
       ...(a.reliefDueWithin || a.reliefDueBefore ? { unreadableReliefDueDate: num(x?.relief_unreadable), noReliefDueDate: num(x?.relief_missing) } : {}),
     };
+  }
+
+  // CONFIRMED (A5): ranks on board that Rank Administration does not classify are reported whenever groups are involved
+  let rankConfig: Record<string, unknown> | undefined;
+  if (usesGroups) {
+    const notClassified = sql`NOT ${classifiedCondition(cfg, rankId, rankKey)}`;
+    const [u] = await q(sql`SELECT count(*)::int AS assignments, count(DISTINCT vp.crew_uuid)::int AS people,
+        array_remove(array_agg(DISTINCT regexp_replace(btrim(vp.rank), '_[0-9]+$', '')), NULL) AS ranks
+      ${from} ${where([...dateConds, notClassified])}`);
+    rankConfig = {
+      ...rankConfigReport(cfg),
+      unclassifiedOnBoard: { assignments: num(u?.assignments), people: num(u?.people), ranks: (u?.ranks as string[] | null) ?? [] },
+    };
+  }
+
+  // CONFIRMED (A4): with a document condition, say how many of the people hold an expired vs an upcoming matching document
+  let breakdown: Record<string, unknown> | undefined;
+  let expiryWindow: Record<string, unknown> | undefined;
+  if (a.hasDocument && docState === "expired_or_expiring") {
+    const expiredCond = docExistsCondition(ctx.asOf, a.hasDocument, "expired");
+    const upcomingCond = docExistsCondition(ctx.asOf, a.hasDocument, "not_expired");
+    const [b] = await q(sql`SELECT count(DISTINCT vp.crew_uuid) FILTER (WHERE ${expiredCond})::int AS expired_people,
+        count(DISTINCT vp.crew_uuid) FILTER (WHERE ${upcomingCond})::int AS upcoming_people
+      ${from} ${where([...dateConds, ...withGroup])}`);
+    breakdown = { expired: { people: num(b?.expired_people) }, upcoming: { people: num(b?.upcoming_people) } };
+  }
+  if (a.hasDocument?.expiryWithin) {
+    const w = windowBounds(ctx.asOf, a.hasDocument.expiryWithin);
+    const [r] = await q(sql`SELECT to_char(${w.from}, 'YYYY-MM-DD') AS f, to_char(${w.to}, 'YYYY-MM-DD') AS t`);
+    expiryWindow = { from: String(r?.f), to: String(r?.t), state: docState };
   }
 
   return {
@@ -171,11 +200,15 @@ export async function queryAssignments(q: Query, ctx: ToolContext, a: Assignment
     asOf: ctx.asOf,
     mode: a.mode,
     unit: a.unit,
-    query: { ...a, vessels: vessels?.map((v) => ({ vesselName: v.vesselName })) },
-    definitions: [DEFINITIONS.onBoard, DEFINITIONS.onBoardSecondary,
+    query: { ...a, vessels: vessels?.map((v) => ({ vesselName: v.vesselName })),
+      ...(a.hasDocument ? { hasDocument: { ...a.hasDocument, expiryState: docState } } : {}) },
+    definitions: [DEFINITIONS.onBoard,
       ...(a.hasDocument ? [DEFINITIONS.documents, DEFINITIONS.expired] : []),
-      ...(a.rankGroups || a.groupBy?.includes("rankGroup") ? [DEFINITIONS.rankGroups] : []), DEFINITIONS.dates],
+      ...(usesGroups ? [DEFINITIONS.rankGroups] : []), DEFINITIONS.dates],
     ...result,
+    ...(breakdown ? { breakdown } : {}),
+    ...(expiryWindow ? { expiryWindow } : {}),
     ...(excluded ? { excluded } : {}),
+    ...(rankConfig ? { rankConfig } : {}),
   };
 }

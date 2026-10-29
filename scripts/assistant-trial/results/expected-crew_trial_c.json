@@ -1,0 +1,106 @@
+{
+  "db": "crew_trial_c",
+  "asOf": "2026-11-01",
+  "derivedAt": "2026-10-29T14:18:32.787Z",
+  "fingerprint": {
+    "crew": "128",
+    "plans": "22",
+    "licences": "125",
+    "trainings": "185",
+    "company_ranks": "40",
+    "data_md5": "3a62cdc7ff0e7a32acfec3838eb20a01"
+  },
+  "answers": {
+    "Q01": {
+      "text": "Fleet on board: people and assignments",
+      "people": 22,
+      "assignments": 22
+    },
+    "Q02": {
+      "text": "On board per vessel (people)",
+      "per_vessel": {
+        "Prime Fortune": 22
+      }
+    },
+    "Q03": {
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "secondary": 1
+    },
+    "Q04": {
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "engineers": 5,
+      "unclassified_people": 2
+    },
+    "Q05": {
+      "text": "Officers / ratings / deck ratings / catering on board (people)",
+      "officers": 10,
+      "ratings": 10,
+      "deck_ratings": 5,
+      "catering": 2
+    },
+    "Q06": {
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "people": 1,
+      "unreadable": 0
+    },
+    "Q07": {
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "documents": 271,
+      "people": 120,
+      "inactive_docs": 7,
+      "missing": 51,
+      "unreadable": 0
+    },
+    "Q08": {
+      "text": "Documents of terminated crew that must NOT be listed (sanity: count in raw tables)",
+      "terminated_docs": 1
+    },
+    "Q09": {
+      "text": "Expired documents (any age)",
+      "documents": 18,
+      "people": 18
+    },
+    "Q10": {
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "documents": 25,
+      "people": 21,
+      "expired_docs": 18,
+      "upcoming_docs": 7,
+      "upcoming_people": 5
+    },
+    "Q11": {
+      "text": "Upcoming only, 30 days",
+      "documents": 7,
+      "people": 5
+    },
+    "Q12": {
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "documents": 29,
+      "people": 24,
+      "upcoming_docs": 11
+    },
+    "Q13": {
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "documents": 30
+    },
+    "Q14": {
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "documents": 9,
+      "people": 5,
+      "expired_docs": 1,
+      "per_vessel": {
+        "Prime Fortune": 9
+      }
+    },
+    "Q15": {
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "documents": 6,
+      "people": 6,
+      "unclassified_people": 5
+    },
+    "Q16": {
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "on_as_of_day": 1
+    }
+  }
+}

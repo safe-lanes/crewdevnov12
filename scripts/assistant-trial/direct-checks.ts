@@ -1,9 +1,11 @@
 /**
- * PILOT TRIAL — direct endpoint checks (no assistant, no widget, no model).
+ * PILOT TRIAL — direct endpoint checks (no assistant, no widget, no model). Version 2 (29-Oct-2026): expectations follow
+ * Sahil's confirmed rules (A1 handover, A4 expired listed with expiring, A5 Rank Administration groups, A6 terminated
+ * excluded / inactive included) and fixture v2 of setup-trial-dbs.ts.
  *
- * Expected values are written BY HAND from the fixture design in setup-trial-dbs.ts (as-of 2026-11-01); they are
- * not computed from the database. Needs both trial servers (see the trial report): single :6100 (crew_trial_a) and
- * multi-tenant :6101 (crew_trial_master → crew_trial_a / crew_trial_b / inactive X).
+ * Expected values are written BY HAND from the fixture design (as-of 2026-11-01); they are not computed from the
+ * database (expected-results.ts re-derives them with separate SQL). Needs both trial servers: single :6100
+ * (crew_trial_a) and multi-tenant :6101 (crew_trial_master → crew_trial_a / crew_trial_b / crew_trial_c / inactive X).
  *
  * Usage: npx tsx scripts/assistant-trial/direct-checks.ts [--phase=external]   (external = server started with
  *        ASSISTANT_ALLOWED_ROLES="Sail Admin,External 1" to test per-area menu permissions)
@@ -26,62 +28,112 @@ async function counts(t: Target) {
   const as = (args: object) => q(t, "crewing_query_assignments", { mode: "count", ...args });
   const ds = (args: object) => q(t, "crewing_query_documents", { mode: "count", ...args });
 
+  // ── on board (A1) ──
   let r = await as({ vessels: ["MV Alpha Star"] });
-  check("A1 Alpha Star on board = 8 people / 8 assignments", r.totals?.people === 8 && r.totals?.assignments === 8, r);
+  check("A1 Alpha Star on board = 8 people / 8 assignments (planned reliever Kestrel not counted)", r.totals?.people === 8 && r.totals?.assignments === 8, r);
   r = await as({ vessels: ["mv beta ocean"] });
-  check("A2 Beta Ocean = 7 people / 7 assignments (incl. one secondary)", r.totals?.people === 7 && r.totals?.assignments === 7, r);
+  check("A2 Beta Ocean = 7 people / 7 assignments (6 primary + Oswin, the signed-on reliever in handover)", r.totals?.people === 7 && r.totals?.assignments === 7, r);
   r = await as({});
-  check("A3 fleet on board = 16 people / 17 assignments", r.totals?.people === 16 && r.totals?.assignments === 17, r);
+  check("A3 fleet on board = 20 people / 20 assignments", r.totals?.people === 20 && r.totals?.assignments === 20, r);
   r = await as({ vessels: ["MV Gamma Bay"] });
   check("A4 Gamma Bay valid zero (ok, 0)", r.ok === true && r.totals?.people === 0, r);
+  r = await as({ crewStatus: ["secondary"] });
+  check("A14 secondary (signed-on relievers) fleet = 1 (Oswin)", r.totals?.people === 1 && r.totals?.assignments === 1, r);
+  r = await as({ vessels: ["MV Beta Ocean"], crewStatus: ["primary"] });
+  check("A14b Beta Ocean primary only = 6 (handover reliever excluded on request)", r.totals?.people === 6, r);
+  r = await q(t, "crewing_find_crew", { name: "kestrel" });
+  check("A17 planned reliever (not signed on) is found but has no vessel", r.total === 1 && r.matches?.[0]?.vesselName === null, r);
+  r = await as({ ranks: ["Second Officer"] });
+  check("A17b Second Officers on board = 1 (Corvina; Kestrel is only planned)", r.totals?.people === 1, r);
+
+  // ── rank groups from Rank Administration (A5) ──
   r = await as({ rankGroups: ["engine_officers"] });
-  check("A5 fleet engine officers = 7 people / 8 assignments", r.totals?.people === 7 && r.totals?.assignments === 8, r);
+  check("A5 fleet engine officers (Eng Officer flag) = 7 people / 7 assignments", r.totals?.people === 7 && r.totals?.assignments === 7, r);
+  check("A5b …and 2 on-board people hold ranks the Company tab does not classify (Gas Engineer, Deck Cadet)",
+    r.rankConfig?.unclassifiedOnBoard?.people === 2 && JSON.stringify([...(r.rankConfig?.unclassifiedOnBoard?.ranks ?? [])].sort()) === JSON.stringify(["Deck Cadet", "Gas Engineer"]), r.rankConfig);
+  check("A18 configured ranks without a category are named (local Company tab)",
+    JSON.stringify(r.rankConfig?.unclassifiedConfiguredRanks) === JSON.stringify(["Deck Cadet", "Engine Cadet", "Fifth Engineer", "Gas Engineer", "Motorman", "Wiper"]) && !r.rankConfig?.issues, r.rankConfig);
   r = await as({ rankGroups: ["engineers"] });
-  check("A12 named group 'engineers' = engine officers only → 7 people (Oiler/Bosun not counted)", r.totals?.people === 7 && r.totals?.assignments === 8, r);
+  check("A12 'engineers' = engine officers → 7 people (Oiler, Bosun, Gas Engineer not counted)", r.totals?.people === 7 && r.totals?.assignments === 7, r);
+  r = await as({ vessels: ["MV Beta Ocean"], rankGroups: ["engineers"] });
+  check("A13 Beta Ocean engineers = 3 (Orrin, Petra, Quillon — Electrical Officer is flagged Eng Officer)", r.totals?.people === 3, r);
+  r = await as({ vessels: ["MV Alpha Trader"], rankGroups: ["engineers"] });
+  check("A13b Alpha Trader engineers = 1 (Tamsin) with 2 unclassified on board", r.totals?.people === 1 && r.rankConfig?.unclassifiedOnBoard?.people === 2, r);
+  r = await as({ rankGroups: ["deck_ratings"] });
+  check("A15 deck ratings = 2 (Bosun; AB_1 matched by name after the mistyped rank_id RO15)", r.totals?.people === 2, r);
+  r = await as({ rankGroups: ["officers"] });
+  check("A16 officers (Officer flag) = 14", r.totals?.people === 14, r);
+  r = await as({ rankGroups: ["ratings"] });
+  check("A16b ratings (Rating flag) = 4", r.totals?.people === 4, r);
+  r = await as({ rankGroups: ["catering_ratings"] });
+  check("A16c catering ratings = 1 (Chief Cook)", r.totals?.people === 1, r);
+  r = await q(t, "crewing_query_assignments", { mode: "group", groupBy: ["rankGroup"] });
+  const rg = Object.fromEntries((r.groups ?? []).map((g: any) => [g.rankGroup, g.people]));
+  check("A19 group by rankGroup: deck_officers 7, engine_officers 7, deck_ratings 2, engine_ratings 1, catering_ratings 1, unclassified 2",
+    rg.deck_officers === 7 && rg.engine_officers === 7 && rg.deck_ratings === 2 && rg.engine_ratings === 1 && rg.catering_ratings === 1 && rg.unclassified === 2, r.groups);
+
   r = await as({ nationalities: ["Indian"] });
   check("A6 nationality 'Indian' → 5 people", r.totals?.people === 5, r);
   r = await as({ ranks: ["Captain"] });
   check("A7 rank 'Captain' = Master → 3", r.totals?.people === 3, r);
   r = await as({ signOnWithin: { direction: "last", amount: 30, unit: "days" } });
-  check("A8 signed on in last 30 days = 3 people / 4 assignments; 1 unreadable sign-on date reported",
-    r.totals?.people === 3 && r.totals?.assignments === 4 && r.excluded?.unreadableSignOnDate === 1, r);
+  check("A8 signed on in last 30 days = 4 people / 4 assignments (Tobiah 1-Oct outside); 1 unreadable sign-on date reported",
+    r.totals?.people === 4 && r.totals?.assignments === 4 && r.excluded?.unreadableSignOnDate === 1, r);
+  r = await as({ hasDocument: { expiryWithin: next(30) } });
+  check("A9 on board with a document expiring in 30 days (expired included by default) = 9 people; breakdown 2 expired / 7 upcoming",
+    r.totals?.people === 9 && r.breakdown?.expired?.people === 2 && r.breakdown?.upcoming?.people === 7 && r.expiryWindow?.state === "expired_or_expiring", r);
   r = await as({ hasDocument: { expiryState: "not_expired", expiryWithin: next(30) } });
-  check("A9 on board with a document expiring in 30 days = 5 people", r.totals?.people === 5, r);
+  check("A9b …upcoming only = 7 people", r.totals?.people === 7, r);
 
   r = await q(t, "crewing_query_assignments", { mode: "group", groupBy: ["nationality"] });
   const nat = Object.fromEntries((r.groups ?? []).map((g: any) => [g.nationality, g.people]));
-  check("A10 group by nationality: INDIA 5, PHILIPPINES 5, UKRAINE 3, GB 2, CROATIA 1",
-    nat.INDIA === 5 && nat.PHILIPPINES === 5 && nat.UKRAINE === 3 && nat["UNITED KINGDOM"] === 2 && nat.CROATIA === 1, r.groups);
+  check("A10 group by nationality: INDIA 5, PHILIPPINES 8, UKRAINE 3, GB 3, CROATIA 1",
+    nat.INDIA === 5 && nat.PHILIPPINES === 8 && nat.UKRAINE === 3 && nat["UNITED KINGDOM"] === 3 && nat.CROATIA === 1, r.groups);
   r = await q(t, "crewing_query_assignments", { mode: "group", groupBy: ["vesselName"], unit: "assignments" });
   const sumAssign = (r.groups ?? []).reduce((s: number, g: any) => s + g.assignments, 0);
-  check("A11 property: sum of assignment groups (17) == total assignments", sumAssign === r.totals?.assignments && sumAssign === 17, r);
+  check("A11 property: sum of assignment groups (20) == total assignments", sumAssign === r.totals?.assignments && sumAssign === 20, r);
 
+  // ── documents (A2, A4, A6) ──
   r = await ds({});
-  check("D1 all documents = 18 docs / 14 people (archived licence + archived crew excluded)", r.totals?.documents === 18 && r.totals?.people === 14, r);
+  check("D1 all documents = 24 docs / 18 people (archived licence, archived crew, 2 terminated crew excluded; inactive included)", r.totals?.documents === 24 && r.totals?.people === 18, r);
   r = await ds({ expiryState: "expired" });
-  check("D2 expired = 2 docs / 2 people", r.totals?.documents === 2 && r.totals?.people === 2, r);
+  check("D2 expired = 3 docs / 3 people (incl. a 2024 training certificate)", r.totals?.documents === 3 && r.totals?.people === 3, r);
+  r = await ds({ expiryWithin: next(30) });
+  check("D3 expiring 30 days (default = expired + upcoming) = 13 docs / 12 people; breakdown 3 expired, 10 upcoming; excluded unreadable 1, missing 1",
+    r.totals?.documents === 13 && r.totals?.people === 12 && r.breakdown?.expired?.documents === 3 && r.breakdown?.upcoming?.documents === 10 &&
+    r.excluded?.unreadableExpiryDate === 1 && r.excluded?.noExpiryDate === 1 && r.query?.expiryState === "expired_or_expiring" && r.expiryWindow?.to === "2026-12-01", r);
   r = await ds({ expiryState: "not_expired", expiryWithin: next(30) });
-  check("D3 expiring 30 days = 7 / 7; excluded unreadable 1, missing 1",
-    r.totals?.documents === 7 && r.totals?.people === 7 && r.excluded?.unreadableExpiryDate === 1 && r.excluded?.noExpiryDate === 1, r);
+  check("D3b upcoming only, 30 days = 10 / 10", r.totals?.documents === 10 && r.totals?.people === 10, r);
+  r = await ds({ expiryWithin: next(60) });
+  check("D4 expiring 60 days (default) = 18 docs / 14 people, 15 upcoming", r.totals?.documents === 18 && r.totals?.people === 14 && r.breakdown?.upcoming?.documents === 15, r);
   r = await ds({ expiryState: "not_expired", expiryWithin: next(60) });
-  check("D4 expiring 60 days = 10 docs / 7 people", r.totals?.documents === 10 && r.totals?.people === 7, r);
-  r = await ds({ expiryState: "not_expired", expiryWithin: next(2, "months") });
-  check("D5 expiring 2 calendar months = 11 docs (1-Jan-2027 boundary differs from 60 days)", r.totals?.documents === 11, r);
+  check("D4b upcoming only, 60 days = 15 docs / 12 people", r.totals?.documents === 15 && r.totals?.people === 12, r);
+  r = await ds({ expiryWithin: next(2, "months") });
+  check("D5 expiring 2 calendar months (default) = 19 docs (1-Jan-2027 boundary differs from 60 days)", r.totals?.documents === 19, r);
+  r = await ds({ crewOnBoard: true, expiryWithin: next(60) });
+  check("D6 on board, 60 days (default) = 14 docs / 11 people", r.totals?.documents === 14 && r.totals?.people === 11, r);
   r = await ds({ crewOnBoard: true, expiryState: "not_expired", expiryWithin: next(60) });
-  check("D6 on board, 60 days = 8 docs / 5 people", r.totals?.documents === 8 && r.totals?.people === 5, r);
-  r = await ds({ vessels: ["MV Beta Ocean"], rankGroups: ["engine_officers"], expiryState: "not_expired", expiryWithin: next(60) });
-  check("D7 Beta Ocean engineers, 60 days = 5 certificates held by 2 crew", r.totals?.documents === 5 && r.totals?.people === 2, r);
-  r = await ds({ vessels: ["MV Gamma Bay"], expiryState: "not_expired", expiryWithin: next(60) });
+  check("D6b on board, 60 days, upcoming only = 12 docs / 9 people", r.totals?.documents === 12 && r.totals?.people === 9, r);
+  r = await ds({ vessels: ["MV Beta Ocean"], rankGroups: ["engine_officers"], expiryWithin: next(60) });
+  check("D7 Beta Ocean engineers, 60 days = 5 certificates held by 2 crew; no unclassified in that population", r.totals?.documents === 5 && r.totals?.people === 2 && r.rankConfig?.unclassifiedInResult?.people === 0, r);
+  r = await ds({ vessels: ["MV Gamma Bay"], expiryWithin: next(60) });
   check("D8 Gamma Bay documents valid zero", r.ok === true && r.totals?.documents === 0, r);
-  r = await ds({ documentNameContains: "fire", expiryState: "not_expired", expiryWithin: next(60) });
+  r = await ds({ documentNameContains: "fire", expiryWithin: next(60) });
   check("D9 'fire' courses expiring 60 days = 2", r.totals?.documents === 2, r);
+  r = await ds({ documentNameContains: "Third Officer" });
+  check("D15 terminated crew's CoC Third Officer is never listed → 0", r.ok === true && r.totals?.documents === 0, r);
+  r = await ds({ documentNameContains: "Medical First Aid" });
+  check("D15b inactive crew's Medical First Aid IS listed → 2 (Orrin + Rowena)", r.totals?.documents === 2, r);
+  r = await q(t, "crewing_query_documents", { mode: "group", groupBy: ["expiryState"], expiryWithin: next(60) });
+  const es = Object.fromEntries((r.groups ?? []).map((g: any) => [g.expiryState, g.documents]));
+  check("D16 group by expiryState, 60 days: expired 3, upcoming 15", es.expired === 3 && es.upcoming === 15, r.groups);
 
-  r = await q(t, "crewing_query_documents", { mode: "group", groupBy: ["vesselName"], crewOnBoard: true, expiryState: "not_expired", expiryWithin: next(60) });
+  r = await q(t, "crewing_query_documents", { mode: "group", groupBy: ["vesselName"], crewOnBoard: true, expiryWithin: next(60) });
   const byV = Object.fromEntries((r.groups ?? []).map((g: any) => [g.vesselName, [g.documents, g.people]]));
-  check("D10 by vessel: Alpha Star 2/2, Beta Ocean 5/2, Alpha Trader 1/1",
-    JSON.stringify(byV["MV Alpha Star"]) === "[2,2]" && JSON.stringify(byV["MV Beta Ocean"]) === "[5,2]" && JSON.stringify(byV["MV Alpha Trader"]) === "[1,1]", r.groups);
+  check("D10 by vessel (default): Alpha Star 4/4, Beta Ocean 7/4, Alpha Trader 3/3",
+    JSON.stringify(byV["MV Alpha Star"]) === "[4,4]" && JSON.stringify(byV["MV Beta Ocean"]) === "[7,4]" && JSON.stringify(byV["MV Alpha Trader"]) === "[3,3]", r.groups);
   const sumDocs = (r.groups ?? []).reduce((s: number, g: any) => s + g.documents, 0);
-  check("D11 property: sum of document groups == total documents (8)", sumDocs === r.totals?.documents && sumDocs === 8, r);
+  check("D11 property: sum of document groups == total documents (14)", sumDocs === r.totals?.documents && sumDocs === 14, r);
 
   // paging: stable, complete, no duplicates
   const seen = new Set<string>();
@@ -89,16 +141,19 @@ async function counts(t: Target) {
   let pages = 0;
   let total = -1;
   while (offset !== null && pages < 10) {
-    const p = await q(t, "crewing_query_documents", { mode: "list", expiryState: "not_expired", expiryWithin: next(60), limit: 4, offset });
+    const p = await q(t, "crewing_query_documents", { mode: "list", expiryWithin: next(60), limit: 4, offset });
     total = p.total;
     for (const row of p.rows ?? []) seen.add(`${row.crewId}|${row.documentName}|${row.expiryDate}`);
     pages++;
     offset = p.nextOffset;
   }
-  check("D12 paging 4+4+2: 3 pages, 10 distinct rows == total", pages === 3 && seen.size === 10 && total === 10, { pages, n: seen.size, total });
-  const p1 = await q(t, "crewing_query_documents", { mode: "list", unit: "people", expiryState: "not_expired", expiryWithin: next(60) });
-  check("D13 people list: 7 people, earliest first = Benedek (5-Nov)", p1.total === 7 && p1.rows?.[0]?.fullName === "Benedek Quorrlyn", p1.rows?.[0]);
-  const cnt = await ds({ expiryState: "not_expired", expiryWithin: next(60) });
+  check("D12 paging 4+4+4+4+2: 5 pages, 18 distinct rows == total", pages === 5 && seen.size === 18 && total === 18, { pages, n: seen.size, total });
+  let p1 = await q(t, "crewing_query_documents", { mode: "list", unit: "people", expiryState: "not_expired", expiryWithin: next(60) });
+  check("D13 people list (upcoming only): 12 people, earliest first = Corvina (expires on the as-of day)", p1.total === 12 && p1.rows?.[0]?.fullName === "Corvina Tallowind", p1.rows?.[0]);
+  p1 = await q(t, "crewing_query_documents", { mode: "list", unit: "people", expiryWithin: next(60) });
+  check("D13b people list (default): 14 people, earliest first = Ulric (2024 expired), row marks expired documents",
+    p1.total === 14 && p1.rows?.[0]?.fullName === "Ulric Penhallow" && p1.rows?.[0]?.expiredDocuments === 1 && /\(expired\)/.test(p1.rows?.[0]?.documentNames ?? ""), p1.rows?.[0]);
+  const cnt = await ds({ expiryWithin: next(60) });
   check("D14 property: count mode total == list mode total", cnt.total === total, { cnt: cnt.total, total });
 
   // unknown / ambiguous are never zero
@@ -114,11 +169,13 @@ async function counts(t: Target) {
   check("U5 find_crew 'orrin' → 1 match on Beta Ocean", r.total === 1 && r.matches?.[0]?.vesselName === "MV Beta Ocean", r);
   r = await q(t, "crewing_resolve_vessel", { name: "alpha" });
   check("U6 resolve 'alpha' → 2 matches", r.total === 2, r);
+  r = await as({ rankGroups: ["cadets"] });
+  check("U7 'cadets' is no longer a group (no category flag exists) → invalid_args", r.ok === false && r.code === "invalid_args", r);
 
   // injection / schema
   r = await ds({ documentNameContains: "x'; DELETE FROM crew_licenses; --" });
   const after = await ds({});
-  check("S1 injection text is a value: 0 matches, documents still 18", r.ok === true && r.totals?.documents === 0 && after.totals?.documents === 18, r);
+  check("S1 injection text is a value: 0 matches, documents still 24", r.ok === true && r.totals?.documents === 0 && after.totals?.documents === 24, r);
   r = await q(t, "crewing_query_documents", { mode: "list", limit: 50 });
   check("S2 limit 50 → invalid_args", r.ok === false && r.code === "invalid_args", r);
   r = await q(t, "crewing_query_documents", { mode: "list", sql: "select 1" });
@@ -126,7 +183,7 @@ async function counts(t: Target) {
   r = await q(t, "crewing_query_documents", { mode: "group", groupBy: ["crew_uuid"] });
   check("S4 group key outside the allow-list → invalid_args", r.ok === false && r.code === "invalid_args", r);
   r = await ds({ documentNameContains: "", vessels: [], expiryState: "expired", expiryWithin: null });
-  check("S6 empty optional values are ignored (not invalid, not zero): expired = 2", r.ok === true && r.totals?.documents === 2, r);
+  check("S6 empty optional values are ignored (not invalid, not zero): expired = 3", r.ok === true && r.totals?.documents === 3, r);
   r = await q(t, "crewing_run_sql", { sql: "select 1" });
   check("S5 unknown tool → unknown_tool", r.ok === false && r.code === "unknown_tool", r);
 }
@@ -171,21 +228,23 @@ async function security(t: Target, s: Target) {
 async function isolation(t: Target) {
   const a = await q(t, "crewing_query_assignments", { mode: "count", vessels: ["MV Alpha Star"] }, A);
   const b = await q(t, "crewing_query_assignments", { mode: "count", vessels: ["MV Alpha Star"] }, B);
-  check("I1 same vessel name in two companies: A sees 8, B sees 4", a.totals?.people === 8 && b.totals?.people === 4, { a: a.totals, b: b.totals });
+  check("I1 same vessel name in two companies: A sees 8, B sees 5", a.totals?.people === 8 && b.totals?.people === 5, { a: a.totals, b: b.totals });
   let r = await q(t, "crewing_query_assignments", { mode: "count", vessels: ["MV Delta Sky"] }, A);
   check("I2 A asking for B's vessel → vessel_not_found", r.ok === false && r.code === "vessel_not_found", r);
   r = await q(t, "crewing_find_crew", { name: "Orrin" }, B);
   check("I3 B searching A's crew name → 0 matches", r.ok === true && r.total === 0, r);
-  r = await q(t, "crewing_query_documents", { mode: "count", expiryState: "not_expired", expiryWithin: next(60) }, B);
-  check("I4 B documents expiring 60 days = 2 (A has 10)", r.totals?.documents === 2, r);
+  r = await q(t, "crewing_query_documents", { mode: "count", expiryWithin: next(60) }, B);
+  check("I4 B documents expiring 60 days = 2 (A has 18)", r.totals?.documents === 2, r);
   r = await q(t, "crewing_query_assignments", { mode: "count" }, B);
-  check("I5 B fleet on board = 7", r.totals?.people === 7, r);
+  check("I5 B fleet on board = 8 people / 9 assignments (INVALID-DATA case: one person signed on on two vessels)", r.totals?.people === 8 && r.totals?.assignments === 9, r);
+  r = await q(t, "crewing_query_assignments", { mode: "list", unit: "people", ranks: ["Second Officer"] }, B);
+  check("I6 …that person is listed once with 2 assignments and both vessels", r.total === 1 && r.rows?.[0]?.assignments === 2 && /Alpha Star.*Delta Sky|Delta Sky.*Alpha Star/.test(r.rows?.[0]?.vesselName ?? ""), r.rows?.[0]);
 }
 
 async function external(t: Target) {
   const E = { ...A, userId: "8", role: "External 1" };
   let r = await q(t, "crewing_query_documents", { mode: "count", expiryState: "expired" }, E);
-  check("E1 External 1 (CP Training Certificates only): documents without vessel facts allowed", r.ok === true && r.totals?.documents === 2, r);
+  check("E1 External 1 (CP Training Certificates only): documents without vessel facts allowed", r.ok === true && r.totals?.documents === 3, r);
   r = await q(t, "crewing_query_documents", { mode: "list", expiryState: "expired" }, E);
   check("E2 …and its rows carry no vessel name", r.ok === true && r.rows?.every((x: any) => x.vesselName === null), r.rows);
   r = await q(t, "crewing_query_documents", { mode: "count", crewOnBoard: true }, E);
@@ -206,7 +265,7 @@ async function external(t: Target) {
     await security(mt, single);
     await isolation(mt);
     const s1 = await q(single, "crewing_query_assignments", { mode: "count" }, {});
-    check("T1 single-tenant instance (crew_trial_a) fleet = 16 people", s1.totals?.people === 16, s1);
+    check("T1 single-tenant instance (crew_trial_a) fleet = 20 people", s1.totals?.people === 20, s1);
   }
   const failed = results.filter((r) => !r.pass);
   for (const r of results) console.log(`${r.pass ? "PASS" : "FAIL"}  ${r.name}${r.pass ? "" : "  → " + r.detail}`);
