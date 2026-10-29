@@ -1,6 +1,7 @@
 import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { employmentAfterReactivationOn } from "./employmentStatusSql";
+import { generateNextCrewEmpNo } from "./crewNumbering";
 import { getDb } from "../../db";
 import { CrewMembersRepository, crewTerminationsRepository } from "../repositories";
 import {
@@ -337,31 +338,7 @@ export const crewMembersService = {
   },
   
   async generateEmpNo(): Promise<string> {
-    const db = getDb();
-    // Get ALL empNo values from V2 table only (legacy will be deprecated)
-    // This handles mixed formats like A0029 (4 digits) and A000030 (6 digits)
-    // String comparison fails here, so we must compare numerically
-    
-    const results = await db
-      .select({ empNo: crewMembersV2.empNo })
-      .from(crewMembersV2)
-      .where(ilike(crewMembersV2.empNo, 'A%'));
-    
-    let maxNum = 0;
-    for (const row of results) {
-      if (row.empNo) {
-        const match = row.empNo.match(/A(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) {
-            maxNum = num;
-          }
-        }
-      }
-    }
-    
-    const nextNum = maxNum + 1;
-    return `A${nextNum.toString().padStart(6, '0')}`;
+    return generateNextCrewEmpNo();
   },
 
   async update(
