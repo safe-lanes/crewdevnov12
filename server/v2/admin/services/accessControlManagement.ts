@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import { isDeepStrictEqual } from "node:util";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { resolveRequestRole, type ResolvedRole } from "../../auth/roleResolutionService";
@@ -79,15 +80,24 @@ async function auditActorDisplayName(tx: any, masterUserId: number): Promise<str
   return result.rows[0]?.name ?? null;
 }
 export async function appendAudit(tx: any, actor: AuditActor, event: string, roleId: string | null,
-  resource: string, action: string, before: unknown, after: unknown, details: unknown = {}) {
+  resource: string, action: string, before: unknown, after: unknown, details: unknown = {},
+  affectedRoleName?: string | null) {
+  // Compare the actual JSON values stored, not key order or object identity.
+  // This applies to every event, including internal writers and null/null.
+  const beforeJson = JSON.stringify(before ?? null), afterJson = JSON.stringify(after ?? null);
+  if (isDeepStrictEqual(JSON.parse(beforeJson), JSON.parse(afterJson))) return;
   // Parent sync snapshots this before replacing users. Other internal writers
   // without a snapshot are resolved here, using this transaction's database.
   const { displayName, ...identifiers } = actor;
   const frozenName = displayName === undefined ? await auditActorDisplayName(tx, actor.masterUserId) : displayName;
+  const roleName = roleId ? affectedRoleName === undefined ?
+    (await tx.execute(sql`SELECT assigned_role FROM adm_rolemaster_ac WHERE ruid=${roleId}`)).rows[0]?.assigned_role :
+    affectedRoleName : null;
   await tx.execute(sql`INSERT INTO adm_access_control_audit
-    (event,actor,actor_display_name,role_id,resource,action,before_value,after_value,details)
+    (event,actor,actor_display_name,role_id,affected_role_name,resource,action,before_value,after_value,details)
     VALUES (${event},${JSON.stringify(identifiers)}::jsonb,
-      ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},${resource},${action},
+      ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},
+      ${roleId ? roleName?.trim() || "a role whose name was not recorded" : null},${resource},${action},
       ${before === null ? null : JSON.stringify(before)}::jsonb,
       ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb)`);
 }

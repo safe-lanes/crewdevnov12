@@ -13,6 +13,7 @@ import { accessControlAuthority, appendAudit, lockAccessControl, managedWrite, m
 import { roleSyncTransition, parentSyncActor } from "@server/v2/admin/services/accessControlParentSync";
 import { writeCatalogue, writeMenuGrants } from "@server/v2/admin/services/accessControlWrites";
 import { accessControlController } from "@server/v2/admin/controllers/accessControlController";
+import { trainingComplianceSettingsController } from "@server/v2/admin/controllers/trainingComplianceSettingsController";
 import { actionPermissionsController } from "@server/v2/admin/controllers/actionPermissionsController";
 import { MastersRepository } from "@server/v2/masters/repositories/mastersRepository";
 import { readAccessAuditPage } from "@server/v2/admin/services/accessAuditRead";
@@ -60,6 +61,7 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0235_preserve_company_grants_on_role_sync.sql", "utf8"));
   await pool.query(await readFile("migrations/0236_access_control_management.sql", "utf8"));
   await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
+  await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -68,6 +70,79 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_menumaster_ac(muid,name,route) VALUES ('crew','Crew Database','/crew'),('admin-menu','Admin','/admin')");
 });
 describe("Access Control real database authority, audit and parent synchronization", () => {
+  it("saves both training settings successfully without an audit entry for unchanged values, then records only the changed setting", async () => {
+    await pool.query(`CREATE TABLE adm_training_compliance_settings(singleton boolean PRIMARY KEY,
+      block_expiring_during_contract boolean NOT NULL, block_missing_expiry boolean NOT NULL);
+      INSERT INTO adm_training_compliance_settings VALUES(true,false,false)`);
+    const unchanged = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: false, blockMissingExpiry: false }));
+    expect(unchanged.statusCode).toBe(200);
+    expect(unchanged.data).toMatchObject({ blockExpiringDuringContract: false, blockMissingExpiry: false });
+    expect(await audit()).toEqual([]);
+    const changed = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: true, blockMissingExpiry: false }));
+    expect(changed.statusCode).toBe(200);
+    const records = await audit();
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ event: "training_setting_changed",
+      action: "block_expiring_during_contract", before_value: false, after_value: true });
+    const repeated = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: true, blockMissingExpiry: false }));
+    expect(repeated.statusCode).toBe(200);
+    expect(await audit()).toEqual(records);
+    expect((await pool.query("SELECT * FROM adm_training_compliance_settings")).rows).toEqual([{
+      singleton: true, block_expiring_during_contract: true, block_missing_expiry: false,
+    }]);
+  });
+  it.each(["grant_change", "training_setting_changed", "training_override", "checklist_override",
+    "role_eligibility_change", "company_document_branding", "parent_sync_management_eligibility",
+    "parent_sync_category_readiness", "parent_sync_rejected"])(
+    "suppresses identical JSON values centrally for %s, but records an actual change", async event => {
+      const actor = { ...source, displayName: "Test editor" };
+      await holder.db.transaction(async (tx: any) => {
+        for (const [before, after] of [[false, false], [true, true], [null, null],
+          [{ active: true, nested: { a: 1, b: 2 } }, { nested: { b: 2, a: 1 }, active: true }]]) {
+          await appendAudit(tx, actor, event, "target", "access_control", "manage", before, after);
+        }
+      });
+      expect(await audit()).toEqual([]);
+      await holder.db.transaction((tx: any) => appendAudit(tx, actor, event, "target",
+        "access_control", "manage", false, true));
+      expect(await audit()).toHaveLength(1);
+      expect((await audit())[0]).toMatchObject({ event, before_value: false, after_value: true,
+        affected_role_name: "Documentation Reviewer" });
+    });
+  it("freezes the affected role name across rename and deletion, with separate current/frozen export values", async () => {
+    await saveActionDecisions(req(), "target", "company_forms", { view: true });
+    const original = (await audit())[0];
+    expect(original.affected_role_name).toBe("Documentation Reviewer");
+    await pool.query("UPDATE adm_rolemaster_ac SET assigned_role='Renamed Reviewer' WHERE ruid='target'");
+    const read = async () => (await readAccessAuditPage({
+      query: { page: "1", search: "Documentation Reviewer" },
+    } as unknown as Request)).items[0];
+    const renamed = await read();
+    expect(renamed.sentence).toContain("Documentation Reviewer");
+    expect(renamed.sentence).not.toContain("Renamed Reviewer");
+    expect(accessAuditExportRow(renamed)).toMatchObject({
+      role: "Renamed Reviewer", frozenRole: "Documentation Reviewer",
+    });
+    await pool.query("DELETE FROM adm_rolemaster_ac WHERE ruid='target'");
+    const deleted = await read();
+    expect(deleted.sentence).toBe(renamed.sentence);
+    expect(accessAuditExportRow(deleted)).toMatchObject({ role: "", frozenRole: "Documentation Reviewer" });
+    expect((await audit())[0]).toEqual(original);
+  });
+  it("adds the role snapshot without rewriting legacy entries, preserving live fallback", async () => {
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value)
+      VALUES ('grant_change','{"masterUserId":1}','target','company_forms','view','false','true')`);
+    const original = await audit();
+    await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
+    expect(await audit()).toEqual(original);
+    const row = (await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0];
+    expect(row.affected_role_name).toBeNull();
+    expect(row.sentence).toContain("Documentation Reviewer");
+    expect(accessAuditExportRow(row)).toMatchObject({ role: "Documentation Reviewer", frozenRole: "" });
+  });
   it("freezes a server-derived actor name and role across rename, reassignment and deletion", async () => {
     await pool.query("UPDATE master_users SET fullname='Original Person' WHERE id=1");
     await saveActionDecisions(req(1, { actor_display_name: "Browser forgery",

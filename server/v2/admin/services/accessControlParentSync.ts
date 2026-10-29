@@ -52,7 +52,9 @@ export async function roleSyncTransition<T>(db: any, source: AuditActor | undefi
         await appendAudit(tx, source, "parent_sync_management_eligibility", roleId, "access_control", "management_eligibility",
           { eligible: was, storedManagementDecision: stored }, { eligible: now, storedManagementDecision: stored },
           { ...outcome, affectedRoleIds: [...affected].filter(id =>
-            before.eligible.some(r => r.ruid === id) !== after.eligible.some(r => r.ruid === id)) });
+            before.eligible.some(r => r.ruid === id) !== after.eligible.some(r => r.ruid === id)) },
+          after.roles.find(r => r.ruid === roleId)?.assigned_role ??
+            before.roles.find(r => r.ruid === roleId)?.assigned_role ?? null);
       }
       if (before.categoryReady !== after.categoryReady)
         await appendAudit(tx, source, "parent_sync_category_readiness", null, "access_control", "category_readiness",
@@ -64,7 +66,10 @@ export async function roleSyncTransition<T>(db: any, source: AuditActor | undefi
     await db.transaction(async (tx: any) => {
       await lockAccessControl(tx);
       await appendAudit(tx, source, "parent_sync_rejected", null, "access_control", "snapshot_rejected",
-        null, null, { reason: error.message, proposedOutcome: error.details ?? null, existingStatePreserved: true });
+        // Record the new refusal outcome, not a fictitious access-state change.
+        // Existing roles/grants stay unchanged after the replacement rolls back.
+        null, { outcome: "rejected", existingStatePreserved: true },
+        { reason: error.message, proposedOutcome: error.details ?? null, existingStatePreserved: true });
     });
     throw error;
   }

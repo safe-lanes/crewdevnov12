@@ -1,5 +1,56 @@
 # Access audit history
 
+## Changes-only capture and affected-role snapshots
+
+The shared `appendAudit` writer compares the JSON values that would be stored.
+Equal scalar/null values and structurally equal objects (regardless of key
+order) do not insert an audit entry. This applies to every event type; no
+browser flag can bypass it. Historical entries, including no-change entries,
+remain untouched. Unchanged Save requests still return their normal successful
+response; the audit list is not a Save-attempt or review register.
+
+Read-only development preflight, before any migration or watched-server edit:
+51 entries, **12 identical before/after entries**, all training-setting events.
+The original columns of all 270 public business tables were fingerprinted.
+Only after that preflight passed was migration
+`0268_access_audit_affected_role_name.sql` added to the watched directory.
+It adds nullable text `adm_access_control_audit.affected_role_name`, without
+updates or backfill. Removing that column after capture would lose evidence.
+
+New affected-role names come from the transaction's role master, never from
+the browser. Parent synchronization can supply its trusted in-transaction role
+snapshot when the replacement removed the role. The sentence uses the snapshot
+first, with the existing live-role lookup for legacy null entries. CSV retains
+`Affected role (current name)` and adds `Affected role (recorded at event)`.
+Neither actor nor affected-role names are historically backfilled.
+
+### Event inventory
+
+| Event | Could previously insert equal before/after values? |
+| --- | --- |
+| `training_setting_changed` | Yes; every submitted setting was appended even if unchanged. |
+| `grant_change` | No in existing action/menu paths; each already compares decisions. The central guard also protects internal callers. |
+| `role_eligibility_change` | No; the caller checks active/deleted flags. |
+| `parent_sync_management_eligibility` | No; the caller checks eligibility changes. |
+| `parent_sync_category_readiness` | No; the caller checks readiness changes. |
+| `parent_sync_rejected` | Yes; previously stored null/null. Now records the newly created refusal outcome, not a change to the preserved configuration. |
+| `training_override` | Yes if the checklist was already true; now suppressed when before/after match. |
+| `checklist_override` | Yes if the checklist was already true; now suppressed when before/after match. |
+| `company_document_branding` | No equal stored values: each save creates a distinct, real branding version UUID. |
+
+Parent-update refusals remain visible: before is null and after is
+`{outcome:"rejected",existingStatePreserved:true}`; details still contain the
+server-recorded reason. This is an outcome event, not a fabricated grant change.
+The central equality rule still applies to this event like every other one.
+
+Dependency inspection found only audit-history reads/export, their pagination
+counts and query invalidation after Save. There is no consumer treating
+no-change entries as a “last reviewed” marker, report input or business-operation
+prerequisite. History counts continue to count recorded changes/outcomes.
+
+Verification writes, settings saves, role renaming and deletion run only in the
+registered isolated test database. The development preview verifier is read-only.
+
 ## Presentation
 
 Admin > Access Control now has an **Access audit history** button beside Company

@@ -58,4 +58,13 @@ describe("audit screen comparisons and CSV export", () => {
       .toMatchObject({ person: 'Jane, "Smith"', frozenPerson: "Original Person" });
     expect(accessAuditExportRow(row).frozenPerson).toBe("");
   });
+  it("exports the affected role snapshot separately from its current name", () => {
+    const result = accessAuditExportRow({ ...row, affected_role_name: "Original Office", event: "grant_change" });
+    expect(result).toMatchObject({ role: "Office", frozenRole: "Original Office" });
+    expect(result.sentence).toContain("Original Office");
+    expect(accessAuditExportRow(row).frozenRole).toBe("");
+    expect(ACCESS_AUDIT_CSV_COLUMNS).toContainEqual({
+      key: "frozenRole", label: "Affected role (recorded at event)",
+    });
+  });
 });
