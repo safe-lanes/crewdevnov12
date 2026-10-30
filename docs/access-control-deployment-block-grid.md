@@ -55,20 +55,12 @@ the live permission row and audit/CSV presentation do not render that value.
 
 ## Historical audit entries
 
-Audit capture freezes actor and affected-role names, values and timestamps,
-but does not freeze the permission's display label. The label is derived at
-read time from `training_compliance / override`. An older grant therefore now
-reads, for example:
-
-> [original date] — [recorded person] granted “Override deployment block” permission to the [recorded role] role.
-
-No stored event is updated. It is the same permission, not a new grant or a
-change in authority. This can confuse someone comparing an old screenshot that
-said “Override training compliance”: the rendered sentence is not a verbatim
-copy of the label visible at the time. Recommended future clarification:
-a presentation-only note saying the current name was formerly
-“Override training compliance”, outside the immutable event record.
-That note is **not implemented** in this task.
+Audit capture now freezes the server's permission display label in
+`permission_display_label`, alongside actor and affected-role names. Later label
+changes do not change a frozen entry's sentence or detail heading. Legacy NULL
+labels use the current display-label registry; they are not historically
+backfilled. There is no alias note. See
+[capture and timing evidence](access-audit-permission-label.md).
 
 ## Verification
 

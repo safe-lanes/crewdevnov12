@@ -11,6 +11,17 @@ const row: AccessAuditEntry = {
   recorded_at: "2026-10-29T10:00:00Z", details: { reason: "First line\nSecond line" },
 };
 describe("audit screen comparisons and CSV export", () => {
+  it("exports captured and live permission labels in distinct columns, leaving legacy snapshots empty", () => {
+    const entry = { ...row, event: "grant_change", action: "override",
+      permission_display_label: "The name when this event happened" };
+    const result = accessAuditExportRow(entry);
+    expect(result).toMatchObject({ permission: "Override deployment block",
+      frozenPermission: "The name when this event happened" });
+    expect(result.sentence).toContain("The name when this event happened");
+    expect(accessAuditExportRow(row).frozenPermission).toBe("");
+    expect(ACCESS_AUDIT_CSV_COLUMNS).toContainEqual({ key: "frozenPermission", label: "Permission (recorded at event)" });
+    expect(ACCESS_AUDIT_CSV_COLUMNS).toContainEqual({ key: "permission", label: "Permission (current label)" });
+  });
   it("keeps the named simple values unchanged without rendering structured payload", () => {
     expect(auditScreenValue(true, false)).toBe("On");
     expect(auditScreenValue(false, false)).toBe("Off");

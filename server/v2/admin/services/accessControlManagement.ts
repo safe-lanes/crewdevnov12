@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { resolveRequestRole, type ResolvedRole } from "../../auth/roleResolutionService";
+import { liveAuditActionLabel } from "../../../../shared/v2/admin/accessAuditPresentation";
 
 export class AccessControlError extends Error {
   constructor(message: string, public status = 403) { super(message); }
@@ -111,10 +112,11 @@ export async function appendAudit(tx: any, actor: AuditActor, event: string, rol
     (await tx.execute(sql`SELECT assigned_role FROM adm_rolemaster_ac WHERE ruid=${roleId}`)).rows[0]?.assigned_role :
     affectedRoleName : null;
   await tx.execute(sql`INSERT INTO adm_access_control_audit
-    (event,actor,actor_display_name,role_id,affected_role_name,resource,action,before_value,after_value,details)
+    (event,actor,actor_display_name,role_id,affected_role_name,permission_display_label,resource,action,before_value,after_value,details)
     VALUES (${event},${JSON.stringify(identifiers)}::jsonb,
       ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},
-      ${roleId ? roleName?.trim() || "a role whose name was not recorded" : null},${resource},${action},
+      ${roleId ? roleName?.trim() || "a role whose name was not recorded" : null},
+      ${liveAuditActionLabel({ id: "", event, resource, action })},${resource},${action},
       ${before === null ? null : JSON.stringify(before)}::jsonb,
       ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb)`);
 }

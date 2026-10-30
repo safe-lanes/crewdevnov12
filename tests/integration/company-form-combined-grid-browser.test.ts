@@ -68,10 +68,16 @@ it("saves all three groups through the screen, then proves a real third-writer f
   }, { role, roleName, userId, token });
   const writes: string[] = [];
   // Main-preview UI assets, but EVERY API request goes to the guarded test backend.
+  const networkTimings: Array<{ path: string; milliseconds: number; status: number }> = [];
   await context.route("**/api/**", async route => {
     const request = route.request(), source = new URL(request.url());
+    // Vite source modules may contain an /api/ directory. They are not API
+    // requests: leave assets on the original frontend, not the test backend.
+    if (!source.pathname.startsWith("/api/")) return route.continue();
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(source.pathname);
+    const started = performance.now();
     const response = await route.fetch({ url: `${process.env.TEST_API_URL}${source.pathname}${source.search}` });
+    networkTimings.push({ path: source.pathname + source.search, milliseconds: performance.now() - started, status: response.status() });
     await route.fulfill({ response });
   });
   const page = await context.newPage();
@@ -116,6 +122,7 @@ it("saves all three groups through the screen, then proves a real third-writer f
       actor_display_name: "Atomic Verifier", affected_role_name: roleName, before_value: false, after_value: true,
     });
     expect(saved.audit.find(a => a.resource === "training_compliance")).toMatchObject({
+      permission_display_label: "Override deployment block",
       actor_display_name: "Atomic Verifier", affected_role_name: roleName, before_value: false, after_value: true,
     });
     await trigger.scrollIntoViewIfNeeded();
@@ -151,6 +158,7 @@ it("saves all three groups through the screen, then proves a real third-writer f
     await browserExpect(page.getByText("None of the permission changes were saved. Please retry.", { exact: true })).toBeVisible();
     await browserExpect(save).toBeEnabled();
     expect(await snapshot()).toEqual(saved);
+    expect(networkTimings.every(entry => entry.path.startsWith("/api/"))).toBe(true);
     await trigger.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/failed-desktop.jpg`, animations: "disabled" });
     await page.setViewportSize({ width: 402, height: 874 });
@@ -165,14 +173,14 @@ it("saves all three groups through the screen, then proves a real third-writer f
       database: "Registered isolated test database; no development API calls.",
       head: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
       saved: true, failureInjected: "PostgreSQL trigger rejects the deployment override writer after menu and Company Forms writes",
-      afterFailureExactlyMatchesSuccessfulSnapshot: true, auditFrozenNamesVerified: true,
+      afterFailureExactlyMatchesSuccessfulSnapshot: true, auditFrozenNamesVerified: true, networkTimings,
       writes, screenshots: ["collapsed-desktop", "override-help-desktop", "dropdown-desktop", "saved-desktop", "policy-desktop", "audit-new-wording", "failed-desktop", "failed-narrow", "dropdown-narrow"],
     }, null, 2));
   } catch (error) {
     // Retain evidence for cold/proxied SPA startup failures, not just saves.
     await page.screenshot({ path: `${out}/browser-failure.jpg`, animations: "disabled" }).catch(() => {});
     await fs.writeFile(`${out}/browser-failure.json`, JSON.stringify({
-      message: String(error), pageErrors,
+      message: String(error), pageErrors, networkTimings,
       visibleText: await page.locator("body").innerText().catch(() => "Body unavailable"),
     }, null, 2));
     throw error;

@@ -14,6 +14,15 @@ beforeEach(() => {
   execute.mockResolvedValueOnce({ rows: rows.slice(0, 250) }).mockResolvedValueOnce({ rows: rows.slice(250) });
 });
 describe("read-only audit pagination and sentence search", () => {
+  it("does not construct Intl formatters per row during a complete sentence search", async () => {
+    const constructor = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      const result = await readAccessAuditPage(request({ page: "1", search: "witness" }));
+      expect(result.total).toBe(250);
+      expect(result.items).toHaveLength(20);
+      expect(constructor).not.toHaveBeenCalled();
+    } finally { constructor.mockRestore(); }
+  });
   it("returns twenty rows and an exact total, scanning bounded batches", async () => {
     const result = await readAccessAuditPage(request({ page: "2" }));
     expect(result.items).toHaveLength(20);

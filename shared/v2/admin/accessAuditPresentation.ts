@@ -7,6 +7,7 @@ export interface AccessAuditEntry {
   actor_name?: string | null; role_name?: string | null; menu_name?: string | null;
   actor_display_name?: string | null;
   affected_role_name?: string | null;
+  permission_display_label?: string | null;
 }
 export const AUDIT_SETTING_LABELS: Record<string, string> = {
   block_expiring_during_contract: "Block seafarer deployment when mandatory courses expiring during contract",
@@ -19,7 +20,7 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   parent_sync_management_eligibility: "Parent role eligibility update",
   parent_sync_category_readiness: "Parent support category update", parent_sync_rejected: "Parent update refused",
 };
-const actions: Record<string, string> = {
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
   ...Object.fromEntries(COMPANY_FORM_PERMISSIONS.map(p => [p.action, p.label])),
   manage: "Access Control management", override: "Override deployment block",
   view: "View", create: "Create", edit: "Edit", delete: "Delete",
@@ -31,8 +32,11 @@ const object = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
 const safeLabel = (value: unknown) => typeof value === "string" && value.trim() &&
   !/[0-9a-f]{8}-[0-9a-f-]{27,}|[{}]/i.test(value) ? value.trim() : undefined;
+export function liveAuditActionLabel(row: AccessAuditEntry): string {
+  return AUDIT_ACTION_LABELS[row.action ?? ""] ?? "Access setting";
+}
 export function auditActionLabel(row: AccessAuditEntry): string {
-  return actions[row.action ?? ""] ?? "Access setting";
+  return row.permission_display_label?.trim() || liveAuditActionLabel(row);
 }
 export function auditValueWords(value: unknown, permission = false): string {
   if (value === true) return permission ? "Granted" : "On";
@@ -42,10 +46,14 @@ export function auditValueWords(value: unknown, permission = false): string {
     nested === true ? "Yes" : nested === false ? "No" : nested, 2);
   return String(value);
 }
+// Intl construction is expensive. Reuse immutable UTC formatters rather than
+// allocating two native formatters for every row in a full-history search.
+const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const timeFormatter = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
 export function auditDate(value?: string | null): string {
   const date = value ? new Date(value) : undefined;
   if (!date || !Number.isFinite(date.getTime())) return "Time not recorded";
-  return `${new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" }).format(date)} UTC`;
+  return `${dateFormatter.format(date)}, ${timeFormatter.format(date)} UTC`;
 }
 export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; unmapped: string[] } {
   const actor = object(row.actor), details = object(row.details);
@@ -57,7 +65,7 @@ export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; u
   const label = auditActionLabel(row);
   const unmapped = [
     ...(!AUDIT_EVENT_LABELS[row.event] ? [`event:${row.event}`] : []),
-    ...(row.action && !actions[row.action] ? [`action:${row.action}`] : []),
+    ...(row.action && !AUDIT_ACTION_LABELS[row.action] ? [`action:${row.action}`] : []),
   ];
   let change: string;
   switch (row.event) {

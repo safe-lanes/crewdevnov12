@@ -1,4 +1,4 @@
-import { auditValueWords, presentAccessAudit, type AccessAuditEntry } from "./accessAuditPresentation";
+import { auditValueWords, liveAuditActionLabel, presentAccessAudit, type AccessAuditEntry } from "./accessAuditPresentation";
 
 export const ACCESS_AUDIT_CSV_COLUMNS = [
   { key: "sentence", label: "Plain-language sentence" },
@@ -7,6 +7,8 @@ export const ACCESS_AUDIT_CSV_COLUMNS = [
   { key: "frozenPerson", label: "Person (recorded at event)" },
   { key: "role", label: "Affected role (current name)" },
   { key: "frozenRole", label: "Affected role (recorded at event)" },
+  { key: "permission", label: "Permission (current label)" },
+  { key: "frozenPermission", label: "Permission (recorded at event)" },
   { key: "event", label: "Event key" },
   { key: "resource", label: "Resource" },
   { key: "setting", label: "Setting / action key" },
@@ -39,6 +41,8 @@ export function accessAuditExportRow(row: AccessAuditEntry & { sentence?: string
     frozenPerson: row.actor_display_name ?? "",
     role: row.role_name ?? "",
     frozenRole: row.affected_role_name ?? "",
+    permission: liveAuditActionLabel(row),
+    frozenPermission: row.permission_display_label ?? "",
     event: row.event,
     resource: row.resource ?? "",
     setting: row.action ?? "",

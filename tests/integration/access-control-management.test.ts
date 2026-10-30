@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Request } from "express";
 import { hasCompanyFormPermission, emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
+import { AUDIT_ACTION_LABELS, liveAuditActionLabel } from "../../shared/v2/admin/accessAuditPresentation";
 const holder = vi.hoisted(() => ({ db: null as any }));
 vi.mock("@server/v2/db", () => ({ getDb: () => holder.db }));
 import { accessControlAuthority, appendAudit, lockAccessControl, managedWrite, managementSnapshot,
@@ -64,6 +65,7 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('training_compliance','override','Override deployment block',1)");
   await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
   await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
+  await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -169,7 +171,7 @@ describe("Access Control real database authority, audit and parent synchronizati
     expect((await pool.query("SELECT * FROM adm_resource_action_grants WHERE resource='company_forms'")).rows).toHaveLength(0);
     expect(await audit()).toEqual(before);
   });
-  it.each(["actor", "actor_display_name", "category", "timestamp"])("rejects browser-owned %s in the atomic payload", async key => {
+  it.each(["actor", "actor_display_name", "permission_display_label", "category", "timestamp"])("rejects browser-owned %s in the atomic payload", async key => {
     await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), [key]: "spoof" }), "target"))
       .rejects.toThrow("server-owned");
     expect(await audit()).toHaveLength(0);
@@ -258,6 +260,38 @@ describe("Access Control real database authority, audit and parent synchronizati
       expect((await audit())[0]).toMatchObject({ event, before_value: false, after_value: true,
         affected_role_name: "Documentation Reviewer" });
     });
+  it("freezes the server permission label across a later display-name change, without altering stored events", async () => {
+    const originalLabel = AUDIT_ACTION_LABELS.override;
+    await saveActionDecisions(req(1, { permission_display_label: "Browser forged label" }), "target", "training_compliance", { override: true });
+    const original = (await audit())[0];
+    expect(original.permission_display_label).toBe("Override deployment block");
+    try {
+      // Change the actual live display-label registry in this test process.
+      // This is the same isolated DB path as a later server label deployment.
+      AUDIT_ACTION_LABELS.override = "A later training permission name";
+      const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+      expect(result.items[0].sentence).toContain("Override deployment block");
+      expect(result.items[0].sentence).not.toContain("A later training permission name");
+      expect(accessAuditExportRow(result.items[0])).toMatchObject({
+        permission: "A later training permission name", frozenPermission: "Override deployment block",
+      });
+      expect(await audit()).toEqual([original]);
+      await saveActionDecisions(req(), "target", "training_compliance", { override: false });
+      expect((await audit()).at(-1).permission_display_label).toBe("A later training permission name");
+    } finally { AUDIT_ACTION_LABELS.override = originalLabel; }
+  });
+  it("adds the permission label column idempotently without backfilling legacy events", async () => {
+    await pool.query("ALTER TABLE adm_access_control_audit DROP COLUMN permission_display_label");
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,resource,action,before_value,after_value)
+      VALUES ('grant_change','{}','training_compliance','override','false','true')`);
+    const before = (await audit())[0];
+    await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
+    await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
+    const after = (await audit())[0];
+    expect(after).toEqual({ ...before, permission_display_label: null });
+    expect((await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0].sentence)
+      .toContain(liveAuditActionLabel(after));
+  });
   it("freezes the affected role name across rename and deletion, with separate current/frozen export values", async () => {
     await saveActionDecisions(req(), "target", "company_forms", { view: true });
     const original = (await audit())[0];

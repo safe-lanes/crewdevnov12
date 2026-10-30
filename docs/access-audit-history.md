@@ -1,5 +1,15 @@
 # Access audit history
 
+## Permission label snapshots
+
+Migration 0269 adds nullable `permission_display_label` without a backfill.
+The central server writer freezes the current display label, never request
+input. Sentences and detail headings prefer this snapshot. Legacy entries
+continue to use the live lookup. CSV has separate **Permission (current label)**
+and **Permission (recorded at event)** columns; the latter is empty for legacy
+events. No historical row is rewritten. See
+[diagnosis and measurements](access-audit-permission-label.md).
+
 ## Changes-only capture and affected-role snapshots
 
 The shared `appendAudit` writer compares the JSON values that would be stored.

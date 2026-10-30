@@ -1,3 +1,15 @@
+# Access audit permission-label snapshot
+
+Migration `0269_access_audit_permission_label.sql` follows the read-only
+preflight procedure used for 0267/0268. It adds nullable text only, with no
+historical backfill. Verify the central writer captures a server-derived
+permission label, the original append-only trigger is enabled, legacy NULL
+labels use the live fallback, and CSV distinguishes current/captured labels.
+Do not drop this column after capture begins: that destroys historical evidence.
+See `docs/access-audit-permission-label.md` for measured read-path diagnosis,
+preflight, test isolation and legacy counts. Normal parent sign-in remains
+production verification; development personas do not prove parent SSO.
+
 # Company Form unfinished-draft migration rollback
 
 Migration `0266_company_form_unfinished_drafts.sql` allows incomplete Company Form
