@@ -148,7 +148,7 @@ export const CREWING_TOOLS = [
     description:
       "Crew AVAILABLE TO JOIN by a date (confirmed rule): not terminated, and either on leave with an availability date on or before the " +
       "date (people already available today included) or currently on board with a Next Availability date on or before it. Default date = " +
-      "today ('available now'); 'available next month' = availableWithin next 1 month; 'by 15 December' = availableBy. One record = one " +
+      "today ('available now'); 'available next month' = availableWithin next 1 month; 'by 15 December' = availableBy; 'in December' = availableBy the LAST day of December. For a named person call crewing_find_crew first and pass crewIds. One record = one " +
       "person; totals.people is the count. Crew without an availability date are in `excluded.noAvailabilityDate` — mention it. " +
       "Not-for-rehire crew are left out unless includeNotForHire is true (only when the user asks).",
     parameters: {
@@ -164,6 +164,7 @@ export const CREWING_TOOLS = [
         crewStatus: { type: "array", items: { type: "string", enum: ["on_leave", "on_board"] }, description: "Only when the user says so." },
         vessels: { ...vesselsJson, description: "For on-board crew: their current vessel." },
         includeNotForHire: { type: "boolean", description: "true ONLY when the user asks to include not-for-rehire crew." },
+        crewIds: { type: "array", items: { type: "string" }, description: "crewId values from crewing_find_crew (a named person)." },
         sort: { type: "string", enum: ["available_asc", "name", "rank"] },
         ...paging,
       },
@@ -184,6 +185,7 @@ export const CREWING_TOOLS = [
         groupBy: { type: "array", items: { type: "string", enum: ["vesselName", "rank", "rankGroup", "dueState"] }, maxItems: 2 },
         dueWithin: { ...windowJson, description: "Due within a forward window, e.g. next 1 month / next 30 days (direction next)." },
         dueState: { type: "string", enum: ["overdue", "due", "any"], description: "overdue only; due (inside the window or overdue); any = all on board." },
+        crewIds: { type: "array", items: { type: "string" }, description: "crewId values from crewing_find_crew (a named person)." },
         vessels: vesselsJson,
         ranks: ranksJson,
         rankGroups: rankGroupsJson,

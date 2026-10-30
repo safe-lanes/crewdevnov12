@@ -254,7 +254,7 @@ async function partB(t: Target) {
   r = await rt({ forMe: true });
   check("B4-4 'for me' as Sail Admin (holds the Rotation permission) = the 2 waiting plans + a note saying so", r.total === 2 && Array.isArray(r.notes) && /You hold it/.test(r.notes[0]), r);
   r = await q(t, "crewing_query_rotation_approvals", { mode: "count", forMe: true }, { ...A, userId: "6", role: "User" });
-  check("B4-5 'for me' as a user WITHOUT the permission → refused by the Rotation view right or 0 with a note", (r.ok === false && r.code === "not_allowed") || (r.total === 0 && /does not hold/.test(r.notes?.[0] ?? "")), r);
+  check("B4-5 chatbot role gate unchanged: a 'User' login is refused before any area (Part B widens nothing)", r.ok === false && r.code === "not_allowed" && /not allowed to use live data/.test(r.error ?? ""), r);
 
   // B3 rest hours (live from daily records; stored totals never read)
   r = await rh({ months: ["2026-10"] });
@@ -289,7 +289,7 @@ async function partB(t: Target) {
   r = await q(t, "crewing_query_appraisals", { mode: "count", own: true });
   check("B6-6 'my appraisal' → identity_mapping_unavailable (no trusted login → crew link in Crewing)", r.ok === false && r.code === "identity_mapping_unavailable", r);
   r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "completed", includeScores: true }, { ...A, userId: "6", role: "User" });
-  check("B6-7 a 'User' (no Appraisals All right) asking for scores → not_allowed", r.ok === false && r.code === "not_allowed", r);
+  check("B6-7 chatbot role gate unchanged: a 'User' login is refused before the appraisal area", r.ok === false && r.code === "not_allowed" && /not allowed to use live data/.test(r.error ?? ""), r);
   r = await ap({ vessels: ["MV Beta Ocean"], statusClass: "any" });
   check("B6-8 vessel by RECORD (crew on board Beta Ocean): Orrin + Nadira = 2 appraisals", r.totals?.appraisals === 2, r);
 }
@@ -375,6 +375,23 @@ async function external(t: Target) {
   check("E4 assignments need Vessel → not_allowed", r.ok === false && r.code === "not_allowed", r);
   r = await q(t, "crewing_query_assignments", { mode: "count", hasDocument: { expiryState: "expired" } }, E);
   check("E5 combined assignments+documents → not_allowed (every area checked)", r.ok === false && r.code === "not_allowed", r);
+  // Part B per-area menu rights (External 1 holds only CP Training Certificates)
+  const pb: [string, string, Record<string, unknown>, RegExp][] = [
+    ["E6 availability needs Crew Pool", "crewing_query_availability", { mode: "count" }, /Crew Pool/],
+    ["E7 relief due needs Vessel + Due", "crewing_query_relief_due", { mode: "count" }, /Vessel|Due/],
+    ["E8 rest hours needs Rest Hours", "crewing_query_rest_hours", { mode: "count" }, /Rest Hours/],
+    ["E9 rotation approvals need Rotation", "crewing_query_rotation_approvals", { mode: "count" }, /Rotation/],
+    ["E10 manning needs Vessel", "crewing_query_manning", { mode: "count" }, /Vessel/],
+    ["E11 appraisals need Appraisals All (another person's appraisal)", "crewing_query_appraisals", { mode: "count" }, /Appraisals All/],
+    ["E12 appraisal SCORES without the appraisal right → not_allowed, no score", "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true }, /Appraisals All/],
+    ["E13 'for me' rotation without the Rotation right → not_allowed", "crewing_query_rotation_approvals", { mode: "count", forMe: true }, /Rotation/],
+  ];
+  for (const [label, tool, args, rx] of pb) {
+    r = await q(t, tool, args, E);
+    check(label, r.ok === false && r.code === "not_allowed" && rx.test(r.error ?? "") && !JSON.stringify(r).includes("overallScore"), r);
+  }
+  r = await q(t, "crewing_query_appraisals", { mode: "count", own: true }, E);
+  check("E14 own appraisal for a role without the appraisal menu → refused (never resolved by name)", r.ok === false && ["not_allowed", "identity_mapping_unavailable"].includes(r.code), r);
 }
 
 (async () => {

@@ -38,6 +38,8 @@ export const availabilityArgs = z
     /** on_leave = not on board; on_board = currently on board with a Next Availability date */
     crewStatus: z.array(z.enum(["on_leave", "on_board"])).min(1).optional(),
     vessels: z.array(z.string().trim().min(1).max(120)).min(1).max(10).optional(),
+    /** crewId values from crewing_find_crew (a named person) */
+    crewIds: z.array(z.string().trim().min(8).max(64)).min(1).max(20).optional(),
     includeNotForHire: z.boolean().default(false),
     sort: z.enum(["available_asc", "name", "rank"]).default("available_asc"),
     ...pagingSchema,
@@ -89,6 +91,7 @@ export async function queryAvailability(q: Query, ctx: ToolContext, a: Availabil
   if (nationalities) conds.push(inList(sql`lower(${nationalityOf(sql`cm.nationality_uuid`)})`, nationalities));
   if (a.crewStatus) conds.push(inList(crewStatus, a.crewStatus));
   if (vessels) conds.push(inList(onBoardVessel, vessels.map((v) => v.vesselId)));
+  if (a.crewIds) conds.push(inList(sql`cm.crew_uuid`, a.crewIds));
   const groupCond = a.rankGroups ? groupCondition(cfg, a.rankGroups, null, rankKey) : null;
   const withGroup = groupCond ? [groupCond] : [];
 

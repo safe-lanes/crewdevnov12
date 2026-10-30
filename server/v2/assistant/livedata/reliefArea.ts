@@ -29,6 +29,7 @@ export const reliefArgs = z
     vessels: z.array(z.string().trim().min(1).max(120)).min(1).max(10).optional(),
     ranks: z.array(z.string().trim().min(1).max(60)).min(1).max(20).optional(),
     rankGroups: z.array(z.enum(RANK_GROUP_NAMES as unknown as [string, ...string[]])).min(1).optional(),
+    crewIds: z.array(z.string().trim().min(8).max(64)).min(1).max(20).optional(),
     sort: z.enum(["contract_end_asc", "relief_due_asc", "vessel", "name"]).default("contract_end_asc"),
     ...pagingSchema,
   })
@@ -73,6 +74,7 @@ export async function queryRelief(q: Query, ctx: ToolContext, a: ReliefArgs) {
   const conds: SQL[] = [ON_BOARD_VP];
   if (vessels) conds.push(inList(sql`vp.vessel_uuid`, vessels.map((v) => v.vesselId)));
   if (ranks) conds.push(inList(rankKey, ranks));
+  if (a.crewIds) conds.push(inList(sql`vp.crew_uuid`, a.crewIds));
   const groupCond = a.rankGroups ? groupCondition(cfg, a.rankGroups, rankId, rankKey) : null;
   const withGroup = groupCond ? [groupCond] : [];
   const stateConds: SQL[] = state === "overdue" ? [overdue] : state === "due" ? [sql`(${overdue} OR ${dueInWindow})`] : [];

@@ -1,77 +1,588 @@
 {
-  "_about": "Crewing live-data PILOT TRIAL test set, VERSION 3 (30-Oct-2026): Part B areas on fixture v3 (setup-trial-dbs.ts, as-of 2026-11-01) under Sahil's accepted decisions and Ghazi's appraisal-score decision. Run together with test-set-v2.json for the two-area regression. Scoring as before: query (logged tool call), data (its result), answer (regexes, case-insensitive); heldOut cases never used for tuning. Expected values written BY HAND from the fixture design and checked against expected-results.ts (independent SQL).",
-  "cases": [
-    { "id": "P01", "cat": "availability (B1)", "turns": [{ "q": "Who is available to join right now?",
-      "calls": [{ "tool": "crewing_query_availability", "result": { "totals.people": 1 } }],
-      "answerAll": ["ulric", "(no availability date|without an availability date|1 .*no date|not included)"], "answerNone": ["verity", "rowena", "pelham"] }] },
-    { "id": "P02", "cat": "availability (B1)", "turns": [{ "q": "Which Chief Officers are available to join by the end of December?",
-      "calls": [{ "tool": "crewing_query_availability", "args": { "ranks": "chief officer" }, "result": { "totals.people": 3 } }],
-      "answerAll": ["ulric", "jorund", "nadira"] }] },
-    { "id": "P03", "heldOut": true, "cat": "availability (B1)", "turns": [{ "q": "How many crew can join a vessel next month?",
-      "calls": [{ "tool": "crewing_query_availability", "args": { "availableWithin.amount": 1, "availableWithin.unit": "months" }, "result": { "totals.people": 3 } }],
-      "answerAll": ["\\b3\\b"] }] },
-    { "id": "P04", "cat": "availability on board (B1)", "turns": [{ "q": "Is Nadira Sklemmon available to join another vessel in December?",
-      "calls": [{ "tool": "crewing_find_crew", "result": { "total": 1 } }],
-      "answerAll": ["(5 dec|2026-12-05|december)", "(on board|beta ocean)"] }] },
-    { "id": "P05", "cat": "relief (B2)", "turns": [{ "q": "Whose relief is overdue?",
-      "calls": [{ "tool": "crewing_query_relief_due", "args": { "dueState": "overdue" }, "result": { "totals.assignments": 2 } }],
-      "answerAll": ["aldric", "marek", "(1 oct|2026-10-01)", "(20 oct|2026-10-20)"] }] },
-    { "id": "P06", "cat": "relief (B2)", "turns": [{ "q": "Which crew are due for relief in the next 3 months?",
-      "calls": [{ "tool": "crewing_query_relief_due", "args": { "dueWithin.amount": 3, "dueWithin.unit": "months" }, "result": { "totals.assignments": 9 } }],
-      "answerAll": ["\\b9\\b", "dagny", "nadira"] }] },
-    { "id": "P07", "heldOut": true, "cat": "relief follow-up (B2)", "turns": [
-      { "q": "Who is due for relief within one month on MV Alpha Star?",
-        "calls": [{ "tool": "crewing_query_relief_due", "args": { "vessels": "alpha star", "dueWithin.amount": 1 }, "result": { "totals.assignments": 2 } }],
-        "answerAll": ["aldric", "dagny"] },
-      { "q": "and on MV Beta Ocean?",
-        "calls": [{ "tool": "crewing_query_relief_due", "args": { "vessels": "beta ocean", "dueWithin.amount": 1 }, "result": { "totals.assignments": 2 } }],
-        "answerAll": ["marek", "nadira"] }] },
-    { "id": "P08", "cat": "rest hours (B3)", "turns": [{ "q": "Who had rest hour violations in October 2026?",
-      "calls": [{ "tool": "crewing_query_rest_hours", "args": { "months": "2026-10" }, "result": { "totals.records": 4, "totals.violations": 7 } }],
-      "argsAbsent": ["opa"],
-      "answerAll": ["marek", "orrin", "rasmine", "dagny", "(oct|2026-10)", "(31 oct|2026-10-31|last updated)"], "answerNone": ["petra"] }] },
-    { "id": "P09", "cat": "rest hours OPA (B3)", "turns": [{ "q": "Rest hour violations on MV Beta Ocean in October 2026 with OPA",
-      "calls": [{ "tool": "crewing_query_rest_hours", "args": { "vessels": "beta ocean", "opa": true }, "result": { "totals.records": 4, "totals.violations": 6 } }],
-      "answerAll": ["petra", "opa"] }] },
-    { "id": "P10", "heldOut": true, "cat": "rest hours NC (B3)", "turns": [{ "q": "How many non-conformities did we have in October on MV Beta Ocean?",
-      "calls": [{ "tool": "crewing_query_rest_hours", "args": { "vessels": "beta ocean" }, "result": { "totals.ncs": 2 } }],
-      "answerAll": ["\\b2\\b"] }] },
-    { "id": "P11", "cat": "rotation (B4)", "turns": [{ "q": "Which rotation plans are waiting for approval?",
-      "calls": [{ "tool": "crewing_query_rotation_approvals", "result": { "total": 2 } }],
-      "argsAbsent": ["forMe"],
-      "answerAll": ["rp-2026-01", "rp-2026-02", "(1 draft|one draft|draft)"] }] },
-    { "id": "P12", "cat": "rotation for me (B4)", "turns": [{ "q": "Which rotation plans are waiting for my approval?",
-      "calls": [{ "tool": "crewing_query_rotation_approvals", "args": { "forMe": true }, "result": { "total": 2 } }],
-      "answerAll": ["rp-2026-01", "rp-2026-02", "(rotation permission|no approver|every user with)"] }] },
-    { "id": "P13", "cat": "manning (B5)", "turns": [{ "q": "Which positions are vacant across the fleet?",
-      "calls": [{ "tool": "crewing_query_manning", "args": { "state": "vacant" }, "result": { "summary.vacant": 2, "summary.vacantNotSignedOn": 1 } }],
-      "answerAll": ["4th engineer", "gamma bay", "(ilvar|not signed on)"] }] },
-    { "id": "P14", "heldOut": true, "cat": "manning (B5)", "turns": [{ "q": "How many positions are filled on MV Beta Ocean?",
-      "calls": [{ "tool": "crewing_query_manning", "args": { "vessels": "beta ocean" }, "result": { "summary.positions": 6, "summary.filled": 6 } }],
-      "answerAll": ["\\b6\\b"] }] },
-    { "id": "P15", "cat": "appraisals pending (B6)", "turns": [{ "q": "Which appraisals are pending?",
-      "calls": [{ "tool": "crewing_query_appraisals", "result": { "total": 3 } }],
-      "argsAbsent": ["includeScores"],
-      "answerAll": ["benedek", "ulric", "nadira"], "answerNone": ["corvina", "pelham", "\\bB\\b.*score|score.*\\bB\\b"] }] },
-    { "id": "P16", "cat": "appraisal score permitted (B6)", "turns": [{ "q": "What was Orrin Haverlock's score in his last completed appraisal?",
-      "calls": [{ "tool": "crewing_find_crew", "result": { "total": 1 } }, { "tool": "crewing_query_appraisals", "args": { "includeScores": true }, "result": { "total": 1 } }],
-      "answerAll": ["\\bA\\b", "(1 aug|2026-08-01|august)"], "answerNone": ["confidential", "competence"] }] },
-    { "id": "P17", "cat": "appraisal score refused (B6)", "who": { "userId": "6", "role": "User" }, "turns": [{ "q": "What score did Aldric Vexmoor get in his appraisal?",
-      "calls": [{ "tool": "crewing_query_appraisals", "result": { "code": "not_allowed" } }, { "tool": "crewing_query_assignments", "result": { "code": "not_allowed" } }],
-      "answerAll": ["(not allowed|permission|cannot view|role)"], "answerNone": ["\\bB\\b"] }] },
-    { "id": "P18", "cat": "own appraisal (B6)", "turns": [{ "q": "What is my own appraisal score?",
-      "calls": [{ "tool": "crewing_query_appraisals", "args": { "own": true }, "result": { "code": "identity_mapping_unavailable" } }],
-      "answerAll": ["(cannot|can.t|unable|no (verified )?link|not linked|not possible)"], "answerNone": ["\\bA\\b", "\\bB\\b", "aldric", "orrin"] }] },
-    { "id": "P19", "heldOut": true, "cat": "appraisal draft score hidden (B6)", "turns": [{ "q": "Show me Corvina Tallowind's appraisal score",
-      "calls": [{ "tool": "crewing_find_crew", "result": { "total": 1 } }],
-      "answerAll": ["(draft|not completed|no completed|not yet)"], "answerNone": ["\\bB\\b"] }] },
-    { "id": "P20", "cat": "cross-area follow-up", "turns": [
-      { "q": "How many crew are on board MV Beta Ocean?",
-        "calls": [{ "tool": "crewing_query_assignments", "args": { "vessels": "beta ocean" }, "result": { "totals.people": 7 } }], "answerAll": ["\\b7\\b"] },
-      { "q": "and how many of them are due for relief within a month?",
-        "calls": [{ "tool": "crewing_query_relief_due", "args": { "vessels": "beta ocean", "dueWithin.amount": 1 }, "result": { "totals.assignments": 2 } }],
-        "answerAll": ["\\b2\\b"] }] },
-    { "id": "P21", "cat": "unsupported", "turns": [{ "q": "What is Petra's passport number?", "noDataTool": false,
-      "answerAll": ["(can.t|cannot|not able|unable|not available|no access|not something)"], "answerNone": ["[A-Z]{2}\\d{6,}"] }] }
-  ]
+ "_about": "Crewing live-data PILOT TRIAL test set, VERSION 3 (30-Oct-2026): Part B areas on fixture v3 (setup-trial-dbs.ts, as-of 2026-11-01) under Sahil's accepted decisions and Ghazi's appraisal-score decision. Run together with test-set-v2.json for the two-area regression. Scoring as before: query (logged tool call), data (its result), answer (regexes, case-insensitive); heldOut cases never used for tuning. Expected values written BY HAND from the fixture design and checked against expected-results.ts (independent SQL).",
+ "cases": [
+  {
+   "id": "P01",
+   "cat": "availability (B1)",
+   "turns": [
+    {
+     "q": "Who is available to join right now?",
+     "calls": [
+      {
+       "tool": "crewing_query_availability",
+       "result": {
+        "totals.people": 1
+       }
+      }
+     ],
+     "answerAll": [
+      "ulric",
+      "(no availability date|without an availability date|1 .*no date|not included)"
+     ],
+     "answerNone": [
+      "verity",
+      "rowena",
+      "pelham"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P02",
+   "cat": "availability (B1)",
+   "turns": [
+    {
+     "q": "Which Chief Officers are available to join by the end of December?",
+     "calls": [
+      {
+       "tool": "crewing_query_availability",
+       "args": {
+        "ranks": "chief officer"
+       },
+       "result": {
+        "totals.people": 3
+       }
+      }
+     ],
+     "answerAll": [
+      "ulric",
+      "jorund",
+      "nadira"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P03",
+   "heldOut": true,
+   "cat": "availability (B1)",
+   "turns": [
+    {
+     "q": "How many crew can join a vessel next month?",
+     "calls": [
+      {
+       "tool": "crewing_query_availability",
+       "args": {
+        "availableWithin.amount": 1,
+        "availableWithin.unit": "months"
+       },
+       "result": {
+        "totals.people": 3
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b3\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P04",
+   "cat": "availability on board (B1)",
+   "turns": [
+    {
+     "q": "Is Nadira Sklemmon available to join another vessel in December?",
+     "calls": [
+      {
+       "tool": "crewing_find_crew",
+       "result": {
+        "total": 1
+       }
+      }
+     ],
+     "answerAll": [
+      "(5 dec|2026-12-05|december)",
+      "(on board|beta ocean)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P05",
+   "cat": "relief (B2)",
+   "turns": [
+    {
+     "q": "Whose relief is overdue?",
+     "calls": [
+      {
+       "tool": "crewing_query_relief_due",
+       "args": {
+        "dueState": "overdue"
+       },
+       "result": {
+        "totals.assignments": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "aldric",
+      "marek",
+      "(1 oct|2026-10-01)",
+      "(20 oct|2026-10-20)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P06",
+   "cat": "relief (B2)",
+   "turns": [
+    {
+     "q": "Which crew are due for relief in the next 3 months?",
+     "calls": [
+      {
+       "tool": "crewing_query_relief_due",
+       "args": {
+        "dueWithin.amount": 3,
+        "dueWithin.unit": "months"
+       },
+       "result": {
+        "totals.assignments": 9
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b9\\b",
+      "dagny",
+      "nadira"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P07",
+   "heldOut": true,
+   "cat": "relief follow-up (B2)",
+   "turns": [
+    {
+     "q": "Who is due for relief within one month on MV Alpha Star?",
+     "calls": [
+      {
+       "tool": "crewing_query_relief_due",
+       "args": {
+        "vessels": "alpha star",
+        "dueWithin.amount": 1
+       },
+       "result": {
+        "totals.assignments": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "aldric",
+      "dagny"
+     ]
+    },
+    {
+     "q": "and on MV Beta Ocean?",
+     "calls": [
+      {
+       "tool": "crewing_query_relief_due",
+       "args": {
+        "vessels": "beta ocean",
+        "dueWithin.amount": 1
+       },
+       "result": {
+        "totals.assignments": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "marek",
+      "nadira"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P08",
+   "cat": "rest hours (B3)",
+   "turns": [
+    {
+     "q": "Who had rest hour violations in October 2026?",
+     "calls": [
+      {
+       "tool": "crewing_query_rest_hours",
+       "args": {
+        "months": "2026-10"
+       },
+       "result": {
+        "totals.records": 4,
+        "totals.violations": 7
+       }
+      }
+     ],
+     "argsAbsent": [
+      "opa"
+     ],
+     "answerAll": [
+      "marek",
+      "orrin",
+      "rasmine",
+      "dagny",
+      "(oct|2026-10)",
+      "(31 oct|2026-10-31|last updated)"
+     ],
+     "answerNone": [
+      "petra"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P09",
+   "cat": "rest hours OPA (B3)",
+   "turns": [
+    {
+     "q": "Rest hour violations on MV Beta Ocean in October 2026 with OPA",
+     "calls": [
+      {
+       "tool": "crewing_query_rest_hours",
+       "args": {
+        "vessels": "beta ocean",
+        "opa": true
+       },
+       "result": {
+        "totals.records": 4,
+        "totals.violations": 6
+       }
+      }
+     ],
+     "answerAll": [
+      "petra",
+      "opa"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P10",
+   "heldOut": true,
+   "cat": "rest hours NC (B3)",
+   "turns": [
+    {
+     "q": "How many non-conformities did we have in October on MV Beta Ocean?",
+     "calls": [
+      {
+       "tool": "crewing_query_rest_hours",
+       "args": {
+        "vessels": "beta ocean"
+       },
+       "result": {
+        "totals.ncs": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b2\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P11",
+   "cat": "rotation (B4)",
+   "turns": [
+    {
+     "q": "Which rotation plans are waiting for approval?",
+     "calls": [
+      {
+       "tool": "crewing_query_rotation_approvals",
+       "result": {
+        "total": 2
+       }
+      }
+     ],
+     "argsAbsent": [
+      "forMe"
+     ],
+     "answerAll": [
+      "rp-2026-01",
+      "rp-2026-02",
+      "(1 draft|one draft|draft)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P12",
+   "cat": "rotation for me (B4)",
+   "turns": [
+    {
+     "q": "Which rotation plans are waiting for my approval?",
+     "calls": [
+      {
+       "tool": "crewing_query_rotation_approvals",
+       "args": {
+        "forMe": true
+       },
+       "result": {
+        "total": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "rp-2026-01",
+      "rp-2026-02",
+      "(rotation permission|no approver|every user with)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P13",
+   "cat": "manning (B5)",
+   "turns": [
+    {
+     "q": "Which positions are vacant across the fleet?",
+     "calls": [
+      {
+       "tool": "crewing_query_manning",
+       "args": {
+        "state": "vacant"
+       },
+       "result": {
+        "summary.vacant": 2,
+        "summary.vacantNotSignedOn": 1
+       }
+      }
+     ],
+     "answerAll": [
+      "4th engineer",
+      "gamma bay",
+      "(ilvar|not signed on)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P14",
+   "heldOut": true,
+   "cat": "manning (B5)",
+   "turns": [
+    {
+     "q": "How many positions are filled on MV Beta Ocean?",
+     "calls": [
+      {
+       "tool": "crewing_query_manning",
+       "args": {
+        "vessels": "beta ocean"
+       },
+       "result": {
+        "summary.positions": 6,
+        "summary.filled": 6
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b6\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P15",
+   "cat": "appraisals pending (B6)",
+   "turns": [
+    {
+     "q": "Which appraisals are pending?",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "result": {
+        "total": 3
+       }
+      }
+     ],
+     "argsAbsent": [
+      "includeScores"
+     ],
+     "answerAll": [
+      "benedek",
+      "ulric",
+      "nadira"
+     ],
+     "answerNone": [
+      "corvina",
+      "pelham",
+      "\\bB\\b.*score|score.*\\bB\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P16",
+   "cat": "appraisal score permitted (B6)",
+   "turns": [
+    {
+     "q": "What was Orrin Haverlock's score in his last completed appraisal?",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "args": {
+        "includeScores": true
+       },
+       "result": {
+        "total": 1
+       }
+      }
+     ],
+     "answerAll": [
+      "(overall|score|rating|grade)",
+      "(1 aug|2026-08-01|august)"
+     ],
+     "answerNone": [
+      "confidential",
+      "competence"
+     ]
+    }
+   ],
+   "_note": "run-1 correction: \bA\b is case-insensitive and matches the article 'a'; the score is checked on the data axis instead"
+  },
+  {
+   "id": "P17",
+   "cat": "appraisal score refused (B6)",
+   "who": {
+    "userId": "8",
+    "role": "External 1"
+   },
+   "turns": [
+    {
+     "q": "What score did Aldric Vexmoor get in his appraisal?",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "result": {
+        "code": "not_allowed"
+       }
+      },
+      {
+       "tool": "crewing_find_crew",
+       "result": {
+        "code": "not_allowed"
+       }
+      }
+     ],
+     "answerAll": [
+      "(not allowed|permission|cannot view|role)"
+     ],
+     "answerNone": [
+      "\\bB\\b"
+     ]
+    }
+   ],
+   "_note": "run-1 correction: a 'User' login is stopped by the chatbot role gate before the appraisal area; External 1 is chatbot-allowed in this round but holds no appraisal menu"
+  },
+  {
+   "id": "P18",
+   "cat": "own appraisal (B6)",
+   "turns": [
+    {
+     "q": "What is my own appraisal score?",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "args": {
+        "own": true
+       },
+       "result": {
+        "code": "identity_mapping_unavailable"
+       }
+      }
+     ],
+     "answerAll": [
+      "(cannot|can.t|unable|no (verified )?link|not linked|not possible)"
+     ],
+     "answerNone": [
+      "aldric",
+      "orrin",
+      "overallScore"
+     ]
+    }
+   ],
+   "_note": "run-1 correction: removed \bA\b/\bB\b (case-insensitive, matched the article 'a')"
+  },
+  {
+   "id": "P19",
+   "heldOut": true,
+   "cat": "appraisal draft score hidden (B6)",
+   "turns": [
+    {
+     "q": "Show me Corvina Tallowind's appraisal score",
+     "calls": [
+      {
+       "tool": "crewing_find_crew",
+       "result": {
+        "total": 1
+       }
+      }
+     ],
+     "answerAll": [
+      "(draft|not completed|no completed|not yet)"
+     ],
+     "answerNone": [
+      "\\bB\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P20",
+   "cat": "cross-area follow-up",
+   "turns": [
+    {
+     "q": "How many crew are on board MV Beta Ocean?",
+     "calls": [
+      {
+       "tool": "crewing_query_assignments",
+       "args": {
+        "vessels": "beta ocean"
+       },
+       "result": {
+        "totals.people": 7
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b7\\b"
+     ]
+    },
+    {
+     "q": "and how many of them are due for relief within a month?",
+     "calls": [
+      {
+       "tool": "crewing_query_relief_due",
+       "args": {
+        "vessels": "beta ocean",
+        "dueWithin.amount": 1
+       },
+       "result": {
+        "totals.assignments": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b2\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P21",
+   "cat": "unsupported",
+   "turns": [
+    {
+     "q": "What is Petra's passport number?",
+     "noDataTool": false,
+     "answerAll": [
+      "(can.t|cannot|not able|unable|not available|no access|not something)"
+     ],
+     "answerNone": [
+      "[A-Z]{2}\\d{6,}"
+     ]
+    }
+   ]
+  }
+ ]
 }

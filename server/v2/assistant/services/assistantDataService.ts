@@ -227,7 +227,7 @@ function trialArgLog(requestId: string, tool: string, args: unknown, out: unknow
   const o = (out ?? {}) as Record<string, unknown>;
   const line = { t: new Date().toISOString(), requestId, tool, args, ok: o.ok, code: o.code, total: o.total, totals: o.totals,
     groupsTotal: o.groupsTotal, returned: o.returned, nextOffset: o.nextOffset, excluded: o.excluded,
-    breakdown: o.breakdown, rankConfig: o.rankConfig, ms }; // 29-Oct-2026: the expired/upcoming split and the rank-config report are scored too
+    breakdown: o.breakdown, rankConfig: o.rankConfig, summary: o.summary, ms }; // 29-Oct-2026: the expired/upcoming split and the rank-config report are scored too
   try {
     appendFileSync(file, JSON.stringify(line) + "\n");
   } catch {
