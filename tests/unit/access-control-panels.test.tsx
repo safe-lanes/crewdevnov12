@@ -85,7 +85,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); client.clear(); });
 async function boot(role = "reviewer") {
   render(<QueryClientProvider client={client}><AccessControlPage /></QueryClientProvider>);
-  await screen.findByTestId("training-expiring-current-effect");
+  await screen.findByTestId("button-training-compliance-policy");
   if (mocks.state.allowed && !mocks.trainingError) {
     await screen.findByRole("checkbox", { name: "Override deployment block" });
   } else if (mocks.state.allowed && mocks.trainingError) {
@@ -185,6 +185,8 @@ describe("Access Control configure-once panels", () => {
   });
   it("shows explanations in tooltips rather than inline while preserving accessible descriptions", async () => {
     await boot();
+    fireEvent.click(screen.getByTestId("button-training-compliance-policy"));
+    await screen.findByTestId("training-expiring-current-effect");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     for (const id of ["training-expiring", "training-missing-expiry"]) {
       const description = document.getElementById(`${id}-description`)!;
@@ -196,25 +198,35 @@ describe("Access Control configure-once panels", () => {
       await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
     }
   });
-  it("places both permission rows in the grid and policy after it, retaining both top buttons", async () => {
+  it("places both permission rows in the grid and the policy button before audit, with no inline policy", async () => {
     await boot();
     const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     const grid = screen.getByTestId("access-control-permissions");
-    const policy = screen.getByTestId("training-compliance-policy");
+    const policyButton = screen.getByTestId("button-training-compliance-policy");
     const management = screen.getByTestId("management-grants-panel");
     const companyForms = screen.getByTestId("company-forms-permissions");
     const training = screen.getByTestId("training-compliance-permissions");
     expect(grid.contains(companyForms)).toBe(true);
     expect(grid.contains(training)).toBe(true);
     expect(before(companyForms, training)).toBe(true);
-    expect(before(policy, management)).toBe(true);
-    expect(policy).toHaveTextContent("Blocking Seafarer Deployment Policy");
+    expect(before(grid, management)).toBe(true);
+    expect(screen.queryByTestId("training-compliance-policy")).not.toBeInTheDocument();
+    expect(before(policyButton, screen.getByRole("button", { name: "Access audit history" }))).toBe(true);
+    expect(screen.getByTestId("access-control-top-actions")).toHaveClass("flex-wrap");
+    fireEvent.click(policyButton);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByTestId("training-compliance-policy")).toHaveTextContent("Blocking Seafarer Deployment Policy");
+    expect(screen.getByTestId("access-control-page").contains(dialog)).toBe(false);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.queryByTestId("training-compliance-role-permission")).not.toBeInTheDocument();
     expect(before(screen.getByRole("button", { name: "Access audit history" }), grid)).toBe(true);
     expect(before(screen.getByRole("button", { name: "Company PDF branding" }), grid)).toBe(true);
   });
   it("pairs each checkbox with its own heading and describes saved effects, not unsaved selections", async () => {
     await boot();
+    fireEvent.click(screen.getByTestId("button-training-compliance-policy"));
+    await screen.findByTestId("training-expiring-current-effect");
     const block = screen.getByTestId("training-expiring-policy-block");
     expect(within(block).getByRole("checkbox")).toHaveAccessibleName("Block seafarer deployment when mandatory courses expiring during contract");
     expect(screen.getByTestId("training-expiring-current-effect")).toHaveTextContent("Warning only");

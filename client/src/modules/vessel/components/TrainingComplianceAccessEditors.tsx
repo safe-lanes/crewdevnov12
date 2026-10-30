@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Info, ShieldCheck } from "lucide-react";
 
 function TrainingPolicyLabel({ id, controlId, title, description }: {
   id: string;
@@ -76,6 +77,25 @@ export function TrainingCompliancePermissionRow({
     </div>
     </TooltipProvider>
   );
+}
+
+export function TrainingCompliancePolicyDialog() {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button variant="outline" onClick={() => setOpen(true)} data-testid="button-training-compliance-policy">
+      <ShieldCheck aria-hidden="true" className="mr-2 h-4 w-4" />Blocking Seafarer Deployment
+    </Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent aria-describedby={undefined} className="max-h-[92vh] w-[min(800px,96vw)] max-w-none overflow-y-auto border-slate-200 bg-[#fbfcfd] p-0" data-testid="training-compliance-policy-dialog">
+        <DialogHeader className="border-b px-6 py-4 pr-12">
+          <DialogTitle>Blocking Seafarer Deployment Policy</DialogTitle>
+        </DialogHeader>
+        <div className="px-6 pb-5">
+          <TrainingCompliancePolicySetting />
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>;
 }
 
 export function TrainingCompliancePolicySetting() {

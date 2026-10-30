@@ -127,10 +127,63 @@ it("saves all three groups through the screen, then proves a real third-writer f
     });
     await trigger.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/saved-desktop.jpg`, animations: "disabled" });
+    const policyOut = ".local/verification/deployment-policy-dialog/test-database";
+    await fs.mkdir(policyOut, { recursive: true });
+    const policyButton = page.getByTestId("button-training-compliance-policy");
+    await policyButton.scrollIntoViewIfNeeded();
+    await browserExpect(page.getByTestId("training-compliance-policy")).toHaveCount(0);
+    await page.screenshot({ path: `${policyOut}/desktop-body.jpg`, animations: "disabled" });
+    await policyButton.click();
     const policy = page.getByTestId("training-compliance-policy");
-    await policy.scrollIntoViewIfNeeded();
     await browserExpect(policy.getByRole("heading", { name: "Blocking Seafarer Deployment Policy" })).toBeVisible();
     await page.screenshot({ path: `${out}/policy-desktop.jpg`, animations: "disabled" });
+    await page.screenshot({ path: `${policyOut}/desktop-popup.jpg`, animations: "disabled" });
+    const originalPolicy = (await pool.query("SELECT * FROM adm_training_compliance_settings WHERE singleton")).rows[0];
+    const beforePolicyAudit = Number((await pool.query("SELECT coalesce(max(id),0) AS id FROM adm_access_control_audit")).rows[0].id);
+    await policy.getByTestId("training-block-expiring").click();
+    await policy.getByTestId("training-block-missing-expiry").click();
+    await policy.getByTestId("save-training-compliance-policy").click();
+    await browserExpect(policy.getByTestId("save-training-compliance-policy")).toBeDisabled();
+    await browserExpect(policy.getByTestId("training-expiring-current-effect")).toHaveText(
+      `Current saved effect: ${originalPolicy.block_expiring_during_contract ? "Warning only" : "Blocking"}`);
+    await browserExpect(policy.getByTestId("training-missing-expiry-current-effect")).toHaveText(
+      `Current saved effect: ${originalPolicy.block_missing_expiry ? "Warning only" : "Blocking"}`);
+    const policyAudit = (await pool.query(`SELECT * FROM adm_access_control_audit
+      WHERE id>$1 AND event='training_setting_changed' ORDER BY id`, [beforePolicyAudit])).rows;
+    expect(policyAudit).toHaveLength(2);
+    for (const entry of policyAudit) {
+      expect(entry.actor).toMatchObject({ masterUserId: userId });
+      expect(entry.actor_display_name).toBe("Atomic Verifier");
+      expect(entry.permission_display_label).toBeTruthy();
+      expect(entry.before_value).not.toEqual(entry.after_value);
+      expect(entry.recorded_at).toBeTruthy();
+    }
+    await fs.writeFile(`${policyOut}/policy-audit.json`, JSON.stringify(policyAudit, null, 2));
+    await page.screenshot({ path: `${policyOut}/desktop-saved.jpg`, animations: "disabled" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${policyOut}/narrow-saved-popup.jpg`, animations: "disabled" });
+    const dialogBox = await page.getByTestId("training-compliance-policy-dialog").boundingBox();
+    expect(dialogBox!.x).toBeGreaterThanOrEqual(0);
+    expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(390);
+    // Restore isolated settings through the same screen, not direct SQL.
+    await policy.getByTestId("training-block-expiring").click();
+    await policy.getByTestId("training-block-missing-expiry").click();
+    await policy.getByTestId("save-training-compliance-policy").click();
+    await browserExpect(policy.getByTestId("save-training-compliance-policy")).toBeDisabled();
+    await browserExpect(policy.getByTestId("training-expiring-current-effect")).toHaveText(
+      `Current saved effect: ${originalPolicy.block_expiring_during_contract ? "Blocking" : "Warning only"}`);
+    await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+    const topActions = page.getByTestId("access-control-top-actions");
+    await topActions.scrollIntoViewIfNeeded();
+    await browserExpect(topActions.getByRole("button")).toHaveCount(3);
+    const actionBoxes = await topActions.getByRole("button").evaluateAll(buttons =>
+      buttons.map(button => { const r = button.getBoundingClientRect(); return { x: r.x, right: r.right, y: r.y }; }));
+    expect(actionBoxes).toHaveLength(3);
+    for (const box of actionBoxes) { expect(box.x).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(390); }
+    expect(new Set(actionBoxes.map(box => box.y)).size).toBeGreaterThan(1);
+    await browserExpect(page.getByTestId("training-compliance-policy")).toHaveCount(0);
+    await page.screenshot({ path: `${policyOut}/narrow-body.jpg`, animations: "disabled" });
+    await page.setViewportSize({ width: 1500, height: 1100 });
     await page.getByRole("button", { name: "Access audit history", exact: true }).click();
     await page.getByRole("searchbox", { name: "Search history" }).fill(roleName);
     await browserExpect(page.getByTestId("audit-sentence").filter({ hasText: "Override deployment block" })).toContainText("Atomic Verifier granted");
@@ -167,6 +220,8 @@ it("saves all three groups through the screen, then proves a real third-writer f
     await trigger.click();
     await page.screenshot({ path: `${out}/dropdown-narrow.jpg`, animations: "disabled" });
     expect(writes).toEqual([`/api/v2/admin/access-control/roles/${role}/combined-permissions`,
+      "/api/v2/admin/training-compliance/settings",
+      "/api/v2/admin/training-compliance/settings",
       `/api/v2/admin/access-control/roles/${role}/combined-permissions`]);
     expect(await row.count()).toBe(1);
     await fs.writeFile(`${out}/report.json`, JSON.stringify({

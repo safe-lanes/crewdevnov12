@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
 import type { CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
-import { TrainingCompliancePermissionRow, TrainingCompliancePolicySetting } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
+import { TrainingCompliancePermissionRow, TrainingCompliancePolicyDialog } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { adminApiV2 } from "./api/adminApiV2";
 import {
@@ -487,7 +487,10 @@ export default function AccessControlPage() {
 
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
-      <div className="flex flex-wrap items-center justify-end gap-3"><AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding /></div>
+      <div className="flex flex-wrap items-center justify-end gap-3" data-testid="access-control-top-actions">
+        {accessControlManagement && <TrainingCompliancePolicyDialog />}
+        <AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding />
+      </div>
       <div className="max-w-full overflow-x-auto" data-testid="access-control-grid-scroll">
       <div className="flex min-h-[440px] h-[calc(100vh-370px)] min-w-[960px] gap-0" data-testid="access-control-permissions">
       <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
@@ -627,7 +630,6 @@ export default function AccessControlPage() {
       </div>
       </div>
       </div>
-      {accessControlManagement && <TrainingCompliancePolicySetting />}
       <AlertDialog open={!!roleChangeRequest} onOpenChange={open => { if (!open) setRoleChangeRequest(null); }}>
         <AlertDialogContent data-testid="unsaved-role-change-confirmation">
           <AlertDialogHeader>

@@ -27,7 +27,10 @@ An uncertain network response instead says the save cannot be confirmed.
 The existing dirty-role-switch confirmation covers all three drafts.
 
 The tenant's **Blocking Seafarer Deployment Policy** remains a separate setting,
-with its existing Save policy action. This task does not change policy values.
+with its existing Save policy action. It now opens from **Blocking Seafarer
+Deployment**, immediately before Access audit history in the wrapping top action
+row, instead of appearing below the grid. This does not change policy values.
+See [popup verification](deployment-policy-dialog.md).
 
 ## Wording inventory
 
