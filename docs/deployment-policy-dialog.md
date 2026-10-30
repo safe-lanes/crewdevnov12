@@ -40,7 +40,12 @@ The read-only verification script's `before` and `after` modes compare counts an
 content fingerprints of every public table plus the column catalogue. This covers
 business data, settings, audit events and migration ledger without exceptions.
 
-## Management grants: recommendation only
+## Management grants: subsequent implementation
+
+The recommendation below was subsequently implemented in
+[Management grants popup](management-grants-dialog.md), with an independent role
+selector, an explicit target-role line and reset-to-grid selection on each
+opening. The original recommendation is retained here for context.
 
 Moving Management grants into a dialog would work cleanly. It is a tenant-wide
 management facility, but its edit controls affect an individual role. It already
@@ -53,7 +58,7 @@ the grant review confirmation, read-only parent category, manager list, recovery
 information and last-manager protection. The shared selection is the awkward part:
 a dialog must not silently discard pending grid edits or leave users unclear which
 role a management grant will affect. Recommendation: use the same popup pattern,
-keeping the explicit role selector and all existing confirmations. Not implemented.
+keeping the explicit role selector and all existing confirmations.
 
 ## Gate evidence
 

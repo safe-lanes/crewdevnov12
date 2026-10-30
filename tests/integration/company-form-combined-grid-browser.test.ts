@@ -9,10 +9,11 @@ import pg from "pg";
 import { emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const role = randomUUID(), menu = randomUUID();
+const role = randomUUID(), menu = randomUUID(), managementTarget = randomUUID();
 const roleName = `Atomic save browser ${role.slice(0, 8)}`;
+const targetName = `Management popup target ${managementTarget.slice(0, 8)}`;
 const out = ".local/verification/deployment-block-grid/test-database";
-let userId: number, browser: Browser | undefined;
+let userId: number, targetUserId: number, browser: Browser | undefined;
 beforeAll(async () => {
   if (process.env.TEST_DATABASE_VERIFIED !== "true") throw Error("Registered test database required.");
   await fs.mkdir(out, { recursive: true });
@@ -21,6 +22,13 @@ beforeAll(async () => {
   userId = (await pool.query(`INSERT INTO master_users(id,user_uuid,role,user_type,firstname,lastname)
     SELECT coalesce(max(id),0)+10000,$1,$2,'Office','Atomic','Verifier' FROM master_users RETURNING id`,
     [randomUUID(), roleName])).rows[0].id;
+  await pool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned,is_active,is_deleted,sort_order)
+    VALUES ($1,$2,'Office',true,true,false,-99999)`, [managementTarget, targetName]);
+  targetUserId = (await pool.query(`INSERT INTO master_users(id,user_uuid,role,user_type,firstname,lastname)
+    SELECT coalesce(max(id),0)+1,$1,$2,'Office','Popup','Target' FROM master_users RETURNING id`,
+    [randomUUID(), targetName])).rows[0].id;
+  await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+    VALUES ($1,'access_control','manage',false)`, [managementTarget]);
   await pool.query(`INSERT INTO adm_menumaster_ac(muid,name,route,is_active,is_deleted,sort_order)
     VALUES ($1,$2,$3,true,false,-100000)`, [menu, `Atomic browser menu ${menu}`, `/atomic-browser-${menu}`]);
   await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
@@ -44,6 +52,9 @@ afterAll(async () => {
   await pool.query("DELETE FROM adm_roleaccess_ac WHERE role_id=$1 OR menu_id=$2", [role, menu]);
   await pool.query("DELETE FROM adm_resource_action_grants WHERE role_id=$1", [role]);
   await pool.query("DELETE FROM master_users WHERE id=$1", [userId ?? -1]);
+  await pool.query("DELETE FROM adm_resource_action_grants WHERE role_id=$1", [managementTarget]);
+  await pool.query("DELETE FROM master_users WHERE id=$1", [targetUserId ?? -1]);
+  await pool.query("DELETE FROM adm_rolemaster_ac WHERE ruid=$1", [managementTarget]);
   await pool.query("DELETE FROM adm_rolemaster_ac WHERE ruid=$1", [role]);
   await pool.query("DELETE FROM adm_menumaster_ac WHERE muid=$1", [menu]);
   expect((await pool.query("SELECT * FROM adm_rolemaster_ac WHERE ruid=$1", [role])).rows).toHaveLength(0);
@@ -175,10 +186,10 @@ it("saves all three groups through the screen, then proves a real third-writer f
     await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
     const topActions = page.getByTestId("access-control-top-actions");
     await topActions.scrollIntoViewIfNeeded();
-    await browserExpect(topActions.getByRole("button")).toHaveCount(3);
+    await browserExpect(topActions.getByRole("button")).toHaveCount(4);
     const actionBoxes = await topActions.getByRole("button").evaluateAll(buttons =>
       buttons.map(button => { const r = button.getBoundingClientRect(); return { x: r.x, right: r.right, y: r.y }; }));
-    expect(actionBoxes).toHaveLength(3);
+    expect(actionBoxes).toHaveLength(4);
     for (const box of actionBoxes) { expect(box.x).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(390); }
     expect(new Set(actionBoxes.map(box => box.y)).size).toBeGreaterThan(1);
     await browserExpect(page.getByTestId("training-compliance-policy")).toHaveCount(0);
@@ -239,5 +250,134 @@ it("saves all three groups through the screen, then proves a real third-writer f
       visibleText: await page.locator("body").innerText().catch(() => "Body unavailable"),
     }, null, 2));
     throw error;
+  } finally { await context.close(); }
+}, 90000);
+
+it("keeps management roles independent, confirms grants and own-role removal, and retains frozen audit capture", async () => {
+  const dir = ".local/verification/management-grants-dialog/test-database";
+  await fs.mkdir(dir, { recursive: true });
+  const context = await browser!.newContext({ viewport: { width: 1500, height: 1100 }, ignoreHTTPSErrors: true });
+  const enc = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const token = `${enc({ alg: "none", typ: "JWT" })}.${enc({ id: userId, roleId: role, userType: "Office", domain: "test" })}.devsig`;
+  await context.addInitScript(({ token, role, roleName, userId }) => {
+    const profile = { personaKey: "crewing-executive", masterUserId: userId, userId: String(userId),
+      roleId: role, role: roleName, userType: "Office", myVessels: [] };
+    for (const key of ["userProfile", "devPersona"]) localStorage.setItem(key, JSON.stringify(profile));
+    localStorage.setItem("devAuthToken", token);
+  }, { token, role, roleName, userId });
+  const writes: string[] = [];
+  await context.route("**/api/**", async route => {
+    const request = route.request(), source = new URL(request.url());
+    if (!source.pathname.startsWith("/api/")) return route.continue();
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(source.pathname);
+    const response = await route.fetch({ url: `${process.env.TEST_API_URL}${source.pathname}${source.search}` });
+    await route.fulfill({ response });
+  });
+  const page = await context.newPage();
+  const screenshot = async (name: string) => page.screenshot({ path: `${dir}/${name}.jpg`, animations: "disabled" });
+  try {
+    await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
+    await page.getByText("Access Control", { exact: true }).first().click({ timeout: 30000 });
+    await page.getByTestId(`role-item-${managementTarget}`).click();
+    await browserExpect(page.getByTestId("company-form-permissions-trigger")).toBeVisible();
+    await page.getByTestId(`checkbox-${menu}-canview`).click();
+    await browserExpect(page.getByTestId("button-save-access-control")).toBeEnabled();
+    await page.getByTestId("button-management-grants").click();
+    const dialog = page.getByTestId("management-grants-dialog");
+    await browserExpect(dialog.getByTestId("management-target-role")).toContainText(targetName);
+    const selector = dialog.getByLabel("Choose role for management grant");
+    await browserExpect(dialog.getByRole("checkbox", { name: "Management access granted" })).toBeEnabled();
+    await selector.selectOption(role);
+    await browserExpect(dialog.getByRole("checkbox", { name: "Management access granted" })).toBeChecked();
+    await browserExpect(dialog.getByTestId("management-target-role")).toContainText(roleName);
+    await browserExpect(dialog.getByTestId("management-fallback-warning")).toHaveCount(0);
+    await browserExpect(dialog.getByText("Your role", { exact: true })).toBeVisible();
+    await screenshot("normal-desktop");
+    await dialog.getByRole("checkbox", { name: "Management access granted" }).click();
+    await dialog.getByTestId("button-review-management-grant").click();
+    const confirmation = page.getByTestId("management-grant-confirmation");
+    await browserExpect(confirmation.getByTestId("management-own-role-warning")).toBeVisible();
+    await screenshot("own-removal-desktop");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await screenshot("own-removal-narrow");
+    await confirmation.getByTestId("button-cancel-management-confirmation").click();
+    await browserExpect(page.getByRole("alertdialog")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await browserExpect(page.getByTestId("management-grants-panel")).toHaveCount(0);
+    await browserExpect(page.getByTestId(`role-item-${managementTarget}`)).toHaveClass(/bg-\[#52baf3\]/);
+    await browserExpect(page.getByTestId(`checkbox-${menu}-canview`)).toBeChecked();
+    await browserExpect(page.getByTestId("button-save-access-control")).toBeEnabled();
+    // Opening again deliberately resets to the grid's target, not the last popup role.
+    await page.getByTestId("button-management-grants").click();
+    await browserExpect(selector).toHaveValue(managementTarget);
+    await browserExpect(dialog.getByRole("checkbox", { name: "Management access granted" })).not.toBeChecked();
+    await browserExpect(dialog.getByRole("checkbox", { name: "Management access granted" })).toBeEnabled();
+    await screenshot("normal-narrow");
+    await dialog.getByRole("checkbox", { name: "Management access granted" }).click();
+    await dialog.getByTestId("button-review-management-grant").click();
+    await browserExpect(confirmation).toContainText(targetName);
+    await browserExpect(confirmation.getByTestId("management-own-role-warning")).toHaveCount(0);
+    await screenshot("grant-confirmation-narrow");
+    await page.setViewportSize({ width: 1500, height: 1100 });
+    await screenshot("grant-confirmation-desktop");
+    await confirmation.getByTestId("button-confirm-management-change").click();
+    await browserExpect(page.getByRole("alertdialog")).toHaveCount(0);
+    await browserExpect(dialog.getByTestId("button-review-management-grant")).toBeDisabled();
+    await browserExpect(dialog.getByRole("list", { name: "Roles with explicit management access" })).toContainText(targetName);
+    const audit = (await pool.query(`SELECT * FROM adm_access_control_audit WHERE role_id=$1
+      AND resource='access_control' AND action='manage' ORDER BY id`, [managementTarget])).rows;
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({ event: "grant_change", actor_display_name: "Atomic Verifier",
+      affected_role_name: targetName, before_value: false, after_value: true });
+    expect(audit[0].actor).toMatchObject({ masterUserId: userId });
+    expect(audit[0].permission_display_label).toBeTruthy();
+    expect(audit[0].recorded_at).toBeTruthy();
+    await fs.writeFile(`${dir}/audit.json`, JSON.stringify(audit, null, 2));
+    await screenshot("saved-desktop");
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByTestId(`role-item-${role}`).click();
+    await browserExpect(page.getByTestId("unsaved-role-change-confirmation")).toBeVisible();
+    await screenshot("unsaved-grid-confirmation");
+    await page.getByTestId("button-cancel-role-change").click();
+    await browserExpect(page.getByRole("alertdialog")).toHaveCount(0);
+    await browserExpect(page.getByTestId(`checkbox-${menu}-canview`)).toBeChecked();
+    expect(writes).toEqual([`/api/v2/admin/access-control/roles/${managementTarget}/management`]);
+    await fs.writeFile(`${dir}/report.json`, JSON.stringify({ independentSelection: true, resetsToGridOnOpen: true,
+      dirtyGridPreserved: true, confirmationsPreserved: true, frozenAuditVerified: true, writes }, null, 2));
+    // Arrange recovery ONLY in the registered isolated test database; restore
+    // every affected grant, role flag and category-readiness value afterwards.
+    const active = (await pool.query("SELECT ruid FROM adm_rolemaster_ac WHERE is_active AND ruid<>$1", [role])).rows;
+    const managers = (await pool.query("SELECT role_id FROM adm_resource_action_grants WHERE resource='access_control' AND action='manage' AND allowed")).rows;
+    const readiness = (await pool.query("SELECT category_ready FROM adm_access_control_state WHERE singleton")).rows[0];
+    const connection = await pool.connect();
+    try {
+      await connection.query("BEGIN");
+      await connection.query("UPDATE adm_rolemaster_ac SET is_active=false WHERE is_active AND ruid<>$1", [role]);
+      await connection.query("UPDATE adm_rolemaster_ac SET assigned_role='Sail Admin' WHERE ruid=$1", [role]);
+      await connection.query("UPDATE master_users SET role='Sail Admin' WHERE id=$1", [userId]);
+      await connection.query("UPDATE adm_resource_action_grants SET allowed=false WHERE resource='access_control' AND action='manage' AND allowed");
+      await connection.query("UPDATE adm_access_control_state SET category_ready=false WHERE singleton");
+      await connection.query("COMMIT");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.getByText("Access Control", { exact: true }).first().click();
+      await page.getByTestId("button-management-grants").click();
+      await browserExpect(dialog.getByTestId("management-fallback-warning")).toBeVisible();
+      await browserExpect(dialog.getByRole("checkbox", { name: "Management access granted" })).toBeEnabled();
+      await screenshot("fallback-desktop");
+      await page.setViewportSize({ width: 390, height: 844 });
+      await screenshot("fallback-narrow");
+    } catch (error) {
+      await connection.query("ROLLBACK");
+      throw error;
+    } finally {
+      await connection.query("BEGIN");
+      await connection.query("UPDATE adm_rolemaster_ac SET assigned_role=$1 WHERE ruid=$2", [roleName, role]);
+      await connection.query("UPDATE master_users SET role=$1 WHERE id=$2", [roleName, userId]);
+      await connection.query("UPDATE adm_rolemaster_ac SET is_active=true WHERE ruid=ANY($1::text[])", [active.map(r => r.ruid)]);
+      await connection.query("UPDATE adm_resource_action_grants SET allowed=true WHERE resource='access_control' AND action='manage' AND role_id=ANY($1::text[])", [managers.map(r => r.role_id)]);
+      await connection.query("UPDATE adm_access_control_state SET category_ready=$1 WHERE singleton", [readiness.category_ready]);
+      await connection.query("COMMIT");
+      connection.release();
+    }
   } finally { await context.close(); }
 }, 90000);

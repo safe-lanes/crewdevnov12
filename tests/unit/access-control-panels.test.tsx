@@ -83,7 +83,7 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 });
 afterEach(() => { cleanup(); client.clear(); });
-async function boot(role = "reviewer") {
+async function boot(role = "reviewer", management = false) {
   render(<QueryClientProvider client={client}><AccessControlPage /></QueryClientProvider>);
   await screen.findByTestId("button-training-compliance-policy");
   if (mocks.state.allowed && !mocks.trainingError) {
@@ -91,6 +91,8 @@ async function boot(role = "reviewer") {
   } else if (mocks.state.allowed && mocks.trainingError) {
     await screen.findByText("Unable to load deployment override permission.");
   }
+  if (!management) return;
+  fireEvent.click(screen.getByTestId("button-management-grants"));
   await screen.findByRole("checkbox", { name: "Management access granted" });
   if (role !== "reviewer") {
     fireEvent.change(screen.getByLabelText("Choose role for management grant"), { target: { value: role } });
@@ -99,12 +101,37 @@ async function boot(role = "reviewer") {
   }
 }
 async function review(role = "reviewer") {
-  await boot(role);
+  await boot(role, true);
   fireEvent.click(screen.getByRole("checkbox", { name: "Management access granted" }));
   fireEvent.click(screen.getByTestId("button-review-management-grant"));
   return screen.findByRole("alertdialog");
 }
 describe("Access Control configure-once panels", () => {
+  it("opens on the grid role, keeps popup selection independent, and preserves dirty grid edits", async () => {
+    await boot();
+    fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
+    expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("button-management-grants"));
+    await screen.findByRole("checkbox", { name: "Management access granted" });
+    expect(screen.getByTestId("management-target-role")).toHaveTextContent("Fixture Reviewer");
+    fireEvent.change(screen.getByLabelText("Choose role for management grant"), { target: { value: "manager" } });
+    await waitFor(() => expect(screen.getByTestId("management-target-role")).toHaveTextContent("Fixture Manager"));
+    expect(screen.queryByTestId("unsaved-role-change-confirmation")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("management-grants-dialog")).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("management-grants-dialog")).not.toBeInTheDocument());
+    expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
+    expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("button-management-grants"));
+    expect(screen.getByLabelText("Choose role for management grant")).toHaveValue("reviewer");
+    expect(screen.getByTestId("management-target-role")).toHaveTextContent("Fixture Reviewer");
+    fireEvent.click(within(screen.getByTestId("management-grants-dialog")).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("management-grants-dialog")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("role-item-manager"));
+    expect(await screen.findByTestId("unsaved-role-change-confirmation")).toBeVisible();
+    fireEvent.click(screen.getByTestId("button-cancel-role-change"));
+    expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
+    expect(mocks.saveManagement).not.toHaveBeenCalled();
+  });
   it("saves menu, Company Forms, and deployment override edits through one combined mutation", async () => {
     await boot();
     fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
@@ -203,13 +230,12 @@ describe("Access Control configure-once panels", () => {
     const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     const grid = screen.getByTestId("access-control-permissions");
     const policyButton = screen.getByTestId("button-training-compliance-policy");
-    const management = screen.getByTestId("management-grants-panel");
     const companyForms = screen.getByTestId("company-forms-permissions");
     const training = screen.getByTestId("training-compliance-permissions");
     expect(grid.contains(companyForms)).toBe(true);
     expect(grid.contains(training)).toBe(true);
     expect(before(companyForms, training)).toBe(true);
-    expect(before(grid, management)).toBe(true);
+    expect(screen.queryByTestId("management-grants-panel")).not.toBeInTheDocument();
     expect(screen.queryByTestId("training-compliance-policy")).not.toBeInTheDocument();
     expect(before(policyButton, screen.getByRole("button", { name: "Access audit history" }))).toBe(true);
     expect(screen.getByTestId("access-control-top-actions")).toHaveClass("flex-wrap");
@@ -243,7 +269,7 @@ describe("Access Control configure-once panels", () => {
     expect(mocks.saveMenu).not.toHaveBeenCalled();
   });
   it("explains the temporary name route and parent-owned category in plain words", async () => {
-    await boot();
+    await boot("reviewer", true);
     const strip = screen.getByTestId("management-fallback-warning");
     expect(strip).toHaveTextContent("Admin, Super Admin or Sail Admin");
     expect(strip).toHaveTextContent("temporary setup state");
@@ -255,7 +281,7 @@ describe("Access Control configure-once panels", () => {
   it("lists every explicit holder by name, marks the server-resolved own role, and places the list after controls", async () => {
     Object.assign(mocks.state, { mode: "management", eligibleManagerCount: 1, currentRoleId: "manager",
       explicitManagers: [{ roleId: "manager", roleName: "Fixture Manager" }, { roleId: "unlinked", roleName: "Marine Manager" }] });
-    await boot();
+    await boot("reviewer", true);
     const list = screen.getByTestId("management-explicit-managers");
     expect(list).toHaveTextContent("Fixture Manager");
     expect(list).toHaveTextContent("Marine Manager");
@@ -280,13 +306,13 @@ describe("Access Control configure-once panels", () => {
   });
   it("does not claim bootstrap is empty when an explicit but ineligible holder exists", async () => {
     mocks.state.explicitManagers = [{ roleId: "unlinked", roleName: "Unlinked Manager" }];
-    await boot();
+    await boot("reviewer", true);
     expect(screen.getByTestId("management-explicit-managers")).toHaveTextContent("Unlinked Manager");
     expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
   });
   it("shows Retry instead of inventing an empty list when the display list is unavailable", async () => {
     delete (mocks.state as { explicitManagers?: unknown }).explicitManagers;
-    await boot();
+    await boot("reviewer", true);
     expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
     expect(screen.getByTestId("management-grants-panel")).toHaveTextContent(/unable|unavailable|could not/i);
     expect(within(screen.getByTestId("management-grants-panel")).getByRole("button", { name: "Retry" })).toBeVisible();
@@ -322,7 +348,7 @@ describe("Access Control configure-once panels", () => {
   });
   it("does not enable management editing for a denied user", async () => {
     Object.assign(mocks.state, { allowed: false, mode: "denied", eligibleManagerCount: 1 });
-    await boot();
+    await boot("reviewer", true);
     expect(screen.getByRole("checkbox", { name: "Management access granted" })).toBeDisabled();
     expect(screen.getByTestId("button-review-management-grant")).toBeDisabled();
     expect(screen.getByText("Management grant editing is unavailable in the current server mode.")).toBeVisible();
@@ -330,7 +356,7 @@ describe("Access Control configure-once panels", () => {
   });
   it("describes parent-category recovery as ready, not missing", async () => {
     Object.assign(mocks.state, { mode: "category_recovery", categoryReady: true, recoveryRoute: "parent_sail_admin" });
-    await boot();
+    await boot("reviewer", true);
     expect(screen.queryByTestId("management-fallback-warning")).not.toBeInTheDocument();
     expect(screen.queryByText(/not supplied by the parent/i)).not.toBeInTheDocument();
   });

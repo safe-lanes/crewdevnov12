@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import {
   AlertDialog,
@@ -148,6 +149,8 @@ export default function AccessControlPage() {
   const { accessControlManagement } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [managementRoleUuid, setManagementRoleUuid] = useState<string | null>(null);
   const [managementDraft, setManagementDraft] = useState(false);
   const [managementError, setManagementError] = useState("");
   const [managementConfirmation, setManagementConfirmation] = useState<{
@@ -179,13 +182,13 @@ export default function AccessControlPage() {
   const trainingComplianceQuery = useRoleTrainingComplianceGrantV2(selectedRoleUuid, {
     enabled: !!stateQuery.data?.allowed,
   });
-  const roleManagementUrl = selectedRoleUuid
-    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid)}/management`
+  const roleManagementUrl = managementRoleUuid
+    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(managementRoleUuid)}/management`
     : "";
   const managementQuery = useQuery<{ allowed: boolean }>({
     queryKey: [roleManagementUrl],
-    queryFn: () => adminApiV2.getRoleManagementGrant(selectedRoleUuid!),
-    enabled: !!selectedRoleUuid,
+    queryFn: () => adminApiV2.getRoleManagementGrant(managementRoleUuid!),
+    enabled: managementOpen && !!managementRoleUuid,
   });
   const saveManagementMutation = useMutation({
     mutationFn: ({ roleUuid, allowed }: { roleUuid: string; roleName: string; allowed: boolean }) =>
@@ -262,9 +265,22 @@ export default function AccessControlPage() {
   const allMenuMuids = useMemo(() => (menusData as MenuItemApi[]).map(m => m.muid), [menusData]);
 
   const selectedRole = useMemo(
-    () => (rolesData as RoleApi[]).find((r) => r.ruid === selectedRoleUuid),
+    () => (rolesData as RoleApi[]).find(r => r.ruid === selectedRoleUuid),
     [rolesData, selectedRoleUuid]
   );
+  const managementRole = (rolesData as RoleApi[]).find(r => r.ruid === managementRoleUuid);
+  const openManagement = () => {
+    setManagementRoleUuid(selectedRoleUuid);
+    setManagementDraft(false);
+    setManagementError("");
+    setManagementOpen(true);
+    if (selectedRoleUuid) {
+      const cached = queryClient.getQueryData<{ allowed: boolean }>([
+        `/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid)}/management`,
+      ]);
+      if (cached) setManagementDraft(cached.allowed);
+    }
+  };
   const explicitManagers = Array.isArray(stateQuery.data?.explicitManagers)
     ? stateQuery.data.explicitManagers
     : undefined;
@@ -488,6 +504,9 @@ export default function AccessControlPage() {
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
       <div className="flex flex-wrap items-center justify-end gap-3" data-testid="access-control-top-actions">
+        <Button variant="outline" onClick={openManagement} data-testid="button-management-grants">
+          <ShieldCheck aria-hidden="true" className="mr-2 h-4 w-4" />Management grants
+        </Button>
         {accessControlManagement && <TrainingCompliancePolicyDialog />}
         <AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding />
       </div>
@@ -653,12 +672,21 @@ export default function AccessControlPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={managementOpen} onOpenChange={setManagementOpen}>
+      <DialogContent aria-describedby={undefined} className="max-h-[92vh] w-[min(960px,96vw)] max-w-none overflow-y-auto border-slate-200 bg-[#fbfcfd] p-0" data-testid="management-grants-dialog">
+      <DialogHeader className="border-b px-6 py-4 pr-12">
+        <DialogTitle>Management grants</DialogTitle>
+      </DialogHeader>
+      <div className="px-6 pb-5">
       <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading" data-testid="management-grants-panel">
         <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
           <ShieldCheck size={18} aria-hidden="true" />
           <h2 id="management-grants-heading" className="font-semibold">Management grants</h2>
         </div>
         <p className="border-b border-gray-200 px-4 py-3 text-sm text-gray-700">This controls which roles may administer Access Control itself, including granting permissions to other roles.</p>
+        <p className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#16569e]" data-testid="management-target-role">
+          Management access applies to: {managementRole?.assignedRole || "Choose a role"}
+        </p>
         {stateQuery.isLoading ? (
           <div className="p-4 space-y-3" aria-label="Loading access control state">
             <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse" />
@@ -676,9 +704,13 @@ export default function AccessControlPage() {
                 <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
                 <select
                   id="management-role-select"
-                  value={selectedRoleUuid ?? ""}
-                  onChange={event => handleRoleSelect(event.target.value)}
-                  disabled={combinedSavePending}
+                  value={managementRoleUuid ?? ""}
+                  onChange={event => {
+                    setManagementRoleUuid(event.target.value);
+                    setManagementDraft(false);
+                    setManagementError("");
+                  }}
+                  disabled={saveManagementMutation.isPending}
                   className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
                   aria-label="Choose role for management grant"
                 >
@@ -688,7 +720,7 @@ export default function AccessControlPage() {
               <div>
                 <div className="mb-1 text-xs font-semibold text-gray-600">Parent category <span className="font-normal">(read-only)</span></div>
                 <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
-                  {selectedRole?.roletype || "Not assigned"}
+                  {managementRole?.roletype || "Not assigned"}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -696,7 +728,7 @@ export default function AccessControlPage() {
                   <label className={`flex min-h-10 items-center gap-2 text-sm ${stateQuery.data?.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
                     <Checkbox
                       checked={managementDraft}
-                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isError}
+                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isFetching || managementQuery.isError}
                       onCheckedChange={value => setManagementDraft(value === true)}
                       aria-label="Management access granted"
                     />
@@ -706,11 +738,11 @@ export default function AccessControlPage() {
                 <Button
                   onClick={() => {
                     setManagementError("");
-                    if (selectedRoleUuid && selectedRole) {
-                      setManagementConfirmation({ roleUuid: selectedRoleUuid, roleName: selectedRole.assignedRole, allowed: managementDraft });
+                    if (managementRoleUuid && managementRole) {
+                      setManagementConfirmation({ roleUuid: managementRoleUuid, roleName: managementRole.assignedRole, allowed: managementDraft });
                     }
                   }}
-                  disabled={!stateQuery.data?.allowed || !selectedRoleUuid || managementQuery.isLoading || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
+                  disabled={!stateQuery.data?.allowed || !managementRoleUuid || managementQuery.isLoading || managementQuery.isFetching || managementQuery.isError || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
                   className="bg-[#16569e] text-white hover:bg-[#0f4078]"
                   data-testid="button-review-management-grant"
                 >
@@ -764,6 +796,9 @@ export default function AccessControlPage() {
           </div>
         )}
       </section>
+      </div>
+      </DialogContent>
+      </Dialog>
       <AlertDialog open={!!managementConfirmation} onOpenChange={open => { if (!open) setManagementConfirmation(null); }}>
         <AlertDialogContent data-testid="management-grant-confirmation">
           <AlertDialogHeader>

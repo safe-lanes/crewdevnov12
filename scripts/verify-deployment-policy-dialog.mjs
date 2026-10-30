@@ -4,7 +4,10 @@ import { execFileSync } from "node:child_process";
 import pg from "pg";
 import { chromium, expect } from "@playwright/test";
 
-const out = ".local/verification/deployment-policy-dialog/main-preview";
+const management = process.argv.includes("--management");
+const out = management
+  ? ".local/verification/management-grants-dialog/main-preview"
+  : ".local/verification/deployment-policy-dialog/main-preview";
 await fs.mkdir(out, { recursive: true });
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL, options: "-c default_transaction_read_only=on" });
 async function fingerprint() {
@@ -58,7 +61,7 @@ if (mode === "before" || mode === "after") {
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
     await page.getByText("Access Control", { exact: true }).first().click({ timeout: 45000 });
-    const button = page.getByTestId("button-training-compliance-policy");
+    const button = page.getByTestId(management ? "button-management-grants" : "button-training-compliance-policy");
     await expect(button).toBeVisible();
     const capture = async name => {
       await page.screenshot({ path: `${out}/${name}.jpg`, animations: "disabled" });
@@ -68,17 +71,36 @@ if (mode === "before" || mode === "after") {
       await page.setViewportSize({ width, height });
       await page.getByTestId("access-control-top-actions").scrollIntoViewIfNeeded();
       await expect(page.getByTestId("training-compliance-policy")).toHaveCount(0);
+      await expect(page.getByTestId("management-grants-panel")).toHaveCount(0);
       const boxes = await page.getByTestId("access-control-top-actions").getByRole("button").evaluateAll(buttons =>
         buttons.map(b => { const r = b.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top }; }));
-      expect(boxes).toHaveLength(3);
+      expect(boxes).toHaveLength(4);
       for (const box of boxes) { expect(box.left).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(width); }
       if (size === "narrow") expect(new Set(boxes.map(b => b.top)).size).toBeGreaterThan(1);
       await capture(`${size}-body`);
       await button.click();
-      const dialog = page.getByTestId("training-compliance-policy-dialog");
-      await expect(dialog.getByTestId("training-expiring-current-effect")).toBeVisible();
-      await expect(dialog.getByTestId("training-missing-expiry-current-effect")).toBeVisible();
-      await expect(dialog.getByTestId("save-training-compliance-policy")).toBeVisible();
+      const dialog = page.getByTestId(management ? "management-grants-dialog" : "training-compliance-policy-dialog");
+      if (management) {
+        await expect(dialog.getByTestId("management-target-role")).toBeVisible();
+        const selector = dialog.getByLabel("Choose role for management grant");
+        const selected = await selector.inputValue();
+        const name = await selector.locator("option:checked").innerText();
+        await expect(dialog.getByTestId("management-target-role")).toContainText(name);
+        await expect(page.getByTestId(`role-item-${selected}`)).toHaveClass(/bg-\[#52baf3\]/);
+        const other = await selector.locator("option").evaluateAll((options, selected) =>
+          options.find(o => o.value !== selected)?.value, selected);
+        if (!other) throw Error("A second existing role is required to verify independence.");
+        await selector.selectOption(other);
+        const otherName = await selector.locator("option:checked").innerText();
+        await expect(dialog.getByTestId("management-target-role")).toContainText(otherName);
+        await expect(page.getByTestId(`role-item-${selected}`)).toHaveClass(/bg-\[#52baf3\]/);
+        await expect(dialog.getByText("Parent category", { exact: false }).first()).toBeVisible();
+        await expect(dialog.getByTestId("button-review-management-grant")).toBeVisible();
+      } else {
+        await expect(dialog.getByTestId("training-expiring-current-effect")).toBeVisible();
+        await expect(dialog.getByTestId("training-missing-expiry-current-effect")).toBeVisible();
+        await expect(dialog.getByTestId("save-training-compliance-policy")).toBeVisible();
+      }
       await capture(`${size}-popup`);
       await dialog.getByRole("button", { name: "Close", exact: true }).click();
     }
@@ -87,7 +109,8 @@ if (mode === "before" || mode === "after") {
     await fs.writeFile(`${out}/report.json`, JSON.stringify({
       head: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
       persona: { role: actor.role, id: actor.id }, blockedWrites, errors, screenshots,
-      buttons: 3, noInlinePanel: true, narrowWidth: 390,
+      buttons: 4, noInlinePanel: true, narrowWidth: 390,
+      management,
       evidence: "Main preview read-only development persona; no parent SSO; saved changes exercised only in isolated test database",
     }, null, 2));
   } finally { await browser.close(); await db.end(); }
