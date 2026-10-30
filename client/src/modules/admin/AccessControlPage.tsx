@@ -457,10 +457,6 @@ export default function AccessControlPage() {
           <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="flex-1">
-          {selectedRoleUuid && stateQuery.data?.allowed && <>
-            <CompanyFormsPermissionEditor key={`forms-${selectedRoleUuid}`} roleId={selectedRoleUuid} />
-            <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
-          </>}
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
@@ -485,6 +481,10 @@ export default function AccessControlPage() {
         </div>
       </div>
       </div>
+      {selectedRoleUuid && stateQuery.data?.allowed && <>
+        <CompanyFormsPermissionEditor key={`forms-${selectedRoleUuid}`} roleId={selectedRoleUuid} />
+        <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
+      </>}
       {accessControlManagement && <TrainingCompliancePolicySetting />}
       <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading" data-testid="management-grants-panel">
         <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">

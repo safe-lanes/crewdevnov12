@@ -3,7 +3,11 @@
 ## Scope
 
 Presentation and a client-side confirmation only. The permission grid and its
-Save Changes footer precede Training compliance policy and Management grants.
+Save Changes footer precede Company Forms, Training compliance (the selected
+role's override permission), Training compliance policy and Management grants.
+The two operational permission cards stay together immediately after the grid;
+tenant-wide policy and administration authority follow them. Their original
+selected-role mounting keys and management-authority condition are retained.
 Access audit history and Company PDF branding remain at the top.
 
 Each training checkbox is beside its own heading, with its explanation on hover
@@ -67,6 +71,35 @@ grants, audit entries, category state or other development records are changed.
 
 ## Recommendation only; not implemented
 
+### Separate saves: current behaviour
+
+All three selected-role sections have independent PUT endpoints:
+
+- Grid: `/api/v2/admin/access-control/roles/:ruid/permissions`.
+- Company Forms: `/api/v2/admin/access-control/roles/:ruid/action-permissions`.
+- Training override: `/api/v2/admin/access-control/roles/:ruid/training-compliance`.
+
+Each request has its own server transaction. One button that simply called all
+three would still make three separate calls; it would not make them atomic.
+A successful call stays committed if another fails, even if the browser sends
+them concurrently.
+
+Today a failed grid save shows the destructive toast “Failed to save
+permissions. Please try again.” Company Forms shows “Unable to save Company
+Forms permissions. Please retry.” Training override shows “Unable to save
+training compliance permission. Please retry.” Those section errors do not
+roll back another successful section, and the failed section retains its edits.
+There is no combined-button behaviour today: a future non-atomic button would
+need explicit per-section results, not an unconditional overall success.
+
+Atomic saving needs a new combined server endpoint that validates all three
+payloads and uses one tenant transaction, the existing trusted actor and locking,
+permission checks, safeguards, change detection and audit writes. The existing
+write logic would need transaction-aware composition, rather than three HTTP
+calls or independently committed transactions. The client would also need
+coordinated dirty state, errors and navigation warnings. None of that is changed
+by this presentation task; all three Save buttons remain separate and unchanged.
+
 The three ordinary selected-role permission saves (menu grid, Company Forms
 and training override) could become one **Save role permissions** action:
 they configure operational permissions for the same selected role.
@@ -81,6 +114,36 @@ Keep **Save grant** separate: it changes who can administer all Access Control
 and requires the new explicit confirmation.
 
 No buttons or save groups were consolidated in this change.
+
+## Role permission card wording and help
+
+Company Forms explains viewing, filling in, witnessing, company signing,
+voiding unfinished/completed forms and eligible checklist overrides. It states
+that category and vessel access still limit the available forms/actions, and
+that company-representative signing is limited to office roles.
+
+Training compliance says: “Lets this role approve a deployment that training
+rules would otherwise block — for example, when a seafarer is missing a
+mandatory certificate.”
+
+Each Company Forms checkbox has its own separate information button. Hover or
+keyboard focus opens a tooltip; tapping opens a dismissible popover. Help never
+toggles the adjacent checkbox. Exact help wording:
+
+| Checkbox | Explanation |
+| --- | --- |
+| View | Allows this role to view Company Forms. |
+| Fill in | Allows this role to fill in Company Forms. |
+| Witness | Records a seafarer’s signature on their behalf, with the acting user’s own identity recorded as the witness. |
+| Sign as Company Representative | Allows an office user to sign a Company Form in the company representative role. |
+| Void | Allows this role to void a Company Form that has not been completed. |
+| Void completed | Allows this role to void a Company Form that has already been completed. |
+| Override checklist | Allows this role to override unresolved mandatory or failed/pending checklist checks. It does not allow overriding unfinished required forms. |
+
+`scripts/verify-role-permission-panels.mjs` captures the repositioned cards,
+grid and all four ambiguous-label explanations at desktop and narrow widths.
+It reuses an existing office development persona, uses real GET responses,
+blocks every API mutation and does not create fixtures or change grants.
 
 ## Verification
 

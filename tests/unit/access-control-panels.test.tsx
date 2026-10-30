@@ -97,7 +97,13 @@ describe("Access Control configure-once panels", () => {
     const grid = screen.getByTestId("access-control-permissions");
     const policy = screen.getByTestId("training-compliance-policy");
     const management = screen.getByTestId("management-grants-panel");
-    expect(before(grid, policy)).toBe(true);
+    const companyForms = screen.getByText("Company Forms permissions");
+    const training = screen.getByTestId("training-compliance-role-permission");
+    expect(grid.contains(companyForms)).toBe(false);
+    expect(grid.contains(training)).toBe(false);
+    expect(before(grid, companyForms)).toBe(true);
+    expect(before(companyForms, training)).toBe(true);
+    expect(before(training, policy)).toBe(true);
     expect(before(policy, management)).toBe(true);
     expect(before(screen.getByRole("button", { name: "Access audit history" }), grid)).toBe(true);
     expect(before(screen.getByRole("button", { name: "Company PDF branding" }), grid)).toBe(true);

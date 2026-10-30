@@ -47,17 +47,21 @@ export function TrainingComplianceRolePermissionEditor({ roleUuid }: { roleUuid:
     } catch { setError("Unable to save training compliance permission. Please retry."); }
     finally { setSaving(false); }
   }
-  return <section className="border-b border-gray-200 p-4" data-testid="training-compliance-role-permission">
-    <h3 className="mb-2 font-semibold text-gray-800">Training compliance</h3>
-    <p className="mb-3 text-sm text-gray-600">Grant this role permission to override training compliance when the server allows it. New grants are off by default.</p>
-    {query.isLoading ? <div className="h-5 w-48 animate-pulse rounded bg-gray-100" aria-label="Loading training compliance permission" /> :
-      query.isError ? <p className="text-sm text-red-700" role="alert">Unable to load training compliance permission. <button className="underline" onClick={() => query.refetch()}>Retry</button></p> :
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <Checkbox checked={allowed} disabled={saving} onCheckedChange={value => setAllowed(value === true)} data-testid="training-compliance-permission-checkbox" />
-          Override training compliance
-        </label>}
-    {error && <p className="mt-2 text-sm text-red-700" role="alert">{error}</p>}
-    <Button className="mt-3" disabled={!query.data || query.isLoading || saving || allowed === query.data?.allowed} onClick={save} data-testid="save-training-compliance-permission">{saving ? "Saving…" : "Save training compliance permission"}</Button>
+  return <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="training-compliance-role-permission">
+    <div className="border-b border-gray-200 bg-[#16569e] px-4 py-3 text-white">
+      <h2 className="font-semibold">Training compliance</h2>
+    </div>
+    <div className="p-4">
+      <p className="mb-3 text-sm text-gray-600">Lets this role approve a deployment that training rules would otherwise block — for example, when a seafarer is missing a mandatory certificate.</p>
+      {query.isLoading ? <div className="h-5 w-48 animate-pulse rounded bg-gray-100" aria-label="Loading training compliance permission" /> :
+        query.isError ? <p className="text-sm text-red-700" role="alert">Unable to load training compliance permission. <button className="underline" onClick={() => query.refetch()}>Retry</button></p> :
+          <label className="flex min-h-10 items-center gap-2 text-sm text-gray-700">
+            <Checkbox checked={allowed} disabled={saving} onCheckedChange={value => setAllowed(value === true)} data-testid="training-compliance-permission-checkbox" />
+            Override training compliance
+          </label>}
+      {error && <p className="mt-2 text-sm text-red-700" role="alert">{error}</p>}
+      <Button className="mt-3" disabled={!query.data || query.isLoading || saving || allowed === query.data?.allowed} onClick={save} data-testid="save-training-compliance-permission">{saving ? "Saving…" : "Save training compliance permission"}</Button>
+    </div>
   </section>;
 }
 
