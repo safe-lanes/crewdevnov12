@@ -169,7 +169,8 @@ async function compare(label: string) {
   let pass = 0, total = 0;
   const firstVessel: Record<string, string> = {};
   for (const db of Object.keys(DBS)) {
-    const base = new URL(process.env.DATABASE_URL || "postgres://postgres:admin123@localhost:5432/postgres"); base.pathname = `/${db}`;
+    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required (local admin url) for compare");
+    const base = new URL(process.env.DATABASE_URL); base.pathname = `/${db}`;
     const c = new Client({ connectionString: base.toString() }); await c.connect();
     try { firstVessel[db] = String((await c.query(`SELECT vessel FROM master_vessels WHERE is_deleted IS NOT TRUE ORDER BY id LIMIT 1`)).rows[0]?.vessel ?? ""); } finally { await c.end(); }
   }
