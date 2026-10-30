@@ -54,6 +54,11 @@ export function SailAssistantMount() {
     assistantUrl: base || "",
     module: ASSISTANT_MODULE,
     title: "Crewing Assistant",
+    // Stage 2 (live data): the widget's default intro says answers come only from the manuals — no longer true.
+    intro:
+      "Ask how to do something in Crewing — answered from the user manuals, with their sources. " +
+      "Or ask about current crew data, such as who is on board or which licences and training certificates are expiring — " +
+      "answered from Crewing data, with the date it applies to.",
     getToken: fetchAssistantToken,
     context: { userKey: userId, tenantKey: getTenantId(), vesselId, vesselName, currentPage: location },
   });

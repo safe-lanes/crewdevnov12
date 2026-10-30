@@ -5,6 +5,7 @@ import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
+import assistantServiceRoutes from "./v2/assistant/serviceRoutes";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -75,6 +76,9 @@ app.use((req, res, next) => {
   await runMigrations();
 
   await tenantConnectionManager.init();
+
+  // Assistant live data (service-to-service, stage 2): see server/v2/assistant/serviceRoutes.ts
+  app.use("/api/v2/assistant", assistantServiceRoutes);
 
   app.use(tenantMiddleware);
   app.use(authMiddleware);
