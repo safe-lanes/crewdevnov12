@@ -23,14 +23,29 @@ import { allowedRoles } from "./assistantTokenService";
 import { serviceSecretMatches, verifyAssistantIdentity, type VerifiedIdentity } from "../serviceIdentity";
 import { DataTimeoutError, runReadOnly } from "../repositories/assistantDataRepository";
 import { asOfDate } from "../livedata/definitions";
-import { ToolRefusal, refuse, type ToolContext } from "../livedata/common";
+import { ToolRefusal, refuse, type Area, type ToolContext } from "../livedata/common";
 import { assignmentsArgs, queryAssignments } from "../livedata/assignmentsArea";
 import { documentsArgs, documentsNeedsVessel, queryDocuments } from "../livedata/documentsArea";
 import { findCrew, findCrewArgs, resolveVessel, resolveVesselArgs } from "../livedata/lookups";
+import { availabilityArgs, queryAvailability } from "../livedata/availabilityArea";
+import { queryRelief, reliefArgs } from "../livedata/reliefArea";
+import { queryRestHours, restHoursArgs } from "../livedata/restHoursArea";
+import { queryRotation, rotationArgs } from "../livedata/rotationArea";
+import { manningArgs, queryManning } from "../livedata/manningArea";
+import { appraisalsArgs, queryAppraisals } from "../livedata/appraisalsArea";
 import { manifest } from "../livedata/tools";
 
-export type Area = "vessel" | "documents" | "crewPool";
-const AREA_MENUS: Record<Area, string> = { vessel: "Vessel", documents: "CP Training Certificates", crewPool: "Crew Pool" };
+export type { Area };
+/** Data area → the Access Control menu whose VIEW right it needs (Part B menus added 30-Oct-2026). */
+const AREA_MENUS: Record<Area, string> = {
+  vessel: "Vessel", documents: "CP Training Certificates", crewPool: "Crew Pool",
+  due: "Due", restHours: "Rest Hours", rotation: "Rotation", appraisalsAll: "Appraisals All",
+};
+const TOOLS = [
+  "crewing_query_assignments", "crewing_query_documents", "crewing_find_crew", "crewing_resolve_vessel",
+  "crewing_query_availability", "crewing_query_relief_due", "crewing_query_rest_hours", "crewing_query_rotation_approvals",
+  "crewing_query_manning", "crewing_query_appraisals",
+] as const;
 
 export type ServiceResult = { status: number; body: unknown };
 
@@ -53,10 +68,10 @@ function authenticate(req: Request): { ok: true; identity: VerifiedIdentity } | 
   return { ok: true, identity: check.identity };
 }
 
-async function viewableAreas(roleId: string): Promise<Set<Area>> {
+async function viewableAreas(roleId: string): Promise<{ view: Set<Area>; edit: Set<Area> }> {
   const db = getDb();
   const rows = await db
-    .select({ menu: admMenuMasterAc.name, canview: admRoleAccessAc.canview })
+    .select({ menu: admMenuMasterAc.name, canview: admRoleAccessAc.canview, canedit: admRoleAccessAc.canedit })
     .from(admRoleAccessAc)
     .innerJoin(admMenuMasterAc, eq(admMenuMasterAc.muid, admRoleAccessAc.menuId))
     .where(
@@ -70,9 +85,16 @@ async function viewableAreas(roleId: string): Promise<Set<Area>> {
   const granted = new Set(
     rows.filter((r: { canview: boolean | null }) => r.canview === true).map((r: { menu: string }) => r.menu.trim().toLocaleLowerCase()),
   );
-  const out = new Set<Area>();
-  for (const [area, menu] of Object.entries(AREA_MENUS) as [Area, string][]) if (granted.has(menu.toLocaleLowerCase())) out.add(area);
-  return out;
+  const editable = new Set(
+    rows.filter((r: { canedit: boolean | null }) => r.canedit === true).map((r: { menu: string }) => r.menu.trim().toLocaleLowerCase()),
+  );
+  const view = new Set<Area>();
+  const edit = new Set<Area>();
+  for (const [area, menu] of Object.entries(AREA_MENUS) as [Area, string][]) {
+    if (granted.has(menu.toLocaleLowerCase())) view.add(area);
+    if (editable.has(menu.toLocaleLowerCase())) edit.add(area);
+  }
+  return { view, edit };
 }
 
 /** Data areas a call needs — EVERY one must be viewable (combined queries check each area they touch). */
@@ -86,6 +108,20 @@ function areasNeeded(tool: string, args: unknown): Area[] {
   if (tool === "crewing_query_documents") {
     const parsed = documentsArgs.safeParse(args ?? {});
     return parsed.success && documentsNeedsVessel(parsed.data) ? ["documents", "vessel"] : ["documents"];
+  }
+  // Part B (30-Oct-2026): each area needs the VIEW right of the Crewing menu it reads from
+  if (tool === "crewing_query_availability") {
+    const vesselFacts = !!(args && typeof args === "object" && ((args as Record<string, unknown>).vessels || (args as Record<string, unknown>).crewStatus));
+    return vesselFacts ? ["crewPool", "vessel"] : ["crewPool"];
+  }
+  if (tool === "crewing_query_relief_due") return ["vessel", "due"];
+  if (tool === "crewing_query_rest_hours") return ["restHours", "vessel"];
+  if (tool === "crewing_query_rotation_approvals") return ["rotation"];
+  if (tool === "crewing_query_manning") return ["vessel"];
+  if (tool === "crewing_query_appraisals") {
+    // appraisal status needs the Appraisals menu; scores are checked again inside the tool (view right on 'Appraisals All')
+    const vesselFacts = !!(args && typeof args === "object" && (args as Record<string, unknown>).vessels);
+    return vesselFacts ? ["appraisalsAll", "vessel"] : ["appraisalsAll"];
   }
   return [];
 }
@@ -117,6 +153,18 @@ async function runTool(tool: string, rawArgs: unknown, ctx: ToolContext) {
         return findCrew(q, ctx, findCrewArgs.parse(args ?? {}));
       case "crewing_resolve_vessel":
         return resolveVessel(q, ctx, resolveVesselArgs.parse(args ?? {}));
+      case "crewing_query_availability":
+        return queryAvailability(q, ctx, availabilityArgs.parse(args ?? {}));
+      case "crewing_query_relief_due":
+        return queryRelief(q, ctx, reliefArgs.parse(args ?? {}));
+      case "crewing_query_rest_hours":
+        return queryRestHours(q, ctx, restHoursArgs.parse(args ?? {}));
+      case "crewing_query_rotation_approvals":
+        return queryRotation(q, ctx, rotationArgs.parse(args ?? {}));
+      case "crewing_query_manning":
+        return queryManning(q, ctx, manningArgs.parse(args ?? {}));
+      case "crewing_query_appraisals":
+        return queryAppraisals(q, ctx, appraisalsArgs.parse(args ?? {}));
       default:
         throw new ToolRefusal(refuse("unknown_tool", `Unknown tool '${tool}'.`));
     }
@@ -134,15 +182,21 @@ async function authorizedExecute(identity: VerifiedIdentity, tool: string, args:
   if (!allowedRoles().includes(resolution.role.roleName.trim().toLocaleLowerCase())) {
     return refuse("not_allowed", "Your role is not allowed to use live data in the assistant.");
   }
-  if (!["crewing_query_assignments", "crewing_query_documents", "crewing_find_crew", "crewing_resolve_vessel"].includes(tool)) {
+  if (!(TOOLS as readonly string[]).includes(tool)) {
     return refuse("unknown_tool", `Unknown tool '${tool}'.`);
   }
   const areas = await viewableAreas(resolution.role.roleId);
-  const missing = areasNeeded(tool, dropEmpty(args ?? {})).filter((a) => !areas.has(a));
+  const missing = areasNeeded(tool, dropEmpty(args ?? {})).filter((a) => !areas.view.has(a));
   if (missing.length) {
     return refuse("not_allowed", `Your role cannot view: ${missing.map((m) => AREA_MENUS[m]).join(", ")}.`);
   }
-  const ctx: ToolContext = { asOf: asOfDate(), canView: (a) => areas.has(a) };
+  const ctx: ToolContext = {
+    asOf: asOfDate(),
+    canView: (a) => areas.view.has(a),
+    canEdit: (a) => areas.edit.has(a),
+    // the VERIFIED identity (signed by the assistant from the user's token) — never a name or id the model supplies
+    actor: { userId: String(identity.userId), role: resolution.role.roleName, userType: identity.userType ?? null },
+  };
   const started = Date.now();
   const out = await (async () => {
     try {

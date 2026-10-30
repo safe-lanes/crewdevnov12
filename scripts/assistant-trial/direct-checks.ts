@@ -188,6 +188,112 @@ async function counts(t: Target) {
   check("S5 unknown tool → unknown_tool", r.ok === false && r.code === "unknown_tool", r);
 }
 
+/** Part B (30-Oct-2026) — hand-derived from fixture v3, as-of 2026-11-01. */
+async function partB(t: Target) {
+  const av = (args: object) => q(t, "crewing_query_availability", { mode: "count", ...args });
+  const rd = (args: object) => q(t, "crewing_query_relief_due", { mode: "count", ...args });
+  const mn = (args: object) => q(t, "crewing_query_manning", { mode: "count", ...args });
+  const rt = (args: object) => q(t, "crewing_query_rotation_approvals", { mode: "count", ...args });
+  const rh = (args: object) => q(t, "crewing_query_rest_hours", { mode: "count", ...args });
+  const ap = (args: object) => q(t, "crewing_query_appraisals", { mode: "count", ...args });
+
+  // B1 availability
+  let r = await av({});
+  check("B1-1 available NOW = 1 (Ulric, available since 20-Oct); Verity (not for rehire), Rowena (inactive), Pelham (terminated) never",
+    r.totals?.people === 1 && r.excluded?.noAvailabilityDate === 1, r);
+  r = await av({ availableBy: "2026-11-30" });
+  check("B1-2 available by 30-Nov = 3 (Ulric, Kestrel 5-Nov, Ilvar 15-Nov)", r.totals?.people === 3, r);
+  r = await q(t, "crewing_query_availability", { mode: "list", availableWithin: next(2, "months") });
+  check("B1-3 available within 2 months = 5 incl. Nadira ON BOARD with Next Availability 5-Dec (Sahil's case); earliest first = Ulric",
+    r.totals?.people === 5 && r.rows?.some((x: any) => x.fullName === "Nadira Sklemmon" && x.crewStatus === "on_board") && r.rows?.[0]?.fullName === "Ulric Penhallow", r.rows);
+  r = await av({ availableBy: "2026-12-31", ranks: ["Chief Officer"] });
+  check("B1-4 Chief Officers available by 31-Dec = 3 (Ulric, Jorund, Nadira)", r.totals?.people === 3, r);
+  r = await av({ availableBy: "2026-11-30", includeNotForHire: true });
+  check("B1-5 …including not-for-rehire on request = 4 (Verity added)", r.totals?.people === 4, r);
+  r = await av({ availableBy: "2026-11-30", crewStatus: ["on_board"] });
+  check("B1-6 on-board crew available by 30-Nov = 0 (Nadira's date is 5-Dec)", r.ok === true && r.totals?.people === 0, r);
+  r = await q(t, "crewing_query_availability", { mode: "list", availableWithin: { direction: "last", amount: 1, unit: "months" } });
+  check("B1-7 a backward window → invalid_args", r.ok === false && r.code === "invalid_args", r);
+
+  // B2 relief due (Due Crew rule)
+  r = await rd({ dueState: "overdue" });
+  check("B2-1 overdue = 2 (Aldric contract end 1-Oct, Marek 1-Oct); Hadrian without any date is in excluded.noDueDate", r.totals?.assignments === 2 && r.excluded?.noDueDate === 1, r);
+  r = await rd({ dueWithin: next(1, "months") });
+  check("B2-2 due within 1 month = 4 (Dagny 10-Nov, Nadira 20-Nov + 2 overdue)", r.totals?.assignments === 4, r);
+  r = await q(t, "crewing_query_relief_due", { mode: "list", dueWithin: next(3, "months") });
+  check("B2-3 due within 3 months = 9 incl. Corvina on the 1-Feb boundary; Aldric's recorded relief-due (20-Oct) differs from the contract end (1-Oct)",
+    r.totals?.assignments === 9 && r.rows?.some((x: any) => x.fullName === "Aldric Vexmoor" && x.reliefDueDiffers === true && x.contractEndDate === "2026-10-01" && x.reliefDueDate === "2026-10-20") &&
+    Array.isArray(r.notes) && /2 assignment/.test(r.notes[0]), r);
+  r = await q(t, "crewing_query_relief_due", { mode: "list", vessels: ["MV Alpha Star"], ranks: ["2nd Engineer"] });
+  check("B2-4 tolerance range: Elsbet contract end 1-Feb (sign-on + 5), range end 1-Apr (sign-on + 7), recorded 1-Mar → differs",
+    r.rows?.[0]?.contractEndDate === "2027-02-01" && r.rows?.[0]?.rangeEndDate === "2027-04-01" && r.rows?.[0]?.reliefDueDiffers === true, r.rows?.[0]);
+  r = await q(t, "crewing_query_relief_due", { mode: "group", groupBy: ["dueState"], dueWithin: next(1, "months"), dueState: "any" });
+  const ds = Object.fromEntries((r.groups ?? []).map((g: any) => [g.dueState, g.assignments]));
+  check("B2-5 group by dueState (1-month window, any): overdue 2, due 2, not_due 16", ds.overdue === 2 && ds.due === 2 && ds.not_due === 16, r.groups);
+
+  // B5 manning
+  r = await mn({});
+  check("B5-1 positions on active vessels 22: filled 19, vacant 2 (Alpha Star 4th Engineer slot, Gamma Bay Master), vacant_not_signed_on 1 (Ilvar); inactive Epsilon Reef ignored",
+    r.summary?.positions === 22 && r.summary?.filled === 19 && r.summary?.vacant === 2 && r.summary?.vacantNotSignedOn === 1, r.summary);
+  r = await q(t, "crewing_query_manning", { mode: "list", state: "vacant" });
+  check("B5-2 vacancies listed = 3 rows (2 empty + Ilvar planned-not-signed-on)", r.total === 3 && r.rows?.some((x: any) => x.state === "vacant_not_signed_on" && x.fullName === "Ilvar Strandquist"), r.rows);
+  r = await mn({ vessels: ["MV Beta Ocean"] });
+  check("B5-3 Beta Ocean: 6 positions all filled (the handover reliever is not an extra position)", r.summary?.positions === 6 && r.summary?.filled === 6, r.summary);
+  r = await mn({ rankGroups: ["engineers"], state: "vacant" });
+  check("B5-4 vacant engineer positions = 1 (Alpha Star 4th Engineer)", r.summary?.vacant === 1 && r.total === 1, r);
+
+  // B4 rotation approvals
+  r = await q(t, "crewing_query_rotation_approvals", { mode: "list" });
+  check("B4-1 waiting plans = 2 (RP-2026-01 Proposed, RP-2026-02 Partially Approved); drafts 1; entries waiting 3 / approved 2 / rejected 1",
+    r.total === 2 && r.summary?.waiting === 2 && r.summary?.drafts === 1 && r.rows?.reduce((s: number, x: any) => s + x.entriesWaiting, 0) === 3 &&
+    r.rows?.reduce((s: number, x: any) => s + x.entriesApproved, 0) === 2 && r.rows?.reduce((s: number, x: any) => s + x.entriesRejected, 0) === 1, r);
+  r = await rt({ vessels: ["MV Alpha Star"] });
+  check("B4-2 waiting plans including Alpha Star = 1", r.total === 1, r);
+  r = await rt({ status: "draft" });
+  check("B4-3 drafts = 1 (RP-2026-03)", r.total === 1, r);
+  r = await rt({ forMe: true });
+  check("B4-4 'for me' as Sail Admin (holds the Rotation permission) = the 2 waiting plans + a note saying so", r.total === 2 && Array.isArray(r.notes) && /You hold it/.test(r.notes[0]), r);
+  r = await q(t, "crewing_query_rotation_approvals", { mode: "count", forMe: true }, { ...A, userId: "6", role: "User" });
+  check("B4-5 'for me' as a user WITHOUT the permission → refused by the Rotation view right or 0 with a note", (r.ok === false && r.code === "not_allowed") || (r.total === 0 && /does not hold/.test(r.notes?.[0] ?? "")), r);
+
+  // B3 rest hours (live from daily records; stored totals never read)
+  r = await rh({ months: ["2026-10"] });
+  check("B3-1 Oct-2026 rest mode: 4 records with violations (Marek 3 days, Orrin 1 (code C), Rasmine 1, Dagny 2); violations 7; NCs 2; Petra's OPA-only day not counted",
+    r.totals?.records === 4 && r.totals?.violations === 7 && r.totals?.ncs === 2 && r.opa === false && r.lastUpdated === "2026-10-31", r);
+  r = await rh({ months: ["2026-10"], opa: true });
+  check("B3-2 …with OPA: 5 records, violations 8 (Petra day 20, inside her applicable window from 15-Oct)", r.totals?.records === 5 && r.totals?.violations === 8, r);
+  r = await rh({});
+  check("B3-3 default month = the as-of month (2026-11) → 0 records, months echoed", r.ok === true && r.totals?.records === 0 && JSON.stringify(r.months) === JSON.stringify(["2026-11"]), r);
+  r = await rh({ lastMonths: 3, vessels: ["MV Beta Ocean"] });
+  check("B3-4 Beta Ocean last 3 months (Sep–Nov): 4 records (Marek Sep + Marek, Orrin, Rasmine Oct), violations 6", r.totals?.records === 4 && r.totals?.violations === 6, r);
+  r = await q(t, "crewing_query_rest_hours", { mode: "group", groupBy: ["vesselName"], months: ["2026-10"] });
+  const rv = Object.fromEntries((r.groups ?? []).map((g: any) => [g.vesselName, g.violations]));
+  check("B3-5 group by vessel: Beta Ocean 5, Alpha Star 2", rv["MV Beta Ocean"] === 5 && rv["MV Alpha Star"] === 2, r.groups);
+  r = await q(t, "crewing_query_rest_hours", { mode: "list", months: ["2026-10"], violationsOnly: false });
+  check("B3-6 violationsOnly false lists all 6 Oct records", r.total === 6, r);
+
+  // B6 appraisals
+  r = await ap({ statusClass: "any" });
+  check("B6-1 pending 3 (Benedek, Ulric, Nadira) / drafts 1 (Corvina) / completed 2 (Aldric, Orrin); terminated Pelham + archived Vesna excluded",
+    r.summary?.pending === 3 && r.summary?.drafts === 1 && r.summary?.completed === 2 && r.totals?.appraisals === 6, r);
+  r = await q(t, "crewing_query_appraisals", { mode: "list" });
+  check("B6-2 default = pending list of 3, no score column", r.total === 3 && r.rows?.every((x: any) => !("overallScore" in x)), r.rows);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true });
+  check("B6-3 Sail Admin (Appraisals All): completed with scores — Aldric B, Orrin A; no competence rating, no remarks anywhere",
+    r.total === 2 && r.rows?.find((x: any) => x.fullName === "Aldric Vexmoor")?.overallScore === "B" && r.rows?.find((x: any) => x.fullName === "Orrin Haverlock")?.overallScore === "A" &&
+    !JSON.stringify(r).includes("CONFIDENTIAL") && !JSON.stringify(r).includes("competence"), r.rows);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "pending", includeScores: true });
+  check("B6-4 scores requested on PENDING appraisals → rows carry null (Benedek's C is never shown)", r.total === 3 && r.rows?.every((x: any) => x.overallScore === null), r.rows);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "draft", includeScores: true });
+  check("B6-5 draft score (Corvina B) never shown", r.total === 1 && r.rows?.[0]?.overallScore === null, r.rows);
+  r = await q(t, "crewing_query_appraisals", { mode: "count", own: true });
+  check("B6-6 'my appraisal' → identity_mapping_unavailable (no trusted login → crew link in Crewing)", r.ok === false && r.code === "identity_mapping_unavailable", r);
+  r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "completed", includeScores: true }, { ...A, userId: "6", role: "User" });
+  check("B6-7 a 'User' (no Appraisals All right) asking for scores → not_allowed", r.ok === false && r.code === "not_allowed", r);
+  r = await ap({ vessels: ["MV Beta Ocean"], statusClass: "any" });
+  check("B6-8 vessel by RECORD (crew on board Beta Ocean): Orrin + Nadira = 2 appraisals", r.totals?.appraisals === 2, r);
+}
+
 async function security(t: Target, s: Target) {
   const args = { mode: "count" };
   const tool = "crewing_query_assignments";
@@ -239,6 +345,22 @@ async function isolation(t: Target) {
   check("I5 B fleet on board = 8 people / 9 assignments (INVALID-DATA case: one person signed on on two vessels)", r.totals?.people === 8 && r.totals?.assignments === 9, r);
   r = await q(t, "crewing_query_assignments", { mode: "list", unit: "people", ranks: ["Second Officer"] }, B);
   check("I6 …that person is listed once with 2 assignments and both vessels", r.total === 1 && r.rows?.[0]?.assignments === 2 && /Alpha Star.*Delta Sky|Delta Sky.*Alpha Star/.test(r.rows?.[0]?.vesselName ?? ""), r.rows?.[0]);
+  // Part B isolation: company B's data never reaches company A and vice versa
+  const avA = await q(t, "crewing_query_availability", { mode: "list", availableBy: "2026-11-30" }, A);
+  const avB = await q(t, "crewing_query_availability", { mode: "list", availableBy: "2026-11-30" }, B);
+  check("I7 availability by 30-Nov: A 3 (no Edric), B 1 (Edric only)", avA.total === 3 && !avA.rows?.some((x: any) => /Edric/.test(x.fullName)) && avB.total === 1 && /Edric/.test(avB.rows?.[0]?.fullName ?? ""), { a: avA.total, b: avB.rows });
+  r = await q(t, "crewing_query_relief_due", { mode: "count", dueWithin: next(1, "months") }, B);
+  check("I8 B relief due within 1 month = 1 (Xanthe 15-Nov)", r.totals?.assignments === 1, r);
+  r = await q(t, "crewing_query_manning", { mode: "count" }, B);
+  check("I9 B positions 9: filled 8, vacant 1 (Oiler)", r.summary?.positions === 9 && r.summary?.filled === 8 && r.summary?.vacant === 1, r.summary);
+  r = await q(t, "crewing_query_rotation_approvals", { mode: "list" }, B);
+  check("I10 B waiting plans = 1 (RP-B-2026-01); A's plans absent", r.total === 1 && r.rows?.[0]?.planId === "RP-B-2026-01", r.rows);
+  r = await q(t, "crewing_query_rest_hours", { mode: "count", months: ["2026-10"] }, B);
+  check("I11 B rest hours Oct = 1 record / 1 violation", r.totals?.records === 1 && r.totals?.violations === 1, r);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true }, B);
+  check("I12 B completed appraisal with score = Wendel B; A's crew absent", r.total === 1 && r.rows?.[0]?.fullName === "Wendel Crossfeather" && r.rows?.[0]?.overallScore === "B", r.rows);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true, crewIds: ["00000000-0000-4000-a200-000000000001"] }, B);
+  check("I13 B asking for A's crew id (Aldric) → nothing (0 appraisals), never a cross-company score", r.ok === true && r.total === 0, r);
 }
 
 async function external(t: Target) {
@@ -262,6 +384,7 @@ async function external(t: Target) {
     await external(mt);
   } else {
     await counts(mt);
+    await partB(mt);
     await security(mt, single);
     await isolation(mt);
     const s1 = await q(single, "crewing_query_assignments", { mode: "count" }, {});

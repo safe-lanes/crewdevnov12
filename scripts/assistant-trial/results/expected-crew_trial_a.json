@@ -1,14 +1,14 @@
 {
   "db": "crew_trial_a",
   "asOf": "2026-11-01",
-  "derivedAt": "2026-10-29T14:18:31.248Z",
+  "derivedAt": "2026-10-30T10:18:43.008Z",
   "fingerprint": {
-    "crew": "29",
-    "plans": "24",
+    "crew": "30",
+    "plans": "27",
     "licences": "15",
     "trainings": "13",
     "company_ranks": "40",
-    "data_md5": "2b9de972f32d70cbca8f3525bbc3c900"
+    "data_md5": "266cabeb3f91bcde83174b86828a7c62"
   },
   "answers": {
     "Q01": {
@@ -105,6 +105,83 @@
     "Q16": {
       "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
       "on_as_of_day": 1
+    },
+    "P01": {
+      "text": "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+      "people": 1
+    },
+    "P02": {
+      "text": "B1 available by 2026-11-30",
+      "people": 3
+    },
+    "P03": {
+      "text": "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+      "people": 5,
+      "per_status": {
+        "on_board": 1,
+        "on_leave": 4
+      }
+    },
+    "P04": {
+      "text": "B1 crew not on board without any availability date (excluded, reported)",
+      "no_date": 1
+    },
+    "P05": {
+      "text": "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+      "people": 3
+    },
+    "P06": {
+      "text": "B2 overdue (range end before as-of) on-board assignments",
+      "assignments": 2
+    },
+    "P07": {
+      "text": "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+      "assignments": 4
+    },
+    "P08": {
+      "text": "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+      "assignments": 9,
+      "differs": 2
+    },
+    "P09": {
+      "text": "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+      "positions": 22,
+      "filled": 19,
+      "vacant": 2,
+      "vacant_not_signed_on": 1
+    },
+    "P10": {
+      "text": "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+      "waiting": 2,
+      "drafts": 1
+    },
+    "P11": {
+      "text": "B4 entries waiting / approved / rejected across the waiting plans",
+      "waiting_entries": 3,
+      "approved_entries": 2,
+      "rejected_entries": 1
+    },
+    "P12": {
+      "text": "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+      "records": 4,
+      "violations": 7,
+      "ncs": 2
+    },
+    "P13": {
+      "text": "B3 same month WITH OPA (codes H/I count too)",
+      "records": 5,
+      "violations": 8,
+      "ncs": 2
+    },
+    "P14": {
+      "text": "B6 appraisals by status class, archived/terminated crew excluded",
+      "pending": 3,
+      "drafts": 1,
+      "completed": 2
+    },
+    "P15": {
+      "text": "B6 completed appraisals that carry an overall score (what a permitted user may see)",
+      "scored": 2
     }
   }
 }

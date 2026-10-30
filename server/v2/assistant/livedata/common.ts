@@ -19,10 +19,16 @@ export class ToolRefusal extends Error {
   }
 }
 
+export type Area = "vessel" | "documents" | "crewPool" | "due" | "restHours" | "rotation" | "appraisalsAll";
+
 export interface ToolContext {
   asOf: string;
   /** Data areas (menus) this role may view — decided in the service before the tool runs. */
-  canView: (area: "vessel" | "documents" | "crewPool") => boolean;
+  canView: (area: Area) => boolean;
+  /** Data areas (menus) this role may edit (Part B: 'for me' on rotation approvals needs the approver permission). */
+  canEdit?: (area: Area) => boolean;
+  /** The verified identity behind the call (never a name or id supplied by the model). */
+  actor?: { userId: string; role: string | null; userType: string | null };
 }
 
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD");

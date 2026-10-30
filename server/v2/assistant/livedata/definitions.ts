@@ -27,7 +27,37 @@ export const DEFINITIONS = {
     "CONFIRMED (A5): rank groups (officers, engineers, ratings, deck/engine officers and ratings, catering…) come from Admin → Rank " +
     "Administration → Company tab, not from a fixed list. A rank with no category there is 'unclassified' and is reported, never guessed.",
   dates: "Dates are stored as text; only YYYY-MM-DD values are read. Records with other date text are counted under 'excluded', never silently dropped.",
+  // ── Part B (Sahil's decisions of 29-Oct-2026, applied 30-Oct-2026) ──
+  availability:
+    "CONFIRMED (B1): 'available to join by <date>' = crew not terminated, (a) on leave with an availability date on or before the date " +
+    "— people already available today included — or (b) currently on board with a Next Availability date on or before the date. Crew without " +
+    "an availability date are counted under 'excluded', not listed. Not-for-rehire crew are left out unless asked for.",
+  relief:
+    "CONFIRMED (B2): due / overdue follow the Due Crew screen rule — contract end = sign-on + contract months (or the tolerance range " +
+    "set on the assignment); overdue = past the range end; 'due within a period' = the recorded relief-due date inside the period, or " +
+    "already overdue. The recorded relief-due date is shown and flagged when it differs from the contract end.",
+  restHours:
+    "CONFIRMED (B3): rest-hour violations are recalculated live from the daily records (the Rest Hours overview's engine), rest mode; " +
+    "OPA off unless the user asks for it; the month and the date the records were last updated are always stated. Stored monthly totals are not used.",
+  rotation:
+    "CONFIRMED (B4): a rotation plan is waiting for approval when its status is Proposed or Partially Approved; approval is recorded per " +
+    "entry (Pending / Deployed = approved / Rejected). Company-wide by default; 'for me' = plans awaiting an approver that the asking user " +
+    "is (Crewing assigns no approver per plan). Drafts (In Draft) are listed separately.",
+  manning:
+    "CONFIRMED (B5): a position is a planned rank slot on an active vessel; it is filled when a person has SIGNED ON to it (primary, or the " +
+    "signed-on reliever during a handover); an empty slot or a planned person who has not signed on is a vacancy. Ranks follow Rank Administration.",
+  appraisals:
+    "CONFIRMED (B6): pending = submitted but not completed (preliminary / submitted / pending office review); drafts are listed separately; " +
+    "completed = reviewed. Archived and terminated crew are excluded; the crew member's vessel is matched by record. Scores: only the overall " +
+    "score of a COMPLETED appraisal, only when asked for, and only with the Crewing permission to view appraisals; draft scores, individual " +
+    "assessment scores and remarks are never shown.",
 } as const;
+
+/** Appraisal status classes (CODE: appraisalResultsService STATUS_ORDER + report synonyms). */
+export const APPRAISAL_STATUS_CLASS: SQL = sql`(CASE
+  WHEN lower(btrim(coalesce(a.status, ''))) IN ('draft', '') THEN 'draft'
+  WHEN lower(btrim(a.status)) IN ('reviewed', 'stage3_submitted', 'completed', 'approved', 'closed', 'final') THEN 'completed'
+  ELSE 'pending' END)`;
 
 /** The as-of date for every calculation. Test seam: ASSISTANT_DATA_AS_OF (ignored in production). */
 export function asOfDate(): string {

@@ -64,58 +64,46 @@ const DOCS = `docs AS (
   LEFT JOIN LATERAL (SELECT * FROM cfg WHERE cfg.k = ${NORM("cm.present_rank")} LIMIT 1) c ON true)`;
 const W = { d30: "2026-12-01", d60: "2026-12-31", m2: "2027-01-01" };
 
-type Q = { id: string; text: string; sql: string; tool?: { name: string; args: Record<string, unknown>; pick: Record<string, string> } };
-const next = (amount: number, unit = "days") => ({ direction: "next", amount, unit });
-
-/** Each question: hand-written SQL producing one row of numbers; `tool` = the equivalent endpoint call and how to read it. */
-const QUESTIONS: Q[] = [
-  { id: "Q01", text: "Fleet on board: people and assignments", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid)::int people, count(*)::int assignments FROM ob`,
-    tool: { name: "crewing_query_assignments", args: { mode: "count" }, pick: { people: "totals.people", assignments: "totals.assignments" } } },
-  { id: "Q02", text: "On board per vessel (people)", sql: `WITH ${CFG}, ${OB} SELECT jsonb_object_agg(vessel, n) per_vessel FROM (SELECT vessel, count(DISTINCT crew_uuid)::int n FROM ob GROUP BY vessel) v`,
-    tool: { name: "crewing_query_assignments", args: { mode: "group", groupBy: ["vesselName"] }, pick: { per_vessel: "groups:vesselName=people" } } },
-  { id: "Q03", text: "Secondary (signed-on relievers in handover) on board", sql: `WITH ${CFG}, ${OB} SELECT count(*)::int secondary FROM ob WHERE crew_status = 'secondary'`,
-    tool: { name: "crewing_query_assignments", args: { mode: "count", crewStatus: ["secondary"] }, pick: { secondary: "totals.assignments" } } },
-  { id: "Q04", text: "Engineers on board (Eng Officer flag) + unclassified ranks on board", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE eng_officer)::int engineers,
-      count(DISTINCT crew_uuid) FILTER (WHERE NOT classified)::int unclassified_people FROM ob`,
-    tool: { name: "crewing_query_assignments", args: { mode: "count", rankGroups: ["engineers"] }, pick: { engineers: "totals.people", unclassified_people: "rankConfig.unclassifiedOnBoard.people" } } },
-  { id: "Q05", text: "Officers / ratings / deck ratings / catering on board (people)", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE officer)::int officers,
-      count(DISTINCT crew_uuid) FILTER (WHERE rating)::int ratings, count(DISTINCT crew_uuid) FILTER (WHERE deck_rating)::int deck_ratings,
-      count(DISTINCT crew_uuid) FILTER (WHERE catering_rating)::int catering FROM ob` },
-  { id: "Q06", text: "Signed on in the last 30 days (people) + unreadable sign-on dates", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE sign_on >= DATE '${AS_OF}' - 30 AND sign_on <= DATE '${AS_OF}')::int people,
-      count(*) FILTER (WHERE sign_on IS NULL)::int unreadable FROM ob`,
-    tool: { name: "crewing_query_assignments", args: { mode: "count", signOnWithin: { direction: "last", amount: 30, unit: "days" } }, pick: { people: "totals.people", unreadable: "excluded.unreadableSignOnDate" } } },
-  { id: "Q07", text: "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
-    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE is_active = false)::int inactive_docs,
-      count(*) FILTER (WHERE expiry IS NULL AND NULLIF(btrim(raw_expiry), '') IS NULL)::int missing, count(*) FILTER (WHERE expiry IS NULL AND NULLIF(btrim(raw_expiry), '') IS NOT NULL)::int unreadable FROM docs`,
-    tool: { name: "crewing_query_documents", args: { mode: "count" }, pick: { documents: "totals.documents", people: "totals.people" } } },
-  { id: "Q08", text: "Documents of terminated crew that must NOT be listed (sanity: count in raw tables)", sql: `SELECT count(*)::int terminated_docs FROM (
-      SELECT l.crew_uuid FROM crew_licenses l WHERE l.is_deleted = false AND l.archived_at IS NULL UNION ALL SELECT t.crew_uuid FROM crew_training_courses t WHERE t.is_deleted = false) d
-      JOIN crew_members_v2 cm ON cm.crew_uuid = d.crew_uuid WHERE cm.status ILIKE 'Terminated%'` },
-  { id: "Q09", text: "Expired documents (any age)", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people FROM docs WHERE expiry < DATE '${AS_OF}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "expired" }, pick: { documents: "totals.documents", people: "totals.people" } } },
-  { id: "Q10", text: "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
-    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE expiry < DATE '${AS_OF}')::int expired_docs,
-      count(*) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_docs, count(DISTINCT crew_uuid) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_people FROM docs WHERE expiry <= DATE '${W.d30}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(30) }, pick: { documents: "totals.documents", people: "totals.people", expired_docs: "breakdown.expired.documents", upcoming_docs: "breakdown.upcoming.documents", upcoming_people: "breakdown.upcoming.people" } } },
-  { id: "Q11", text: "Upcoming only, 30 days", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people FROM docs WHERE expiry >= DATE '${AS_OF}' AND expiry <= DATE '${W.d30}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "not_expired", expiryWithin: next(30) }, pick: { documents: "totals.documents", people: "totals.people" } } },
-  { id: "Q12", text: "Expiring in 60 days (expired + upcoming by 2026-12-31)", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people,
-      count(*) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_docs FROM docs WHERE expiry <= DATE '${W.d60}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", upcoming_docs: "breakdown.upcoming.documents" } } },
-  { id: "Q13", text: "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents FROM docs WHERE expiry <= DATE '${W.m2}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(2, "months") }, pick: { documents: "totals.documents" } } },
-  { id: "Q14", text: "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
-    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE expiry < DATE '${AS_OF}')::int expired_docs,
-      (SELECT jsonb_object_agg(vessel, n) FROM (SELECT vessel, count(*)::int n FROM docs WHERE on_board AND expiry <= DATE '${W.d60}' GROUP BY vessel) v) per_vessel
-      FROM docs WHERE on_board AND expiry <= DATE '${W.d60}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "group", groupBy: ["vesselName"], crewOnBoard: true, expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", expired_docs: "breakdown.expired.documents", per_vessel: "groups:vesselName=documents" } } },
-  { id: "Q15", text: "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
-    sql: `WITH ${CFG}, ${DOCS} SELECT count(*) FILTER (WHERE eng_officer)::int documents, count(DISTINCT crew_uuid) FILTER (WHERE eng_officer)::int people,
-      count(DISTINCT crew_uuid) FILTER (WHERE NOT classified)::int unclassified_people FROM docs WHERE expiry <= DATE '${W.d60}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", rankGroups: ["engineers"], expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", unclassified_people: "rankConfig.unclassifiedInResult.people" } } },
-  { id: "Q16", text: "Boundary: documents expiring exactly on the as-of day count as upcoming", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int on_as_of_day FROM docs WHERE expiry = DATE '${AS_OF}'`,
-    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "not_expired", expiryFrom: AS_OF, expiryTo: AS_OF }, pick: { on_as_of_day: "totals.documents" } } },
-];
+// ── Part B building blocks (plain SQL) ──
+const AVAIL_ALL = `avail_all AS (
+  SELECT cm.crew_uuid, cm.present_rank, EXISTS (SELECT 1 FROM vessel_planning_v2 vp WHERE vp.crew_uuid = cm.crew_uuid AND ${ON_BOARD}) on_board,
+    (CASE WHEN EXISTS (SELECT 1 FROM vessel_planning_v2 vp WHERE vp.crew_uuid = cm.crew_uuid AND ${ON_BOARD})
+          THEN COALESCE(${DATE("cm.next_availability")}, ${DATE("pd.next_availability")})
+          ELSE COALESCE(${DATE("cm.next_availability")}, ${DATE("pd.next_availability")}, ${DATE("cm.availability")}, ${DATE("pd.availability")}) END) available_from,
+    (nullif(btrim(cm.next_availability),'') IS NOT NULL OR nullif(btrim(pd.next_availability),'') IS NOT NULL OR nullif(btrim(cm.availability),'') IS NOT NULL OR nullif(btrim(pd.availability),'') IS NOT NULL) has_any_text
+  FROM crew_members_v2 cm LEFT JOIN crew_personal_details pd ON pd.crew_uuid = cm.crew_uuid AND pd.is_deleted = false
+  WHERE cm.is_deleted = false AND cm.archived_at IS NULL AND (cm.status IS NULL OR cm.status NOT ILIKE 'Terminated%') AND COALESCE(cm.is_active, true) = true AND COALESCE(cm.not_for_hire, false) = false)`;
+const AVAIL = `${AVAIL_ALL}, avail AS (SELECT * FROM avail_all WHERE available_from IS NOT NULL)`;
+const RELIEF = `relief AS (
+  SELECT vp.id, ${DATE("vp.sign_on_date")} sign_on, ${DATE("vp.relief_due")} relief_due,
+    (CASE WHEN ${DATE("vp.sign_on_date")} IS NOT NULL AND COALESCE(vp.contract_end_range_start_months, vp.contract_period_months) IS NOT NULL
+          THEN (${DATE("vp.sign_on_date")} + make_interval(months => COALESCE(vp.contract_end_range_start_months, vp.contract_period_months)))::date ELSE ${DATE("vp.relief_due")} END) contract_end,
+    (CASE WHEN ${DATE("vp.sign_on_date")} IS NOT NULL AND vp.contract_end_range_end_months IS NOT NULL THEN (${DATE("vp.sign_on_date")} + make_interval(months => vp.contract_end_range_end_months))::date
+          WHEN ${DATE("vp.sign_on_date")} IS NOT NULL AND COALESCE(vp.contract_end_range_start_months, vp.contract_period_months) IS NOT NULL
+          THEN (${DATE("vp.sign_on_date")} + make_interval(months => COALESCE(vp.contract_end_range_start_months, vp.contract_period_months)))::date ELSE ${DATE("vp.relief_due")} END) range_end
+  FROM vessel_planning_v2 vp WHERE ${ON_BOARD})`;
+const POSITIONS = `positions AS (
+  SELECT vp.id, (CASE WHEN (vp.crew_uuid IS NOT NULL AND vp.sign_on_date IS NOT NULL) OR EXISTS (SELECT 1 FROM vessel_planning_v2 s WHERE s.vessel_uuid = vp.vessel_uuid AND s.rank_id = vp.rank_id AND s.rank = vp.rank
+      AND s.crew_status = 'secondary' AND s.is_archived = false AND s.is_deleted = false AND s.crew_uuid IS NOT NULL AND s.sign_on_date IS NOT NULL) THEN 'filled'
+      WHEN vp.crew_uuid IS NULL THEN 'vacant' ELSE 'vacant_not_signed_on' END) state
+  FROM vessel_planning_v2 vp JOIN master_vessels mv ON mv.vessel_uuid = vp.vessel_uuid AND mv.is_deleted IS NOT TRUE AND COALESCE(mv.is_active, true) = true
+  WHERE vp.crew_status = 'primary' AND vp.is_archived = false AND vp.is_deleted = false)`;
+/** rest hours from the STORED per-day codes (the records carry their violation codes); rest mode = A,C,E,F,G; OPA adds H,I */
+const RH = (month: string, opa: boolean) => `rh AS (
+  SELECT d.id, count(DISTINCT (x->>'day')::int) FILTER (WHERE EXISTS (SELECT 1 FROM jsonb_array_elements_text(coalesce(x->'violations','[]'::jsonb)) c
+      WHERE c IN ('A','C','E','F','G'${opa ? ",'H','I'" : ""}))) violation_days,
+    (CASE WHEN count(DISTINCT (x->>'day')::int) FILTER (WHERE EXISTS (SELECT 1 FROM jsonb_array_elements_text(coalesce(x->'violations','[]'::jsonb)) c WHERE c IN ('A','C','E','F','G'${opa ? ",'H','I'" : ""}))) >= 3
+          OR bool_or(coalesce(x->'violations','[]'::jsonb) ? 'C') THEN 1 ELSE 0 END) nc
+  FROM rh_daily_records_v2 d, jsonb_array_elements(d.daily_records::jsonb) x
+  WHERE d.is_deleted = false AND d.month_year = '${month}' AND coalesce((x->>'isPlan')::boolean, false) = false
+    AND (d.applicable_from IS NULL OR NOT d.applicable_from LIKE '${month}%' OR (x->>'day')::int >= split_part(d.applicable_from, '-', 3)::int)
+    AND (d.applicable_to IS NULL OR NOT d.applicable_to LIKE '${month}%' OR (x->>'day')::int <= split_part(d.applicable_to, '-', 3)::int)
+  GROUP BY d.id)`;
+const APPR = `appr AS (
+  SELECT a.overall_rating, (CASE WHEN lower(btrim(coalesce(a.status,''))) IN ('draft','') THEN 'draft'
+      WHEN lower(btrim(a.status)) IN ('reviewed','stage3_submitted','completed','approved','closed','final') THEN 'completed' ELSE 'pending' END) cls
+  FROM appraisal_results_v2 a JOIN crew_members_v2 cm ON cm.crew_uuid = a.crew_member_id AND cm.is_deleted = false AND cm.archived_at IS NULL AND (cm.status IS NULL OR cm.status NOT ILIKE 'Terminated%')
+  WHERE a.is_deleted = false)`;
 
 function get(o: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined), o);
@@ -193,6 +181,108 @@ async function compare(label: string) {
   console.log(`\n${pass}/${total} agree with the independent SQL`);
   process.exit(pass === total ? 0 : 1);
 }
+
+
+type Q = { id: string; text: string; sql: string; tool?: { name: string; args: Record<string, unknown>; pick: Record<string, string> } };
+const next = (amount: number, unit = "days") => ({ direction: "next", amount, unit });
+
+/** Each question: hand-written SQL producing one row of numbers; `tool` = the equivalent endpoint call and how to read it. */
+const QUESTIONS: Q[] = [
+  { id: "Q01", text: "Fleet on board: people and assignments", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid)::int people, count(*)::int assignments FROM ob`,
+    tool: { name: "crewing_query_assignments", args: { mode: "count" }, pick: { people: "totals.people", assignments: "totals.assignments" } } },
+  { id: "Q02", text: "On board per vessel (people)", sql: `WITH ${CFG}, ${OB} SELECT jsonb_object_agg(vessel, n) per_vessel FROM (SELECT vessel, count(DISTINCT crew_uuid)::int n FROM ob GROUP BY vessel) v`,
+    tool: { name: "crewing_query_assignments", args: { mode: "group", groupBy: ["vesselName"] }, pick: { per_vessel: "groups:vesselName=people" } } },
+  { id: "Q03", text: "Secondary (signed-on relievers in handover) on board", sql: `WITH ${CFG}, ${OB} SELECT count(*)::int secondary FROM ob WHERE crew_status = 'secondary'`,
+    tool: { name: "crewing_query_assignments", args: { mode: "count", crewStatus: ["secondary"] }, pick: { secondary: "totals.assignments" } } },
+  { id: "Q04", text: "Engineers on board (Eng Officer flag) + unclassified ranks on board", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE eng_officer)::int engineers,
+      count(DISTINCT crew_uuid) FILTER (WHERE NOT classified)::int unclassified_people FROM ob`,
+    tool: { name: "crewing_query_assignments", args: { mode: "count", rankGroups: ["engineers"] }, pick: { engineers: "totals.people", unclassified_people: "rankConfig.unclassifiedOnBoard.people" } } },
+  { id: "Q05", text: "Officers / ratings / deck ratings / catering on board (people)", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE officer)::int officers,
+      count(DISTINCT crew_uuid) FILTER (WHERE rating)::int ratings, count(DISTINCT crew_uuid) FILTER (WHERE deck_rating)::int deck_ratings,
+      count(DISTINCT crew_uuid) FILTER (WHERE catering_rating)::int catering FROM ob` },
+  { id: "Q06", text: "Signed on in the last 30 days (people) + unreadable sign-on dates", sql: `WITH ${CFG}, ${OB} SELECT count(DISTINCT crew_uuid) FILTER (WHERE sign_on >= DATE '${AS_OF}' - 30 AND sign_on <= DATE '${AS_OF}')::int people,
+      count(*) FILTER (WHERE sign_on IS NULL)::int unreadable FROM ob`,
+    tool: { name: "crewing_query_assignments", args: { mode: "count", signOnWithin: { direction: "last", amount: 30, unit: "days" } }, pick: { people: "totals.people", unreadable: "excluded.unreadableSignOnDate" } } },
+  { id: "Q07", text: "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE is_active = false)::int inactive_docs,
+      count(*) FILTER (WHERE expiry IS NULL AND NULLIF(btrim(raw_expiry), '') IS NULL)::int missing, count(*) FILTER (WHERE expiry IS NULL AND NULLIF(btrim(raw_expiry), '') IS NOT NULL)::int unreadable FROM docs`,
+    tool: { name: "crewing_query_documents", args: { mode: "count" }, pick: { documents: "totals.documents", people: "totals.people" } } },
+  { id: "Q08", text: "Documents of terminated crew that must NOT be listed (sanity: count in raw tables)", sql: `SELECT count(*)::int terminated_docs FROM (
+      SELECT l.crew_uuid FROM crew_licenses l WHERE l.is_deleted = false AND l.archived_at IS NULL UNION ALL SELECT t.crew_uuid FROM crew_training_courses t WHERE t.is_deleted = false) d
+      JOIN crew_members_v2 cm ON cm.crew_uuid = d.crew_uuid WHERE cm.status ILIKE 'Terminated%'` },
+  { id: "Q09", text: "Expired documents (any age)", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people FROM docs WHERE expiry < DATE '${AS_OF}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "expired" }, pick: { documents: "totals.documents", people: "totals.people" } } },
+  { id: "Q10", text: "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE expiry < DATE '${AS_OF}')::int expired_docs,
+      count(*) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_docs, count(DISTINCT crew_uuid) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_people FROM docs WHERE expiry <= DATE '${W.d30}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(30) }, pick: { documents: "totals.documents", people: "totals.people", expired_docs: "breakdown.expired.documents", upcoming_docs: "breakdown.upcoming.documents", upcoming_people: "breakdown.upcoming.people" } } },
+  { id: "Q11", text: "Upcoming only, 30 days", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people FROM docs WHERE expiry >= DATE '${AS_OF}' AND expiry <= DATE '${W.d30}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "not_expired", expiryWithin: next(30) }, pick: { documents: "totals.documents", people: "totals.people" } } },
+  { id: "Q12", text: "Expiring in 60 days (expired + upcoming by 2026-12-31)", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people,
+      count(*) FILTER (WHERE expiry >= DATE '${AS_OF}')::int upcoming_docs FROM docs WHERE expiry <= DATE '${W.d60}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", upcoming_docs: "breakdown.upcoming.documents" } } },
+  { id: "Q13", text: "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents FROM docs WHERE expiry <= DATE '${W.m2}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryWithin: next(2, "months") }, pick: { documents: "totals.documents" } } },
+  { id: "Q14", text: "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+    sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int documents, count(DISTINCT crew_uuid)::int people, count(*) FILTER (WHERE expiry < DATE '${AS_OF}')::int expired_docs,
+      (SELECT jsonb_object_agg(vessel, n) FROM (SELECT vessel, count(*)::int n FROM docs WHERE on_board AND expiry <= DATE '${W.d60}' GROUP BY vessel) v) per_vessel
+      FROM docs WHERE on_board AND expiry <= DATE '${W.d60}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "group", groupBy: ["vesselName"], crewOnBoard: true, expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", expired_docs: "breakdown.expired.documents", per_vessel: "groups:vesselName=documents" } } },
+  { id: "Q15", text: "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+    sql: `WITH ${CFG}, ${DOCS} SELECT count(*) FILTER (WHERE eng_officer)::int documents, count(DISTINCT crew_uuid) FILTER (WHERE eng_officer)::int people,
+      count(DISTINCT crew_uuid) FILTER (WHERE NOT classified)::int unclassified_people FROM docs WHERE expiry <= DATE '${W.d60}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", rankGroups: ["engineers"], expiryWithin: next(60) }, pick: { documents: "totals.documents", people: "totals.people", unclassified_people: "rankConfig.unclassifiedInResult.people" } } },
+  { id: "Q16", text: "Boundary: documents expiring exactly on the as-of day count as upcoming", sql: `WITH ${CFG}, ${DOCS} SELECT count(*)::int on_as_of_day FROM docs WHERE expiry = DATE '${AS_OF}'`,
+    tool: { name: "crewing_query_documents", args: { mode: "count", expiryState: "not_expired", expiryFrom: AS_OF, expiryTo: AS_OF }, pick: { on_as_of_day: "totals.documents" } } },
+
+  // ── Part B (30-Oct-2026) — plain SQL from Sahil's decisions, independent of the tools ──
+  { id: "P01", text: "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+    sql: `WITH ${CFG}, ${AVAIL} SELECT count(*)::int people FROM avail WHERE available_from <= DATE '${AS_OF}'`,
+    tool: { name: "crewing_query_availability", args: { mode: "count" }, pick: { people: "totals.people" } } },
+  { id: "P02", text: "B1 available by 2026-11-30", sql: `WITH ${CFG}, ${AVAIL} SELECT count(*)::int people FROM avail WHERE available_from <= DATE '2026-11-30'`,
+    tool: { name: "crewing_query_availability", args: { mode: "count", availableBy: "2026-11-30" }, pick: { people: "totals.people" } } },
+  { id: "P03", text: "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+    sql: `WITH ${CFG}, ${AVAIL} SELECT count(*)::int people, (SELECT jsonb_object_agg(s, n) FROM (SELECT CASE WHEN on_board THEN 'on_board' ELSE 'on_leave' END s, count(*)::int n
+      FROM avail WHERE available_from <= DATE '2027-01-01' GROUP BY 1) t) per_status FROM avail WHERE available_from <= DATE '2027-01-01'`,
+    tool: { name: "crewing_query_availability", args: { mode: "group", groupBy: ["crewStatus"], availableWithin: next(2, "months") }, pick: { people: "totals.people", per_status: "groups:crewStatus=people" } } },
+  { id: "P04", text: "B1 crew not on board without any availability date (excluded, reported)",
+    sql: `WITH ${CFG}, ${AVAIL_ALL} SELECT count(*)::int no_date FROM avail_all WHERE NOT on_board AND available_from IS NULL AND NOT has_any_text`,
+    tool: { name: "crewing_query_availability", args: { mode: "count" }, pick: { no_date: "excluded.noAvailabilityDate" } } },
+  { id: "P05", text: "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+    sql: `WITH ${CFG}, ${AVAIL} SELECT count(*)::int people FROM avail WHERE available_from <= DATE '2026-12-31' AND lower(present_rank) = 'chief officer'`,
+    tool: { name: "crewing_query_availability", args: { mode: "count", availableBy: "2026-12-31", ranks: ["Chief Officer"] }, pick: { people: "totals.people" } } },
+  { id: "P06", text: "B2 overdue (range end before as-of) on-board assignments", sql: `WITH ${CFG}, ${RELIEF} SELECT count(*)::int assignments FROM relief WHERE range_end < DATE '${AS_OF}'`,
+    tool: { name: "crewing_query_relief_due", args: { mode: "count", dueState: "overdue" }, pick: { assignments: "totals.assignments" } } },
+  { id: "P07", text: "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+    sql: `WITH ${CFG}, ${RELIEF} SELECT count(*)::int assignments FROM relief WHERE range_end < DATE '${AS_OF}' OR (relief_due >= DATE '${AS_OF}' AND relief_due <= DATE '${AS_OF}' + interval '1 month')`,
+    tool: { name: "crewing_query_relief_due", args: { mode: "count", dueWithin: next(1, "months") }, pick: { assignments: "totals.assignments" } } },
+  { id: "P08", text: "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+    sql: `WITH ${CFG}, ${RELIEF} SELECT count(*) FILTER (WHERE range_end < DATE '${AS_OF}' OR (relief_due >= DATE '${AS_OF}' AND relief_due <= DATE '${AS_OF}' + interval '3 months'))::int assignments,
+      count(*) FILTER (WHERE relief_due IS NOT NULL AND contract_end IS NOT NULL AND relief_due <> contract_end)::int differs FROM relief`,
+    tool: { name: "crewing_query_relief_due", args: { mode: "count", dueWithin: next(3, "months") }, pick: { assignments: "totals.assignments" } } },
+  { id: "P09", text: "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+    sql: `WITH ${POSITIONS} SELECT count(*)::int positions, count(*) FILTER (WHERE state = 'filled')::int filled, count(*) FILTER (WHERE state = 'vacant')::int vacant,
+      count(*) FILTER (WHERE state = 'vacant_not_signed_on')::int vacant_not_signed_on FROM positions`,
+    tool: { name: "crewing_query_manning", args: { mode: "count" }, pick: { positions: "summary.positions", filled: "summary.filled", vacant: "summary.vacant", vacant_not_signed_on: "summary.vacantNotSignedOn" } } },
+  { id: "P10", text: "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+    sql: `SELECT count(*) FILTER (WHERE plan_status IN ('Proposed','Partially Approved'))::int waiting, count(*) FILTER (WHERE plan_status = 'In Draft')::int drafts FROM rotation_drafts_v2 WHERE is_deleted = false`,
+    tool: { name: "crewing_query_rotation_approvals", args: { mode: "count" }, pick: { waiting: "summary.waiting", drafts: "summary.drafts" } } },
+  { id: "P11", text: "B4 entries waiting / approved / rejected across the waiting plans",
+    sql: `SELECT count(*) FILTER (WHERE e.proposal_status = 'Pending')::int waiting_entries, count(*) FILTER (WHERE e.proposal_status = 'Deployed')::int approved_entries,
+      count(*) FILTER (WHERE e.proposal_status = 'Rejected')::int rejected_entries FROM rotation_entries_v2 e JOIN rotation_drafts_v2 d ON d.draft_uuid = e.draft_uuid
+      WHERE e.is_deleted = false AND d.is_deleted = false AND d.plan_status IN ('Proposed','Partially Approved')` },
+  { id: "P12", text: "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+    sql: `WITH ${RH("2026-10", false)} SELECT count(*) FILTER (WHERE violation_days > 0)::int records, coalesce(sum(violation_days), 0)::int violations, coalesce(sum(nc), 0)::int ncs FROM rh`,
+    tool: { name: "crewing_query_rest_hours", args: { mode: "count", months: ["2026-10"] }, pick: { records: "totals.records", violations: "totals.violations", ncs: "totals.ncs" } } },
+  { id: "P13", text: "B3 same month WITH OPA (codes H/I count too)",
+    sql: `WITH ${RH("2026-10", true)} SELECT count(*) FILTER (WHERE violation_days > 0)::int records, coalesce(sum(violation_days), 0)::int violations, coalesce(sum(nc), 0)::int ncs FROM rh`,
+    tool: { name: "crewing_query_rest_hours", args: { mode: "count", months: ["2026-10"], opa: true }, pick: { records: "totals.records", violations: "totals.violations", ncs: "totals.ncs" } } },
+  { id: "P14", text: "B6 appraisals by status class, archived/terminated crew excluded",
+    sql: `WITH ${APPR} SELECT count(*) FILTER (WHERE cls = 'pending')::int pending, count(*) FILTER (WHERE cls = 'draft')::int drafts, count(*) FILTER (WHERE cls = 'completed')::int completed FROM appr`,
+    tool: { name: "crewing_query_appraisals", args: { mode: "count", statusClass: "any" }, pick: { pending: "summary.pending", drafts: "summary.drafts", completed: "summary.completed" } } },
+  { id: "P15", text: "B6 completed appraisals that carry an overall score (what a permitted user may see)",
+    sql: `WITH ${APPR} SELECT count(*)::int scored FROM appr WHERE cls = 'completed' AND nullif(btrim(overall_rating), '') IS NOT NULL` },
+];
 
 const mode = process.argv[2];
 if (mode === "derive") derive().catch((e) => { console.error(e.message); process.exit(1); });
