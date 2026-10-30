@@ -37,12 +37,14 @@ afterAll(async () => {
   await browser?.close();
   await pool.query(`DROP TRIGGER IF EXISTS company_grid_browser_failure ON adm_resource_action_grants;
     DROP FUNCTION IF EXISTS company_grid_browser_failure()`);
-  await pool.query("DELETE FROM adm_access_control_audit WHERE role_id=$1", [role]);
+  // Audit history is intentionally append-only even in the test database.
+  // Retain its frozen identities while removing the synthetic operational rows.
   await pool.query("DELETE FROM adm_roleaccess_ac WHERE role_id=$1 OR menu_id=$2", [role, menu]);
   await pool.query("DELETE FROM adm_resource_action_grants WHERE role_id=$1", [role]);
   await pool.query("DELETE FROM master_users WHERE id=$1", [userId ?? -1]);
   await pool.query("DELETE FROM adm_rolemaster_ac WHERE ruid=$1", [role]);
   await pool.query("DELETE FROM adm_menumaster_ac WHERE muid=$1", [menu]);
+  expect((await pool.query("SELECT * FROM adm_rolemaster_ac WHERE ruid=$1", [role])).rows).toHaveLength(0);
   await pool.end();
 });
 async function snapshot() {

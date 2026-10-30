@@ -84,7 +84,8 @@ changes and permission edits are disabled while saving.
   real screen, with all API calls routed to the registered isolated test
   backend. It saves both groups, injects an actual database failure, clicks
   Save again and compares raw SQL snapshots of both groups and audit entries.
-  Synthetic roles, user and menu are removed by normal isolated-test teardown.
+  Synthetic roles, user and menu are removed by normal isolated-test teardown;
+  immutable audit history retains its frozen identities, as designed.
   No development records are created or edited.
 - `scripts/verify-company-form-grid.mjs` captures actual main-preview grants,
   dropdown and help on desktop and narrow viewports, using an existing office
