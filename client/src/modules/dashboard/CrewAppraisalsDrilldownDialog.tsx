@@ -21,6 +21,7 @@ interface AppraisalRow {
   seafarersRank?: string | null;
   vessel?: string | null;
   appraisalType?: string | null;
+  appraisalTypeName?: string | null;
   appraisalDate?: string | null;
   overallRating?: string | number | null;
   appraisalData?: string | null;
@@ -371,7 +372,9 @@ export const CrewAppraisalsDrilldownDialog = ({
                         (parsed.vessel || "").trim() ||
                         "",
                     );
+                    // appraisalType is the stored master id (APD-56); show its current name.
                     const appraisalType =
+                      (a.appraisalTypeName && String(a.appraisalTypeName).trim()) ||
                       (a.appraisalType && String(a.appraisalType).trim()) ||
                       (parsed.appraisalType || "").trim() ||
                       "";

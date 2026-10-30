@@ -43,6 +43,13 @@ vi.mock("@server/v2/appraisals/repositories", () => {
 vi.mock("@server/v2/crew-pool/repositories", () => ({ CrewMembersRepository: vi.fn(function () { return crewRepo; }) }));
 vi.mock("@server/v2/admin/services", () => ({ formsService }));
 vi.mock("@server/v2/shared/emailService", () => ({ sendEmail: vi.fn(), logEmailEvent: vi.fn() }));
+// APD-56: master lookups pass values through here (see appraisal-master-refs.test.ts).
+vi.mock("@server/v2/appraisals/utils/masterRefs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@server/v2/appraisals/utils/masterRefs")>()),
+  loadAppraisalTypeNames: async () => new Map(),
+  resolveAppraisalTypeRef: async (v: unknown) => (v == null ? "" : String(v)),
+  resolveAppraisalVesselRef: async (v: unknown) => (v ? String(v) : null),
+}));
 vi.mock("@server/v2/appraisals/utils/requestActor", () => ({
   resolveAppraisalActor: vi.fn(async () => ({ name: "Test Officer", userUuid: "user-1" })),
 }));

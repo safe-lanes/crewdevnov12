@@ -9,6 +9,7 @@ import type { ApprAppraiserCommentV2 } from "../../../../shared/v2/appraisals/ty
 import type { ApprSeafarerCommentV2 } from "../../../../shared/v2/appraisals/types";
 import type { ApprOfficeReviewV2 } from "../../../../shared/v2/appraisals/types";
 import type { ApprTrainingFollowupV2 } from "../../../../shared/v2/appraisals/types";
+import { appraisalTypeName } from "./masterRefs";
 
 const s = (v: string | null | undefined): string => v ?? "";
 
@@ -25,7 +26,10 @@ export function assembleV1Response(
   officeReviews: ApprOfficeReviewV2[],
   trainingFollowups: ApprTrainingFollowupV2[],
   reviewers: { reviewerName?: string | null; designation?: string | null; userUuid?: string | null }[] = [],
+  appraisalTypeNames: Map<string, string> = new Map(),
 ) {
+  // APD-56: appraisalType is the stored master id; this is its current name, for display.
+  const typeName = appraisalTypeName(appraisal.appraisalType, appraisalTypeNames);
   const appraisalDataObj: Record<string, any> = {
     seafarersName: appraisal.seafarersName,
     seafarersRank: appraisal.seafarersRank,
@@ -33,6 +37,7 @@ export function assembleV1Response(
     vessel: appraisal.vessel,
     signOn: appraisal.signOn,
     appraisalType: appraisal.appraisalType,
+    appraisalTypeName: typeName,
     appraisalPeriodFrom: appraisal.appraisalPeriodFrom,
     appraisalPeriodTo: appraisal.appraisalPeriodTo,
     personalityIndexCategory: appraisal.personalityIndexCategory,
@@ -192,6 +197,7 @@ export function assembleV1Response(
     formVersionId: appraisal.formVersionId ?? null,
     formVersionUuid: appraisal.formVersionUuid ?? null,
     appraisalType: appraisal.appraisalType,
+    appraisalTypeName: typeName,
     appraisalDate: appraisal.appraisalDate,
     appraisalData: JSON.stringify(appraisalDataObj),
     competenceRating: appraisal.competenceRating,

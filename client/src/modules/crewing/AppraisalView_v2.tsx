@@ -38,6 +38,7 @@ interface AppraisalDataShape {
   vessel?: string;
   signOn?: string;
   appraisalType?: string;
+  appraisalTypeName?: string;
   appraisalPeriodFrom?: string;
   appraisalPeriodTo?: string;
   personalityIndexCategory?: string;
@@ -59,6 +60,7 @@ interface ExistingAppraisal {
   appraisalData: string | AppraisalDataShape;
   status: 'draft' | 'preliminary' | 'submitted' | 'stage2_submitted' | 'pending_review' | 'reviewed' | 'stage3_submitted';
   appraisalType?: string;
+  appraisalTypeName?: string;
   appraisalDate?: string;
   formVersionId?: number | null;
   formVersionUuid?: string | null;
@@ -337,7 +339,9 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
   const fullName = data.seafarersName || seafarerNameFallback || "";
   const appraisalDateLabel = formatDate(existingAppraisal?.appraisalDate);
   const appraisalNo = existingAppraisal ? `#${existingAppraisal.id}` : DASH;
-  const appraisalTypeLabel = existingAppraisal?.appraisalType || data.appraisalType || DASH;
+  // appraisalType is the stored master id (APD-56); the server sends its current name.
+  const appraisalTypeLabel = existingAppraisal?.appraisalTypeName || data.appraisalTypeName
+    || existingAppraisal?.appraisalType || data.appraisalType || DASH;
   const headerFormName = (rankGroupName && rankGroupName.trim()) || "Crew Appraisal";
 
   const apiError = error as ApiError | null;
@@ -357,7 +361,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
           isFieldVisible("nationality") && { label: "Nationality", value: valueOr(data.nationality) },
           isFieldVisible("vessel") && { label: "Vessel", value: valueOr(data.vessel ? getVesselName(data.vessel) || data.vessel : data.vessel) },
           isFieldVisible("signOn") && { label: "Sign On", value: formatDate(data.signOn) },
-          isFieldVisible("appraisalType") && { label: "Appraisal Type", value: valueOr(data.appraisalType || appraisalTypeLabel) },
+          isFieldVisible("appraisalType") && { label: "Appraisal Type", value: valueOr(appraisalTypeLabel) },
           isFieldVisible("appraisalPeriodFrom") && { label: "Appraisal Period (From)", value: formatDate(data.appraisalPeriodFrom) },
           isFieldVisible("appraisalPeriodTo") && { label: "Appraisal Period (To)", value: formatDate(data.appraisalPeriodTo) },
           isFieldVisible("personalityIndexCategory") && { label: "Personality Index Category", value: valueOr(data.personalityIndexCategory) },
@@ -534,7 +538,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <Field label="Sign On" value={formatDate(data.signOn)} testId="text-signOn" />
               )}
               {isFieldVisible("appraisalType") && (
-                <Field label="Appraisal Type" value={valueOr(data.appraisalType || appraisalTypeLabel)} testId="text-appraisalType" />
+                <Field label="Appraisal Type" value={valueOr(appraisalTypeLabel)} testId="text-appraisalType" />
               )}
               {isFieldVisible("appraisalPeriodFrom") && (
                 <Field label="Appraisal Period (From)" value={formatDate(data.appraisalPeriodFrom)} testId="text-appraisalPeriodFrom" />

@@ -489,7 +489,8 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         vessel: vesselName,
         vesselType,
         signOn: appraisalData.signOn || "",
-        appraisalType: appraisal.appraisalType || appraisalData.appraisalType || "",
+        // The stored value is the type's master id (APD-56); show and filter by its current name.
+        appraisalType: appraisal.appraisalTypeName || appraisalData.appraisalTypeName || appraisal.appraisalType || appraisalData.appraisalType || "",
         appraisalDate: appraisal.appraisalDate || "",
         status: appraisal.status || "draft",
         isTerminated: ((crew?.status as string) || '').startsWith('Terminated'),

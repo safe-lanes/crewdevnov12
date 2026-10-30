@@ -27,6 +27,7 @@ const PartAComponent: React.FC<PartAProps> = ({
   vessels,
   availableRanks,
   appraisalTypes,
+  appraisalTypeName,
   isFieldVisible,
   isLockForm,
   isPostStage2,
@@ -177,8 +178,8 @@ const PartAComponent: React.FC<PartAProps> = ({
                       </FormControl>
                       <SelectContent>
                         {appraisalTypes.length > 0 ? (
-                          withLegacyAppraisalType(appraisalTypes, field.value).map((type) => (
-                            <SelectItem key={type.id} value={type.name}>
+                          withLegacyAppraisalType(appraisalTypes, field.value, appraisalTypeName).map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
                               {type.name}
                             </SelectItem>
                           ))

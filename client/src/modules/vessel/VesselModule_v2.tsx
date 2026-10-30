@@ -1282,7 +1282,8 @@ export function VesselModule_v2(): JSX.Element {
             },
             rank: crewRank,
             nationality: crew.nationality || '',
-            vessel: selectedVessel?.name || crew.presentVessel || '',
+            // The vessel's master UUID, which is what the appraisal stores (APD-56).
+            vessel: selectedVessel?.vesselId || selectedVessel?.name || crew.presentVessel || '',
             vesselType: selectedVessel?.vesselType || '',
             signOn: crew.signOnDate || crew.joiningDate || '',
             _appraisalUuid: buttonConfig.appraisalUuid,

@@ -310,9 +310,18 @@ export const useAppraisalTypeByIdV2 = (id: string | undefined) => {
   });
 };
 
-// Same rationale as withLegacyCrewPool: an appraisal record already set to a type that's
-// since been deleted from the master list still needs that value selectable in its dropdown.
-export const withLegacyAppraisalType = withLegacyNamedOption;
+// Same rationale as withLegacyCrewPool, but keyed by id: an appraisal stores its type's
+// master id (APD-56). A record already set to a type that's since been deactivated or
+// deleted still needs it selectable, labelled with its name (the appraisal's
+// appraisalTypeName), or with the stored value itself for a legacy name.
+export function withLegacyAppraisalType<T extends { id: string; name: string }>(
+  options: T[],
+  current?: string | null,
+  currentName?: string | null,
+): (T | { id: string; name: string })[] {
+  if (!current || options.some((o) => o.id === current)) return options;
+  return [...options, { id: current, name: currentName || current }];
+}
 
 // ---- Training Status master (per-module training-item statuses) ----
 

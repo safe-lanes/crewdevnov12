@@ -15,6 +15,7 @@ import {
 import { softDeleteAppraisalChildRows } from "../repositories/childRowSync";
 import { CrewMembersRepository } from "../../crew-pool/repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
+import { loadAppraisalTypeNames, resolveAppraisalTypeRef, resolveAppraisalVesselRef } from "../utils/masterRefs";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import { formsService } from "../../admin/services";
 import { v4 as uuidv4 } from "uuid";
@@ -128,12 +129,12 @@ async function fetchChildDataForUuids(appraisalUuids: string[]) {
       trainingNeeds: new Map(), recommendations: new Map(),
       appraiserComments: new Map(), seafarerComments: new Map(),
       officeReviews: new Map(), trainingFollowups: new Map(),
-      reviewers: new Map(),
+      reviewers: new Map(), appraisalTypeNames: new Map(),
     };
   }
   const [trainings, targets, competenceAssessments, behaviouralAssessments,
          trainingNeeds, recommendations, appraiserComments, seafarerComments,
-         officeReviews, trainingFollowups, reviewers] = await Promise.all([
+         officeReviews, trainingFollowups, reviewers, appraisalTypeNames] = await Promise.all([
     trainingsRepo.findByAppraisalUuids(appraisalUuids),
     targetsRepo.findByAppraisalUuids(appraisalUuids),
     competenceAssessmentsRepo.findByAppraisalUuids(appraisalUuids),
@@ -145,10 +146,11 @@ async function fetchChildDataForUuids(appraisalUuids: string[]) {
     officeReviewsRepo.findByAppraisalUuids(appraisalUuids),
     trainingFollowupsRepo.findByAppraisalUuids(appraisalUuids),
     reviewersRepo.findByAppraisalUuids(appraisalUuids),
+    loadAppraisalTypeNames(),
   ]);
   return { trainings, targets, competenceAssessments, behaviouralAssessments,
            trainingNeeds, recommendations, appraiserComments, seafarerComments,
-           officeReviews, trainingFollowups, reviewers };
+           officeReviews, trainingFollowups, reviewers, appraisalTypeNames };
 }
 
 function assembleOne(appraisal: any, childData: any) {
@@ -166,6 +168,7 @@ function assembleOne(appraisal: any, childData: any) {
     childData.officeReviews.get(uuid) || [],
     childData.trainingFollowups.get(uuid) || [],
     childData.reviewers.get(uuid) || [],
+    childData.appraisalTypeNames,
   );
 }
 
@@ -503,6 +506,10 @@ export class AppraisalResultsService {
     const { formVersionId, formVersionUuid } =
       await this.resolveRequiredAppraisalFormVersion(appraisalData?.seafarersRank);
 
+    // APD-56: stored as master keys, not names.
+    const appraisalType = await resolveAppraisalTypeRef(auditData.appraisalType);
+    const vessel = await resolveAppraisalVesselRef(appraisalData.vessel);
+
     return {
       appraisalData,
       auditUserUuid: auditData.createdByUuid || undefined,
@@ -513,12 +520,12 @@ export class AppraisalResultsService {
         formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
         formVersionId,
         formVersionUuid,
-        appraisalType: auditData.appraisalType || "",
+        appraisalType,
         appraisalDate: auditData.appraisalDate || new Date().toISOString(),
         seafarersName: appraisalData.seafarersName || null,
         seafarersRank: appraisalData.seafarersRank || null,
         nationality: appraisalData.nationality || null,
-        vessel: appraisalData.vessel || null,
+        vessel,
         signOn: appraisalData.signOn || null,
         appraisalPeriodFrom: appraisalData.appraisalPeriodFrom || null,
         appraisalPeriodTo: appraisalData.appraisalPeriodTo || null,
@@ -612,6 +619,9 @@ export class AppraisalResultsService {
       // APD-17: status only moves forward, as in submitStage. A lower status
       // (a stale form, or a sync replay) is ignored; the rest of the save applies.
       if (field === "status" && isAppraisalStatusRegression(existing.status, value)) continue;
+      // APD-56: stored as master keys, not names.
+      if (field === "appraisalType") value = await resolveAppraisalTypeRef(value, existing.appraisalType);
+      else if (field === "vessel") value = await resolveAppraisalVesselRef(value, existing.vessel);
       if (!sameValue((existing as any)[field], value)) updateFields[field] = value;
     }
 
@@ -843,13 +853,14 @@ export class AppraisalResultsService {
       stageUpdate.seafarersName = data.seafarersName;
       stageUpdate.seafarersRank = data.seafarersRank;
       stageUpdate.nationality = data.nationality;
-      stageUpdate.vessel = data.vessel;
+      // APD-56: vessel and type are stored as master keys, not names.
+      stageUpdate.vessel = await resolveAppraisalVesselRef(data.vessel, appraisal.vessel);
       stageUpdate.signOn = data.signOn;
       stageUpdate.appraisalPeriodFrom = data.appraisalPeriodFrom;
       stageUpdate.appraisalPeriodTo = data.appraisalPeriodTo;
       stageUpdate.personalityIndexCategory = data.personalityIndexCategory;
       stageUpdate.primaryAppraiser = data.primaryAppraiser;
-      if (data.appraisalType) stageUpdate.appraisalType = data.appraisalType;
+      if (data.appraisalType) stageUpdate.appraisalType = await resolveAppraisalTypeRef(data.appraisalType, appraisal.appraisalType);
     } else if (stage === "stage2") {
       stageUpdate.stage2Status = "completed";
       stageUpdate.stage2SubmittedAt = new Date().toISOString();

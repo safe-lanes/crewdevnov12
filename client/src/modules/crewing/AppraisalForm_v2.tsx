@@ -365,6 +365,8 @@ interface ExistingAppraisal {
   formVersionUuid?: string | null;
   isLockForm?: boolean;
   reviewers?: { userUuid: string | null; reviewerName: string; designation: string }[];
+  // Current name of the stored appraisal type id (APD-56).
+  appraisalTypeName?: string;
 }
 
 interface AppraisalFormProps {
@@ -528,8 +530,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Fetch appraisal types from V2 Masters (Master 023)
   const { data: appraisalTypesRaw = [] } = useAppraisalTypesV2();
   const appraisalTypes = useMemo(() => {
+    // The option value is the master id, which is what the appraisal stores (APD-56).
     return appraisalTypesRaw.map((entry: any) => ({
-      id: entry.uuid || entry.entryId || entry.entry_id,
+      id: entry.id || entry.uuid,
       name: entry.name,
       value: entry.name.toLowerCase().replace(/\s+/g, '-')
     }));
@@ -2394,6 +2397,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           vessels={vessels}
           availableRanks={availableRanks}
           appraisalTypes={appraisalTypes}
+          appraisalTypeName={existingAppraisal?.appraisalTypeName}
           appraisalStatus={appraisalStatus}
           isFieldVisible={isFieldVisible}
           isSectionVisible={isSectionVisible}

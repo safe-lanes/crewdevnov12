@@ -174,6 +174,9 @@ export interface PartAProps extends AppraisalFormSectionBaseProps {
   vessels: VesselLookupItem[];
   availableRanks: RankItem[];
   appraisalTypes: AppraisalTypeItem[];
+  // The saved appraisal's type name (APD-56), to label a stored type that is
+  // no longer in the master list.
+  appraisalTypeName?: string;
 }
 
 export interface PartBProps extends AppraisalFormSectionBaseProps {
