@@ -1,12 +1,9 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
-import { COMPANY_FORM_PERMISSIONS, emptyCompanyFormGrants, type CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
+import { Info, ChevronDown } from "lucide-react";
+import { COMPANY_FORM_PERMISSIONS, type CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
 
 const ACTION_HELP: Record<(typeof COMPANY_FORM_PERMISSIONS)[number]["action"], string> = {
   view: "Allows this role to view Company Forms.",
@@ -28,6 +25,7 @@ function ActionHelp({ action, label }: { action: keyof typeof ACTION_HELP; label
             <button
               type="button"
               aria-label={`Help: ${label}`}
+              aria-describedby={helpId}
               onClick={event => event.stopPropagation()}
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#16569e] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16569e]"
             >
@@ -44,57 +42,77 @@ function ActionHelp({ action, label }: { action: keyof typeof ACTION_HELP; label
   );
 }
 
-export function CompanyFormsPermissionEditor({ roleId }: { roleId: string }) {
-  const url = `/api/v2/admin/access-control/roles/${encodeURIComponent(roleId)}/action-permissions`;
-  const client = useQueryClient();
-  const query = useQuery<{ grants: CompanyFormGrants }>({
-    queryKey: [url], queryFn: async () => (await apiRequest("GET", url)).json(),
-  });
-  const [grants, setGrants] = useState(emptyCompanyFormGrants);
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    if (query.data) { setGrants(query.data.grants); setDirty(false); }
-  }, [query.data]);
-  async function save() {
-    setSaving(true); setError("");
-    try {
-      await apiRequest("PUT", url, { grants });
-      await client.invalidateQueries({ queryKey: [url] });
-      await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/my-permissions"] });
-      await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/state"] });
-      await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/audit"] });
-      setDirty(false);
-    } catch { setError("Unable to save Company Forms permissions. Please retry."); }
-    finally { setSaving(false); }
-  }
-  return <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="company-forms-permissions">
-    <div className="border-b border-gray-200 bg-[#16569e] px-4 py-3 text-white">
-      <h2 className="font-semibold">Company Forms</h2>
-    </div>
-    <div className="p-4">
-      <p className="mb-3 text-sm text-gray-600">Choose whether this role can view and fill in forms, witness seafarer signatures, sign for the company, void unfinished or completed forms, or override eligible checklist blocks. Users can act only within their Office or Vessel category and the vessels they may access; signing for the company is limited to office roles.</p>
-      {query.isLoading ? <div className="space-y-3" aria-label="Loading Company Forms permissions">
-        <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
-        <div className="h-8 w-3/4 animate-pulse rounded bg-gray-100" />
-      </div> : query.isError ? <div className="flex flex-wrap items-center gap-2 text-sm text-red-700" role="alert">Unable to load Company Forms permissions. <button className="underline" onClick={() => query.refetch()}>Retry</button></div> :
-        <TooltipProvider delayDuration={250}>
-          <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-            {COMPANY_FORM_PERMISSIONS.map(({ action, label }) => {
-              const controlId = `company-form-grant-${action}`;
-              return <div key={action} className="flex min-w-0 items-center gap-2 rounded-md border border-gray-100 bg-gray-50/70 px-3 py-2">
-                <Checkbox id={controlId} checked={grants[action]} disabled={saving} data-testid={`company-form-grant-${action}`}
-                  onCheckedChange={value => { setGrants(prev => ({ ...prev, [action]: value === true })); setDirty(true); }} />
-                <label htmlFor={controlId} className="min-w-0 flex-1 cursor-pointer text-sm text-gray-800">{label}</label>
-                <ActionHelp action={action} label={label} />
-              </div>;
-            })}
+export function CompanyFormsPermissionEditor({
+  grants,
+  onChange,
+  disabled = false,
+}: {
+  grants: CompanyFormGrants;
+  onChange: (grants: CompanyFormGrants) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = useMemo(
+    () => COMPANY_FORM_PERMISSIONS.filter(({ action }) => grants[action]),
+    [grants],
+  );
+  const summary = selected.length === 0
+    ? "None selected"
+    : selected.length === COMPANY_FORM_PERMISSIONS.length
+      ? "All 7 permissions"
+      : `${selected.slice(0, 3).map(({ label }) => label).join(", ")}${selected.length > 3 ? ` +${selected.length - 3}` : ""}`;
+
+  return (
+    <div className="col-span-4 min-w-0 py-1.5">
+      <Popover open={open} onOpenChange={nextOpen => !disabled && setOpen(nextOpen)}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label="Company Forms permissions"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            className="flex min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-800 shadow-sm transition-colors hover:border-[#16569e] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16569e] disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="company-form-permissions-trigger"
+          >
+            <span className="truncate" title={summary}>{summary}</span>
+            <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          collisionPadding={12}
+          className="z-50 w-[min(25rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] p-2"
+          data-testid="company-form-grant-action"
+        >
+          <div className="mb-1 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Company Forms permissions
           </div>
-        </TooltipProvider>}
-      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
-      <Button className="mt-3" disabled={!dirty || saving || !query.data} onClick={save}
-        data-testid="save-company-form-permissions">{saving ? "Saving…" : "Save Company Forms permissions"}</Button>
+          <TooltipProvider delayDuration={250}>
+            <div role="group" aria-label="Company Forms permissions" className="space-y-0.5">
+              {COMPANY_FORM_PERMISSIONS.map(({ action, label }) => {
+                const controlId = `company-form-grant-${action}`;
+                return (
+                  <div key={action} className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-50">
+                    <Checkbox
+                      id={controlId}
+                      checked={grants[action]}
+                      disabled={disabled}
+                      data-testid={`company-form-grant-${action}`}
+                      onCheckedChange={value => onChange({ ...grants, [action]: value === true })}
+                    />
+                    <label htmlFor={controlId} className="min-w-0 flex-1 cursor-pointer py-1 text-sm leading-5 text-slate-800">
+                      {label}
+                    </label>
+                    <ActionHelp action={action} label={label} />
+                  </div>
+                );
+              })}
+            </div>
+          </TooltipProvider>
+        </PopoverContent>
+      </Popover>
     </div>
-  </section>;
+  );
 }

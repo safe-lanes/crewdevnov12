@@ -1,29 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { emptyCompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
 
 const mocks = vi.hoisted(() => ({
   state: { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names",
     currentRoleId: "reviewer", explicitManagers: [] as { roleId: string; roleName: string }[] },
   grants: { reviewer: false, manager: true } as Record<string, boolean>,
   policy: { blockExpiringDuringContract: false, blockMissingExpiry: false },
-  saveManagement: vi.fn(), request: vi.fn(), saveMenu: vi.fn(), toast: vi.fn(),
+  saveManagement: vi.fn(), request: vi.fn(), saveMenu: vi.fn(), toast: vi.fn(), dismiss: vi.fn(),
   roles: [
     { id: 1, ruid: "reviewer", assignedRole: "Fixture Reviewer", roletype: "Office", isActive: true },
     { id: 2, ruid: "manager", assignedRole: "Fixture Manager", roletype: "Office", isActive: true },
   ],
   menus: [{ id: 1, muid: "crew", name: "Crew Database", displayName: null, parentMenu: null }],
   permissions: [],
+  formsData: { grants: { view: false, fill_in: false, witness: false, sign_representative: false, void: false, void_completed: false, override_checklist: false } },
+  formsError: false, formsFetching: false, refetchForms: vi.fn(), refetchMenus: vi.fn(),
 }));
 vi.mock("@/contexts/PermissionsContext", () => ({ usePermissions: () => ({ accessControlManagement: true }) }));
-vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast, dismiss: mocks.dismiss }) }));
 vi.mock("@/components/admin/CompanyDocumentBranding", () => ({
   CompanyDocumentBranding: () => <button>Company PDF branding</button>,
 }));
 vi.mock("@/modules/admin/AccessAuditHistory", () => ({
   AccessAuditHistory: () => <button>Access audit history</button>,
 }));
-vi.mock("@/modules/admin/CompanyFormsPermissionEditor", () => ({ CompanyFormsPermissionEditor: () => <div>Company Forms permissions</div> }));
 vi.mock("@/modules/admin/api/adminApiV2", () => ({
   adminApiV2: {
     getAccessControlState: async () => ({ ...mocks.state }),
@@ -34,7 +36,9 @@ vi.mock("@/modules/admin/api/adminApiV2", () => ({
 vi.mock("@/modules/admin/hooks/useAdminV2", () => ({
   useAccessControlMenusV2: () => ({ data: mocks.menus, isLoading: false }),
   useAccessControlRolesV2: () => ({ data: mocks.roles, isLoading: false }),
-  useAccessControlPermissionsV2: () => ({ data: mocks.permissions, isLoading: false }),
+  useAccessControlPermissionsV2: () => ({ data: mocks.permissions, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchMenus }),
+  useRoleCompanyFormGrantsV2: () => ({ data: mocks.formsError ? undefined : mocks.formsData, isLoading: false, isFetching: mocks.formsFetching, isError: mocks.formsError, refetch: mocks.refetchForms }),
+  useSaveCombinedAccessControlPermissionsV2: () => ({ mutateAsync: mocks.saveMenu, isPending: false }),
   useSaveAccessControlPermissionsV2: () => ({ mutate: mocks.saveMenu, isPending: false }),
 }));
 vi.mock("@/lib/queryClient", () => ({ apiRequest: (...args: unknown[]) => mocks.request(...args) }));
@@ -43,6 +47,11 @@ import AccessControlPage from "@/modules/admin/AccessControlPage";
 let client: QueryClient;
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.formsData = { grants: emptyCompanyFormGrants() };
+  mocks.formsError = false; mocks.formsFetching = false;
+  mocks.refetchForms.mockResolvedValue({});
+  mocks.refetchMenus.mockResolvedValue({});
+  mocks.saveMenu.mockResolvedValue({});
   Object.assign(mocks.state, { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names",
     currentRoleId: "reviewer", explicitManagers: [] });
   Object.assign(mocks.policy, { blockExpiringDuringContract: false, blockMissingExpiry: false });
@@ -78,6 +87,47 @@ async function review(role = "reviewer") {
   return screen.findByRole("alertdialog");
 }
 describe("Access Control configure-once panels", () => {
+  it("saves menu and Company Forms edits through one combined mutation", async () => {
+    await boot();
+    fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Witness", exact: true }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
+    fireEvent.click(screen.getByTestId("button-save-access-control"));
+    await waitFor(() => expect(mocks.saveMenu).toHaveBeenCalledExactlyOnceWith({
+      ruid: "reviewer",
+      permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
+      companyFormGrants: { ...emptyCompanyFormGrants(), witness: true },
+    }));
+    expect(mocks.refetchForms).toHaveBeenCalled();
+    expect(mocks.refetchMenus).toHaveBeenCalled();
+    expect(screen.queryByTestId("save-company-form-permissions")).not.toBeInTheDocument();
+  });
+  it("keeps both drafts on combined failure and refuses a silent role switch", async () => {
+    mocks.saveMenu.mockRejectedValue(Error("500: Deliberate failure"));
+    await boot();
+    fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Witness", exact: true }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
+    fireEvent.click(screen.getByTestId("button-save-access-control"));
+    expect(await screen.findByText("Neither group was saved. Please retry.")).toBeVisible();
+    expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
+    expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
+    expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("role-item-manager"));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("both sets of edits");
+    fireEvent.click(screen.getByTestId("button-cancel-role-change"));
+    expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
+  });
+  it("does not synthesize form grants when loading fails and offers Retry", async () => {
+    mocks.formsError = true;
+    await boot();
+    expect(screen.getByTestId("button-save-access-control")).toBeDisabled();
+    expect(screen.queryByTestId("company-form-permissions-trigger")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("company-forms-permissions")).getByRole("button", { name: "Retry" }));
+    expect(mocks.refetchForms).toHaveBeenCalled();
+  });
   it("shows explanations in tooltips rather than inline while preserving accessible descriptions", async () => {
     await boot();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -97,11 +147,10 @@ describe("Access Control configure-once panels", () => {
     const grid = screen.getByTestId("access-control-permissions");
     const policy = screen.getByTestId("training-compliance-policy");
     const management = screen.getByTestId("management-grants-panel");
-    const companyForms = screen.getByText("Company Forms permissions");
+    const companyForms = screen.getByTestId("company-forms-permissions");
     const training = screen.getByTestId("training-compliance-role-permission");
-    expect(grid.contains(companyForms)).toBe(false);
+    expect(grid.contains(companyForms)).toBe(true);
     expect(grid.contains(training)).toBe(false);
-    expect(before(grid, companyForms)).toBe(true);
     expect(before(companyForms, training)).toBe(true);
     expect(before(training, policy)).toBe(true);
     expect(before(policy, management)).toBe(true);

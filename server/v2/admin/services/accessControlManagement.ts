@@ -138,7 +138,11 @@ export async function managedWrite<T>(req: Request, write: (tx: any, actor: Audi
   });
 }
 export async function saveActionDecisions(req: Request, roleId: string, resource: string, decisions: Record<string, boolean>) {
-  return managedWrite(req, async (tx, actor) => {
+  return managedWrite(req, (tx, actor) => writeActionDecisions(tx, actor, roleId, resource, decisions));
+}
+/** Transaction-scoped writer shared by standalone and atomic role saves. */
+export async function writeActionDecisions(tx: any, actor: AuditActor, roleId: string,
+  resource: string, decisions: Record<string, boolean>) {
     const snapshot = await managementSnapshot(tx);
     if (!snapshot.grantTargets.some(r => r.ruid === roleId)) throw new AccessControlError("Active eligible parent role not found.", 400);
     for (const [action, allowed] of Object.entries(decisions)) {
@@ -153,5 +157,4 @@ export async function saveActionDecisions(req: Request, roleId: string, resource
       await appendAudit(tx, actor, "grant_change", roleId, resource, action, before, allowed);
     }
     return decisions;
-  });
 }

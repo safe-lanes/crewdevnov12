@@ -1,5 +1,12 @@
 # Access Control: settings layout and Save actions
 
+**Current Company Forms layout:** Company Forms is now the final row of the
+role grid, saved atomically with menu permissions by Save Changes. See
+[the atomic role-save design](access-control-atomic-role-save.md).
+The separate Company Forms card/button and three-save recommendation below
+describe the preceding layout, not the current implementation. Training
+compliance, tenant policy and Management grants remain as described below.
+
 ## Scope
 
 Presentation and a client-side confirmation only. The permission grid and its

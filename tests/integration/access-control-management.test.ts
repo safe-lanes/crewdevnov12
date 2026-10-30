@@ -5,13 +5,13 @@ import { sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Request } from "express";
-import { hasCompanyFormPermission } from "../../shared/v2/admin/companyFormPermissions";
+import { hasCompanyFormPermission, emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
 const holder = vi.hoisted(() => ({ db: null as any }));
 vi.mock("@server/v2/db", () => ({ getDb: () => holder.db }));
 import { accessControlAuthority, appendAudit, lockAccessControl, managedWrite, managementSnapshot,
   saveActionDecisions } from "@server/v2/admin/services/accessControlManagement";
 import { roleSyncTransition, parentSyncActor } from "@server/v2/admin/services/accessControlParentSync";
-import { writeCatalogue, writeMenuGrants } from "@server/v2/admin/services/accessControlWrites";
+import { writeCatalogue, writeMenuGrants, writeCombinedRoleGrants } from "@server/v2/admin/services/accessControlWrites";
 import { accessControlController } from "@server/v2/admin/controllers/accessControlController";
 import { trainingComplianceSettingsController } from "@server/v2/admin/controllers/trainingComplianceSettingsController";
 import { actionPermissionsController } from "@server/v2/admin/controllers/actionPermissionsController";
@@ -60,6 +60,7 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0233_resource_action_permissions.sql", "utf8"));
   await pool.query(await readFile("migrations/0235_preserve_company_grants_on_role_sync.sql", "utf8"));
   await pool.query(await readFile("migrations/0236_access_control_management.sql", "utf8"));
+  await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('company_forms','override_checklist','Override checklist',7)");
   await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
   await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
   const rows = snapshotRows();
@@ -70,6 +71,85 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_menumaster_ac(muid,name,route) VALUES ('crew','Crew Database','/crew'),('admin-menu','Admin','/admin')");
 });
 describe("Access Control real database authority, audit and parent synchronization", () => {
+  const combinedBody = () => ({
+    permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
+    companyFormGrants: { ...emptyCompanyFormGrants(), view: true, witness: true },
+  });
+  it("atomically saves grid and Company Forms with frozen audit names and no-change suppression", async () => {
+    await pool.query("UPDATE master_users SET firstname='Original',lastname='Manager' WHERE id=1");
+    const request = req(1, combinedBody());
+    request.params = { ruid: "target" };
+    expect((await response(accessControlController.saveCombinedPermissions, request)).statusCode).toBe(200);
+    expect((await pool.query("SELECT canview FROM adm_roleaccess_ac WHERE role_id='target' AND menu_id='crew'")).rows[0].canview).toBe(true);
+    expect((await pool.query("SELECT allowed FROM adm_resource_action_grants WHERE role_id='target' AND resource='company_forms' AND action='witness'")).rows[0].allowed).toBe(true);
+    const entries = await audit();
+    expect(entries).toHaveLength(11); // four grid decisions and seven form decisions, including initial false
+    for (const entry of entries) expect(entry).toMatchObject({
+      actor_display_name: "Original Manager", affected_role_name: "Documentation Reviewer",
+      role_id: "target", event: "grant_change",
+    });
+    expect(entries.find(e => e.resource === "company_forms" && e.action === "void_completed"))
+      .toMatchObject({ before_value: null, after_value: false });
+    const before = await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action");
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    expect(await audit()).toEqual(entries);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(before.rows);
+    await pool.query("UPDATE master_users SET firstname='Changed' WHERE id=1; UPDATE adm_rolemaster_ac SET assigned_role='Changed role' WHERE ruid='target'");
+    expect(await audit()).toEqual(entries);
+  });
+  it("rolls back grid writes and their audit if Company Forms eligibility rejects the second writer", async () => {
+    await pool.query("UPDATE adm_rolemaster_ac SET parent_owned=false WHERE ruid='target'");
+    await expect(writeCombinedRoleGrants(req(1, combinedBody()), "target")).rejects.toThrow("Active eligible parent role not found");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("rolls back both groups and every audit row on a real database failure after grid writes", async () => {
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    const beforeMenus = (await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows;
+    const beforeForms = (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows;
+    const beforeAudit = await audit();
+    await pool.query(`CREATE FUNCTION refuse_form_write() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'Deliberate isolated-test Company Forms write failure'; END $$;
+      CREATE TRIGGER refuse_form_write BEFORE UPDATE ON adm_resource_action_grants
+      FOR EACH ROW EXECUTE FUNCTION refuse_form_write()`);
+    const body = combinedBody();
+    body.permissions[0].canview = false;
+    body.companyFormGrants.view = false;
+    const request = req(1, body); request.params = { ruid: "target" };
+    const result = await response(accessControlController.saveCombinedPermissions, request);
+    expect(result.statusCode).toBe(500);
+    expect(result.data.message).toBe("Access Control operation failed.");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows).toEqual(beforeMenus);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(beforeForms);
+    expect(await audit()).toEqual(beforeAudit);
+  });
+  it("refuses an invalid menu without writing form grants or audit", async () => {
+    const body = combinedBody(); body.permissions[0].menuId = "does-not-exist";
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Menu not found");
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("refuses unauthorised combined writes without changing either group", async () => {
+    await management(1, "ordinary", true); // disables the name fallback for Admin
+    const before = await audit();
+    await expect(writeCombinedRoleGrants(req(1, combinedBody()), "target")).rejects.toThrow("permission to manage Access Control");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants WHERE resource='company_forms'")).rows).toHaveLength(0);
+    expect(await audit()).toEqual(before);
+  });
+  it.each(["actor", "actor_display_name", "category", "timestamp"])("rejects browser-owned %s in the atomic payload", async key => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), [key]: "spoof" }), "target"))
+      .rejects.toThrow("server-owned");
+    expect(await audit()).toHaveLength(0);
+  });
+  it("validates the complete form map and duplicate menus before any writes", async () => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), companyFormGrants: { view: true } }), "target")).rejects.toThrow("Invalid payload");
+    const body = combinedBody(); body.permissions.push({ ...body.permissions[0] });
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Duplicate menu grants");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
   it("returns an empty explicit list and the server-resolved role during name bootstrap", async () => {
     const result = await response(accessControlController.state, req(1));
     expect(result.statusCode).toBe(200);

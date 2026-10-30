@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/queryClient';
+import type { CompanyFormGrants } from '@shared/v2/admin/companyFormPermissions';
 
 const V2_BASE = '/api/v2/admin';
 
@@ -534,6 +535,26 @@ export const adminApiV2 = {
 
   async saveAccessControlPermissions(ruid: string, permissions: any[]) {
     const res = await apiRequest('PUT', `${V2_BASE}/access-control/roles/${ruid}/permissions`, { permissions });
+    return res.json();
+  },
+
+  async saveCombinedAccessControlPermissions(
+    ruid: string,
+    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants },
+  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants }> {
+    const res = await apiRequest(
+      'PUT',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/combined-permissions`,
+      payload,
+    );
+    return res.json();
+  },
+
+  async getRoleCompanyFormGrants(ruid: string): Promise<{ grants: CompanyFormGrants }> {
+    const res = await apiRequest(
+      'GET',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/action-permissions`,
+    );
     return res.json();
   },
 

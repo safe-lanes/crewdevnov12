@@ -18,6 +18,7 @@ import { AccessAuditHistory } from "./AccessAuditHistory";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
+import type { CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
 import { TrainingCompliancePolicySetting, TrainingComplianceRolePermissionEditor } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { adminApiV2 } from "./api/adminApiV2";
@@ -25,7 +26,8 @@ import {
   useAccessControlMenusV2,
   useAccessControlRolesV2,
   useAccessControlPermissionsV2,
-  useSaveAccessControlPermissionsV2,
+  useRoleCompanyFormGrantsV2,
+  useSaveCombinedAccessControlPermissionsV2,
 } from "./hooks/useAdminV2";
 
 interface Permission {
@@ -138,8 +140,10 @@ function buildMenuTree(menus: MenuItemApi[]): MenuTreeItem[] {
   return roots;
 }
 
+const EMPTY_PERMISSIONS: PermissionApi[] = [];
+
 export default function AccessControlPage() {
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { accessControlManagement } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
@@ -151,13 +155,19 @@ export default function AccessControlPage() {
     allowed: boolean;
   } | null>(null);
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
+  const [companyFormGrants, setCompanyFormGrants] = useState<CompanyFormGrants | null>(null);
+  const [companyFormGrantsRoleUuid, setCompanyFormGrantsRoleUuid] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [roleChangeRequest, setRoleChangeRequest] = useState<string | null>(null);
+  const [combinedSaveError, setCombinedSaveError] = useState("");
 
   const { data: menusData = [], isLoading: menusLoading } = useAccessControlMenusV2();
   const { data: rolesData = [], isLoading: rolesLoading } = useAccessControlRolesV2();
-  const { data: permissionsData = [], isLoading: permissionsLoading } = useAccessControlPermissionsV2(selectedRoleUuid);
-  const savePermissionsMutation = useSaveAccessControlPermissionsV2();
+  const permissionsQuery = useAccessControlPermissionsV2(selectedRoleUuid);
+  const { data: permissionsData = EMPTY_PERMISSIONS, isLoading: permissionsLoading } = permissionsQuery;
+  const companyFormsQuery = useRoleCompanyFormGrantsV2(selectedRoleUuid);
+  const saveCombinedMutation = useSaveCombinedAccessControlPermissionsV2();
   const stateQuery = useQuery<AccessControlState>({
     queryKey: ["/api/v2/admin/access-control/state"],
     queryFn: () => adminApiV2.getAccessControlState(),
@@ -208,7 +218,7 @@ export default function AccessControlPage() {
   }, [menusData, expandedMenus]);
 
   useEffect(() => {
-    if (permissionsData && Array.isArray(permissionsData)) {
+    if (!isDirty && permissionsData && Array.isArray(permissionsData)) {
       const permMap: Record<string, Permission> = {};
       for (const p of permissionsData as PermissionApi[]) {
         permMap[p.menuId] = {
@@ -219,9 +229,15 @@ export default function AccessControlPage() {
         };
       }
       setLocalPermissions(permMap);
-      setIsDirty(false);
     }
-  }, [permissionsData]);
+  }, [permissionsData, isDirty]);
+
+  useEffect(() => {
+    if (!isDirty && companyFormsQuery.data?.grants) {
+      setCompanyFormGrants(companyFormsQuery.data.grants);
+      setCompanyFormGrantsRoleUuid(selectedRoleUuid);
+    }
+  }, [companyFormsQuery.data, isDirty, selectedRoleUuid]);
 
   useEffect(() => {
     if (managementQuery.data) setManagementDraft(managementQuery.data.allowed);
@@ -238,10 +254,23 @@ export default function AccessControlPage() {
     ? stateQuery.data.explicitManagers
     : undefined;
 
-  const handleRoleSelect = useCallback((ruid: string) => {
+  const applyRoleSelection = useCallback((ruid: string) => {
     setSelectedRoleUuid(ruid);
     setIsDirty(false);
+    setCompanyFormGrants(null);
+    setCompanyFormGrantsRoleUuid(null);
+    setCombinedSaveError("");
+    setRoleChangeRequest(null);
   }, []);
+
+  const handleRoleSelect = useCallback((ruid: string) => {
+    if (ruid === selectedRoleUuid || saveCombinedMutation.isPending) return;
+    if (isDirty) {
+      setRoleChangeRequest(ruid);
+      return;
+    }
+    applyRoleSelection(ruid);
+  }, [selectedRoleUuid, saveCombinedMutation.isPending, isDirty, applyRoleSelection]);
 
   const toggleExpand = useCallback((menuId: string) => {
     setExpandedMenus((prev) => {
@@ -265,6 +294,7 @@ export default function AccessControlPage() {
         },
       }));
       setIsDirty(true);
+      setCombinedSaveError("");
     },
     []
   );
@@ -281,12 +311,13 @@ export default function AccessControlPage() {
         },
       }));
       setIsDirty(true);
+      setCombinedSaveError("");
     },
     []
   );
 
-  const handleSave = useCallback(() => {
-    if (!selectedRoleUuid) return;
+  const handleSave = useCallback(async () => {
+    if (!selectedRoleUuid || !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid || permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError || companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError || saveCombinedMutation.isPending) return;
 
     const permissions = allMenuMuids.map((muid) => ({
       menuId: muid,
@@ -296,26 +327,29 @@ export default function AccessControlPage() {
       candelete: localPermissions[muid]?.candelete ?? false,
     }));
 
-    savePermissionsMutation.mutate(
-      { ruid: selectedRoleUuid, permissions },
-      {
-        onSuccess: () => {
-          setIsDirty(false);
-          toast({
-            title: "Changes Saved",
-            description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
-          });
-        },
-        onError: () => {
-          toast({
-            title: "Error",
-            description: "Failed to save permissions. Please try again.",
-            variant: "destructive",
-          });
-        },
-      }
-    );
-  }, [selectedRoleUuid, allMenuMuids, localPermissions, savePermissionsMutation, selectedRole, toast]);
+    setCombinedSaveError("");
+    dismiss();
+    try {
+      await saveCombinedMutation.mutateAsync({
+        ruid: selectedRoleUuid,
+        permissions,
+        companyFormGrants,
+      });
+    } catch (error) {
+      // A transport failure may lose the response after commit; do not claim it
+      // was rolled back unless the server actually returned a refusal.
+      setCombinedSaveError(error instanceof Error && /^[45]\d\d:/.test(error.message)
+        ? "Neither group was saved. Please retry."
+        : "Unable to confirm the save. Your edits are kept; retry. Menu and Company Forms permissions are saved together, never partly.");
+      return;
+    }
+    setIsDirty(false);
+    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch()]);
+    toast({
+      title: "Changes Saved",
+      description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
+    });
+  }, [selectedRoleUuid, companyFormGrants, companyFormGrantsRoleUuid, permissionsLoading, permissionsQuery, companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole]);
 
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
@@ -351,6 +385,7 @@ export default function AccessControlPage() {
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
+                disabled={saveCombinedMutation.isPending}
                 className="p-0.5 rounded hover:bg-gray-200 transition-colors"
                 data-testid={`toggle-menu-${item.muid}`}
               >
@@ -370,6 +405,7 @@ export default function AccessControlPage() {
           <div className="flex items-center justify-center py-2.5">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              disabled={saveCombinedMutation.isPending}
               onCheckedChange={() =>
                 handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isViewOnlyMenu)
               }
@@ -386,10 +422,10 @@ export default function AccessControlPage() {
               >
                 <Checkbox
                   checked={isDisabledKey ? false : perms[key]}
+                  disabled={isDisabledKey || saveCombinedMutation.isPending}
                   onCheckedChange={isDisabledKey ? undefined : (checked) =>
                     handlePermissionChange(item.muid, key, !!checked)
                   }
-                  disabled={isDisabledKey}
                   className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
                   data-testid={`checkbox-${item.muid}-${key}`}
                 />
@@ -407,6 +443,7 @@ export default function AccessControlPage() {
   };
 
   const isLoading = menusLoading || rolesLoading;
+  const combinedSavePending = saveCombinedMutation.isPending;
 
   if (isLoading) {
     return (
@@ -419,7 +456,8 @@ export default function AccessControlPage() {
   return (
     <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
       <div className="flex flex-wrap items-center justify-end gap-3"><AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding /></div>
-      <div className="flex gap-0 min-h-[440px] h-[calc(100vh-370px)] max-w-full" data-testid="access-control-permissions">
+      <div className="max-w-full overflow-x-auto" data-testid="access-control-grid-scroll">
+      <div className="flex min-h-[440px] h-[calc(100vh-370px)] min-w-[960px] gap-0" data-testid="access-control-permissions">
       <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
         <div className="bg-[#52baf3] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
           Roles
@@ -429,7 +467,10 @@ export default function AccessControlPage() {
             <div
               key={role.ruid}
               onClick={() => handleRoleSelect(role.ruid)}
-              className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors ${
+              aria-disabled={combinedSavePending}
+              className={`px-4 py-2.5 text-sm border-b border-gray-100 transition-colors ${
+                combinedSavePending ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              } ${
                 selectedRoleUuid === role.ruid
                   ? "bg-[#52baf3] text-white font-medium"
                   : "text-gray-700 hover:bg-gray-50"
@@ -447,8 +488,10 @@ export default function AccessControlPage() {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-[1fr_80px_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
+      <div className="min-w-0 flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
+        <div className="min-w-0 flex-1 overflow-x-auto">
+        <div className="min-w-[760px] flex h-full flex-col">
+        <div className="grid grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
           <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
           <div className="text-center py-2.5" data-testid="text-header-select-all">Select All</div>
           <div className="text-center py-2.5" data-testid="text-header-view">View</div>
@@ -456,7 +499,8 @@ export default function AccessControlPage() {
           <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
           <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="min-w-[760px]">
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
@@ -468,24 +512,86 @@ export default function AccessControlPage() {
               No menu items configured. Add menu items to set up access control.
             </div>
           )}
+          {selectedRoleUuid && stateQuery.data?.allowed && <div
+            className="grid min-h-[58px] grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] items-center border-b border-gray-200 bg-sky-50/70"
+            data-testid="company-forms-permissions"
+          >
+            <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Company Forms</div>
+            <div aria-hidden="true" />
+            {companyFormsQuery.isLoading || companyFormGrantsRoleUuid !== selectedRoleUuid && !companyFormsQuery.isError ? (
+              <div className="col-span-4 px-3 py-2.5">
+                <div className="h-9 animate-pulse rounded-md bg-gray-100" aria-label="Loading Company Forms permissions" />
+              </div>
+            ) : companyFormsQuery.isError || !companyFormGrants ? (
+              <div className="col-span-4 flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm text-red-700" role="alert">
+                <span>Unable to load Company Forms permissions.</span>
+                <button className="underline" onClick={() => companyFormsQuery.refetch()}>Retry</button>
+              </div>
+            ) : (
+              <CompanyFormsPermissionEditor
+                grants={companyFormGrants}
+                disabled={combinedSavePending}
+                onChange={nextGrants => {
+                  setCompanyFormGrants(nextGrants);
+                  setIsDirty(true);
+                  setCombinedSaveError("");
+                }}
+              />
+            )}
+          </div>}
+          </div>
         </ScrollArea>
+        </div>
+        </div>
+        {combinedSaveError && (
+          <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-right text-sm text-red-800 sm:text-left">
+            {combinedSaveError}
+          </p>
+        )}
         <div className="flex justify-end p-3 border-t border-gray-200 bg-gray-50">
           <Button
             onClick={handleSave}
-            disabled={!isDirty || savePermissionsMutation.isPending || !selectedRoleUuid}
+            disabled={
+              !isDirty || combinedSavePending || !selectedRoleUuid ||
+              !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid || companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+              permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError
+            }
             className="bg-[#16569e] hover:bg-[#0f4078] text-white px-6"
             data-testid="button-save-access-control"
           >
-            {savePermissionsMutation.isPending ? "Saving..." : "Save Changes"}
+            {combinedSavePending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>
       </div>
+      </div>
       {selectedRoleUuid && stateQuery.data?.allowed && <>
-        <CompanyFormsPermissionEditor key={`forms-${selectedRoleUuid}`} roleId={selectedRoleUuid} />
         <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
       </>}
       {accessControlManagement && <TrainingCompliancePolicySetting />}
+      <AlertDialog open={!!roleChangeRequest} onOpenChange={open => { if (!open) setRoleChangeRequest(null); }}>
+        <AlertDialogContent data-testid="unsaved-role-change-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved permission changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Menu and Company Forms permission edits are both unsaved. Changing roles will discard both sets of edits.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-role-change">Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-role-change"
+              onClick={event => {
+                event.preventDefault();
+                if (roleChangeRequest) applyRoleSelection(roleChangeRequest);
+              }}
+              disabled={combinedSavePending}
+            >
+              Discard and change role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading" data-testid="management-grants-panel">
         <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
           <ShieldCheck size={18} aria-hidden="true" />
@@ -511,6 +617,7 @@ export default function AccessControlPage() {
                   id="management-role-select"
                   value={selectedRoleUuid ?? ""}
                   onChange={event => handleRoleSelect(event.target.value)}
+                  disabled={combinedSavePending}
                   className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
                   aria-label="Choose role for management grant"
                 >

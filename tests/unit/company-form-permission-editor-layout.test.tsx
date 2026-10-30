@@ -1,32 +1,32 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { emptyCompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
-
-const mock = vi.hoisted(() => ({ request: vi.fn() }));
-vi.mock("@/lib/queryClient", () => ({ apiRequest: (...args: unknown[]) => mock.request(...args) }));
+import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { emptyCompanyFormGrants, type CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
 import { CompanyFormsPermissionEditor } from "@/modules/admin/CompanyFormsPermissionEditor";
 
-let client: QueryClient;
-beforeEach(() => {
-  vi.clearAllMocks();
-  mock.request.mockImplementation(async () => ({ json: async () => ({ grants: emptyCompanyFormGrants() }) }));
-  client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-});
-afterEach(() => { cleanup(); client.clear(); });
-async function boot() {
-  render(<QueryClientProvider client={client}><CompanyFormsPermissionEditor roleId="fixture-role" /></QueryClientProvider>);
-  await screen.findByRole("checkbox", { name: "Witness", exact: true });
+afterEach(cleanup);
+function Harness({ initial = emptyCompanyFormGrants(), disabled = false }: { initial?: CompanyFormGrants; disabled?: boolean }) {
+  const [grants, setGrants] = useState(initial);
+  return <CompanyFormsPermissionEditor grants={grants} onChange={setGrants} disabled={disabled} />;
 }
-describe("Company Forms permission card presentation", () => {
-  it("explains the actions and category/vessel limits, retaining seven checkboxes and the separate Save", async () => {
-    await boot();
-    const card = screen.getByTestId("company-forms-permissions");
-    expect(within(card).getByRole("heading", { name: "Company Forms" })).toBeInTheDocument();
-    expect(card).toHaveTextContent("Office or Vessel category");
-    expect(card).toHaveTextContent("vessels they may access");
-    expect(within(card).getAllByRole("checkbox")).toHaveLength(7);
-    expect(screen.getByTestId("save-company-form-permissions")).toBeDisabled();
+describe("Company Forms controlled permission multiselect", () => {
+  it.each([
+    [emptyCompanyFormGrants(), "None selected"],
+    [{ ...emptyCompanyFormGrants(), view: true, fill_in: true, witness: true, void: true }, "View, Fill in, Witness +1"],
+    [Object.fromEntries(Object.keys(emptyCompanyFormGrants()).map(key => [key, true])), "All 7 permissions"],
+  ])("shows the saved selections without opening the dropdown", (initial, summary) => {
+    render(<Harness initial={initial as CompanyFormGrants} />);
+    expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent(summary);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Save Company Forms permissions")).not.toBeInTheDocument();
+  });
+  it("lists all seven permissions and keeps selections open while updating the summary", async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId("company-form-permissions-trigger"));
+    expect(await screen.findAllByRole("checkbox")).toHaveLength(7);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Witness", exact: true }));
+    expect(screen.getByRole("checkbox", { name: "Witness", exact: true })).toBeChecked();
+    expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
   });
   it.each([
     ["Witness", "acting user’s own identity recorded as the witness"],
@@ -34,33 +34,24 @@ describe("Company Forms permission card presentation", () => {
     ["Void", "has not been completed"],
     ["Void completed", "has already been completed"],
     ["Override checklist", "does not allow overriding unfinished required forms"],
-  ])("opens tap help for %s without changing its permission or saving", async (label, text) => {
-    await boot();
-    fireEvent.click(screen.getByRole("button", { name: `Help: ${label}`, exact: true }));
-    const explanation = await screen.findByRole("dialog");
-    expect(explanation).toHaveTextContent(text);
+  ])("opens tap help for %s without changing its permission", async (label, text) => {
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId("company-form-permissions-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: `Help: ${label}`, exact: true }));
+    expect(await screen.findByText(text, { exact: false })).toBeVisible();
     expect(screen.getByRole("checkbox", { name: label, exact: true })).not.toBeChecked();
-    expect(screen.getByTestId("save-company-form-permissions")).toBeDisabled();
-    expect(mock.request.mock.calls.filter(([method]) => method !== "GET")).toHaveLength(0);
+    expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("None selected");
   });
-  it("shows hover help without changing the permission", async () => {
-    await boot();
-    fireEvent.pointerMove(screen.getByRole("button", { name: "Help: Witness" }), { pointerType: "mouse" });
+  it("retains hover help", async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId("company-form-permissions-trigger"));
+    fireEvent.pointerMove(await screen.findByRole("button", { name: "Help: Witness" }), { pointerType: "mouse" });
     expect(await screen.findByRole("tooltip")).toHaveTextContent("recorded as the witness");
-    expect(screen.getByRole("checkbox", { name: "Witness", exact: true })).not.toBeChecked();
   });
-  it("keeps the existing independent payload and retains edits on failed save", async () => {
-    await boot();
-    mock.request.mockImplementation(async (method: string) => {
-      if (method === "PUT") throw Error("deliberate test failure");
-      return { json: async () => ({ grants: emptyCompanyFormGrants() }) };
-    });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Witness", exact: true }));
-    fireEvent.click(screen.getByTestId("save-company-form-permissions"));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Unable to save Company Forms permissions. Please retry."));
-    expect(mock.request).toHaveBeenCalledWith("PUT", "/api/v2/admin/access-control/roles/fixture-role/action-permissions",
-      { grants: { ...emptyCompanyFormGrants(), witness: true } });
-    expect(screen.getByRole("checkbox", { name: "Witness", exact: true })).toBeChecked();
-    expect(screen.getByTestId("save-company-form-permissions")).toBeEnabled();
+  it("cannot open or change permissions while disabled", () => {
+    const change = vi.fn();
+    render(<CompanyFormsPermissionEditor grants={emptyCompanyFormGrants()} onChange={change} disabled />);
+    expect(screen.getByTestId("company-form-permissions-trigger")).toBeDisabled();
+    expect(change).not.toHaveBeenCalled();
   });
 });
