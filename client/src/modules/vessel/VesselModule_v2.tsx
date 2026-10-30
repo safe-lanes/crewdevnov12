@@ -73,6 +73,7 @@ import { OnBoardStatusEditDialog_v2 } from './components/OnBoardStatusEditDialog
 import { ReliefStatusEditDialog_v2 } from './components/ReliefStatusEditDialog_v2';
 import { GroupSignOnDialog_v2 } from './components/GroupSignOnDialog_v2';
 import { VesselTrainingMatrix } from './components/VesselTrainingMatrix';
+import { findLatestCrewAppraisal } from './vesselAppraisals';
 
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     if (!licenses || licenses.length === 0) return false;
@@ -1642,17 +1643,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                     {showAppraisalColumnArchived && (
                                                                         <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
                                                                             {(() => {
-                                                                                const crewAppraisals = allAppraisals
-                                                                                    .filter((a: any) => 
-                                                                                        a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
-                                                                                    )
-                                                                                    .sort((a: any, b: any) => {
-                                                                                        const dateA = new Date(a.updatedAt || a.createdAt || 0);
-                                                                                        const dateB = new Date(b.updatedAt || b.createdAt || 0);
-                                                                                        return dateB.getTime() - dateA.getTime();
-                                                                                    });
-                                                                                const hasAppraisal = crewAppraisals.length > 0;
-                                                                                const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const latestAppraisal = findLatestCrewAppraisal(allAppraisals, planning);
+                                                                                const hasAppraisal = latestAppraisal !== null;
                                                                                 const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
@@ -1856,17 +1848,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                     {showAppraisalColumn && (
                                                                         <TableCell className="text-xs" data-testid={`cell-appraisal-${index + 1}`}>
                                                                             {(() => {
-                                                                                const crewAppraisals = allAppraisals
-                                                                                    .filter((a: any) => 
-                                                                                        a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
-                                                                                    )
-                                                                                    .sort((a: any, b: any) => {
-                                                                                        const dateA = new Date(a.updatedAt || a.createdAt || 0);
-                                                                                        const dateB = new Date(b.updatedAt || b.createdAt || 0);
-                                                                                        return dateB.getTime() - dateA.getTime();
-                                                                                    });
-                                                                                const hasAppraisal = crewAppraisals.length > 0;
-                                                                                const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const latestAppraisal = findLatestCrewAppraisal(allAppraisals, planning);
+                                                                                const hasAppraisal = latestAppraisal !== null;
                                                                                 const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
