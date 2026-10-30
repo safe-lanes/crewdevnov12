@@ -14,7 +14,8 @@ import { writeFileSync } from "fs";
 import { mint, targets, type Who } from "./trialClient";
 
 const ASSISTANT = process.env.TRIAL_ASSISTANT || "http://127.0.0.1:18062";
-const SSH = 'ssh -i C:/Users/GhaziAnwer/apigateway.pem ubuntu@13.250.51.71';
+// SSH command to the pilot host (reads the capture line count); kept out of the repository — set TRIAL_SSH, e.g. 'ssh -i <key> user@host'.
+const SSH = process.env.TRIAL_SSH || (() => { throw new Error('TRIAL_SSH not set (ssh command to the pilot host)'); })();
 const lines = () => parseInt(execSync(`${SSH} "wc -l < ~/central-assistant-py/crewtrial-captures/capture.jsonl"`, { encoding: "utf8" }).trim(), 10);
 const t = targets();
 type H = { role: string; content: string }[];
