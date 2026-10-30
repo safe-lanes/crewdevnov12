@@ -2,12 +2,12 @@
  {
   "scenario": "T1-turn1",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "86c374d2-e8b9-4ce1-8ce8-34d51e644339",
-  "start": 1336,
-  "end": 1338,
+  "conversationId": "c4aab07f-bc89-4e53-ad00-e63ffe3dcb4a",
+  "start": 1662,
+  "end": 1664,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is assigned to **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** Petra Wintermarsh; all certificate types; unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates/documents**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** named crew member Petra Wintermarsh; all certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
    "crewing_find_crew",
    "crewing_query_documents"
@@ -16,25 +16,26 @@
  {
   "scenario": "T1-turn2-followup-hit",
   "q": "When do they expire?",
-  "conversationId": "86c374d2-e8b9-4ce1-8ce8-34d51e644339",
-  "start": 1339,
-  "end": 1340,
+  "conversationId": "c4aab07f-bc89-4e53-ad00-e63ffe3dcb4a",
+  "start": 1665,
+  "end": 1667,
   "historyTurns": 2,
   "historyDiscarded": null,
-  "answer": "I couldn’t retrieve the expiry dates because the previous result did not provide the crew member’s internal record ID. Please repeat the person’s name, and I’ll look them up and list the certificate expiry dates.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh’s certificates expire on:\n\n- **CoC Second Engineer:** 25 November 2026\n- **Basic Safety Training:** 31 December 2026\n- **Tanker Familiarisation:** 1 January 2027\n\nThey are on **MV Beta Ocean**.\n\n**Filters:** named crew member Petra Wintermarsh; all certificate and training documents; unit: documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
+   "crewing_find_crew",
    "crewing_query_documents"
   ]
  },
  {
   "scenario": "T2-turn1",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "f57f72e9-2c61-43c0-9d4d-174bac25361b",
-  "start": 1341,
-  "end": 1343,
+  "conversationId": "666e3c61-3cb5-464c-a41b-651abbd84fbe",
+  "start": 1668,
+  "end": 1670,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** Petra Wintermarsh; certificates (licences and training); unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 25 Nov 2026 |\n| Basic Safety Training | Training | 31 Dec 2026 |\n| Tanker Familiarisation | Training | 1 Jan 2027 |\n\n**Filters:** named crew member Petra Wintermarsh; all certificate types; unit: documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
    "crewing_find_crew",
    "crewing_query_documents"
@@ -43,20 +44,20 @@
  {
   "scenario": "T2-turn2-after-restart",
   "q": "When do they expire?",
-  "conversationId": "f57f72e9-2c61-43c0-9d4d-174bac25361b",
-  "start": 1344,
-  "end": 1344,
+  "conversationId": "666e3c61-3cb5-464c-a41b-651abbd84fbe",
+  "start": 1671,
+  "end": 1671,
   "historyTurns": 2,
   "historyDiscarded": "unverified",
-  "answer": "Which certificates, documents, or training courses are you referring to? Please specify the person, vessel, document name/type, or expiry period.\n\n(Earlier messages of this conversation were not used: they could not be verified for this session, for example after a service restart. If your question referred to them, please restate it in full.)",
+  "answer": "Which documents or certificates are you referring to? Please specify the crew member, vessel, document/course name, or expiry list you mean.\n\n(Earlier messages of this conversation were not used: they could not be verified for this session, for example after a service restart. If your question referred to them, please restate it in full.)",
   "toolsUsed": []
  },
  {
   "scenario": "T3-turn1-owner",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "a0556bfd-8f9b-4804-9300-17daadbdf200",
-  "start": 1345,
-  "end": 1347,
+  "conversationId": "88ff3164-fac3-4bfe-bea1-321f496685b5",
+  "start": 1672,
+  "end": 1674,
   "historyTurns": 0,
   "historyDiscarded": null,
   "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** person Petra Wintermarsh; certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
@@ -68,25 +69,24 @@
  {
   "scenario": "T3-turn2-other-user",
   "q": "When do they expire?",
-  "conversationId": "a0556bfd-8f9b-4804-9300-17daadbdf200",
-  "start": 1348,
-  "end": 1348,
+  "conversationId": "88ff3164-fac3-4bfe-bea1-321f496685b5",
+  "start": 1675,
+  "end": 1675,
   "historyTurns": 2,
   "historyDiscarded": "other",
-  "answer": "Which certificates, crew members, or vessel are you referring to? Please restate the full question, including the relevant document or expiry period.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
+  "answer": "Which documents or certificates are you referring to? Please specify the crew member, vessel, document type/name, or expiry period.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
   "toolsUsed": []
  },
  {
   "scenario": "T4-owner-continues",
   "q": "When do they expire?",
-  "conversationId": "a0556bfd-8f9b-4804-9300-17daadbdf200",
-  "start": 1349,
-  "end": 1352,
+  "conversationId": "88ff3164-fac3-4bfe-bea1-321f496685b5",
+  "start": 1676,
+  "end": 1678,
   "historyTurns": 2,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh’s certificates expire on:\n\n- **CoC Second Engineer:** 25 November 2026\n- **Basic Safety Training:** 31 December 2026\n- **Tanker Familiarisation:** 1 January 2027\n\n**Filters:** person Petra Wintermarsh; certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh’s certificates expire on:\n\n- **CoC Second Engineer:** 25 November 2026\n- **Basic Safety Training:** 31 December 2026\n- **Tanker Familiarisation:** 1 January 2027\n\nThey are on **MV Beta Ocean**.\n\n**Filters:** person Petra Wintermarsh; all certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
-   "crewing_query_documents",
    "crewing_find_crew",
    "crewing_query_documents"
   ]
@@ -94,12 +94,12 @@
  {
   "scenario": "T5-turn1-companyA",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "ba1db184-f4ba-4fe2-a6fb-6c86a5989f7b",
-  "start": 1353,
-  "end": 1355,
+  "conversationId": "645894b7-95cf-4ee9-bd61-b5e358872472",
+  "start": 1679,
+  "end": 1681,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is serving as **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** person Petra Wintermarsh; all certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh, **Second Engineer**, is assigned to **MV Beta Ocean** and holds **3 certificates**:\n\n- CoC Second Engineer — expires 25 November 2026\n- Basic Safety Training — expires 31 December 2026\n- Tanker Familiarisation — expires 1 January 2027\n\nFilters: person Petra Wintermarsh; documents, all certificate types; expiry state any.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
    "crewing_find_crew",
    "crewing_query_documents"
@@ -108,23 +108,23 @@
  {
   "scenario": "T5-turn2-companyB",
   "q": "When do they expire?",
-  "conversationId": "ba1db184-f4ba-4fe2-a6fb-6c86a5989f7b",
-  "start": 1356,
-  "end": 1356,
+  "conversationId": "645894b7-95cf-4ee9-bd61-b5e358872472",
+  "start": 1682,
+  "end": 1682,
   "historyTurns": 2,
   "historyDiscarded": "other",
-  "answer": "Could you specify which certificates, documents, or training courses you mean? Please include the crew member, vessel, or document name.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
+  "answer": "Which documents or certificates are you referring to? Please specify the crew member, vessel, or document name, and I’ll check their expiry dates.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
   "toolsUsed": []
  },
  {
   "scenario": "T6-turn1-issuer-pilot",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "75a586ae-adcb-40f9-be19-8d7d16483a71",
-  "start": 1357,
-  "end": 1359,
+  "conversationId": "203d810d-1f39-47ec-9203-24a2ef33def7",
+  "start": 1683,
+  "end": 1685,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Totals:** 1 crew member holding 3 certificates.  \nFilters: person Petra Wintermarsh; certificates (licences and training); unit documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates/documents**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** Petra Wintermarsh; all certificates and training documents; unit: documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
    "crewing_find_crew",
    "crewing_query_documents"
@@ -133,34 +133,34 @@
  {
   "scenario": "T6-turn2-issuer-pilotmt",
   "q": "When do they expire?",
-  "conversationId": "75a586ae-adcb-40f9-be19-8d7d16483a71",
-  "start": 1360,
-  "end": 1360,
+  "conversationId": "203d810d-1f39-47ec-9203-24a2ef33def7",
+  "start": 1686,
+  "end": 1686,
   "historyTurns": 2,
   "historyDiscarded": "other",
-  "answer": "Which certificates, documents, or crew members do you mean? Please specify the vessel, person, document/course, or expiry period.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
+  "answer": "Which documents or certificates are you referring to? Please specify the document type or name, and the expiry period or vessel if relevant.\n\n(Earlier messages were not used: this conversation belongs to a different session or user. Please start a new conversation, or restate your question in full.)",
   "toolsUsed": []
  },
  {
   "scenario": "T7-new-conversation-old-history",
   "q": "When do they expire?",
-  "conversationId": "d83f6128-2fbb-41c9-9bfa-c114f7450686",
-  "start": 1361,
-  "end": 1361,
+  "conversationId": "f1d438f1-d44c-4401-9182-d01ff7f86b46",
+  "start": 1687,
+  "end": 1687,
   "historyTurns": 2,
   "historyDiscarded": "unverified",
-  "answer": "Which certificates, documents, or training courses are you referring to? Please specify the crew member, vessel, or document name, and I can check their expiry dates.\n\n(Earlier messages of this conversation were not used: they could not be verified for this session, for example after a service restart. If your question referred to them, please restate it in full.)",
+  "answer": "Which certificates, licences, training courses, or other documents do you mean? Please restate the question with the document type or name and, if relevant, the vessel or crew member.\n\n(Earlier messages of this conversation were not used: they could not be verified for this session, for example after a service restart. If your question referred to them, please restate it in full.)",
   "toolsUsed": []
  },
  {
   "scenario": "T8-turn1-owner",
   "q": "Which certificates does Petra Wintermarsh hold, and on which vessel is she?",
-  "conversationId": "49a7fcc9-31f2-41f7-91bc-fc1e266ed048",
-  "start": 1362,
-  "end": 1364,
+  "conversationId": "de33dcfb-3136-4a5f-acc9-ca6857d7fe0b",
+  "start": 1688,
+  "end": 1690,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** Petra Wintermarsh; certificates and training documents; all expiry states; unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh is a **Second Engineer** on **MV Beta Ocean** and holds **3 certificates**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\n**Filters:** Petra Wintermarsh; all certificates and training documents; 3 documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
    "crewing_find_crew",
    "crewing_query_documents"
@@ -169,12 +169,12 @@
  {
   "scenario": "T8-turn2-other-user-no-history",
   "q": "List the crew on board MV Alpha Star",
-  "conversationId": "49a7fcc9-31f2-41f7-91bc-fc1e266ed048",
-  "start": 1365,
-  "end": 1366,
+  "conversationId": "de33dcfb-3136-4a5f-acc9-ca6857d7fe0b",
+  "start": 1691,
+  "end": 1692,
   "historyTurns": 0,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\n**8 crew members** are on board **MV Alpha Star**.\n\n| Name | Rank | Sign-on date | Relief due |\n|---|---|---:|---:|\n| Aldric Vexmoor | Master | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | 2nd Officer | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | 3rd Engineer | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | 2026-10-20 | Not recorded |\n\nFilters: vessel MV Alpha Star, on board, unit people.\n\nShowing all 8 matching crew members.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**8 crew members** are on board **MV Alpha Star**.\n\n| Name | Rank | Vessel | Sign-on date | Relief due |\n|---|---|---|---|---|\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | 2nd Officer | MV Alpha Star | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | 3rd Engineer | MV Alpha Star | 2026-10-05 | 2027-04-05 |\n| Gisla Marrowfen | Bosun | MV Alpha Star | Not recorded | 2026-12-15 |\n| Hadrian Pellisande | Chief Cook | MV Alpha Star | 2026-10-20 | Not recorded |\n\nFilters: vessel MV Alpha Star, on-board crew, unit people.\n\nShowing all 8 matching crew members.",
   "toolsUsed": [
    "crewing_query_assignments"
   ]
@@ -182,14 +182,13 @@
  {
   "scenario": "T8-turn3-owner-still-hit",
   "q": "When do they expire?",
-  "conversationId": "49a7fcc9-31f2-41f7-91bc-fc1e266ed048",
-  "start": 1367,
-  "end": 1370,
+  "conversationId": "de33dcfb-3136-4a5f-acc9-ca6857d7fe0b",
+  "start": 1693,
+  "end": 1695,
   "historyTurns": 2,
   "historyDiscarded": null,
-  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh’s **3 certificates** expire on:\n\n| Certificate | Expiry |\n|---|---|\n| CoC Second Engineer | 25 November 2026 |\n| Basic Safety Training | 31 December 2026 |\n| Tanker Familiarisation | 1 January 2027 |\n\nAll three are currently upcoming.\n\n**Filters:** Petra Wintermarsh; all certificate types and expiry states; unit: documents.\n\nShowing all 3 matching documents.",
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh’s certificates expire on:\n\n- **CoC Second Engineer:** 25 November 2026\n- **Basic Safety Training:** 31 December 2026\n- **Tanker Familiarisation:** 1 January 2027\n\nThey are on **MV Beta Ocean**.\n\n**Filters:** Petra Wintermarsh; all certificate and training documents; 3 documents.\n\nShowing all 3 matching documents.",
   "toolsUsed": [
-   "crewing_query_documents",
    "crewing_find_crew",
    "crewing_query_documents"
   ]
