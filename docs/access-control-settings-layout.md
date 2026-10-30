@@ -1,5 +1,11 @@
 # Access Control: settings layout and Save actions
 
+**Current deployment override integration:** the final role-grid checkbox row is
+now **Override deployment block**, saved atomically with menus and Company Forms.
+The tenant policy is **Blocking Seafarer Deployment Policy**. See
+[the current layout and wording inventory](access-control-deployment-block-grid.md).
+The separate training permission card/button described below is historical.
+
 **Current Company Forms layout:** Company Forms is now the final row of the
 role grid, saved atomically with menu permissions by Save Changes. See
 [the atomic role-save design](access-control-atomic-role-save.md).

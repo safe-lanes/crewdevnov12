@@ -9,19 +9,19 @@ export interface AccessAuditEntry {
   affected_role_name?: string | null;
 }
 export const AUDIT_SETTING_LABELS: Record<string, string> = {
-  block_expiring_during_contract: "Block mandatory courses expiring during contract",
-  block_missing_expiry: "Block when a mandatory certificate's expiry is not recorded",
+  block_expiring_during_contract: "Block seafarer deployment when mandatory courses expiring during contract",
+  block_missing_expiry: "Block seafarer deployment when a mandatory certificate's expiry is not recorded",
 };
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
-  grant_change: "Permission change", training_setting_changed: "Training policy change",
-  training_override: "Training compliance override", checklist_override: "Checklist override",
+  grant_change: "Permission change", training_setting_changed: "Deployment blocking policy change",
+  training_override: "Deployment block override", checklist_override: "Checklist override",
   role_eligibility_change: "Role availability change", company_document_branding: "Company logo change",
   parent_sync_management_eligibility: "Parent role eligibility update",
   parent_sync_category_readiness: "Parent support category update", parent_sync_rejected: "Parent update refused",
 };
 const actions: Record<string, string> = {
   ...Object.fromEntries(COMPANY_FORM_PERMISSIONS.map(p => [p.action, p.label])),
-  manage: "Access Control management", override: "Override training compliance",
+  manage: "Access Control management", override: "Override deployment block",
   view: "View", create: "Create", edit: "Edit", delete: "Delete",
   role_eligibility: "Role availability", management_eligibility: "Access Control management eligibility",
   category_readiness: "Parent support category", snapshot_rejected: "Parent update",
@@ -77,7 +77,7 @@ export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; u
           : `updated “${permission}” permission for ${role}`;
       break;
     }
-    case "training_override": change = "overrode training compliance for a deployment checklist"; break;
+    case "training_override": change = "overrode a training-related deployment block for a deployment checklist"; break;
     case "checklist_override": change = "overrode unresolved Company Form checks for a deployment checklist"; break;
     case "role_eligibility_change": change = `changed the availability of ${role}`; break;
     case "company_document_branding": change = "updated the company document logo"; break;

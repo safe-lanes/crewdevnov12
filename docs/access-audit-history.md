@@ -113,10 +113,10 @@ The shared presentation mapping is
 | `parent_sync_category_readiness` | Changed the availability of the parent support category |
 | `parent_sync_rejected` | Refused a parent update and preserved existing access |
 
-Settings use the exact Training compliance policy labels:
+Settings use the exact Blocking Seafarer Deployment Policy labels:
 
-- `block_missing_expiry` → **Block when a mandatory certificate's expiry is not recorded**
-- `block_expiring_during_contract` → **Block mandatory courses expiring during contract**
+- `block_missing_expiry` → **Block seafarer deployment when a mandatory certificate's expiry is not recorded**
+- `block_expiring_during_contract` → **Block seafarer deployment when mandatory courses expiring during contract**
 
 Company Forms permission labels come from the existing shared permission
 catalogue: View, Fill in, Witness, Sign as Company Representative, Void,

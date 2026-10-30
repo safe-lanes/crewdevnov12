@@ -11,7 +11,7 @@ import { emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermiss
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const role = randomUUID(), menu = randomUUID();
 const roleName = `Atomic save browser ${role.slice(0, 8)}`;
-const out = ".local/verification/company-form-grid/test-database";
+const out = ".local/verification/deployment-block-grid/test-database";
 let userId: number, browser: Browser | undefined;
 beforeAll(async () => {
   if (process.env.TEST_DATABASE_VERIFIED !== "true") throw Error("Registered test database required.");
@@ -25,6 +25,8 @@ beforeAll(async () => {
     VALUES ($1,$2,$3,true,false,-100000)`, [menu, `Atomic browser menu ${menu}`, `/atomic-browser-${menu}`]);
   await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
     VALUES ($1,'access_control','manage',true)`, [role]);
+  await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+    VALUES ($1,'training_compliance','override',false)`, [role]);
   for (const [action] of Object.entries(emptyCompanyFormGrants()))
     await pool.query(`INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
       VALUES ($1,'company_forms',$2,$3)`, [role, action, action === "view"]);
@@ -54,7 +56,7 @@ async function snapshot() {
     audit: (await pool.query("SELECT * FROM adm_access_control_audit WHERE role_id=$1 ORDER BY id", [role])).rows,
   };
 }
-it("saves both groups through the screen, then proves a real second-writer failure rolls everything back", async () => {
+it("saves all three groups through the screen, then proves a real third-writer failure rolls everything back", async () => {
   const context = await browser!.newContext({ viewport: { width: 1500, height: 1100 }, ignoreHTTPSErrors: true });
   const enc = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
   const token = `${enc({ alg: "none", typ: "JWT" })}.${enc({ id: userId, roleId: role, userType: "Office", domain: "test" })}.devsig`;
@@ -83,6 +85,16 @@ it("saves both groups through the screen, then proves a real second-writer failu
     const save = page.getByTestId("button-save-access-control");
     await trigger.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/collapsed-desktop.jpg`, animations: "disabled" });
+    const training = page.getByTestId("training-compliance-permission-checkbox");
+    await browserExpect(page.getByTestId("access-control-permissions").getByTestId("training-compliance-permissions")).toHaveCount(1);
+    await browserExpect(page.getByTestId("save-training-compliance-permission")).toHaveCount(0);
+    const trainingHelp = page.getByRole("button", { name: "Help: Override deployment block", exact: true });
+    await trainingHelp.hover();
+    await browserExpect(page.getByRole("tooltip")).toContainText("Lets this role approve a deployment that training rules would otherwise block");
+    await page.screenshot({ path: `${out}/override-help-desktop.jpg`, animations: "disabled" });
+    await page.mouse.move(0, 0);
+    await page.keyboard.press("Escape");
+    await training.click();
     await page.getByTestId(`checkbox-${menu}-canview`).click();
     await trigger.click();
     await browserExpect(page.getByTestId("company-form-grant-action")).toBeVisible();
@@ -96,23 +108,45 @@ it("saves both groups through the screen, then proves a real second-writer failu
     const saved = await snapshot();
     expect(saved.menus.find(m => m.menu_id === menu).canview).toBe(true);
     expect(saved.forms.find(g => g.resource === "company_forms" && g.action === "fill_in").allowed).toBe(true);
+    expect(saved.forms.find(g => g.resource === "training_compliance" && g.action === "override").allowed).toBe(true);
     expect(saved.audit.filter(a => a.resource === "company_forms")).toHaveLength(1);
     expect(saved.audit.find(a => a.resource === "company_forms")).toMatchObject({
       actor_display_name: "Atomic Verifier", affected_role_name: roleName, before_value: false, after_value: true,
     });
+    expect(saved.audit.find(a => a.resource === "training_compliance")).toMatchObject({
+      actor_display_name: "Atomic Verifier", affected_role_name: roleName, before_value: false, after_value: true,
+    });
     await trigger.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/saved-desktop.jpg`, animations: "disabled" });
+    const policy = page.getByTestId("training-compliance-policy");
+    await policy.scrollIntoViewIfNeeded();
+    await browserExpect(policy.getByRole("heading", { name: "Blocking Seafarer Deployment Policy" })).toBeVisible();
+    await page.screenshot({ path: `${out}/policy-desktop.jpg`, animations: "disabled" });
+    await page.getByRole("button", { name: "Access audit history", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Search history" }).fill(roleName);
+    await browserExpect(page.getByTestId("audit-sentence").filter({ hasText: "Override deployment block" })).toContainText("Atomic Verifier granted");
+    await page.screenshot({ path: `${out}/audit-new-wording.jpg`, animations: "disabled" });
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export CSV", exact: true }).click();
+    const downloaded = await downloadPromise;
+    const csv = await fs.readFile((await downloaded.path())!, "utf8");
+    expect(csv).toContain("Override deployment block");
+    expect(csv).not.toContain("Override training compliance");
+    await fs.writeFile(`${out}/audit.csv`, csv);
+    await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+    await training.scrollIntoViewIfNeeded();
     await pool.query(`CREATE FUNCTION company_grid_browser_failure() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN IF NEW.role_id='${role}' AND NEW.resource='company_forms' THEN
+      BEGIN IF NEW.role_id='${role}' AND NEW.resource='training_compliance' THEN
         RAISE EXCEPTION 'Deliberate isolated browser rollback test'; END IF; RETURN NEW; END $$;
       CREATE TRIGGER company_grid_browser_failure BEFORE UPDATE ON adm_resource_action_grants
       FOR EACH ROW EXECUTE FUNCTION company_grid_browser_failure()`);
     await page.getByTestId(`checkbox-${menu}-canview`).click();
+    await training.click();
     await trigger.click();
     await page.getByRole("checkbox", { name: "Fill in", exact: true }).click();
     await page.keyboard.press("Escape");
     await save.click();
-    await browserExpect(page.getByText("Neither group was saved. Please retry.", { exact: true })).toBeVisible();
+    await browserExpect(page.getByText("None of the permission changes were saved. Please retry.", { exact: true })).toBeVisible();
     await browserExpect(save).toBeEnabled();
     expect(await snapshot()).toEqual(saved);
     await trigger.scrollIntoViewIfNeeded();
@@ -128,9 +162,9 @@ it("saves both groups through the screen, then proves a real second-writer failu
     await fs.writeFile(`${out}/report.json`, JSON.stringify({
       database: "Registered isolated test database; no development API calls.",
       head: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
-      saved: true, failureInjected: "PostgreSQL trigger rejects the Company Forms writer after menu writes",
+      saved: true, failureInjected: "PostgreSQL trigger rejects the deployment override writer after menu and Company Forms writes",
       afterFailureExactlyMatchesSuccessfulSnapshot: true, auditFrozenNamesVerified: true,
-      writes, screenshots: ["collapsed-desktop", "dropdown-desktop", "saved-desktop", "failed-desktop", "failed-narrow", "dropdown-narrow"],
+      writes, screenshots: ["collapsed-desktop", "override-help-desktop", "dropdown-desktop", "saved-desktop", "policy-desktop", "audit-new-wording", "failed-desktop", "failed-narrow", "dropdown-narrow"],
     }, null, 2));
   } finally { await context.close(); }
 }, 90000);

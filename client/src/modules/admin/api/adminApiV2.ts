@@ -540,8 +540,8 @@ export const adminApiV2 = {
 
   async saveCombinedAccessControlPermissions(
     ruid: string,
-    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants },
-  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants }> {
+    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean },
+  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean }> {
     const res = await apiRequest(
       'PUT',
       `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/combined-permissions`,
@@ -554,6 +554,14 @@ export const adminApiV2 = {
     const res = await apiRequest(
       'GET',
       `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/action-permissions`,
+    );
+    return res.json();
+  },
+
+  async getRoleTrainingComplianceGrant(ruid: string): Promise<{ allowed: boolean }> {
+    const res = await apiRequest(
+      'GET',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/training-compliance`,
     );
     return res.json();
   },

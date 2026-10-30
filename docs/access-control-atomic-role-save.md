@@ -1,5 +1,11 @@
 # Company Forms in the role permission grid
 
+**Current operation:** Save Changes now also includes the final
+**Override deployment block** checkbox row. All three permission groups and
+their audits share one transaction. See
+[the deployment override integration](access-control-deployment-block-grid.md).
+The two-group details below describe the preceding implementation.
+
 ## One save, one database outcome
 
 The final grid row is **Company Forms**. Its label occupies Menu Name; a single

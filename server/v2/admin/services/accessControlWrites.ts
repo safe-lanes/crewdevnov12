@@ -57,14 +57,18 @@ function validateMenuDecisions(permissions: MenuDecision[]) {
   if (new Set(permissions.map((p: any) => p.menuId)).size !== permissions.length)
     throw new AccessControlError("Duplicate menu grants.", 400);
 }
-/** No nested transaction: both writers and their audits use this same tx. */
+/** No nested transaction: all three permission writers and audits share tx. */
 export async function writeCombinedRoleGrants(req: Request, roleId: string) {
-  const body = parse(menuGrants.extend({ companyFormGrants: companyFormGrantsSchema }), req.body);
+  const body = parse(menuGrants.extend({
+    companyFormGrants: companyFormGrantsSchema,
+    trainingComplianceAllowed: z.boolean(),
+  }), req.body);
   validateMenuDecisions(body.permissions);
   return managedWrite(req, async (tx, actor) => {
     const permissions = await writeMenuDecisions(tx, actor, roleId, body.permissions);
     const companyFormGrants = await writeActionDecisions(tx, actor, roleId, "company_forms", body.companyFormGrants);
-    return { permissions, companyFormGrants };
+    await writeActionDecisions(tx, actor, roleId, "training_compliance", { override: body.trainingComplianceAllowed });
+    return { permissions, companyFormGrants, trainingComplianceAllowed: body.trainingComplianceAllowed };
   });
 }
 async function writeMenuDecisions(tx: any, actor: AuditActor, roleId: string, permissions: MenuDecision[]) {

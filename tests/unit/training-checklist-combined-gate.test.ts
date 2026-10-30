@@ -58,7 +58,7 @@ describe("combined forms and training acceptance gate", () => {
     await expect(run({ checklistOverride: { reason: "Missing history verified" } })).rejects.toThrow("Fire fighting");
   });
   it("training override is refused without the new permission even with a reason", async () => {
-    await expect(run({ trainingOverride: { reason: "Verified exception" } })).rejects.toThrow("do not have Override training compliance");
+    await expect(run({ trainingOverride: { reason: "Verified exception" } })).rejects.toThrow("do not have Override deployment block");
     expect(f.audit).not.toHaveBeenCalled();
   });
   it.each(["OUTSTANDING", "STARTED"])("training override never bypasses %s mandatory forms", async status => {

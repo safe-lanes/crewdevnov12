@@ -131,7 +131,7 @@ try {
     await capture("01-course-block-no-permission");
     const forged = await api("PATCH", `/api/v2/vessel/planning/${f.planUuid}`, {
       deploymentChecklistCompleted: true, trainingOverride: { reason: "TEST ONLY unauthorized override attempt" } });
-    check(forged.status === 409 && /do not have Override training compliance/.test(forged.data.message),
+    check(forged.status === 409 && /do not have Override deployment block/.test(forged.data.message),
       "Server refuses explicit training override request without permission (negative API check)");
 
     await grant(true);

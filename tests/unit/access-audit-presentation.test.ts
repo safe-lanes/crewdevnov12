@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { presentAccessAudit, auditValueWords, AUDIT_SETTING_LABELS, type AccessAuditEntry } from "@shared/v2/admin/accessAuditPresentation";
+import { accessAuditExportRow } from "@shared/v2/admin/accessAuditExport";
 
 const row: AccessAuditEntry = {
   id: "99", event: "grant_change", recorded_at: "2026-10-20T03:58:00Z",
@@ -8,6 +9,13 @@ const row: AccessAuditEntry = {
   resource: "company_forms", action: "witness", before_value: false, after_value: true,
 };
 describe("plain Access audit sentences", () => {
+  it("uses the current deployment permission wording for new and historical rows without mutating either", () => {
+    const historical = { ...row, resource: "training_compliance", action: "override" };
+    const frozen = JSON.stringify(historical);
+    expect(presentAccessAudit(historical).sentence).toContain("granted “Override deployment block” permission");
+    expect(accessAuditExportRow(historical).sentence).toContain("Override deployment block");
+    expect(JSON.stringify(historical)).toBe(frozen);
+  });
   it("names the permission, actor, role and time without technical payload", () => {
     const result = presentAccessAudit(row);
     expect(result.sentence).toBe("20 Oct 2026, 03:58 UTC — Admin granted “Witness” permission to the PDF Layout Review Vessel role.");

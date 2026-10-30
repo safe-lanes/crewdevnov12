@@ -750,6 +750,17 @@ export function useRoleCompanyFormGrantsV2(ruid: string | null) {
   });
 }
 
+export function useRoleTrainingComplianceGrantV2(ruid: string | null, options?: { enabled?: boolean }) {
+  const url = ruid
+    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(ruid)}/training-compliance`
+    : null;
+  return useQuery<{ allowed: boolean }>({
+    queryKey: [url],
+    queryFn: () => ruid ? adminApiV2.getRoleTrainingComplianceGrant(ruid) : Promise.reject('No role selected'),
+    enabled: !!ruid && options?.enabled !== false,
+  });
+}
+
 export function useCreateAccessControlMenuV2() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -830,19 +841,25 @@ export function useSaveCombinedAccessControlPermissionsV2() {
       ruid,
       permissions,
       companyFormGrants,
+      trainingComplianceAllowed,
     }: {
       ruid: string;
       permissions: any[];
       companyFormGrants: CompanyFormGrants;
-    }) => adminApiV2.saveCombinedAccessControlPermissions(ruid, { permissions, companyFormGrants }),
+      trainingComplianceAllowed: boolean;
+    }) => adminApiV2.saveCombinedAccessControlPermissions(ruid, { permissions, companyFormGrants, trainingComplianceAllowed }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'permissions', variables.ruid] });
       queryClient.invalidateQueries({
         queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/action-permissions`],
       });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/training-compliance`],
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/state'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/audit'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/my-permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-compliance/my-permission'] });
     },
   });
 }

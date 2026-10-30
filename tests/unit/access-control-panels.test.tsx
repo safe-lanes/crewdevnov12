@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { emptyCompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   permissions: [],
   formsData: { grants: { view: false, fill_in: false, witness: false, sign_representative: false, void: false, void_completed: false, override_checklist: false } },
   formsError: false, formsFetching: false, refetchForms: vi.fn(), refetchMenus: vi.fn(),
+  trainingAllowed: false, trainingError: false,
 }));
 vi.mock("@/contexts/PermissionsContext", () => ({ usePermissions: () => ({ accessControlManagement: true }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast, dismiss: mocks.dismiss }) }));
@@ -30,6 +31,10 @@ vi.mock("@/modules/admin/api/adminApiV2", () => ({
   adminApiV2: {
     getAccessControlState: async () => ({ ...mocks.state }),
     getRoleManagementGrant: async (id: string) => ({ allowed: mocks.grants[id] }),
+    getRoleTrainingComplianceGrant: async () => {
+      if (mocks.trainingError) throw new Error("training permission unavailable");
+      return { allowed: mocks.trainingAllowed };
+    },
     saveRoleManagementGrant: (...args: unknown[]) => mocks.saveManagement(...args),
   },
 }));
@@ -38,6 +43,13 @@ vi.mock("@/modules/admin/hooks/useAdminV2", () => ({
   useAccessControlRolesV2: () => ({ data: mocks.roles, isLoading: false }),
   useAccessControlPermissionsV2: () => ({ data: mocks.permissions, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchMenus }),
   useRoleCompanyFormGrantsV2: () => ({ data: mocks.formsError ? undefined : mocks.formsData, isLoading: false, isFetching: mocks.formsFetching, isError: mocks.formsError, refetch: mocks.refetchForms }),
+  useRoleTrainingComplianceGrantV2: (ruid: string) => useQuery({
+    queryKey: [`/api/v2/admin/access-control/roles/${ruid}/training-compliance`],
+    queryFn: async () => {
+      if (mocks.trainingError) throw new Error("training permission unavailable");
+      return { allowed: mocks.trainingAllowed };
+    },
+  }),
   useSaveCombinedAccessControlPermissionsV2: () => ({ mutateAsync: mocks.saveMenu, isPending: false }),
   useSaveAccessControlPermissionsV2: () => ({ mutate: mocks.saveMenu, isPending: false }),
 }));
@@ -55,6 +67,7 @@ beforeEach(() => {
   Object.assign(mocks.state, { allowed: true, mode: "name_bootstrap", eligibleManagerCount: 0, categoryReady: false, recoveryRoute: "interim_names",
     currentRoleId: "reviewer", explicitManagers: [] });
   Object.assign(mocks.policy, { blockExpiringDuringContract: false, blockMissingExpiry: false });
+  mocks.trainingAllowed = false; mocks.trainingError = false;
   mocks.saveManagement.mockImplementation(async (role: string, allowed: boolean) => {
     mocks.grants[role] = allowed;
     return { allowed };
@@ -73,6 +86,11 @@ afterEach(() => { cleanup(); client.clear(); });
 async function boot(role = "reviewer") {
   render(<QueryClientProvider client={client}><AccessControlPage /></QueryClientProvider>);
   await screen.findByTestId("training-expiring-current-effect");
+  if (mocks.state.allowed && !mocks.trainingError) {
+    await screen.findByRole("checkbox", { name: "Override deployment block" });
+  } else if (mocks.state.allowed && mocks.trainingError) {
+    await screen.findByText("Unable to load deployment override permission.");
+  }
   await screen.findByRole("checkbox", { name: "Management access granted" });
   if (role !== "reviewer") {
     fireEvent.change(screen.getByLabelText("Choose role for management grant"), { target: { value: role } });
@@ -87,38 +105,54 @@ async function review(role = "reviewer") {
   return screen.findByRole("alertdialog");
 }
 describe("Access Control configure-once panels", () => {
-  it("saves menu and Company Forms edits through one combined mutation", async () => {
+  it("saves menu, Company Forms, and deployment override edits through one combined mutation", async () => {
     await boot();
     fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
     fireEvent.click(await screen.findByRole("checkbox", { name: "Witness", exact: true }));
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Override deployment block" }));
     fireEvent.click(screen.getByTestId("button-save-access-control"));
     await waitFor(() => expect(mocks.saveMenu).toHaveBeenCalledExactlyOnceWith({
       ruid: "reviewer",
       permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
       companyFormGrants: { ...emptyCompanyFormGrants(), witness: true },
+      trainingComplianceAllowed: true,
     }));
     expect(mocks.refetchForms).toHaveBeenCalled();
     expect(mocks.refetchMenus).toHaveBeenCalled();
     expect(screen.queryByTestId("save-company-form-permissions")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("save-training-compliance-permission")).not.toBeInTheDocument();
   });
-  it("keeps both drafts on combined failure and refuses a silent role switch", async () => {
+  it("keeps all three drafts on combined failure and refuses a silent role switch", async () => {
     mocks.saveMenu.mockRejectedValue(Error("500: Deliberate failure"));
     await boot();
     fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
     fireEvent.click(await screen.findByRole("checkbox", { name: "Witness", exact: true }));
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Override deployment block" }));
     fireEvent.click(screen.getByTestId("button-save-access-control"));
-    expect(await screen.findByText("Neither group was saved. Please retry.")).toBeVisible();
+    expect(await screen.findByText("None of the permission changes were saved. Please retry.")).toBeVisible();
     expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
     expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
+    expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toBeChecked();
     expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
     fireEvent.click(screen.getByTestId("role-item-manager"));
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("both sets of edits");
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("all three sets of edits");
     fireEvent.click(screen.getByTestId("button-cancel-role-change"));
     expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
+    expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toBeChecked();
+  });
+  it("does not claim rollback when a network failure leaves the save outcome unknown", async () => {
+    mocks.saveMenu.mockRejectedValue(Error("Failed to fetch"));
+    await boot();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Override deployment block" }));
+    fireEvent.click(screen.getByTestId("button-save-access-control"));
+    expect(await screen.findByText(/Unable to confirm the save/)).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
+    expect(screen.queryByText("None of the permission changes were saved. Please retry.")).not.toBeInTheDocument();
   });
   it("does not synthesize form grants when loading fails and offers Retry", async () => {
     mocks.formsError = true;
@@ -127,6 +161,27 @@ describe("Access Control configure-once panels", () => {
     expect(screen.queryByTestId("company-form-permissions-trigger")).not.toBeInTheDocument();
     fireEvent.click(within(screen.getByTestId("company-forms-permissions")).getByRole("button", { name: "Retry" }));
     expect(mocks.refetchForms).toHaveBeenCalled();
+  });
+  it("blocks combined saving until the training permission loads and offers Retry on failure", async () => {
+    mocks.trainingError = true;
+    await boot();
+    expect(screen.getByTestId("button-save-access-control")).toBeDisabled();
+    const row = screen.getByTestId("training-compliance-permissions");
+    expect(within(row).queryByRole("checkbox")).not.toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "Retry" }));
+    expect(mocks.request).not.toHaveBeenCalledWith("PUT", expect.stringContaining("/combined-permissions"), expect.anything());
+  });
+  it("explains the deployment override on hover and tap and has no separate save control", async () => {
+    await boot();
+    const help = screen.getByRole("button", { name: "Help: Override deployment block" });
+    const explanation = "Lets this role approve a deployment that training rules would otherwise block — for example a seafarer missing a mandatory certificate.";
+    fireEvent.pointerMove(help, { pointerType: "mouse" });
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(explanation);
+    fireEvent.pointerLeave(help, { pointerType: "mouse" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(help);
+    expect(await screen.findByRole("dialog")).toHaveTextContent(explanation);
+    expect(screen.queryByTestId("save-training-compliance-permission")).not.toBeInTheDocument();
   });
   it("shows explanations in tooltips rather than inline while preserving accessible descriptions", async () => {
     await boot();
@@ -141,19 +196,20 @@ describe("Access Control configure-once panels", () => {
       await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
     }
   });
-  it("places both panels after the permission grid, retaining both top buttons", async () => {
+  it("places both permission rows in the grid and policy after it, retaining both top buttons", async () => {
     await boot();
     const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     const grid = screen.getByTestId("access-control-permissions");
     const policy = screen.getByTestId("training-compliance-policy");
     const management = screen.getByTestId("management-grants-panel");
     const companyForms = screen.getByTestId("company-forms-permissions");
-    const training = screen.getByTestId("training-compliance-role-permission");
+    const training = screen.getByTestId("training-compliance-permissions");
     expect(grid.contains(companyForms)).toBe(true);
-    expect(grid.contains(training)).toBe(false);
+    expect(grid.contains(training)).toBe(true);
     expect(before(companyForms, training)).toBe(true);
-    expect(before(training, policy)).toBe(true);
     expect(before(policy, management)).toBe(true);
+    expect(policy).toHaveTextContent("Blocking Seafarer Deployment Policy");
+    expect(screen.queryByTestId("training-compliance-role-permission")).not.toBeInTheDocument();
     expect(before(screen.getByRole("button", { name: "Access audit history" }), grid)).toBe(true);
     expect(before(screen.getByRole("button", { name: "Company PDF branding" }), grid)).toBe(true);
   });

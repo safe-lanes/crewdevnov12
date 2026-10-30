@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import pg from "pg";
 import { chromium, expect } from "@playwright/test";
-const out = ".local/verification/company-form-grid/main-preview";
+const out = ".local/verification/deployment-block-grid/main-preview";
 await fs.mkdir(out, { recursive: true });
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL,
   options: "-c default_transaction_read_only=on" });
@@ -52,7 +52,9 @@ try {
   const row = page.getByTestId("company-forms-permissions");
   await expect(trigger).toBeVisible();
   await expect(grid.getByTestId("company-forms-permissions")).toHaveCount(1);
+  await expect(grid.getByTestId("training-compliance-permissions")).toHaveCount(1);
   await expect(page.getByTestId("save-company-form-permissions")).toHaveCount(0);
+  await expect(page.getByTestId("save-training-compliance-permission")).toHaveCount(0);
   await expect(page.getByTestId("button-save-access-control")).toBeDisabled();
   report.summary = await trigger.innerText();
   const selectedRole = await page.locator('[data-testid^="role-item-"][class*="text-white"]').innerText();
@@ -85,8 +87,29 @@ try {
     await page.mouse.move(0, 0, { steps: 8 });
     if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    const training = page.getByTestId("training-compliance-permission-checkbox");
+    const trainingBefore = await training.getAttribute("data-state");
+    await training.scrollIntoViewIfNeeded();
+    await capture(`both-grid-rows-${name}`);
+    const trainingHelp = page.getByRole("button", { name: "Help: Override deployment block", exact: true });
+    if (name === "desktop") {
+      await trainingHelp.hover();
+      await expect(page.getByRole("tooltip")).toContainText("Lets this role approve a deployment that training rules would otherwise block");
+    } else {
+      await trainingHelp.click();
+      await expect(page.getByRole("dialog")).toContainText("Lets this role approve a deployment that training rules would otherwise block");
+    }
+    await capture(`override-help-${name}`);
+    await expect(training).toHaveAttribute("data-state", trainingBefore);
+    await page.keyboard.press("Escape");
+    await page.mouse.move(0, 0);
     await expect(page.getByTestId("button-save-access-control")).toBeDisabled();
   }
+  await page.setViewportSize({ width: 1500, height: 1100 });
+  const policy = page.getByTestId("training-compliance-policy");
+  await policy.scrollIntoViewIfNeeded();
+  await expect(policy.getByRole("heading", { name: "Blocking Seafarer Deployment Policy" })).toBeVisible();
+  await capture("renamed-policy-desktop");
   expect(await row.count()).toBe(1);
   if (report.errors.length || report.blockedWrites.length) throw Error(JSON.stringify(report));
 } finally {

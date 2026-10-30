@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
 import type { CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
-import { TrainingCompliancePolicySetting, TrainingComplianceRolePermissionEditor } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
+import { TrainingCompliancePermissionRow, TrainingCompliancePolicySetting } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { adminApiV2 } from "./api/adminApiV2";
 import {
@@ -27,6 +27,7 @@ import {
   useAccessControlRolesV2,
   useAccessControlPermissionsV2,
   useRoleCompanyFormGrantsV2,
+  useRoleTrainingComplianceGrantV2,
   useSaveCombinedAccessControlPermissionsV2,
 } from "./hooks/useAdminV2";
 
@@ -155,8 +156,11 @@ export default function AccessControlPage() {
     allowed: boolean;
   } | null>(null);
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
+  const [menuPermissionsRoleUuid, setMenuPermissionsRoleUuid] = useState<string | null>(null);
   const [companyFormGrants, setCompanyFormGrants] = useState<CompanyFormGrants | null>(null);
   const [companyFormGrantsRoleUuid, setCompanyFormGrantsRoleUuid] = useState<string | null>(null);
+  const [trainingComplianceAllowed, setTrainingComplianceAllowed] = useState(false);
+  const [trainingComplianceRoleUuid, setTrainingComplianceRoleUuid] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [roleChangeRequest, setRoleChangeRequest] = useState<string | null>(null);
@@ -171,6 +175,9 @@ export default function AccessControlPage() {
   const stateQuery = useQuery<AccessControlState>({
     queryKey: ["/api/v2/admin/access-control/state"],
     queryFn: () => adminApiV2.getAccessControlState(),
+  });
+  const trainingComplianceQuery = useRoleTrainingComplianceGrantV2(selectedRoleUuid, {
+    enabled: !!stateQuery.data?.allowed,
   });
   const roleManagementUrl = selectedRoleUuid
     ? `/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid)}/management`
@@ -218,7 +225,7 @@ export default function AccessControlPage() {
   }, [menusData, expandedMenus]);
 
   useEffect(() => {
-    if (!isDirty && permissionsData && Array.isArray(permissionsData)) {
+    if (!isDirty && !permissionsLoading && !permissionsQuery.isError && selectedRoleUuid && permissionsQuery.data && Array.isArray(permissionsData)) {
       const permMap: Record<string, Permission> = {};
       for (const p of permissionsData as PermissionApi[]) {
         permMap[p.menuId] = {
@@ -229,8 +236,9 @@ export default function AccessControlPage() {
         };
       }
       setLocalPermissions(permMap);
+      setMenuPermissionsRoleUuid(selectedRoleUuid);
     }
-  }, [permissionsData, isDirty]);
+  }, [permissionsData, isDirty, permissionsLoading, permissionsQuery.isError, selectedRoleUuid]);
 
   useEffect(() => {
     if (!isDirty && companyFormsQuery.data?.grants) {
@@ -238,6 +246,13 @@ export default function AccessControlPage() {
       setCompanyFormGrantsRoleUuid(selectedRoleUuid);
     }
   }, [companyFormsQuery.data, isDirty, selectedRoleUuid]);
+
+  useEffect(() => {
+    if (!isDirty && trainingComplianceQuery.data && selectedRoleUuid) {
+      setTrainingComplianceAllowed(trainingComplianceQuery.data.allowed);
+      setTrainingComplianceRoleUuid(selectedRoleUuid);
+    }
+  }, [trainingComplianceQuery.data, isDirty, selectedRoleUuid]);
 
   useEffect(() => {
     if (managementQuery.data) setManagementDraft(managementQuery.data.allowed);
@@ -259,6 +274,8 @@ export default function AccessControlPage() {
     setIsDirty(false);
     setCompanyFormGrants(null);
     setCompanyFormGrantsRoleUuid(null);
+    setTrainingComplianceAllowed(false);
+    setTrainingComplianceRoleUuid(null);
     setCombinedSaveError("");
     setRoleChangeRequest(null);
   }, []);
@@ -317,7 +334,12 @@ export default function AccessControlPage() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!selectedRoleUuid || !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid || permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError || companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError || saveCombinedMutation.isPending) return;
+    if (!selectedRoleUuid || menuPermissionsRoleUuid !== selectedRoleUuid || !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid ||
+      trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data ||
+      permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError ||
+      companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+      trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError ||
+      saveCombinedMutation.isPending) return;
 
     const permissions = allMenuMuids.map((muid) => ({
       menuId: muid,
@@ -334,22 +356,24 @@ export default function AccessControlPage() {
         ruid: selectedRoleUuid,
         permissions,
         companyFormGrants,
+        trainingComplianceAllowed,
       });
     } catch (error) {
-      // A transport failure may lose the response after commit; do not claim it
-      // was rolled back unless the server actually returned a refusal.
+      // A transport failure can lose a successful response after commit.
       setCombinedSaveError(error instanceof Error && /^[45]\d\d:/.test(error.message)
-        ? "Neither group was saved. Please retry."
-        : "Unable to confirm the save. Your edits are kept; retry. Menu and Company Forms permissions are saved together, never partly.");
+        ? "None of the permission changes were saved. Please retry."
+        : "Unable to confirm the save. Your edits are kept; retry. All three permission groups are saved together, never partly.");
       return;
     }
     setIsDirty(false);
-    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch()]);
+    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch(), trainingComplianceQuery.refetch()]);
     toast({
       title: "Changes Saved",
       description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
     });
-  }, [selectedRoleUuid, companyFormGrants, companyFormGrantsRoleUuid, permissionsLoading, permissionsQuery, companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole]);
+  }, [selectedRoleUuid, menuPermissionsRoleUuid, companyFormGrants, companyFormGrantsRoleUuid, trainingComplianceRoleUuid,
+    trainingComplianceAllowed, trainingComplianceQuery, permissionsLoading, permissionsQuery,
+    companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole]);
 
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
@@ -385,7 +409,7 @@ export default function AccessControlPage() {
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
-                disabled={saveCombinedMutation.isPending}
+                disabled={grantControlsDisabled}
                 className="p-0.5 rounded hover:bg-gray-200 transition-colors"
                 data-testid={`toggle-menu-${item.muid}`}
               >
@@ -405,7 +429,7 @@ export default function AccessControlPage() {
           <div className="flex items-center justify-center py-2.5">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
-              disabled={saveCombinedMutation.isPending}
+              disabled={grantControlsDisabled}
               onCheckedChange={() =>
                 handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isViewOnlyMenu)
               }
@@ -422,7 +446,7 @@ export default function AccessControlPage() {
               >
                 <Checkbox
                   checked={isDisabledKey ? false : perms[key]}
-                  disabled={isDisabledKey || saveCombinedMutation.isPending}
+                  disabled={isDisabledKey || grantControlsDisabled}
                   onCheckedChange={isDisabledKey ? undefined : (checked) =>
                     handlePermissionChange(item.muid, key, !!checked)
                   }
@@ -444,6 +468,14 @@ export default function AccessControlPage() {
 
   const isLoading = menusLoading || rolesLoading;
   const combinedSavePending = saveCombinedMutation.isPending;
+  // No group can become dirty before all three role-bound drafts are loaded.
+  // Otherwise a late response could never initialize the remaining draft.
+  const grantControlsDisabled = combinedSavePending || !selectedRoleUuid ||
+    menuPermissionsRoleUuid !== selectedRoleUuid || companyFormGrantsRoleUuid !== selectedRoleUuid ||
+    trainingComplianceRoleUuid !== selectedRoleUuid || permissionsLoading ||
+    permissionsQuery.isFetching || permissionsQuery.isError ||
+    companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+    trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError;
 
   if (isLoading) {
     return (
@@ -530,9 +562,38 @@ export default function AccessControlPage() {
             ) : (
               <CompanyFormsPermissionEditor
                 grants={companyFormGrants}
-                disabled={combinedSavePending}
+                disabled={grantControlsDisabled}
                 onChange={nextGrants => {
                   setCompanyFormGrants(nextGrants);
+                  setIsDirty(true);
+                  setCombinedSaveError("");
+                }}
+              />
+            )}
+          </div>}
+          {selectedRoleUuid && stateQuery.data?.allowed && <div
+            className="grid min-h-[58px] grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] items-center border-b border-gray-200 bg-sky-50/70"
+            data-testid="training-compliance-permissions"
+          >
+            <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Override deployment block</div>
+            <div aria-hidden="true" />
+            {trainingComplianceQuery.isLoading ||
+              (trainingComplianceRoleUuid !== selectedRoleUuid &&
+                (trainingComplianceQuery.isFetching || !trainingComplianceQuery.isError)) ? (
+              <div className="col-span-4 px-3 py-2.5">
+                <div className="h-9 animate-pulse rounded-md bg-gray-100" aria-label="Loading deployment override permission" />
+              </div>
+            ) : trainingComplianceQuery.isError || trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data ? (
+              <div className="col-span-4 flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm text-red-700" role="alert">
+                <span>Unable to load deployment override permission.</span>
+                <button className="underline" onClick={() => trainingComplianceQuery.refetch()}>Retry</button>
+              </div>
+            ) : (
+              <TrainingCompliancePermissionRow
+                allowed={trainingComplianceAllowed}
+                disabled={grantControlsDisabled}
+                onChange={nextAllowed => {
+                  setTrainingComplianceAllowed(nextAllowed);
                   setIsDirty(true);
                   setCombinedSaveError("");
                 }}
@@ -552,8 +613,9 @@ export default function AccessControlPage() {
           <Button
             onClick={handleSave}
             disabled={
-              !isDirty || combinedSavePending || !selectedRoleUuid ||
+              !isDirty || grantControlsDisabled || !selectedRoleUuid ||
               !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid || companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+              trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data || trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError ||
               permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError
             }
             className="bg-[#16569e] hover:bg-[#0f4078] text-white px-6"
@@ -565,16 +627,13 @@ export default function AccessControlPage() {
       </div>
       </div>
       </div>
-      {selectedRoleUuid && stateQuery.data?.allowed && <>
-        <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
-      </>}
       {accessControlManagement && <TrainingCompliancePolicySetting />}
       <AlertDialog open={!!roleChangeRequest} onOpenChange={open => { if (!open) setRoleChangeRequest(null); }}>
         <AlertDialogContent data-testid="unsaved-role-change-confirmation">
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved permission changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Menu and Company Forms permission edits are both unsaved. Changing roles will discard both sets of edits.
+              Menu, Company Forms, and Override deployment block permission edits are unsaved. Changing roles will discard all three sets of edits.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

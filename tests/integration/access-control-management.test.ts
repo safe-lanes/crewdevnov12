@@ -61,6 +61,7 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0235_preserve_company_grants_on_role_sync.sql", "utf8"));
   await pool.query(await readFile("migrations/0236_access_control_management.sql", "utf8"));
   await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('company_forms','override_checklist','Override checklist',7)");
+  await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('training_compliance','override','Override deployment block',1)");
   await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
   await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
   const rows = snapshotRows();
@@ -74,6 +75,7 @@ describe("Access Control real database authority, audit and parent synchronizati
   const combinedBody = () => ({
     permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
     companyFormGrants: { ...emptyCompanyFormGrants(), view: true, witness: true },
+    trainingComplianceAllowed: true,
   });
   it("atomically saves grid and Company Forms with frozen audit names and no-change suppression", async () => {
     await pool.query("UPDATE master_users SET firstname='Original',lastname='Manager' WHERE id=1");
@@ -83,7 +85,9 @@ describe("Access Control real database authority, audit and parent synchronizati
     expect((await pool.query("SELECT canview FROM adm_roleaccess_ac WHERE role_id='target' AND menu_id='crew'")).rows[0].canview).toBe(true);
     expect((await pool.query("SELECT allowed FROM adm_resource_action_grants WHERE role_id='target' AND resource='company_forms' AND action='witness'")).rows[0].allowed).toBe(true);
     const entries = await audit();
-    expect(entries).toHaveLength(11); // four grid decisions and seven form decisions, including initial false
+    expect(entries).toHaveLength(12); // four grid, seven form, one deployment-block decision
+    expect(entries.find(e => e.resource === "training_compliance" && e.action === "override"))
+      .toMatchObject({ before_value: null, after_value: true });
     for (const entry of entries) expect(entry).toMatchObject({
       actor_display_name: "Original Manager", affected_role_name: "Documentation Reviewer",
       role_id: "target", event: "grant_change",
@@ -127,6 +131,33 @@ describe("Access Control real database authority, audit and parent synchronizati
   it("refuses an invalid menu without writing form grants or audit", async () => {
     const body = combinedBody(); body.permissions[0].menuId = "does-not-exist";
     await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Menu not found");
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("rolls back menu and Company Forms changes and audit when the third writer fails", async () => {
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    const snapshot = async () => ({
+      menus: (await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows,
+      grants: (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows,
+      audit: await audit(),
+    });
+    const before = await snapshot();
+    await pool.query(`CREATE FUNCTION refuse_training_write() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.resource='training_compliance' THEN RAISE EXCEPTION 'Deliberate third-writer failure'; END IF;
+      RETURN NEW; END $$;
+      CREATE TRIGGER refuse_training_write BEFORE UPDATE ON adm_resource_action_grants
+      FOR EACH ROW EXECUTE FUNCTION refuse_training_write()`);
+    const body = combinedBody();
+    body.permissions[0].canview = false;
+    body.companyFormGrants.view = false;
+    body.trainingComplianceAllowed = false;
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Deliberate third-writer failure");
+    expect(await snapshot()).toEqual(before);
+  });
+  it.each([undefined, null, "true", 1])("refuses invalid deployment override %s before any write", async value => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), trainingComplianceAllowed: value }), "target"))
+      .rejects.toThrow("Invalid payload");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
     expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
     expect(await audit()).toHaveLength(0);
   });
