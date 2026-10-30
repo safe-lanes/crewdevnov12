@@ -75,6 +75,8 @@ it("saves all three groups through the screen, then proves a real third-writer f
     await route.fulfill({ response });
   });
   const page = await context.newPage();
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
   try {
     await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
     await page.getByText("Access Control", { exact: true }).first().click({ timeout: 30000 });
@@ -166,5 +168,13 @@ it("saves all three groups through the screen, then proves a real third-writer f
       afterFailureExactlyMatchesSuccessfulSnapshot: true, auditFrozenNamesVerified: true,
       writes, screenshots: ["collapsed-desktop", "override-help-desktop", "dropdown-desktop", "saved-desktop", "policy-desktop", "audit-new-wording", "failed-desktop", "failed-narrow", "dropdown-narrow"],
     }, null, 2));
+  } catch (error) {
+    // Retain evidence for cold/proxied SPA startup failures, not just saves.
+    await page.screenshot({ path: `${out}/browser-failure.jpg`, animations: "disabled" }).catch(() => {});
+    await fs.writeFile(`${out}/browser-failure.json`, JSON.stringify({
+      message: String(error), pageErrors,
+      visibleText: await page.locator("body").innerText().catch(() => "Body unavailable"),
+    }, null, 2));
+    throw error;
   } finally { await context.close(); }
 }, 90000);
