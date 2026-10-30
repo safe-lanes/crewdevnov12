@@ -1,5 +1,5 @@
 {
- "_about": "Crewing live-data PILOT TRIAL test set, VERSION 3 (30-Oct-2026): Part B areas on fixture v3 (setup-trial-dbs.ts, as-of 2026-11-01) under Sahil's accepted decisions and Ghazi's appraisal-score decision. Run together with test-set-v2.json for the two-area regression. Scoring as before: query (logged tool call), data (its result), answer (regexes, case-insensitive); heldOut cases never used for tuning. Expected values written BY HAND from the fixture design and checked against expected-results.ts (independent SQL).",
+ "_about": "Crewing live-data PILOT TRIAL test set, VERSION 3 (30-Oct-2026): Part B areas on fixture v3 (setup-trial-dbs.ts, as-of 2026-11-01) under Sahil's accepted decisions and Ghazi's appraisal-score decision. Run together with test-set-v2.json for the two-area regression. Scoring as before: query (logged tool call), data (its result), answer (regexes, case-insensitive); heldOut cases never used for tuning. Expected values written BY HAND from the fixture design and checked against expected-results.ts (independent SQL). | v3.1 (31-Oct-2026): Sahil's appraisal access (no extra menu right), appraisal vessel = the appraisal's own vessel, 'for me' = no personal queue (fixed statement).",
  "cases": [
   {
    "id": "P01",
@@ -325,10 +325,11 @@
      "answerAll": [
       "rp-2026-01",
       "rp-2026-02",
-      "(rotation permission|no approver|every user with)"
+      "personal approval queue cannot be identified"
      ]
     }
-   ]
+   ],
+   "_note": "v3.1: the server's fixed statement is appended deterministically; the earlier omission was a MEANING issue (it implied a personal queue)"
   },
   {
    "id": "P13",
@@ -391,7 +392,7 @@
       {
        "tool": "crewing_query_appraisals",
        "result": {
-        "total": 3
+        "total": 5
        }
       }
      ],
@@ -401,12 +402,14 @@
      "answerAll": [
       "benedek",
       "ulric",
-      "nadira"
+      "nadira",
+      "faustin",
+      "petra"
      ],
      "answerNone": [
       "corvina",
       "pelham",
-      "\\bB\\b.*score|score.*\\bB\\b"
+      "elsbet"
      ]
     }
    ]
@@ -444,8 +447,9 @@
    "id": "P17",
    "cat": "appraisal score refused (B6)",
    "who": {
-    "userId": "8",
-    "role": "External 1"
+    "userId": "37",
+    "userType": "Ship",
+    "role": "Vessel Admin"
    },
    "turns": [
     {
@@ -472,7 +476,7 @@
      ]
     }
    ],
-   "_note": "run-1 correction: a 'User' login is stopped by the chatbot role gate before the appraisal area; External 1 is chatbot-allowed in this round but holds no appraisal menu"
+   "_note": "v3.1: appraisals need no extra menu right (Sahil); the refusal case is now a SHIP user (Office only)"
   },
   {
    "id": "P18",
@@ -487,12 +491,13 @@
         "own": true
        },
        "result": {
-        "code": "identity_mapping_unavailable"
+        "code": "identity_not_linked"
        }
       }
      ],
      "answerAll": [
-      "(cannot|can.t|unable|no (verified )?link|not linked|not possible)"
+      "(not linked|isn.t linked|no link|not connected)",
+      "(which crew member|who do you mean|which person|name of the crew)"
      ],
      "answerNone": [
       "aldric",
@@ -501,7 +506,7 @@
      ]
     }
    ],
-   "_note": "run-1 correction: removed \bA\b/\bB\b (case-insensitive, matched the article 'a')"
+   "_note": "v3.1: answer = account not linked + ask which crew member"
   },
   {
    "id": "P19",
@@ -580,6 +585,63 @@
      ],
      "answerNone": [
       "[A-Z]{2}\\d{6,}"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P22",
+   "cat": "appraisal historical vessel (B6)",
+   "turns": [
+    {
+     "q": "Which appraisals were done on MV Alpha Star?",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "args": {
+        "vessels": "alpha star"
+       },
+       "result": {
+        "total": 6
+       }
+      }
+     ],
+     "answerAll": [
+      "tamsin",
+      "aldric"
+     ],
+     "answerNone": [
+      "elsbet"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P23",
+   "heldOut": true,
+   "cat": "appraisal score by vessel (B6)",
+   "turns": [
+    {
+     "q": "Show the overall scores of completed appraisals done on MV Alpha Star",
+     "calls": [
+      {
+       "tool": "crewing_query_appraisals",
+       "args": {
+        "vessels": "alpha star",
+        "includeScores": true
+       },
+       "result": {
+        "total": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "aldric",
+      "tamsin"
+     ],
+     "answerNone": [
+      "confidential",
+      "orrin"
      ]
     }
    ]

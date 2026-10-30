@@ -1,7 +1,7 @@
 {
   "db": "crew_trial_c",
   "asOf": "2026-11-01",
-  "derivedAt": "2026-10-30T10:18:49.921Z",
+  "derivedAt": "2026-10-30T12:24:35.577Z",
   "fingerprint": {
     "crew": "131",
     "plans": "23",
@@ -177,6 +177,16 @@
     "P15": {
       "text": "B6 completed appraisals that carry an overall score (what a permitted user may see)",
       "scored": 1
+    },
+    "P16": {
+      "text": "B6 appraisal vessel association (own recorded vessel name vs the vessel master): unmatched / ambiguous / missing",
+      "unmatched": 0,
+      "ambiguous": 0,
+      "missing": 0
+    },
+    "P17": {
+      "text": "B6 appraisals made on the FIRST vessel of the company (historical vessel, any status)",
+      "appraisals": 3
     }
   }
 }

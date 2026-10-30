@@ -41,16 +41,17 @@ export const DEFINITIONS = {
     "OPA off unless the user asks for it; the month and the date the records were last updated are always stated. Stored monthly totals are not used.",
   rotation:
     "CONFIRMED (B4): a rotation plan is waiting for approval when its status is Proposed or Partially Approved; approval is recorded per " +
-    "entry (Pending / Deployed = approved / Rejected). Company-wide by default; 'for me' = plans awaiting an approver that the asking user " +
-    "is (Crewing assigns no approver per plan). Drafts (In Draft) are listed separately.",
+    "entry (Pending / Deployed = approved / Rejected). Company-wide. Crewing records no individual approver, so a personal approval queue " +
+    "cannot be identified: 'waiting for my approval' is answered with the company's pending plans, labelled as such. Drafts (In Draft) are listed separately.",
   manning:
     "CONFIRMED (B5): a position is a planned rank slot on an active vessel; it is filled when a person has SIGNED ON to it (primary, or the " +
     "signed-on reliever during a handover); an empty slot or a planned person who has not signed on is a vacancy. Ranks follow Rank Administration.",
   appraisals:
     "CONFIRMED (B6): pending = submitted but not completed (preliminary / submitted / pending office review); drafts are listed separately; " +
-    "completed = reviewed. Archived and terminated crew are excluded; the crew member's vessel is matched by record. Scores: only the overall " +
-    "score of a COMPLETED appraisal, only when asked for, and only with the Crewing permission to view appraisals; draft scores, individual " +
-    "assessment scores and remarks are never shown.",
+    "completed = reviewed. Archived and terminated crew are excluded. The vessel is the one the appraisal was made on (its recorded vessel " +
+    "name matched exactly to one vessel; unmatched, ambiguous or missing names are reported). CONFIRMED (Sahil, 31-Oct-2026): office users " +
+    "who may use the assistant may view appraisals across all vessels of their own company. Scores: only the overall score of a COMPLETED " +
+    "appraisal with its date, only when asked for; draft scores, individual assessment scores and remarks are never shown.",
 } as const;
 
 /** Appraisal status classes (CODE: appraisalResultsService STATUS_ORDER + report synonyms). */

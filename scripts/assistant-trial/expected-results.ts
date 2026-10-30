@@ -99,6 +99,15 @@ const RH = (month: string, opa: boolean) => `rh AS (
     AND (d.applicable_from IS NULL OR NOT d.applicable_from LIKE '${month}%' OR (x->>'day')::int >= split_part(d.applicable_from, '-', 3)::int)
     AND (d.applicable_to IS NULL OR NOT d.applicable_to LIKE '${month}%' OR (x->>'day')::int <= split_part(d.applicable_to, '-', 3)::int)
   GROUP BY d.id)`;
+const APPR_V = `appr_v AS (
+  SELECT a.id, (CASE WHEN nullif(btrim(a.vessel), '') IS NULL THEN 'missing'
+      WHEN (SELECT count(DISTINCT mv.vessel_uuid) FROM master_vessels mv WHERE mv.is_deleted IS NOT TRUE AND lower(regexp_replace(btrim(mv.vessel), '[[:space:]]+', ' ', 'g')) = lower(regexp_replace(btrim(a.vessel), '[[:space:]]+', ' ', 'g'))) = 0 THEN 'unmatched'
+      WHEN (SELECT count(DISTINCT mv.vessel_uuid) FROM master_vessels mv WHERE mv.is_deleted IS NOT TRUE AND lower(regexp_replace(btrim(mv.vessel), '[[:space:]]+', ' ', 'g')) = lower(regexp_replace(btrim(a.vessel), '[[:space:]]+', ' ', 'g'))) > 1 THEN 'ambiguous'
+      ELSE 'matched' END) assoc,
+    (SELECT mv.vessel FROM master_vessels mv WHERE mv.is_deleted IS NOT TRUE AND lower(regexp_replace(btrim(mv.vessel), '[[:space:]]+', ' ', 'g')) = lower(regexp_replace(btrim(a.vessel), '[[:space:]]+', ' ', 'g'))
+      AND (SELECT count(DISTINCT m2.vessel_uuid) FROM master_vessels m2 WHERE m2.is_deleted IS NOT TRUE AND lower(regexp_replace(btrim(m2.vessel), '[[:space:]]+', ' ', 'g')) = lower(regexp_replace(btrim(a.vessel), '[[:space:]]+', ' ', 'g'))) = 1 LIMIT 1) matched_vessel
+  FROM appraisal_results_v2 a JOIN crew_members_v2 cm ON cm.crew_uuid = a.crew_member_id AND cm.is_deleted = false AND cm.archived_at IS NULL AND (cm.status IS NULL OR cm.status NOT ILIKE 'Terminated%')
+  WHERE a.is_deleted = false)`;
 const APPR = `appr AS (
   SELECT a.overall_rating, (CASE WHEN lower(btrim(coalesce(a.status,''))) IN ('draft','') THEN 'draft'
       WHEN lower(btrim(a.status)) IN ('reviewed','stage3_submitted','completed','approved','closed','final') THEN 'completed' ELSE 'pending' END) cls
@@ -158,11 +167,18 @@ async function compare(label: string) {
   const t = targets().mt;
   const report: Record<string, unknown>[] = [];
   let pass = 0, total = 0;
+  const firstVessel: Record<string, string> = {};
+  for (const db of Object.keys(DBS)) {
+    const base = new URL(process.env.DATABASE_URL || "postgres://postgres:admin123@localhost:5432/postgres"); base.pathname = `/${db}`;
+    const c = new Client({ connectionString: base.toString() }); await c.connect();
+    try { firstVessel[db] = String((await c.query(`SELECT vessel FROM master_vessels WHERE is_deleted IS NOT TRUE ORDER BY id LIMIT 1`)).rows[0]?.vessel ?? ""); } finally { await c.end(); }
+  }
   for (const [db, domain] of Object.entries(DBS)) {
     const expected = JSON.parse(readFileSync(`${OUT}/expected-${db}.json`, "utf8")) as { answers: Record<string, Record<string, unknown>> };
     for (const qd of QUESTIONS) {
       if (!qd.tool) continue;
-      const r = await call(t, qd.tool.name, qd.tool.args, { who: { tenantDomain: domain, tuid: db } });
+      const args = JSON.parse(JSON.stringify(qd.tool.args).replace('"__FIRST_VESSEL__"', JSON.stringify(firstVessel[db] ?? "")));
+      const r = await call(t, qd.tool.name, args, { who: { tenantDomain: domain, tuid: db } });
       const exp = expected.answers[qd.id];
       const got: Record<string, unknown> = {};
       let ok = r.status === 200 && r.body?.ok === true;
@@ -282,6 +298,13 @@ const QUESTIONS: Q[] = [
     tool: { name: "crewing_query_appraisals", args: { mode: "count", statusClass: "any" }, pick: { pending: "summary.pending", drafts: "summary.drafts", completed: "summary.completed" } } },
   { id: "P15", text: "B6 completed appraisals that carry an overall score (what a permitted user may see)",
     sql: `WITH ${APPR} SELECT count(*)::int scored FROM appr WHERE cls = 'completed' AND nullif(btrim(overall_rating), '') IS NOT NULL` },
+  { id: "P16", text: "B6 appraisal vessel association (own recorded vessel name vs the vessel master): unmatched / ambiguous / missing",
+    sql: `WITH ${APPR_V} SELECT count(*) FILTER (WHERE assoc = 'unmatched')::int unmatched, count(*) FILTER (WHERE assoc = 'ambiguous')::int ambiguous,
+      count(*) FILTER (WHERE assoc = 'missing')::int missing FROM appr_v`,
+    tool: { name: "crewing_query_appraisals", args: { mode: "count", statusClass: "any" }, pick: { unmatched: "vesselAssociation.unmatched", ambiguous: "vesselAssociation.ambiguous", missing: "vesselAssociation.missing" } } },
+  { id: "P17", text: "B6 appraisals made on the FIRST vessel of the company (historical vessel, any status)",
+    sql: `WITH ${APPR_V} SELECT count(*)::int appraisals FROM appr_v WHERE matched_vessel = (SELECT vessel FROM master_vessels WHERE is_deleted IS NOT TRUE ORDER BY id LIMIT 1)`,
+    tool: { name: "crewing_query_appraisals", args: { mode: "count", statusClass: "any", vessels: ["__FIRST_VESSEL__"] }, pick: { appraisals: "totals.appraisals" } } },
 ];
 
 const mode = process.argv[2];

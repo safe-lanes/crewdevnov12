@@ -168,11 +168,16 @@ export const A: Fixture = {
     { n: 6, crew: 24, type: "Annual", date: "2026-09-01", status: "reviewed", overall: "A" },                                   // terminated → excluded
     { n: 7, crew: 22, type: "Annual", date: "2026-06-01", status: "draft" },                                                   // archived → excluded
     { n: 8, crew: 14, type: "Annual", date: "2026-10-05", status: "preliminary", vessel: "MV Beta Ocean" },                   // pending
+    // 31-Oct-2026: the appraisal's OWN vessel (historical), matched by name only when exactly one vessel matches
+    { n: 9, crew: 20, type: "Sign-off", date: "2026-05-01", status: "reviewed", overall: "A", vessel: "MV Alpha Star" },     // Tamsin: appraised on Alpha Star, now on Alpha Trader
+    { n: 10, crew: 6, type: "Annual", date: "2026-10-01", status: "submitted", vessel: "  mv   ALPHA star " },              // case / spacing variant → matched
+    { n: 11, crew: 5, type: "Annual", date: "2026-09-10", status: "draft", vessel: "Alpha Star (old name)" },                 // unmatched
+    { n: 12, crew: 16, type: "Annual", date: "2026-09-20", status: "preliminary" },                                           // no vessel recorded → missing
   ],
 };
 
 export const B: Fixture = {
-  vessels: [[1, "MV Alpha Star"], [2, "MV Delta Sky"]],
+  vessels: [[1, "MV Alpha Star"], [2, "MV Delta Sky"], [3, "mv delta sky"]], // 3 = same normalised name → appraisal vessel AMBIGUOUS
   crew: [
     { n: 1, first: "Wendel", family: "Crossfeather", rank: "Master", nat: "GB" },
     { n: 2, first: "Xanthe", family: "Moorgrave", rank: "Chief Officer", nat: "GB" },
@@ -203,7 +208,8 @@ export const B: Fixture = {
   ],
   rotation: [{ n: 1, planId: "RP-B-2026-01", status: "Proposed", from: "2026-11-01", to: "2027-01-31", proposedOn: "2026-10-20", vessels: [2], entries: [{ vessel: 2, rank: "Master", crew: 9, status: "Pending" }] }],
   restHours: [{ crew: 1, vessel: 1, month: "2026-10", days: { 4: ["A"] }, updated: "2026-10-25" }],
-  appraisals: [{ n: 1, crew: 1, type: "Annual", date: "2026-09-01", status: "reviewed", overall: "B", vessel: "MV Alpha Star" }, { n: 2, crew: 2, type: "Annual", date: "2026-10-01", status: "submitted" }],
+  appraisals: [{ n: 1, crew: 1, type: "Annual", date: "2026-09-01", status: "reviewed", overall: "B", vessel: "MV Alpha Star" }, { n: 2, crew: 2, type: "Annual", date: "2026-10-01", status: "submitted" },
+    { n: 3, crew: 5, type: "Annual", date: "2026-10-03", status: "submitted", vessel: "MV Delta Sky" }],
 };
 
 function urlFor(db: string): string {

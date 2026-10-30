@@ -226,8 +226,8 @@ export const CREWING_TOOLS = [
     description:
       "ROTATION PLANS waiting for approval (confirmed rule): status Proposed or Partially Approved, company-wide; each plan reports its " +
       "entries waiting / approved / rejected and the vessels it covers. status: waiting (default) | draft (plans not yet proposed, listed " +
-      "separately) | all. forMe: true ONLY when the user asks for plans waiting for THEM — the server decides from the verified login " +
-      "(never from a name); read `notes` for the outcome. One record = one plan.",
+      "separately) | all. forMe: true when the user asks for plans waiting for THEM — Crewing records no individual approver, so the " +
+      "result is the company's pending plans and personalQueue.statement must be stated. One record = one plan.",
     parameters: {
       type: "object",
       properties: {
@@ -268,11 +268,11 @@ export const CREWING_TOOLS = [
     name: "crewing_query_appraisals",
     description:
       "APPRAISALS by status (confirmed rule): pending (default) = submitted but not completed (preliminary / submitted / pending office " +
-      "review); draft = not yet submitted (listed separately); completed = reviewed. Archived and terminated crew excluded; vessels = the " +
-      "crew member's current vessel by record (the appraisal's own vessel text is shown as appraisalVesselName). One record = one appraisal. " +
-      "SCORES: set includeScores: true ONLY when the user explicitly asks for a score — the server returns the overall score of COMPLETED " +
-      "appraisals only, and only if the user's Crewing role may view appraisals (else not_allowed: relay it). Never draft scores, " +
-      "assessment scores or remarks. own: true when the user asks for THEIR OWN appraisal — the server refuses (identity_mapping_unavailable): relay the reason.",
+      "review); draft = not yet submitted (listed separately); completed = reviewed. Archived and terminated crew excluded; vessels = the vessel " +
+      "the APPRAISAL was made on (vesselAssociation counts appraisals whose recorded vessel name matches no vessel or several). One record = " +
+      "one appraisal. SCORES: set includeScores: true ONLY when the user explicitly asks for a score — the overall score of COMPLETED " +
+      "appraisals only, with the appraisal date. Never draft scores, assessment scores or remarks. own: true when the user asks for THEIR " +
+      "OWN appraisal — the answer is identity_not_linked: say the login is not linked to a crew record and ask which crew member they mean.",
     parameters: {
       type: "object",
       properties: {

@@ -3,9 +3,9 @@
  *
  * One base row = ONE plan (rotation_drafts_v2). CODE (rotationDraftsService.getProposals): waiting = plan status Proposed or
  * Partially Approved; approval is recorded per entry (rotation_entries_v2.proposal_status: Pending = waiting, Deployed = approved,
- * Rejected). Drafts = In Draft. Company-wide by default. 'For me': Crewing assigns no approver per plan — any user with the
- * Rotation permission approves — so "waiting for me" = the waiting plans when the VERIFIED user holds that permission
- * (never a name or id supplied by the model), else none, with a note either way.
+ * Rejected). Drafts = In Draft. Company-wide. 'For me' (31-Oct-2026): Crewing records no individual approver, so a personal
+ * queue cannot be identified and is NOT equated with holding the Rotation right — the company's pending plans are returned with
+ * personalQueue { identifiable: false, statement }, and the assistant appends that statement verbatim.
  */
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -39,18 +39,14 @@ const STATUS_CLASS = sql`(CASE WHEN d.plan_status IN ('Proposed', 'Partially App
 export async function queryRotation(q: Query, ctx: ToolContext, a: RotationArgs) {
   const vessels = a.vessels ? await resolveVesselNames(q, a.vessels) : undefined;
   const notes: string[] = [];
-  const canApprove = !!ctx.canEdit?.("rotation");
-  if (a.forMe) {
-    notes.push(canApprove
-      ? "Crewing assigns no approver per plan: every user with the Rotation permission approves. You hold it, so every waiting plan is awaiting you."
-      : "Crewing assigns no approver per plan: approvals are made by users with the Rotation permission, which your login does not hold — no plan is waiting for you.");
-  }
+  const personalQueue = a.forMe
+    ? { identifiable: false, statement: "Crewing does not record an individual approver for rotation plans, so a personal approval queue cannot be identified. The plans shown are all plans waiting for approval in your company." }
+    : undefined;
 
   const conds: SQL[] = [sql`d.is_deleted = false`];
   if (a.status === "waiting") conds.push(sql`${STATUS_CLASS} = 'waiting'`);
   else if (a.status === "draft") conds.push(sql`${STATUS_CLASS} = 'draft'`);
   else conds.push(sql`${STATUS_CLASS} IN ('waiting', 'draft', 'other')`);
-  if (a.forMe && !canApprove) conds.push(sql`FALSE`);
   const planVessels = sql`(SELECT array_remove(array_agg(DISTINCT x), NULL) FROM (
       SELECT dv.vessel_uuid AS x FROM rotation_draft_vessels_v2 dv WHERE dv.draft_uuid = d.draft_uuid AND dv.is_deleted = false
       UNION SELECT e.vessel_uuid FROM rotation_entries_v2 e WHERE e.draft_uuid = d.draft_uuid AND e.is_deleted = false) v)`;
@@ -96,6 +92,7 @@ export async function queryRotation(q: Query, ctx: ToolContext, a: RotationArgs)
     definitions: [DEFINITIONS.rotation, DEFINITIONS.dates],
     ...result,
     summary: { waiting: num(s?.waiting), drafts: num(s?.drafts) },
+    ...(personalQueue ? { personalQueue } : {}),
     ...(notes.length ? { notes } : {}),
   };
 }

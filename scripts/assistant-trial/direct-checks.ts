@@ -252,7 +252,8 @@ async function partB(t: Target) {
   r = await rt({ status: "draft" });
   check("B4-3 drafts = 1 (RP-2026-03)", r.total === 1, r);
   r = await rt({ forMe: true });
-  check("B4-4 'for me' as Sail Admin (holds the Rotation permission) = the 2 waiting plans + a note saying so", r.total === 2 && Array.isArray(r.notes) && /You hold it/.test(r.notes[0]), r);
+  check("B4-4 'for me' = NO personal queue (Crewing records no individual approver): the company's 2 pending plans, personalQueue.identifiable false + fixed statement",
+    r.total === 2 && r.personalQueue?.identifiable === false && /personal approval queue cannot be identified/.test(r.personalQueue?.statement ?? "") && !r.notes, r);
   r = await q(t, "crewing_query_rotation_approvals", { mode: "count", forMe: true }, { ...A, userId: "6", role: "User" });
   check("B4-5 chatbot role gate unchanged: a 'User' login is refused before any area (Part B widens nothing)", r.ok === false && r.code === "not_allowed" && /not allowed to use live data/.test(r.error ?? ""), r);
 
@@ -274,24 +275,35 @@ async function partB(t: Target) {
 
   // B6 appraisals
   r = await ap({ statusClass: "any" });
-  check("B6-1 pending 3 (Benedek, Ulric, Nadira) / drafts 1 (Corvina) / completed 2 (Aldric, Orrin); terminated Pelham + archived Vesna excluded",
-    r.summary?.pending === 3 && r.summary?.drafts === 1 && r.summary?.completed === 2 && r.totals?.appraisals === 6, r);
+  check("B6-1 pending 5 (Benedek, Ulric, Nadira, Faustin, Petra) / drafts 2 (Corvina, Elsbet) / completed 3 (Aldric, Orrin, Tamsin); terminated Pelham + archived Vesna excluded",
+    r.summary?.pending === 5 && r.summary?.drafts === 2 && r.summary?.completed === 3 && r.totals?.appraisals === 10, r);
   r = await q(t, "crewing_query_appraisals", { mode: "list" });
-  check("B6-2 default = pending list of 3, no score column", r.total === 3 && r.rows?.every((x: any) => !("overallScore" in x)), r.rows);
+  check("B6-2 default = pending list of 5, no score column", r.total === 5 && r.rows?.every((x: any) => !("overallScore" in x)), r.rows);
   r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true });
-  check("B6-3 Sail Admin (Appraisals All): completed with scores — Aldric B, Orrin A; no competence rating, no remarks anywhere",
-    r.total === 2 && r.rows?.find((x: any) => x.fullName === "Aldric Vexmoor")?.overallScore === "B" && r.rows?.find((x: any) => x.fullName === "Orrin Haverlock")?.overallScore === "A" &&
-    !JSON.stringify(r).includes("CONFIDENTIAL") && !JSON.stringify(r).includes("competence"), r.rows);
+  check("B6-3 completed with scores and dates — Aldric B (2026-09-15), Orrin A, Tamsin A; no competence rating, no remarks anywhere",
+    r.total === 3 && r.rows?.find((x: any) => x.fullName === "Aldric Vexmoor")?.overallScore === "B" && r.rows?.find((x: any) => x.fullName === "Aldric Vexmoor")?.appraisalDate === "2026-09-15" &&
+    r.rows?.find((x: any) => x.fullName === "Orrin Haverlock")?.overallScore === "A" && !JSON.stringify(r).includes("CONFIDENTIAL") && !JSON.stringify(r).includes("competence"), r.rows);
   r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "pending", includeScores: true });
-  check("B6-4 scores requested on PENDING appraisals → rows carry null (Benedek's C is never shown)", r.total === 3 && r.rows?.every((x: any) => x.overallScore === null), r.rows);
+  check("B6-4 scores requested on PENDING appraisals → rows carry null (Benedek's C is never shown)", r.total === 5 && r.rows?.every((x: any) => x.overallScore === null), r.rows);
   r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "draft", includeScores: true });
-  check("B6-5 draft score (Corvina B) never shown", r.total === 1 && r.rows?.[0]?.overallScore === null, r.rows);
+  check("B6-5 draft scores (Corvina B) never shown", r.total === 2 && r.rows?.every((x: any) => x.overallScore === null), r.rows);
   r = await q(t, "crewing_query_appraisals", { mode: "count", own: true });
-  check("B6-6 'my appraisal' → identity_mapping_unavailable (no trusted login → crew link in Crewing)", r.ok === false && r.code === "identity_mapping_unavailable", r);
+  check("B6-6 'my appraisal' → identity_not_linked + the question to ask (which crew member) — no guess", r.ok === false && r.code === "identity_not_linked" && /which crew member/i.test(r.details?.askUser ?? ""), r);
   r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "completed", includeScores: true }, { ...A, userId: "6", role: "User" });
   check("B6-7 chatbot role gate unchanged: a 'User' login is refused before the appraisal area", r.ok === false && r.code === "not_allowed" && /not allowed to use live data/.test(r.error ?? ""), r);
   r = await ap({ vessels: ["MV Beta Ocean"], statusClass: "any" });
-  check("B6-8 vessel by RECORD (crew on board Beta Ocean): Orrin + Nadira = 2 appraisals", r.totals?.appraisals === 2, r);
+  check("B6-8 vessel = the APPRAISAL's vessel: Beta Ocean = Orrin + Nadira = 2 (Petra, now on Beta Ocean, has no vessel recorded → not included, note says so)",
+    r.totals?.appraisals === 2 && Array.isArray(r.notes) && /could not be tied/.test(r.notes[0]), r);
+  r = await q(t, "crewing_query_appraisals", { mode: "list", vessels: ["MV Alpha Star"], statusClass: "any" });
+  check("B6-9 Alpha Star appraisals = 6 incl. Tamsin (appraised there, now on Alpha Trader) and Faustin's case/spacing variant; Elsbet's 'Alpha Star (old name)' NOT matched",
+    r.total === 6 && r.rows?.some((x: any) => x.fullName === "Tamsin Ebberline" && x.vesselName === "MV Alpha Star") && !r.rows?.some((x: any) => x.fullName === "Elsbet Orvanne"), r.rows);
+  r = await ap({ vessels: ["MV Alpha Trader"], statusClass: "any" });
+  check("B6-10 Alpha Trader appraisals = 0: Tamsin's historical appraisal stays with Alpha Star", r.ok === true && r.totals?.appraisals === 0, r);
+  r = await ap({ statusClass: "any" });
+  check("B6-11 vessel association reported: unmatched 1 (Elsbet), ambiguous 0, missing 1 (Petra)",
+    r.vesselAssociation?.unmatched === 1 && r.vesselAssociation?.ambiguous === 0 && r.vesselAssociation?.missing === 1, r.vesselAssociation);
+  r = await q(t, "crewing_query_appraisals", { mode: "count" }, { ...A, userId: "37", userType: "Ship", role: "Vessel Admin" });
+  check("B6-12 Ship user → not_allowed (Office only, unchanged)", r.ok === false && r.code === "not_allowed", r);
 }
 
 async function security(t: Target, s: Target) {
@@ -361,6 +373,10 @@ async function isolation(t: Target) {
   check("I12 B completed appraisal with score = Wendel B; A's crew absent", r.total === 1 && r.rows?.[0]?.fullName === "Wendel Crossfeather" && r.rows?.[0]?.overallScore === "B", r.rows);
   r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true, crewIds: ["00000000-0000-4000-a200-000000000001"] }, B);
   check("I13 B asking for A's crew id (Aldric) → nothing (0 appraisals), never a cross-company score", r.ok === true && r.total === 0, r);
+  r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "any" }, B);
+  check("I14 B: 'MV Delta Sky' matches two vessels → the appraisal is AMBIGUOUS, reported, not assigned", r.vesselAssociation?.ambiguous === 1, r.vesselAssociation);
+  r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "any", vessels: ["MV Alpha Star"] }, B);
+  check("I15 B's Alpha Star appraisals = 1 (Wendel); A's six are never counted", r.totals?.appraisals === 1, r);
 }
 
 async function external(t: Target) {
@@ -382,16 +398,20 @@ async function external(t: Target) {
     ["E8 rest hours needs Rest Hours", "crewing_query_rest_hours", { mode: "count" }, /Rest Hours/],
     ["E9 rotation approvals need Rotation", "crewing_query_rotation_approvals", { mode: "count" }, /Rotation/],
     ["E10 manning needs Vessel", "crewing_query_manning", { mode: "count" }, /Vessel/],
-    ["E11 appraisals need Appraisals All (another person's appraisal)", "crewing_query_appraisals", { mode: "count" }, /Appraisals All/],
-    ["E12 appraisal SCORES without the appraisal right → not_allowed, no score", "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true }, /Appraisals All/],
     ["E13 'for me' rotation without the Rotation right → not_allowed", "crewing_query_rotation_approvals", { mode: "count", forMe: true }, /Rotation/],
   ];
   for (const [label, tool, args, rx] of pb) {
     r = await q(t, tool, args, E);
     check(label, r.ok === false && r.code === "not_allowed" && rx.test(r.error ?? "") && !JSON.stringify(r).includes("overallScore"), r);
   }
+  // Sahil 31-Oct-2026: a chatbot-allowed office role sees appraisals company-wide without an appraisal menu right
+  r = await q(t, "crewing_query_appraisals", { mode: "list", statusClass: "completed", includeScores: true }, E);
+  check("E11 External 1 (no appraisal menu) sees completed appraisals with scores — 3 rows, no remarks", r.ok === true && r.total === 3 &&
+    r.rows?.every((x: any) => typeof x.overallScore === "string") && !JSON.stringify(r).includes("CONFIDENTIAL"), r);
+  r = await q(t, "crewing_query_appraisals", { mode: "count", statusClass: "any" }, E);
+  check("E12 External 1 sees appraisal status counts (pending 5 / drafts 2 / completed 3)", r.summary?.pending === 5 && r.summary?.drafts === 2 && r.summary?.completed === 3, r.summary);
   r = await q(t, "crewing_query_appraisals", { mode: "count", own: true }, E);
-  check("E14 own appraisal for a role without the appraisal menu → refused (never resolved by name)", r.ok === false && ["not_allowed", "identity_mapping_unavailable"].includes(r.code), r);
+  check("E14 own appraisal → identity_not_linked (asks which crew member)", r.ok === false && r.code === "identity_not_linked", r);
 }
 
 (async () => {

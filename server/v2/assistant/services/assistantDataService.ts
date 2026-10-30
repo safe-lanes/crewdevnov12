@@ -118,11 +118,9 @@ function areasNeeded(tool: string, args: unknown): Area[] {
   if (tool === "crewing_query_rest_hours") return ["restHours", "vessel"];
   if (tool === "crewing_query_rotation_approvals") return ["rotation"];
   if (tool === "crewing_query_manning") return ["vessel"];
-  if (tool === "crewing_query_appraisals") {
-    // appraisal status needs the Appraisals menu; scores are checked again inside the tool (view right on 'Appraisals All')
-    const vesselFacts = !!(args && typeof args === "object" && (args as Record<string, unknown>).vessels);
-    return vesselFacts ? ["appraisalsAll", "vessel"] : ["appraisalsAll"];
-  }
+  // Sahil, 31-Oct-2026: shore users the chatbot already allows may view appraisals across their company — no extra menu right.
+  // Office-only, the role allow-list and company isolation are enforced before this point on every call.
+  if (tool === "crewing_query_appraisals") return [];
   return [];
 }
 
