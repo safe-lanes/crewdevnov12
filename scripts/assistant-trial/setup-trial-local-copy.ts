@@ -1,0 +1,169 @@
+/**
+ * PILOT TRIAL ONLY — tenant C = an ISOLATED COPY of the local Crewing database plus LABELLED synthetic cases.
+ *
+ *   crew_trial_c   CREATE DATABASE … TEMPLATE <local db>  (the original is never written)
+ *   trial-c.local  registered in crew_trial_master → crew_trial_c
+ *
+ * The copy keeps every real row of the local database (its Rank Administration included) and adds only rows whose
+ * emp_no starts with SYN- and whose names start with "SYN" — the cases Sahil's rules need that the local data does not
+ * cover. Part A (29-Oct-2026): C1–C5. Part B (30-Oct-2026): C6–C12 — availability dates on leave / on board / not-for-rehire,
+ * a relief-due date that differs from the contract end, a rotation plan waiting for approval, rest-hour records with known
+ * violation codes, an empty position, and appraisals in every status (the local copy has none).
+ *
+ * Usage: DATABASE_URL=<local admin url> npx tsx scripts/assistant-trial/setup-trial-local-copy.ts
+ * Refuses to touch any database whose name does not start with crew_trial_.
+ */
+import { Client } from "pg";
+import { dailyRecordsJson } from "./setup-trial-dbs";
+
+const TEMPLATE = process.env.TRIAL_TEMPLATE_DB || "crew_management_local";
+const DB = "crew_trial_c";
+const MASTER = "crew_trial_master";
+const AS_OF = "2026-11-01";
+const S = (n: number, kind: string) => `00000000-0000-4000-c${kind}00-${String(n).padStart(12, "0")}`;
+
+function urlFor(db: string): string {
+  const base = new URL(process.env.DATABASE_URL || "");
+  base.pathname = `/${db}`;
+  return base.toString();
+}
+async function withClient<T>(db: string, fn: (c: Client) => Promise<T>): Promise<T> {
+  const c = new Client({ connectionString: urlFor(db) });
+  await c.connect();
+  try {
+    return await fn(c);
+  } finally {
+    await c.end();
+  }
+}
+
+/** The synthetic cases, in the order they are inserted (the doc lists them by these labels). */
+export const SYNTHETIC = {
+  crew: [
+    { n: 1, first: "SYN", family: "Reliever-SignedOn ChiefOfficer", rank: "Chief Officer", label: "C1 handover: signed-on reliever (secondary) of the real Chief Officer on board" },
+    { n: 2, first: "SYN", family: "Planned-Reliever Master", rank: "Master", label: "C2 planned reliever of the real Master (on the Master's row, NOT signed on → not on board)" },
+    { n: 3, first: "SYN", family: "Terminated ThirdOfficer", rank: "3rd Officer", label: "C3 terminated crew with a licence expiring 2026-11-15 → never listed", status: "Terminated", inactive: true, cat: "UT" },
+    { n: 4, first: "SYN", family: "Inactive Cook", rank: "Chief Cook", label: "C4 inactive crew with a training certificate expiring 2026-11-18 and a licence expired 2019-01-01 → listed", status: "inactive", inactive: true },
+    { n: 5, first: "SYN", family: "GasEngineer OnBoard", rank: "Gas Engineer", label: "C5 on board with a rank the Company tab does not classify (Gas Engineer) → unclassified, reported" },
+    // Part B
+    { n: 6, first: "SYN", family: "OnLeave ChiefOfficer Available", rank: "Chief Officer", label: "C6 on leave, Next Availability 2026-11-10 → available by 30-Nov", nextAvailability: "2026-11-10" },
+    { n: 7, first: "SYN", family: "OnLeave 2ndEngineer NotForHire", rank: "2nd Engineer", label: "C7 on leave, available 2026-10-15 but not for rehire → excluded unless asked", availability: "2026-10-15", notForHire: true },
+    { n: 8, first: "SYN", family: "OnLeave Master NoDate", rank: "Master", label: "C8 on leave without any availability date → excluded.noAvailabilityDate" },
+  ],
+  docs: [
+    { crew: 1, type: "licence", name: "SYN CoC Chief Mate (expires on as-of day)", expiry: AS_OF },
+    { crew: 1, type: "training", name: "SYN Basic Safety (60-day end)", expiry: "2026-12-31" },
+    { crew: 1, type: "licence", name: "SYN GMDSS (2-month end)", expiry: "2027-01-01" },
+    { crew: 1, type: "training", name: "SYN Advanced Fire Fighting (expired yesterday)", expiry: "2026-10-31" },
+    { crew: 3, type: "licence", name: "SYN CoC Third Officer", expiry: "2026-11-15" },
+    { crew: 4, type: "training", name: "SYN Medical First Aid", expiry: "2026-11-18" },
+    { crew: 4, type: "licence", name: "SYN Ship Cook Certificate (expired 2019)", expiry: "2019-01-01" },
+    { crew: 5, type: "licence", name: "SYN CoC Gas Engineer", expiry: "2026-12-10" },
+  ],
+} as const;
+
+async function main() {
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
+  for (const n of [DB, MASTER]) if (!n.startsWith("crew_trial_")) throw new Error(`refusing ${n}`);
+  await withClient("postgres", async (c) => {
+    await c.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [DB]);
+    await c.query(`DROP DATABASE IF EXISTS "${DB}"`);
+    await c.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [TEMPLATE]);
+    await c.query(`CREATE DATABASE "${DB}" TEMPLATE "${TEMPLATE}"`);
+  });
+  await withClient(MASTER, async (c) => {
+    await c.query(`INSERT INTO tenants (tuid, domain, company_name, is_active) VALUES ('crew_trial_c','trial-c.local','Trial Company C (local copy)',true)
+      ON CONFLICT (tuid) DO NOTHING`);
+  });
+  await withClient(DB, async (c) => {
+    const vessel = (await c.query(`SELECT vessel_uuid, vessel FROM master_vessels WHERE is_deleted IS NOT TRUE ORDER BY id LIMIT 1`)).rows[0];
+    if (!vessel) throw new Error("the local copy has no vessel");
+    const onBoard = (rank: string) => c.query(
+      `SELECT plan_uuid, rank_id, rank, crew_uuid, sign_on_date FROM vessel_planning_v2 WHERE vessel_uuid = $1 AND crew_status = 'primary' AND is_archived = false
+         AND is_deleted = false AND crew_uuid IS NOT NULL AND sign_on_date IS NOT NULL AND lower(btrim(rank)) = lower($2) ORDER BY id LIMIT 1`,
+      [vessel.vessel_uuid, rank]).then((r) => r.rows[0]);
+    const chiefOfficer = await onBoard("Chief Officer");
+    const master = await onBoard("Master");
+    const chiefEngineer = await onBoard("Chief Engineer");
+    if (!chiefOfficer || !master || !chiefEngineer) throw new Error("the local copy has no primary Chief Officer / Master / Chief Engineer on board");
+    const natUuid = (await c.query(`SELECT nat_uuid FROM master_nationalities WHERE is_deleted IS NOT TRUE ORDER BY id LIMIT 1`)).rows[0]?.nat_uuid ?? null;
+    const userUuid = String((await c.query(`SELECT user_uuid FROM master_users ORDER BY id LIMIT 1`)).rows[0]?.user_uuid ?? S(1, "9"));
+
+    for (const m of SYNTHETIC.crew) {
+      const x = m as { status?: string; inactive?: boolean; cat?: string; availability?: string; nextAvailability?: string; notForHire?: boolean };
+      await c.query(
+        `INSERT INTO crew_members_v2 (crew_uuid, emp_no, first_name, family_name, present_rank, nationality_uuid, status, is_active, is_deleted,
+           last_termination_category, last_termination_date, availability, next_availability, not_for_hire)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,$9,$10,$11,$12,$13)`,
+        [S(m.n, "2"), `SYN-${String(m.n).padStart(3, "0")}`, m.first, m.family, m.rank, natUuid, x.status ?? "active", !x.inactive,
+          x.cat ?? null, x.cat ? "2026-10-10" : null, x.availability ?? null, x.nextAvailability ?? null, !!x.notForHire]);
+    }
+    // C1 handover: a secondary row next to the real Chief Officer (same vessel, rank_id, rank), signed on 2026-10-28
+    await c.query(
+      `INSERT INTO vessel_planning_v2 (plan_uuid, vessel_uuid, rank_id, rank, crew_uuid, crew_status, sign_on_date, relief_due, contract_period_months, is_archived, is_deleted)
+       VALUES ($1,$2,$3,$4,$5,'secondary','2026-10-28','2027-04-28',6,false,false)`,
+      [S(1, "3"), vessel.vessel_uuid, chiefOfficer.rank_id, chiefOfficer.rank, S(1, "2")]);
+    // C2 planned reliever on the real Master's row (not signed on)
+    await c.query(`UPDATE vessel_planning_v2 SET reliever_crew_uuid = $1, reliever_sign_on_date = '2026-11-10', joining_status = 'Planned' WHERE plan_uuid = $2`,
+      [S(2, "2"), master.plan_uuid]);
+    // C5 unclassified rank on board
+    await c.query(
+      `INSERT INTO vessel_planning_v2 (plan_uuid, vessel_uuid, rank_id, rank, crew_uuid, crew_status, sign_on_date, relief_due, contract_period_months, is_archived, is_deleted)
+       VALUES ($1,$2,'R011','Gas Engineer',$3,'primary','2026-09-01','2027-03-01',6,false,false)`,
+      [S(5, "3"), vessel.vessel_uuid, S(5, "2")]);
+    // C9 (B2): the real Chief Engineer's recorded relief-due moved 20 days after the contract end → reliefDueDiffers
+    const ceRow = (await c.query(`SELECT sign_on_date, contract_period_months FROM vessel_planning_v2 WHERE plan_uuid = $1`, [chiefEngineer.plan_uuid])).rows[0];
+    await c.query(`UPDATE vessel_planning_v2 SET relief_due = to_char(($1::date + make_interval(months => $2::int) + interval '20 days')::date, 'YYYY-MM-DD') WHERE plan_uuid = $3`,
+      [ceRow.sign_on_date, ceRow.contract_period_months ?? 6, chiefEngineer.plan_uuid]);
+    // C10 (B5): an empty position (Fitter) on the real vessel
+    await c.query(`INSERT INTO vessel_planning_v2 (plan_uuid, vessel_uuid, rank_id, rank, crew_uuid, crew_status, is_archived, is_deleted)
+      VALUES ($1,$2,'R018','Fitter',NULL,'primary',false,false)`, [S(10, "3"), vessel.vessel_uuid]);
+    // C11 (B4): one rotation plan waiting for approval on the real vessel (local plans are all Deployed)
+    await c.query(`INSERT INTO rotation_drafts_v2 (draft_uuid, draft_id, plan_from_date, plan_to_date, plan_status, proposed_by_uuid, proposed_date, is_deleted)
+      VALUES ($1,'SYN-RP-01','2026-12-01','2027-02-28','Proposed',$2,'2026-10-29',false)`, [S(11, "6"), userUuid]);
+    await c.query(`INSERT INTO rotation_draft_vessels_v2 (rv_uuid, draft_uuid, vessel_uuid, is_deleted) VALUES ($1,$2,$3,false)`, [S(11, "7"), S(11, "6"), vessel.vessel_uuid]);
+    await c.query(`INSERT INTO rotation_entries_v2 (entry_uuid, draft_uuid, vessel_uuid, rank, crew_uuid, proposal_status, sign_on_date, is_deleted)
+      VALUES ($1,$2,$3,'Chief Officer',$4,'Pending','2026-12-01',false)`, [S(11, "8"), S(11, "6"), vessel.vessel_uuid, S(6, "2")]);
+    // C12 (B3): rest-hour records for the as-of month with known codes (local records cover Feb–Apr 2026 only)
+    await c.query(`INSERT INTO rh_daily_records_v2 (rh_daily_uuid, crew_member_id, vessel_id, rank, name, month_year, daily_records, opa_mode, updated_at, is_deleted)
+      VALUES ($1,$2,$3,'Chief Officer','SYN Reliever-SignedOn ChiefOfficer','2026-10',$4,false,'2026-10-30T10:00:00Z',false)`,
+      [S(12, "a"), S(1, "2"), vessel.vessel_uuid, dailyRecordsJson("2026-10", { 6: ["A"], 7: ["A"], 8: ["G"], 20: ["H"] })]); // 3 rest days → 1 NC; +1 with OPA
+    // C13 (B6): appraisals — completed with a score, pending, draft, and one on the terminated SYN crew
+    const ap = [
+      { n: 1, crew: 1, type: "Annual", date: "2026-09-20", status: "reviewed", overall: "B" },
+      { n: 2, crew: 6, type: "Annual", date: "2026-10-12", status: "pending_review", overall: "A" },
+      { n: 3, crew: 7, type: "Annual", date: "2026-10-25", status: "draft" },
+      { n: 4, crew: 3, type: "Annual", date: "2026-08-01", status: "reviewed", overall: "C" },
+    ];
+    for (const a of ap) {
+      const pinned = a.status !== "draft"; // submitted statuses must carry a form-version pin (check constraint)
+      await c.query(`INSERT INTO appraisal_results_v2 (appraisal_uuid, crew_member_id, appraisal_type, appraisal_date, status, overall_rating, competence_rating, vessel, submitted_by,
+          form_version_id, form_version_uuid, is_deleted)
+        VALUES ($1,$2,$3,$4,$5,$6,'A',$7,$8,$9,$10,false)`, [S(a.n, "b"), S(a.crew, "2"), a.type, a.date, a.status, a.overall ?? null, vessel.vessel, userUuid, pinned ? 1 : null, pinned ? S(1, "d") : null]);
+      await c.query(`INSERT INTO appr_appraiser_comments_v2 (appraiser_comment_uuid, appraisal_uuid, comment, is_deleted) VALUES ($1,$2,$3,false)`,
+        [S(a.n, "c"), S(a.n, "b"), "CONFIDENTIAL remark — must never be returned by the assistant"]);
+    }
+    let j = 0;
+    for (const d of SYNTHETIC.docs) {
+      j++;
+      if (d.type === "licence") {
+        await c.query(`INSERT INTO crew_licenses (lic_uuid, crew_uuid, certificate_document, expiry, is_deleted) VALUES ($1,$2,$3,$4,false)`,
+          [S(j, "4"), S(d.crew, "2"), d.name, d.expiry]);
+      } else {
+        await c.query(`INSERT INTO crew_training_courses (train_uuid, crew_uuid, training_course, expiry, is_deleted) VALUES ($1,$2,$3,$4,false)`,
+          [S(j, "5"), S(d.crew, "2"), d.name, d.expiry]);
+      }
+    }
+    const counts = await c.query(`SELECT (SELECT count(*) FROM crew_members_v2) crew, (SELECT count(*) FROM crew_members_v2 WHERE emp_no LIKE 'SYN-%') syn_crew,
+      (SELECT count(*) FROM vessel_planning_v2) plans, (SELECT count(*) FROM crew_licenses) lic, (SELECT count(*) FROM crew_training_courses) trn,
+      (SELECT count(*) FROM rotation_drafts_v2) rotation, (SELECT count(*) FROM rh_daily_records_v2) rh, (SELECT count(*) FROM appraisal_results_v2) appraisals`);
+    console.log(DB, "vessel:", vessel.vessel, JSON.stringify(counts.rows[0]));
+  });
+}
+
+if (process.argv[1] && /setup-trial-local-copy\.ts$/.test(process.argv[1].replace(/\\/g, "/"))) {
+  main().catch((e) => {
+    console.error(e.message);
+    process.exit(1);
+  });
+}

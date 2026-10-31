@@ -1,0 +1,146 @@
+{
+ "_about": "Astra round 3 (28-Oct-2026): server-held query state, written BEFORE running. Args are what Crewing RECEIVED (the server-merged query), so a dropped or silently added filter shows up here. Fixture (setup-trial-dbs.ts, as-of 2026-11-01): MV Beta Ocean engineers on board = Orrin (CE), Petra (2E), Quillon (ETO) primary + Faustin (3E) secondary → people 4; primary-only → 3. MV Alpha Star engineers = Dagny, Elsbet, Faustin (3). Fleet engineers on board = 7 people (Faustin once; Tamsin on Alpha Trader). MV Gamma Bay: nobody on board. Same scoring rules as test-set.json; 'argsAbsent' lists filter keys that must NOT be in the received args.",
+ "cases": [
+  {
+   "id": "R01",
+   "cat": "vessel-change-zero-list-more",
+   "turns": [
+    {
+     "q": "How many engineers on MV Beta Ocean have certificates expiring in the next 60 days?",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "beta ocean", "expiryWithin.amount": 60}, "result": {"totals.people": 2, "totals.documents": 5}}],
+     "answerAll": ["\\b2\\b", "\\b5\\b"]
+    },
+    {
+     "q": "same for MV Alpha Star",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "alpha star", "expiryWithin.amount": 60, "rankGroups": "engine"}, "result": {"totals.documents": 0}}],
+     "argsAbsent": ["crewStatus"],
+     "answerAll": ["(no |none|\\b0\\b|zero)"],
+     "answerNone": ["orrin", "petra", "beta ocean"]
+    },
+    {
+     "q": "show them as a list",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "alpha star", "expiryWithin.amount": 60, "rankGroups": "engine"}, "result": {"totals.documents": 0}}],
+     "answerAll": ["(no |none|nothing|\\b0\\b|zero)"],
+     "answerNone": ["orrin", "petra", "beta ocean"]
+    },
+    {
+     "q": "and the expired ones?",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "alpha star", "rankGroups": "engine", "expiryState": "expired"}, "result": {"totals.documents": 1}}],
+     "answerAll": ["(dagny|brisketh|chief engineer)", "\\b1\\b"],
+     "answerNone": ["orrin", "petra", "beta ocean"]
+    }
+   ]
+  },
+  {
+   "id": "R02",
+   "cat": "primary-only-drift-probe",
+   "turns": [
+    {
+     "q": "How many engineers are on board MV Beta Ocean?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine"}, "result": {"totals.people": 4}}],
+     "argsAbsent": ["crewStatus"],
+     "answerAll": ["\\b4\\b"]
+    },
+    {
+     "q": "list them",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine", "mode": "list"}, "result": {"totals.people": 4}}],
+     "argsAbsent": ["crewStatus"],
+     "answerAll": ["orrin", "petra", "quillon", "faustin"]
+    },
+    {
+     "q": "only the primary assignments please",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine", "crewStatus": "primary"}, "result": {"totals.people": 3}}],
+     "answerAll": ["\\b3\\b"],
+     "answerNone": ["faustin"]
+    },
+    {
+     "q": "how many certificates do they hold that expire in the next 60 days?",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "beta ocean", "rankGroups": "engine", "expiryWithin.amount": 60}, "result": {"totals.documents": 5}}],
+     "answerAll": ["\\b5\\b"]
+    }
+   ]
+  },
+  {
+   "id": "R03",
+   "cat": "explicit-filter-removal",
+   "turns": [
+    {
+     "q": "How many engineers are on board MV Beta Ocean?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine"}, "result": {"totals.people": 4}}],
+     "answerAll": ["\\b4\\b"]
+    },
+    {
+     "q": "and across all vessels?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"rankGroups": "engine"}, "result": {"totals.people": 7}}],
+     "argsAbsent": ["vessels", "crewStatus"],
+     "answerAll": ["\\b7\\b"]
+    },
+    {
+     "q": "and regardless of rank?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {}, "result": {"totals.people": 16}}],
+     "argsAbsent": ["vessels", "rankGroups", "ranks", "crewStatus"],
+     "answerAll": ["\\b16\\b"]
+    }
+   ]
+  },
+  {
+   "id": "R04",
+   "cat": "genuinely-new-question",
+   "turns": [
+    {
+     "q": "How many engineers on MV Beta Ocean have certificates expiring in the next 60 days?",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "beta ocean", "expiryWithin.amount": 60}, "result": {"totals.people": 2}}],
+     "answerAll": ["\\b2\\b"]
+    },
+    {
+     "q": "How many crew are on board MV Gamma Bay?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "gamma bay"}, "result": {"totals.people": 0}}],
+     "argsAbsent": ["rankGroups", "ranks", "hasDocument", "crewStatus"],
+     "answerAll": ["(no |none|nobody|\\b0\\b|zero)"],
+     "answerNone": ["orrin", "petra"]
+    },
+    {
+     "q": "List all crew on board MV Alpha Trader",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "alpha trader"}, "result": {"totals.people": 2}}],
+     "argsAbsent": ["rankGroups", "ranks", "hasDocument", "crewStatus"],
+     "answerAll": ["sefton", "tamsin"]
+    }
+   ]
+  },
+  {
+   "id": "R05",
+   "cat": "show-more-paging",
+   "turns": [
+    {
+     "q": "List the crew on board MV Alpha Star, 5 at a time",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "alpha star", "limit": 5, "offset": 0}, "result": {"totals.people": 8, "returned": 5}}],
+     "answerAll": ["\\b8\\b"]
+    },
+    {
+     "q": "show more",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "alpha star", "offset": 5}, "result": {"totals.people": 8, "returned": 3}}],
+     "argsAbsent": ["crewStatus", "rankGroups"],
+     "answerAll": ["(3|three)"],
+     "answerNone": ["marek", "orrin", "beta ocean"]
+    }
+   ]
+  },
+  {
+   "id": "R06",
+   "cat": "follow-up-across-tools-keeps-vessel-and-group",
+   "turns": [
+    {
+     "q": "Which engineers on MV Beta Ocean have training certificates expiring in the next 2 months?",
+     "calls": [{"tool": "crewing_query_documents", "args": {"vessels": "beta ocean", "documentTypes": "training", "expiryWithin.unit": "months", "expiryWithin.amount": 2}, "result": {"totals.people": 2}}],
+     "answerAll": ["orrin", "petra"]
+    },
+    {
+     "q": "and when did they sign on?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine"}, "result": {}}],
+     "argsAbsent": ["crewStatus"],
+     "answerAll": ["orrin", "petra"]
+    }
+   ]
+  }
+ ]
+}
