@@ -20,8 +20,10 @@ import {
 } from "./controllers";
 
 import { crewReactivationController } from './controllers/crewReactivationController';
+import { crewNameMatchRouter } from './controllers/crewNameMatchController';
 
 const router = Router();
+router.use('/crew-name-match', crewNameMatchRouter);
 router.get('/crew/reactivated', crewReactivationController.list);
 router.post('/crew/:crewUuid/reactivate', crewReactivationController.reactivate);
 
