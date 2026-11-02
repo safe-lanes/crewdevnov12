@@ -17,7 +17,7 @@ The retained test form **TEST ONLY Rule editor e4b3db3d** was reused:
 The browser clicked the real screen, without intercepted responses:
 
 1. Captured the original inline panel and the new compact editor header.
-2. Opened Edit, changed the draft's obligation, and clicked Save applicability.
+2. Opened the settings button (now “When this form applies”), changed the draft's obligation, and clicked the save button (now “Save settings”).
 3. Cancelled an unsaved-close confirmation, then accepted it and confirmed the
    saved policy remained.
 4. Restored and saved the original obligation. Mode changes to all and manual

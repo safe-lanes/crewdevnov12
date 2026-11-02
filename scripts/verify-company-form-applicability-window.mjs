@@ -121,7 +121,7 @@ try {
     await expect(page.getByTestId("button-toggle-applicability-settings")).toHaveText("View");
     await page.getByTestId("button-toggle-applicability-settings").click();
     await window.getByTestId("applicability-summary").waitFor();
-    await expect(window.getByRole("heading", { name: "Applicability settings — read only" })).toBeVisible();
+    await expect(window.getByRole("heading", { name: "When this form applies — read only" })).toBeVisible();
     await expect(window.getByRole("radio", { name: "Applies when conditions match", exact: true })).toBeDisabled();
     await expect(window.getByLabel("Crew detail", { exact: true }).first()).toBeDisabled();
     await expect(window.getByTestId("button-save-applicability")).toHaveCount(0);

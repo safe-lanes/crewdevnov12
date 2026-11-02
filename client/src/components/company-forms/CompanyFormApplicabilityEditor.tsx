@@ -356,13 +356,13 @@ export function CompanyFormApplicabilityEditor({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Applicability settings{isReleased || readOnly ? " — read only" : ""}</DialogTitle>
+          <DialogTitle>When this form applies{isReleased || readOnly ? " — read only" : ""}</DialogTitle>
           <DialogDescription>
             {isReleased
-              ? "This version is released. Its applicability settings cannot be changed."
+              ? "View the completion obligation, effective date and crew scope; these settings cannot be changed on a released version."
               : readOnly
-                ? "You can view these settings, but cannot change them."
-                : "Set who this version applies to. Save applicability before releasing this version."}
+                ? "View the completion obligation, effective date and crew scope; you do not have permission to change these settings."
+                : "Set the completion obligation, effective date and crew scope, then save these settings before releasing this version."}
           </DialogDescription>
         </DialogHeader>
     <section
@@ -505,7 +505,7 @@ export function CompanyFormApplicabilityEditor({
                 </p>
               )}
               <p className="text-xs leading-5 text-[#637985]">
-                {stageKey ? "This policy is evaluated in the context of the selected subject stage." : "No subject stage is selected for this version."}
+                {stageKey ? "The stage is set using the selector in the configuration header." : "No stage is selected; choose one using the stage selector in the configuration header."}
               </p>
             </div>
           )}
@@ -531,7 +531,7 @@ export function CompanyFormApplicabilityEditor({
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}
             </p>
             {!isReleased && !readOnly && permissionToEdit && <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || !conditionSetsValid || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
-              <Save className="mr-2 h-4 w-4" />Save applicability
+              <Save className="mr-2 h-4 w-4" />Save settings
             </Button>}
           </div>
         </>

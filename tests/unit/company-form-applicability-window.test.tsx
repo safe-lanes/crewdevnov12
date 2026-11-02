@@ -40,7 +40,7 @@ describe("Company Form applicability window state", () => {
     render(<CompanyFormApplicabilityEditor {...props} status={status} readOnly settingsOpen
       onSettingsClose={vi.fn()} onRegisterSaveHandler={register} />);
     await screen.findByTestId("applicability-summary");
-    expect(screen.getByRole("heading", { name: "Applicability settings — read only" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "When this form applies — read only" })).toBeTruthy();
     expect((screen.getByRole("radio", { name: "Applies to all", exact: true }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText(/^optional$/i).closest("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
@@ -51,8 +51,12 @@ describe("Company Form applicability window state", () => {
   it("shows the draft trial inside the window only for conditional rules", async () => {
     render(<Harness />);
     await ready();
+    expect(screen.getByRole("heading", { name: "When this form applies", exact: true })).toBeTruthy();
+    expect(screen.getByText("Set the completion obligation, effective date and crew scope, then save these settings before releasing this version.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save settings" })).toBeTruthy();
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
+    expect(screen.getByText("The stage is set using the selector in the configuration header.")).toBeTruthy();
     expect(screen.getByTestId("company-form-applicability-window").contains(screen.getByTestId("company-form-rule-trial"))).toBe(true);
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
