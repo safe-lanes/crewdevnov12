@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -127,6 +128,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     rankId,
     planningData
 }) => {
+    const { ask, dialog } = useAppDialog();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
@@ -249,8 +251,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     }, [open, planningData, form, rankId, vesselUuid]);
 
-    const handleDialogOpenChange = (nextOpen: boolean) => {
-        if (!nextOpen && formIsDirty && !window.confirm("Discard unsaved changes?")) return;
+    const handleDialogOpenChange = async (nextOpen: boolean) => {
+        if (!nextOpen && formIsDirty && !await ask("Discard unsaved changes?", {
+          title: "Close reliever status", actionLabel: "Discard changes", cancelLabel: "Keep editing",
+        })) return;
         onOpenChange(nextOpen);
     };
 
@@ -757,6 +761,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     return (
         <>
+            {dialog}
             <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
                 if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); setTrainingOverrideReason(""); setRequestChecklistOverride(false); setRequestTrainingOverride(false); }
             }}>

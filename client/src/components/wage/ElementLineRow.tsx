@@ -11,6 +11,7 @@ import { Trash2, AlertCircle } from "lucide-react";
 import { PayElementLine, Basis } from "@/types/wage";
 import { useWageRun } from "@/store/wageRuns";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 
 interface ElementLineRowProps {
   line: PayElementLine;
@@ -21,6 +22,7 @@ interface ElementLineRowProps {
 export default function ElementLineRow({ line, crewId, editable }: ElementLineRowProps) {
   const { upsertLine, deleteLine, isSaving } = useWageRun();
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
   const [localLine, setLocalLine] = useState<PayElementLine>(line);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -61,20 +63,24 @@ export default function ElementLineRow({ line, crewId, editable }: ElementLineRo
   };
 
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete ${line.name}?`)) {
-      try {
-        await deleteLine(crewId, line.id);
-        toast({
-          title: "Element Deleted",
-          description: `${line.name} has been removed`,
-        });
-      } catch (error) {
-        toast({
-          title: "Delete Failed",
-          description: "Failed to delete pay element",
-          variant: "destructive"
-        });
-      }
+    const confirmed = await ask(`Are you sure you want to delete ${line.name}?`, {
+      title: "Delete pay element",
+      actionLabel: "Delete pay element",
+      cancelLabel: "Keep pay element",
+    });
+    if (!confirmed) return;
+    try {
+      await deleteLine(crewId, line.id);
+      toast({
+        title: "Element Deleted",
+        description: `${line.name} has been removed`,
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete pay element",
+        variant: "destructive"
+      });
     }
   };
 
@@ -197,6 +203,7 @@ export default function ElementLineRow({ line, crewId, editable }: ElementLineRo
     <div className={`flex items-center justify-between p-3 rounded-lg border ${
       hasChanges ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
     }`}>
+      {dialog}
       <div className="flex items-center gap-4 flex-1">
         {/* Element Name and Code */}
         <div className="flex items-center gap-2 min-w-0">
@@ -268,6 +275,7 @@ export default function ElementLineRow({ line, crewId, editable }: ElementLineRo
             </Button>
           )}
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleDelete}

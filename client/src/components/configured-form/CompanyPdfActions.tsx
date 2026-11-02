@@ -3,6 +3,7 @@ import { AlertCircle, Check, Download, Printer, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { sailDate, sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
 
 type PdfStatus = "disabled" | "pending" | "ready" | "failed" | "unavailable";
@@ -52,6 +53,7 @@ export function CompanyPdfActions({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { ask, dialog } = useAppDialog();
   const [working, setWorking] = useState<"retry" | "handover" | "void-notice-handover" | "download" | "print" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const statusKey = ["company-form-pdf-status", submissionUuid];
@@ -135,8 +137,10 @@ export function CompanyPdfActions({
       {},
     );
   });
-  const handover = () => {
-    if (!status?.fileSha256 || !window.confirm("Record that this PDF was handed to the seafarer?")) return;
+  const handover = async () => {
+    if (!status?.fileSha256 || !await ask("Record that this PDF was handed to the seafarer?", {
+      title: "Record PDF handover", actionLabel: "Record handover", cancelLabel: "Do not record",
+    })) return;
     return runAction("handover", async () => {
       await apiRequest(
         "POST",
@@ -145,8 +149,10 @@ export function CompanyPdfActions({
       );
     });
   };
-  const voidNoticeHandover = () => {
-    if (!status?.fileSha256 || !window.confirm("Record that the void notice was handed to the seafarer?")) return;
+  const voidNoticeHandover = async () => {
+    if (!status?.fileSha256 || !await ask("Record that the void notice was handed to the seafarer?", {
+      title: "Record void notice handover", actionLabel: "Record handover", cancelLabel: "Do not record",
+    })) return;
     return runAction("void-notice-handover", async () => {
       await apiRequest(
         "POST",
@@ -184,6 +190,7 @@ export function CompanyPdfActions({
 
   return (
     <section className="space-y-3" aria-label="Company PDF">
+      {dialog}
       {status?.documentReference && <p className="text-sm">Document reference: {status.documentReference}</p>}
       {isVoided && currentStatus === "ready" && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">

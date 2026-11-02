@@ -24,7 +24,7 @@ function Harness({ onRegisterSaveHandler }: { onRegisterSaveHandler?: (uuid: str
 }
 
 beforeEach(() => {
-  Object.defineProperty(window, "confirm", { configurable: true, writable: true, value: vi.fn(() => true) });
+  Object.defineProperty(window, "confirm", { configurable: true, writable: true, value: vi.fn(() => { throw Error("Native confirmation must not be used"); }) });
   mocks.api.mockReset();
   mocks.api.mockImplementation(async (method: string, path: string, payload?: unknown) => new Response(
     JSON.stringify(path.endsWith("rule-dimensions") ? [] : method === "PUT" ? { ...policy, ...(payload as object) } : policy),
@@ -35,6 +35,24 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const ready = () => screen.findByText(/Policy saved/);
 
 describe("Company Form applicability window state", () => {
+  it("cancel preserves conditions, obligation and date together; Escape cancels only the confirmation", async () => {
+    render(<Harness />);
+    await ready();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Add crew group" }));
+    fireEvent.click(screen.getByLabelText(/^optional$/i));
+    fireEvent.click(screen.getByLabelText("On a specific date"));
+    fireEvent.change(document.querySelector('input[type="date"]')!, { target: { value: "2030-11-02" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
+    expect(await screen.findByText("Changing this mode will discard configured conditions and completion obligation and effective-date settings. Continue?")).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(2);
+    expect((screen.getByLabelText(/^optional$/i) as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('input[type="date"]') as HTMLInputElement).value).toBe("2030-11-02");
+    expect(screen.getByTestId("company-form-applicability-window")).toBeTruthy();
+    expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
+  });
   it.each(["released", "draft"])("keeps a %s version's read-only settings frozen", async (status) => {
     const register = vi.fn();
     render(<CompanyFormApplicabilityEditor {...props} status={status} readOnly settingsOpen
@@ -66,7 +84,8 @@ describe("Company Form applicability window state", () => {
     expect(obligation.compareDocumentPosition(screen.getByTestId("applicability-summary")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(trial.compareDocumentPosition(screen.getByText("The stage is set using the selector in the configuration header.")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
-    expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard conditions", exact: true }));
+    await waitFor(() => expect(screen.queryByTestId("company-form-rule-trial")).toBeNull());
     expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull();
     expect(screen.queryByText("Completion obligation", { exact: true })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
@@ -80,14 +99,15 @@ describe("Company Form applicability window state", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
     fireEvent.click(screen.getByRole("button", { name: "Add crew group" }));
     expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(2);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/configured conditions/i));
+    expect(await screen.findByText("Changing this mode will discard configured conditions. Continue?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing", exact: true }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(2);
     expect(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }).getAttribute("aria-checked")).toBe("true");
-    confirm.mockReturnValue(true);
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
-    expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard conditions", exact: true }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull());
     fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
     expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(1);
     expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
@@ -100,14 +120,15 @@ describe("Company Form applicability window state", () => {
     fireEvent.click(screen.getByLabelText("On a specific date"));
     const date = document.querySelector('input[type="date"]') as HTMLInputElement;
     fireEvent.change(date, { target: { value: "2030-11-02" } });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/obligation.*effective.date/i));
+    expect(await screen.findByText("Changing this mode will discard completion obligation and effective-date settings. Continue?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing", exact: true }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect((screen.getByLabelText(/^optional$/i) as HTMLInputElement).checked).toBe(true);
     expect(date.value).toBe("2030-11-02");
-    confirm.mockReturnValue(true);
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
-    expect(screen.queryByText("Completion obligation", { exact: true })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard settings", exact: true }));
+    await waitFor(() => expect(screen.queryByText("Completion obligation", { exact: true })).toBeNull());
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
     expect((screen.getByLabelText(/^mandatory$/i) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("On release") as HTMLInputElement).checked).toBe(true);
@@ -116,23 +137,24 @@ describe("Company Form applicability window state", () => {
   });
 
   it("asks before closing dirty settings and keeps edits when cancelled", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<Harness />);
     await ready();
     fireEvent.click(screen.getByLabelText(/^optional$/i));
     fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
-    expect(confirm).toHaveBeenCalledWith("Discard unsaved applicability changes and close this window?");
+    expect(await screen.findByText("Discard unsaved applicability changes and close this window?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing", exact: true }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(screen.getByTestId("company-form-applicability-window")).toBeTruthy();
     expect((screen.getByLabelText(/^optional$/i) as HTMLInputElement).checked).toBe(true);
     expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
   });
 
   it("discards only the unsaved local edits on confirmed close", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<Harness />);
     await ready();
     fireEvent.click(screen.getByLabelText(/^optional$/i));
     fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Discard changes", exact: true }));
     await waitFor(() => expect(screen.queryByTestId("company-form-applicability-window")).toBeNull());
     fireEvent.click(screen.getByRole("button", { name: "Open policy" }));
     expect((await screen.findByLabelText(/^mandatory$/i) as HTMLInputElement).checked).toBe(true);

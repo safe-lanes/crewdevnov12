@@ -7,6 +7,7 @@ import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { CompanyFormProblems } from "./CompanyFormProblems";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -221,7 +222,8 @@ export function CompanyFormApplicabilityEditor({
     onDirtyRef.current?.(isDirty);
   }, [isDirty]);
 
-  const changeMode = (nextMode: PolicyDraft["mode"]) => {
+  const { ask, dialog } = useAppDialog();
+  const changeMode = async (nextMode: PolicyDraft["mode"]) => {
     if (locked || saving || nextMode === draft.mode) return;
     const discardsConditional = draft.mode === "conditional" && nextMode !== "conditional" && draft.sets.length > 0;
     const discardsAutomaticSettings = nextMode === "manual_only"
@@ -231,7 +233,11 @@ export function CompanyFormApplicabilityEditor({
       discardsAutomaticSettings ? "completion obligation and effective-date settings" : "",
     ].filter(Boolean);
     if ((discardsConditional || discardsAutomaticSettings)
-      && !window.confirm(`Changing this mode will discard ${discardedSettings.join(" and ")}. Continue?`)) return;
+      && !await ask(`Changing this mode will discard ${discardedSettings.join(" and ")}. Continue?`, {
+        title: "Change applicability mode",
+        actionLabel: discardsAutomaticSettings ? "Discard settings" : "Discard conditions",
+        cancelLabel: "Keep editing",
+      })) return;
     setDraft((current) => ({
       ...current,
       mode: nextMode,
@@ -337,10 +343,12 @@ export function CompanyFormApplicabilityEditor({
     }));
   };
 
-  const closeSettings = () => {
+  const closeSettings = async () => {
     if (saving) return;
     if (isDirty) {
-      if (!window.confirm("Discard unsaved applicability changes and close this window?")) return;
+      if (!await ask("Discard unsaved applicability changes and close this window?", {
+        title: "Close applicability settings", actionLabel: "Discard changes", cancelLabel: "Keep editing",
+      })) return;
       setDraft(JSON.parse(baseline) as PolicyDraft);
       setSaveError("");
     }
@@ -350,7 +358,9 @@ export function CompanyFormApplicabilityEditor({
   if (!permissionToView) return null;
 
   return (
-    <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) closeSettings(); }}>
+    <>
+    {dialog}
+    <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) void closeSettings(); }}>
       <DialogContent
         id="company-form-applicability-settings"
         className="z-[310] max-w-4xl max-h-[90dvh]"
@@ -593,6 +603,7 @@ export function CompanyFormApplicabilityEditor({
     </section>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 

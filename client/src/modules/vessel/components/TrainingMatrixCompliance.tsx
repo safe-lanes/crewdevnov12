@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ChevronDown, ChevronRight, FileText, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
@@ -258,6 +259,7 @@ async function fetchCompliance(url: string): Promise<ComplianceResult> {
 }
 
 export function TrainingMatrixCompliance({ planUuid, assignmentUuid, embeddedResult, onDetailsClose, open }: TrainingMatrixComplianceProps) {
+  const { notify, dialog } = useAppDialog();
   const queryClient = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
@@ -341,11 +343,11 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, embeddedRes
         window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
       } else {
         URL.revokeObjectURL(objectUrl);
-        window.alert("The attachment could not be opened. Please allow pop-ups and try again.");
+        await notify("The attachment could not be opened. Please allow pop-ups and try again.", { title: "Attachment unavailable", actionLabel: "Close" });
       }
     } catch {
       pendingWindow?.close();
-      window.alert("The attachment could not be opened. Please try again.");
+      await notify("The attachment could not be opened. Please try again.", { title: "Attachment unavailable", actionLabel: "Close" });
     }
   };
 
@@ -355,6 +357,7 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, embeddedRes
 
   return (
     <>
+      {dialog}
       {!embeddedResult && <div className="grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-3" data-testid="training-matrix-compliance-line">
         <div className="text-sm font-medium text-slate-700">Training Matrix Compliance:</div>
         <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-2">
