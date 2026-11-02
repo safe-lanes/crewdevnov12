@@ -8835,7 +8835,11 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
             {selectedAdminPage === "masters" && renderDataMastersModule()}
             {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
-            {selectedAdminPage === "access-control" && <AccessControlPage />}
+            {selectedAdminPage === "access-control" && (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <AccessControlPage />
+              </div>
+            )}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
           </>
         )}

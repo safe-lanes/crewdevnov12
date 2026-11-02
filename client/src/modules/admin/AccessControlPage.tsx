@@ -415,13 +415,13 @@ export default function AccessControlPage() {
     return (
       <div key={item.muid}>
         <div
-          className={`grid grid-cols-[1fr_80px_repeat(4,80px)] items-center border-b border-gray-200 ${
+          className={`grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 ${
             depth > 0 ? "bg-gray-50/50" : "bg-white"
           } hover:bg-blue-50/30 transition-colors`}
-          style={{ paddingLeft: depth > 0 ? `${depth * 24 + 16}px` : "16px" }}
+          style={{ paddingLeft: depth > 0 ? `min(${depth * 24 + 16}px, 12vw)` : "8px" }}
           data-testid={`permission-row-${item.muid}`}
         >
-          <div className="flex items-center gap-2 py-2.5 pr-2">
+          <div className="flex min-w-0 items-center gap-1 py-2.5 pr-1 sm:gap-2 sm:pr-2">
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
@@ -436,9 +436,9 @@ export default function AccessControlPage() {
                 )}
               </button>
             ) : (
-              <span className="w-[20px]" />
+              <span className="w-4 shrink-0 sm:w-[20px]" />
             )}
-            <span className="text-sm text-gray-800 font-medium" data-testid={`text-menu-name-${item.muid}`}>
+            <span className="min-w-0 break-words text-xs text-gray-800 font-medium sm:text-sm" data-testid={`text-menu-name-${item.muid}`}>
               {item.displayName || item.name}
             </span>
           </div>
@@ -502,7 +502,7 @@ export default function AccessControlPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-w-full overflow-hidden pb-2" data-testid="access-control-page">
       <div className="flex flex-wrap items-center justify-end gap-3" data-testid="access-control-top-actions">
         <Button variant="outline" onClick={openManagement} data-testid="button-management-grants">
           <ShieldCheck aria-hidden="true" className="mr-2 h-4 w-4" />Management grants
@@ -510,12 +510,24 @@ export default function AccessControlPage() {
         {accessControlManagement && <TrainingCompliancePolicyDialog />}
         <AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding />
       </div>
-      <div className="max-w-full overflow-x-auto" data-testid="access-control-grid-scroll">
-      <div className="flex min-h-[440px] h-[calc(100vh-370px)] min-w-[960px] gap-0" data-testid="access-control-permissions">
-      <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
+      <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-hidden" data-testid="access-control-grid-scroll">
+      <div className="flex h-full min-h-0 min-w-0 gap-0" data-testid="access-control-permissions">
+      <div className="flex w-[112px] min-w-[112px] flex-col overflow-hidden rounded-l-lg border border-gray-200 bg-white sm:w-[160px] sm:min-w-[160px] lg:w-[200px] lg:min-w-[200px]">
         <div className="bg-[#52baf3] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
           Roles
         </div>
+        {selectedRole && (
+          <div
+            className="shrink-0 border-b border-sky-200 bg-sky-50 px-3 py-2 text-xs text-gray-600"
+            aria-live="polite"
+            data-testid="selected-role-indicator"
+          >
+            Selected role
+            <div className="truncate text-sm font-semibold text-[#16569e]" title={selectedRole.assignedRole}>
+              {selectedRole.assignedRole}
+            </div>
+          </div>
+        )}
         <ScrollArea className="flex-1">
           {(rolesData as RoleApi[]).map((role) => (
             <div
@@ -542,19 +554,18 @@ export default function AccessControlPage() {
         </ScrollArea>
       </div>
 
-      <div className="min-w-0 flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="min-w-0 flex-1 overflow-x-auto">
-        <div className="min-w-[760px] flex h-full flex-col">
-        <div className="grid grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
-          <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
-          <div className="text-center py-2.5" data-testid="text-header-select-all">Select All</div>
-          <div className="text-center py-2.5" data-testid="text-header-view">View</div>
-          <div className="text-center py-2.5" data-testid="text-header-create">Create</div>
-          <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
-          <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-r-lg border border-l-0 border-gray-200 bg-white">
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] bg-[#52baf3] text-white text-[9px] font-semibold leading-tight sm:text-sm" data-testid="text-permissions-header">
+          <div className="px-1 py-2.5 sm:px-4" data-testid="text-header-menu-name">Menu Name</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-select-all"><span className="sm:hidden">Select<br />All</span><span className="hidden sm:inline">Select All</span></div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-view">View</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-create">Create</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-edit">Edit</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="min-h-0 flex-1">
-          <div className="min-w-[760px]">
+          <div className="min-w-0">
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
@@ -567,7 +578,7 @@ export default function AccessControlPage() {
             </div>
           )}
           {selectedRoleUuid && stateQuery.data?.allowed && <div
-            className="grid min-h-[58px] grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] items-center border-b border-gray-200 bg-sky-50/70"
+            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 bg-sky-50/70"
             data-testid="company-forms-permissions"
           >
             <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Company Forms</div>
@@ -594,7 +605,7 @@ export default function AccessControlPage() {
             )}
           </div>}
           {selectedRoleUuid && stateQuery.data?.allowed && <div
-            className="grid min-h-[58px] grid-cols-[minmax(220px,1fr)_80px_repeat(4,80px)] items-center border-b border-gray-200 bg-sky-50/70"
+            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 bg-sky-50/70"
             data-testid="training-compliance-permissions"
           >
             <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Override deployment block</div>
@@ -624,7 +635,6 @@ export default function AccessControlPage() {
           </div>}
           </div>
         </ScrollArea>
-        </div>
         </div>
         {combinedSaveError && (
           <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-right text-sm text-red-800 sm:text-left">
