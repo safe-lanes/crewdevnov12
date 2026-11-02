@@ -2,6 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
+import fs from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { chromium, expect as browserExpect } from "@playwright/test";
 import { retainFixtureReferences } from "../../helpers/fixture-retention";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -72,6 +75,72 @@ describe("Company Form rule editor read-only authoring APIs", () => {
     ] };
   });
   afterAll(async () => { await pool.end(); });
+  it("tests the promoted draft action through the screen and keyboard without saving", async () => {
+    const directory = ".local/verification/form-rule-trial-promotion/isolated";
+    await fs.mkdir(directory, { recursive: true });
+    const browser = await chromium.launch({ executablePath: execFileSync("which", ["chromium"], { encoding: "utf8" }).trim(), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+    try {
+      const actor = (await pool.query(`SELECT u.id,u.role,r.ruid FROM master_users u JOIN adm_rolemaster_ac r
+        ON r.assigned_role=u.role AND r.is_active AND NOT r.is_deleted WHERE u.id=24`)).rows[0];
+      const context = await browser.newContext({ viewport: { width: 1560, height: 1400 }, ignoreHTTPSErrors: true });
+      await context.addInitScript(({ actor, token }) => {
+        const profile = { personaKey: "crewing-executive", masterUserId: actor.id, userId: String(actor.id),
+          roleId: actor.ruid, role: actor.role, userType: "Office", myVessels: [] };
+        for (const key of ["userProfile", "devPersona"]) localStorage.setItem(key, JSON.stringify(profile));
+        localStorage.setItem("devAuthToken", token);
+      }, { actor, token });
+      const writes: string[] = [];
+      await context.route("**/api/**", async route => {
+        const url = new URL(route.request().url());
+        if (!url.pathname.startsWith("/api/")) return route.continue();
+        if (!["GET", "HEAD", "OPTIONS"].includes(route.request().method())) {
+          if (route.request().method() !== "POST" || !url.pathname.endsWith("/applicability/preview")) {
+            writes.push(url.pathname); return route.abort("blockedbyclient");
+          }
+        }
+        await route.fulfill({ response: await route.fetch({ url: `${process.env.TEST_API_URL}${url.pathname}${url.search}` }) });
+      });
+      const before = await snapshot();
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on("pageerror", e => errors.push(e.message));
+      await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
+      await page.getByTestId("tab-company-forms").click({ timeout: 45000 });
+      await page.getByRole("button", { name: `Configure TEST ONLY Rule editor ${suffix}`, exact: true }).click();
+      await page.getByTestId("button-toggle-applicability-settings").click();
+      const dialog = page.getByTestId("company-form-applicability-window");
+      await dialog.getByRole("radio", { name: "Applies when conditions match", exact: true }).click();
+      await dialog.getByTestId("company-form-condition-card").getByRole("checkbox").first().check();
+      // Unsaved local conditions, not a policy save: no writes except the read-only preview.
+      const trial = dialog.getByTestId("company-form-rule-trial");
+      const search = trial.getByRole("searchbox", { name: "Search by crew name or assignment" });
+      await search.fill(`TEST RULE ${suffix} 0`);
+      const choice = trial.getByRole("button").filter({ hasText: `TEST RULE ${suffix} 0` }).first();
+      await browserExpect(choice).toBeVisible({ timeout: 15000 });
+      await choice.click();
+      await search.focus();
+      await page.keyboard.press("Tab");
+      const run = trial.getByRole("button", { name: "Test this draft", exact: true });
+      await browserExpect(run).toBeFocused();
+      await page.screenshot({ path: `${directory}/keyboard-action.jpg`, animations: "disabled" });
+      const response = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/applicability/preview"));
+      await page.keyboard.press("Enter");
+      expect((await response).status()).toBe(200);
+      await browserExpect(trial.getByTestId("company-form-rule-trial-result")).toBeVisible();
+      await page.screenshot({ path: `${directory}/result.jpg`, animations: "disabled" });
+      await browserExpect(trial.getByText("This hypothetical draft check does not assess retrospective stage applicability.")).toBeVisible();
+      await dialog.getByRole("button", { name: "Save settings", exact: true }).scrollIntoViewIfNeeded();
+      await browserExpect(dialog.getByRole("button", { name: "Save settings", exact: true })).toBeVisible();
+      await page.screenshot({ path: `${directory}/save-reachable.jpg`, animations: "disabled" });
+      expect(writes).toEqual([]);
+      expect(errors).toEqual([]);
+      expect(await snapshot()).toEqual(before);
+      await fs.writeFile(`${directory}/report.json`, JSON.stringify({ isolatedTestDatabase: true,
+        noPolicyOrOperationalWrites: true, keyboard: "Search → Tab → Test this draft → Enter",
+        fixtureForm: formId, versionId: version.id }, null, 2));
+      await context.close();
+    } finally { await browser.close(); }
+  }, 90000);
   it("starts manual only and trials two sets with different outcomes without saving any policy or operational records", async () => {
     expect((await call("get", `/form-versions/${version.id}/applicability`)).body.mode).toBe("manual_only");
     const before = await snapshot();

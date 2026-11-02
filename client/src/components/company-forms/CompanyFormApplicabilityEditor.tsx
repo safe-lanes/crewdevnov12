@@ -473,6 +473,22 @@ export function CompanyFormApplicabilityEditor({
             </div>
           )}
 
+          <div className="mt-4 rounded-lg border border-[#dce5e9] bg-white px-4 py-3" aria-live="polite" data-testid="applicability-summary">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
+            <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
+          </div>
+          {status === "draft" && draft.mode === "conditional" && (
+            <CompanyFormRuleTrial
+              versionId={versionId}
+              versionUuid={versionUuid}
+              status={status}
+              stageKey={stageKey}
+              stageBusy={stageBusy}
+              policyBusy={loading || saving || navigationBusy}
+              policyDirty={isDirty}
+              policy={toPayload(draft)}
+            />
+          )}
           {draft.mode === "conditional" && (
             <div className="mt-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -508,22 +524,6 @@ export function CompanyFormApplicabilityEditor({
                 {stageKey ? "The stage is set using the selector in the configuration header." : "No stage is selected; choose one using the stage selector in the configuration header."}
               </p>
             </div>
-          )}
-          <div className="mt-4 rounded-lg border border-[#dce5e9] bg-white px-4 py-3" aria-live="polite" data-testid="applicability-summary">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
-            <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
-          </div>
-          {status === "draft" && draft.mode === "conditional" && (
-            <CompanyFormRuleTrial
-              versionId={versionId}
-              versionUuid={versionUuid}
-              status={status}
-              stageKey={stageKey}
-              stageBusy={stageBusy}
-              policyBusy={loading || saving || navigationBusy}
-              policyDirty={isDirty}
-              policy={toPayload(draft)}
-            />
           )}
           {saveError && <CompanyFormProblems message={saveError} />}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">

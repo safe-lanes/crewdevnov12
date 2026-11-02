@@ -80,7 +80,7 @@ describe("CompanyFormRuleTrial", () => {
     });
     const assignment = await screen.findByRole("button", { name: "Asha Kaur — MV Silver Heron" });
     fireEvent.click(assignment);
-    fireEvent.click(screen.getByRole("button", { name: "Check this draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Test this draft" }));
 
     expect(await screen.findByText("Result: Needs more information")).toBeInTheDocument();
     expect(screen.getByText("This crew fact could not be verified. Ask an administrator to check the source record or master data.")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("CompanyFormRuleTrial", () => {
         policy={currentDraft}
       />,
     );
-    expect(screen.getByRole("button", { name: "Check this draft" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Test this draft" })).toBeDisabled();
     expect(screen.getByText(/subject stage to finish saving/i)).toBeInTheDocument();
 
     rerender(

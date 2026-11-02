@@ -58,6 +58,9 @@ describe("Company Form applicability window state", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
     expect(screen.getByText("The stage is set using the selector in the configuration header.")).toBeTruthy();
     expect(screen.getByTestId("company-form-applicability-window").contains(screen.getByTestId("company-form-rule-trial"))).toBe(true);
+    const trial = screen.getByTestId("company-form-rule-trial");
+    expect(screen.getByTestId("applicability-summary").compareDocumentPosition(trial) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(trial.compareDocumentPosition(screen.getByRole("heading", { name: "Who this applies to" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
