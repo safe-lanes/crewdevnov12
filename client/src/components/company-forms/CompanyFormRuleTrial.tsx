@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CircleHelp, LoaderCircle, Search, Sparkles } from "lucide-react";
+import { Check, CircleHelp, LoaderCircle, Search } from "lucide-react";
 import type { ApplicabilityDraft } from "@shared/v2/admin/applicabilityPreview";
 import type { RuleAssignmentChoice, RulePreview, RuleOutcome } from "@shared/v2/admin/applicabilityPreview";
 import { apiRequest } from "@/lib/queryClient";
@@ -184,15 +184,12 @@ export function CompanyFormRuleTrial({
 
   return (
     <section className="mt-4 rounded-xl border border-[#d9e2e8] bg-[#f4f8f9] p-4 sm:p-5" aria-labelledby="company-form-rule-trial-title" data-testid="company-form-rule-trial">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-lg bg-[#e4eef1] p-2 text-[#396d7d]"><Sparkles className="h-4 w-4" aria-hidden="true" /></div>
-        <div className="min-w-0 flex-1">
-          <h3 id="company-form-rule-trial-title" className="text-sm font-semibold text-[#18374a]">Try this draft with a crew assignment</h3>
+      <div>
+          <h3 id="company-form-rule-trial-title" className="text-sm font-semibold leading-5 text-[#18374a]">Test this draft</h3>
           <p className="mt-1 text-sm leading-5 text-[#59707d]">
             This checks the current policy as shown, including unsaved edits. It does not save the policy or decide crew facts in the browser.
           </p>
           {policyDirty && <p className="mt-2 text-xs font-medium text-[#77551b]" role="status">Using the current unsaved draft.</p>}
-        </div>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -214,11 +211,11 @@ export function CompanyFormRuleTrial({
           type="button"
           onClick={() => void runTrial()}
           disabled={!selectedAssignment || disabled}
-          className="self-end bg-[#315f70] text-white hover:bg-[#244b5a]"
+          className="self-end bg-[#315f70] text-white hover:bg-[#244b5a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#527b8a] focus-visible:ring-offset-2"
           data-testid="button-run-company-form-trial"
         >
           {previewBusy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-          Check this draft
+          Test this draft
         </Button>
       </div>
       <p id="company-form-rule-trial-search-help" className="mt-1 text-xs text-[#718892]">

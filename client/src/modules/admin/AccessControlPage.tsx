@@ -3,18 +3,33 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck, History } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AccessAuditHistory } from "./AccessAuditHistory";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
-import { TrainingCompliancePolicySetting, TrainingComplianceRolePermissionEditor } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
+import type { CompanyFormGrants } from "@shared/v2/admin/companyFormPermissions";
+import { TrainingCompliancePermissionRow, TrainingCompliancePolicyDialog } from "@/modules/vessel/components/TrainingComplianceAccessEditors";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { adminApiV2 } from "./api/adminApiV2";
 import {
   useAccessControlMenusV2,
   useAccessControlRolesV2,
   useAccessControlPermissionsV2,
-  useSaveAccessControlPermissionsV2,
+  useRoleCompanyFormGrantsV2,
+  useRoleTrainingComplianceGrantV2,
+  useSaveCombinedAccessControlPermissionsV2,
 } from "./hooks/useAdminV2";
 
 interface Permission {
@@ -51,20 +66,10 @@ interface AccessControlState {
   eligibleManagerCount: number;
   categoryReady: boolean;
   recoveryRoute: "parent_sail_admin" | "interim_names";
+  explicitManagers?: { roleId: string; roleName: string }[];
+  currentRoleId?: string | null;
 }
 
-interface AuditRow {
-  id: string;
-  event: string;
-  actor?: unknown;
-  role_id?: string | null;
-  resource?: string | null;
-  action?: string | null;
-  before_value?: unknown;
-  after_value?: unknown;
-  details?: unknown;
-  recorded_at?: string | null;
-}
 
 interface PermissionApi {
   id: number;
@@ -136,50 +141,66 @@ function buildMenuTree(menus: MenuItemApi[]): MenuTreeItem[] {
   return roots;
 }
 
+const EMPTY_PERMISSIONS: PermissionApi[] = [];
+
 export default function AccessControlPage() {
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { accessControlManagement } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
-  const [auditFilter, setAuditFilter] = useState<"all" | "management" | "void_completed" | "parent_sync">("all");
-  const [auditRoleId, setAuditRoleId] = useState("");
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [managementRoleUuid, setManagementRoleUuid] = useState<string | null>(null);
   const [managementDraft, setManagementDraft] = useState(false);
   const [managementError, setManagementError] = useState("");
+  const [managementConfirmation, setManagementConfirmation] = useState<{
+    roleUuid: string;
+    roleName: string;
+    allowed: boolean;
+  } | null>(null);
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
+  const [menuPermissionsRoleUuid, setMenuPermissionsRoleUuid] = useState<string | null>(null);
+  const [companyFormGrants, setCompanyFormGrants] = useState<CompanyFormGrants | null>(null);
+  const [companyFormGrantsRoleUuid, setCompanyFormGrantsRoleUuid] = useState<string | null>(null);
+  const [trainingComplianceAllowed, setTrainingComplianceAllowed] = useState(false);
+  const [trainingComplianceRoleUuid, setTrainingComplianceRoleUuid] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [roleChangeRequest, setRoleChangeRequest] = useState<string | null>(null);
+  const [combinedSaveError, setCombinedSaveError] = useState("");
 
   const { data: menusData = [], isLoading: menusLoading } = useAccessControlMenusV2();
   const { data: rolesData = [], isLoading: rolesLoading } = useAccessControlRolesV2();
-  const { data: permissionsData = [], isLoading: permissionsLoading } = useAccessControlPermissionsV2(selectedRoleUuid);
-  const savePermissionsMutation = useSaveAccessControlPermissionsV2();
+  const permissionsQuery = useAccessControlPermissionsV2(selectedRoleUuid);
+  const { data: permissionsData = EMPTY_PERMISSIONS, isLoading: permissionsLoading } = permissionsQuery;
+  const companyFormsQuery = useRoleCompanyFormGrantsV2(selectedRoleUuid);
+  const saveCombinedMutation = useSaveCombinedAccessControlPermissionsV2();
   const stateQuery = useQuery<AccessControlState>({
     queryKey: ["/api/v2/admin/access-control/state"],
     queryFn: () => adminApiV2.getAccessControlState(),
   });
-  const roleManagementUrl = selectedRoleUuid
-    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid)}/management`
+  const trainingComplianceQuery = useRoleTrainingComplianceGrantV2(selectedRoleUuid, {
+    enabled: !!stateQuery.data?.allowed,
+  });
+  const roleManagementUrl = managementRoleUuid
+    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(managementRoleUuid)}/management`
     : "";
   const managementQuery = useQuery<{ allowed: boolean }>({
     queryKey: [roleManagementUrl],
-    queryFn: () => adminApiV2.getRoleManagementGrant(selectedRoleUuid!),
-    enabled: !!selectedRoleUuid,
-  });
-  const auditQuery = useQuery<AuditRow[]>({
-    queryKey: ["/api/v2/admin/access-control/audit", auditFilter, auditRoleId],
-    queryFn: () => adminApiV2.getAccessControlAudit(auditFilter, auditRoleId || undefined),
+    queryFn: () => adminApiV2.getRoleManagementGrant(managementRoleUuid!),
+    enabled: managementOpen && !!managementRoleUuid,
   });
   const saveManagementMutation = useMutation({
-    mutationFn: (allowed: boolean) => adminApiV2.saveRoleManagementGrant(selectedRoleUuid!, allowed),
-    onSuccess: async () => {
+    mutationFn: ({ roleUuid, allowed }: { roleUuid: string; roleName: string; allowed: boolean }) =>
+      adminApiV2.saveRoleManagementGrant(roleUuid, allowed),
+    onSuccess: async (_data, variables) => {
       setManagementError("");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [roleManagementUrl] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.roleUuid)}/management`] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/state"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/audit"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/my-permissions"] }),
       ]);
-      toast({ title: "Management grant saved", description: `Updated management access for “${selectedRole?.assignedRole ?? "role"}”.` });
+      toast({ title: "Management grant saved", description: `Updated management access for “${variables.roleName}”.` });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : "Unable to save management access.";
@@ -206,7 +227,7 @@ export default function AccessControlPage() {
   }, [menusData, expandedMenus]);
 
   useEffect(() => {
-    if (permissionsData && Array.isArray(permissionsData)) {
+    if (!isDirty && !permissionsLoading && !permissionsQuery.isError && selectedRoleUuid && permissionsQuery.data && Array.isArray(permissionsData)) {
       const permMap: Record<string, Permission> = {};
       for (const p of permissionsData as PermissionApi[]) {
         permMap[p.menuId] = {
@@ -217,9 +238,23 @@ export default function AccessControlPage() {
         };
       }
       setLocalPermissions(permMap);
-      setIsDirty(false);
+      setMenuPermissionsRoleUuid(selectedRoleUuid);
     }
-  }, [permissionsData]);
+  }, [permissionsData, isDirty, permissionsLoading, permissionsQuery.isError, selectedRoleUuid]);
+
+  useEffect(() => {
+    if (!isDirty && companyFormsQuery.data?.grants) {
+      setCompanyFormGrants(companyFormsQuery.data.grants);
+      setCompanyFormGrantsRoleUuid(selectedRoleUuid);
+    }
+  }, [companyFormsQuery.data, isDirty, selectedRoleUuid]);
+
+  useEffect(() => {
+    if (!isDirty && trainingComplianceQuery.data && selectedRoleUuid) {
+      setTrainingComplianceAllowed(trainingComplianceQuery.data.allowed);
+      setTrainingComplianceRoleUuid(selectedRoleUuid);
+    }
+  }, [trainingComplianceQuery.data, isDirty, selectedRoleUuid]);
 
   useEffect(() => {
     if (managementQuery.data) setManagementDraft(managementQuery.data.allowed);
@@ -229,14 +264,45 @@ export default function AccessControlPage() {
   const allMenuMuids = useMemo(() => (menusData as MenuItemApi[]).map(m => m.muid), [menusData]);
 
   const selectedRole = useMemo(
-    () => (rolesData as RoleApi[]).find((r) => r.ruid === selectedRoleUuid),
+    () => (rolesData as RoleApi[]).find(r => r.ruid === selectedRoleUuid),
     [rolesData, selectedRoleUuid]
   );
+  const managementRole = (rolesData as RoleApi[]).find(r => r.ruid === managementRoleUuid);
+  const openManagement = () => {
+    setManagementRoleUuid(selectedRoleUuid);
+    setManagementDraft(false);
+    setManagementError("");
+    setManagementOpen(true);
+    if (selectedRoleUuid) {
+      const cached = queryClient.getQueryData<{ allowed: boolean }>([
+        `/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid)}/management`,
+      ]);
+      if (cached) setManagementDraft(cached.allowed);
+    }
+  };
+  const explicitManagers = Array.isArray(stateQuery.data?.explicitManagers)
+    ? stateQuery.data.explicitManagers
+    : undefined;
 
-  const handleRoleSelect = useCallback((ruid: string) => {
+  const applyRoleSelection = useCallback((ruid: string) => {
     setSelectedRoleUuid(ruid);
     setIsDirty(false);
+    setCompanyFormGrants(null);
+    setCompanyFormGrantsRoleUuid(null);
+    setTrainingComplianceAllowed(false);
+    setTrainingComplianceRoleUuid(null);
+    setCombinedSaveError("");
+    setRoleChangeRequest(null);
   }, []);
+
+  const handleRoleSelect = useCallback((ruid: string) => {
+    if (ruid === selectedRoleUuid || saveCombinedMutation.isPending) return;
+    if (isDirty) {
+      setRoleChangeRequest(ruid);
+      return;
+    }
+    applyRoleSelection(ruid);
+  }, [selectedRoleUuid, saveCombinedMutation.isPending, isDirty, applyRoleSelection]);
 
   const toggleExpand = useCallback((menuId: string) => {
     setExpandedMenus((prev) => {
@@ -260,6 +326,7 @@ export default function AccessControlPage() {
         },
       }));
       setIsDirty(true);
+      setCombinedSaveError("");
     },
     []
   );
@@ -276,12 +343,18 @@ export default function AccessControlPage() {
         },
       }));
       setIsDirty(true);
+      setCombinedSaveError("");
     },
     []
   );
 
-  const handleSave = useCallback(() => {
-    if (!selectedRoleUuid) return;
+  const handleSave = useCallback(async () => {
+    if (!selectedRoleUuid || menuPermissionsRoleUuid !== selectedRoleUuid || !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid ||
+      trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data ||
+      permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError ||
+      companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+      trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError ||
+      saveCombinedMutation.isPending) return;
 
     const permissions = allMenuMuids.map((muid) => ({
       menuId: muid,
@@ -291,26 +364,31 @@ export default function AccessControlPage() {
       candelete: localPermissions[muid]?.candelete ?? false,
     }));
 
-    savePermissionsMutation.mutate(
-      { ruid: selectedRoleUuid, permissions },
-      {
-        onSuccess: () => {
-          setIsDirty(false);
-          toast({
-            title: "Changes Saved",
-            description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
-          });
-        },
-        onError: () => {
-          toast({
-            title: "Error",
-            description: "Failed to save permissions. Please try again.",
-            variant: "destructive",
-          });
-        },
-      }
-    );
-  }, [selectedRoleUuid, allMenuMuids, localPermissions, savePermissionsMutation, selectedRole, toast]);
+    setCombinedSaveError("");
+    dismiss();
+    try {
+      await saveCombinedMutation.mutateAsync({
+        ruid: selectedRoleUuid,
+        permissions,
+        companyFormGrants,
+        trainingComplianceAllowed,
+      });
+    } catch (error) {
+      // A transport failure can lose a successful response after commit.
+      setCombinedSaveError(error instanceof Error && /^[45]\d\d:/.test(error.message)
+        ? "None of the permission changes were saved. Please retry."
+        : "Unable to confirm the save. Your edits are kept; retry. All three permission groups are saved together, never partly.");
+      return;
+    }
+    setIsDirty(false);
+    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch(), trainingComplianceQuery.refetch()]);
+    toast({
+      title: "Changes Saved",
+      description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
+    });
+  }, [selectedRoleUuid, menuPermissionsRoleUuid, companyFormGrants, companyFormGrantsRoleUuid, trainingComplianceRoleUuid,
+    trainingComplianceAllowed, trainingComplianceQuery, permissionsLoading, permissionsQuery,
+    companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole]);
 
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
@@ -337,16 +415,17 @@ export default function AccessControlPage() {
     return (
       <div key={item.muid}>
         <div
-          className={`grid grid-cols-[1fr_80px_repeat(4,80px)] items-center border-b border-gray-200 ${
+          className={`grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 ${
             depth > 0 ? "bg-gray-50/50" : "bg-white"
           } hover:bg-blue-50/30 transition-colors`}
-          style={{ paddingLeft: depth > 0 ? `${depth * 24 + 16}px` : "16px" }}
+          style={{ paddingLeft: depth > 0 ? `min(${depth * 24 + 16}px, 12vw)` : "8px" }}
           data-testid={`permission-row-${item.muid}`}
         >
-          <div className="flex items-center gap-2 py-2.5 pr-2">
+          <div className="flex min-w-0 items-center gap-1 py-2.5 pr-1 sm:gap-2 sm:pr-2">
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
+                disabled={grantControlsDisabled}
                 className="p-0.5 rounded hover:bg-gray-200 transition-colors"
                 data-testid={`toggle-menu-${item.muid}`}
               >
@@ -357,15 +436,16 @@ export default function AccessControlPage() {
                 )}
               </button>
             ) : (
-              <span className="w-[20px]" />
+              <span className="w-4 shrink-0 sm:w-[20px]" />
             )}
-            <span className="text-sm text-gray-800 font-medium" data-testid={`text-menu-name-${item.muid}`}>
+            <span className="min-w-0 break-words text-xs text-gray-800 font-medium sm:text-sm" data-testid={`text-menu-name-${item.muid}`}>
               {item.displayName || item.name}
             </span>
           </div>
           <div className="flex items-center justify-center py-2.5">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              disabled={grantControlsDisabled}
               onCheckedChange={() =>
                 handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isViewOnlyMenu, isTerminatedMenu)
               }
@@ -382,10 +462,10 @@ export default function AccessControlPage() {
               >
                 <Checkbox
                   checked={isDisabledKey ? false : perms[key]}
+                  disabled={isDisabledKey || grantControlsDisabled}
                   onCheckedChange={isDisabledKey ? undefined : (checked) =>
                     handlePermissionChange(item.muid, key, !!checked)
                   }
-                  disabled={isDisabledKey}
                   className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
                   data-testid={`checkbox-${item.muid}-${key}`}
                 />
@@ -403,14 +483,15 @@ export default function AccessControlPage() {
   };
 
   const isLoading = menusLoading || rolesLoading;
-  const auditValue = (row: AuditRow, key: "before_value" | "after_value") => {
-    if (!Object.prototype.hasOwnProperty.call(row, key)) return "Missing";
-    const value = row[key];
-    return value === null ? "null" : JSON.stringify(value);
-  };
-  const renderAuditJson = (value: unknown) => value === undefined
-    ? "Missing"
-    : value === null ? "null" : JSON.stringify(value, null, 2);
+  const combinedSavePending = saveCombinedMutation.isPending;
+  // No group can become dirty before all three role-bound drafts are loaded.
+  // Otherwise a late response could never initialize the remaining draft.
+  const grantControlsDisabled = combinedSavePending || !selectedRoleUuid ||
+    menuPermissionsRoleUuid !== selectedRoleUuid || companyFormGrantsRoleUuid !== selectedRoleUuid ||
+    trainingComplianceRoleUuid !== selectedRoleUuid || permissionsLoading ||
+    permissionsQuery.isFetching || permissionsQuery.isError ||
+    companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+    trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError;
 
   if (isLoading) {
     return (
@@ -421,109 +502,41 @@ export default function AccessControlPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-full pb-6" data-testid="access-control-page">
-      <div className="flex justify-end"><CompanyDocumentBranding /></div>
-      {accessControlManagement && <TrainingCompliancePolicySetting />}
-      <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading">
-        <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
-          <ShieldCheck size={18} aria-hidden="true" />
-          <h2 id="management-grants-heading" className="font-semibold">Management grants</h2>
-        </div>
-        {stateQuery.isLoading ? (
-          <div className="p-4 space-y-3" aria-label="Loading access control state">
-            <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse" />
-            <div className="h-10 rounded bg-gray-100 animate-pulse" />
-          </div>
-        ) : stateQuery.isError ? (
-          <div className="flex items-center justify-between gap-3 p-4" role="alert">
-            <p className="text-sm text-red-700">Unable to load management access state.</p>
-            <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button>
-          </div>
-        ) : (
-          <div className="p-4">
-            <div className="mb-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Control mode</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.mode.replace(/_/g, " ")}</div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Eligible managers</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.eligibleManagerCount ?? "—"} currently eligible</div>
-              </div>
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                <div className="text-xs text-gray-500">Category readiness</div>
-                <div className="mt-1 font-medium text-gray-800">{stateQuery.data?.categoryReady ? "Ready" : "Not ready"}</div>
-              </div>
-            </div>
-            {stateQuery.data?.eligibleManagerCount === 0 && (
-              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
-                <strong>No eligible managers.</strong> Recovery path: <strong>{stateQuery.data.recoveryRoute === "parent_sail_admin" ? "Parent SAIL admin" : "Interim named managers"}</strong>.
-                {stateQuery.data.mode === "category_recovery" && " Grant editing is limited to recovery."}
-              </div>
-            )}
-            {stateQuery.data?.eligibleManagerCount !== 0 && (stateQuery.data?.mode === "category_recovery" || stateQuery.data?.mode === "name_bootstrap") && (
-              <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
-                Recovery path: <strong>{stateQuery.data.recoveryRoute === "parent_sail_admin" ? "Parent SAIL admin" : "Interim named managers"}</strong>.
-              </div>
-            )}
-            <div className="grid gap-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(250px,1.2fr)_auto] md:items-end">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
-                <select
-                  id="management-role-select"
-                  value={selectedRoleUuid ?? ""}
-                  onChange={event => handleRoleSelect(event.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
-                  aria-label="Choose role for management grant"
-                >
-                  {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
-                </select>
-              </div>
-              <div>
-                <div className="mb-1 text-xs font-semibold text-gray-600">Parent category <span className="font-normal">(read-only)</span></div>
-                <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
-                  {selectedRole?.roletype || "Not assigned"}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {managementQuery.isLoading ? <div className="h-10 w-40 animate-pulse rounded bg-gray-100" /> : (
-                  <label className={`flex min-h-10 items-center gap-2 text-sm ${stateQuery.data?.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
-                    <Checkbox
-                      checked={managementDraft}
-                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isError}
-                      onCheckedChange={value => setManagementDraft(value === true)}
-                      aria-label="Management access granted"
-                    />
-                    Management access
-                  </label>
-                )}
-                <Button
-                  onClick={() => { setManagementError(""); saveManagementMutation.mutate(managementDraft); }}
-                  disabled={!stateQuery.data?.allowed || !selectedRoleUuid || managementQuery.isLoading || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
-                  className="bg-[#16569e] text-white hover:bg-[#0f4078]"
-                >
-                  {saveManagementMutation.isPending ? "Saving…" : "Save grant"}
-                </Button>
-              </div>
-            </div>
-            {!stateQuery.data?.allowed && <p className="mt-3 text-sm text-gray-600" role="status">Management grant editing is unavailable in the current server mode.</p>}
-            {managementQuery.isError && <p className="mt-3 text-sm text-red-700" role="alert">Unable to load this role’s management grant. <button className="underline" onClick={() => managementQuery.refetch()}>Retry</button></p>}
-            {managementError && <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{managementError}</p>}
-          </div>
-        )}
-      </section>
-
-      <div className="flex gap-0 min-h-[440px] h-[calc(100vh-370px)] max-w-full" data-testid="access-control-permissions">
-      <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 max-w-full overflow-hidden pb-2" data-testid="access-control-page">
+      <div className="flex flex-wrap items-center justify-end gap-3" data-testid="access-control-top-actions">
+        <Button variant="outline" onClick={openManagement} data-testid="button-management-grants">
+          <ShieldCheck aria-hidden="true" className="mr-2 h-4 w-4" />Management grants
+        </Button>
+        {accessControlManagement && <TrainingCompliancePolicyDialog />}
+        <AccessAuditHistory roles={rolesData as RoleApi[]} /><CompanyDocumentBranding />
+      </div>
+      <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-hidden" data-testid="access-control-grid-scroll">
+      <div className="flex h-full min-h-0 min-w-0 gap-0" data-testid="access-control-permissions">
+      <div className="flex w-[112px] min-w-[112px] flex-col overflow-hidden rounded-l-lg border border-gray-200 bg-white sm:w-[160px] sm:min-w-[160px] lg:w-[200px] lg:min-w-[200px]">
         <div className="bg-[#52baf3] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
           Roles
         </div>
+        {selectedRole && (
+          <div
+            className="shrink-0 border-b border-sky-200 bg-sky-50 px-3 py-2 text-xs text-gray-600"
+            aria-live="polite"
+            data-testid="selected-role-indicator"
+          >
+            Selected role
+            <div className="truncate text-sm font-semibold text-[#16569e]" title={selectedRole.assignedRole}>
+              {selectedRole.assignedRole}
+            </div>
+          </div>
+        )}
         <ScrollArea className="flex-1">
           {(rolesData as RoleApi[]).map((role) => (
             <div
               key={role.ruid}
               onClick={() => handleRoleSelect(role.ruid)}
-              className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors ${
+              aria-disabled={combinedSavePending}
+              className={`px-4 py-2.5 text-sm border-b border-gray-100 transition-colors ${
+                combinedSavePending ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              } ${
                 selectedRoleUuid === role.ruid
                   ? "bg-[#52baf3] text-white font-medium"
                   : "text-gray-700 hover:bg-gray-50"
@@ -541,20 +554,18 @@ export default function AccessControlPage() {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-[1fr_80px_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
-          <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
-          <div className="text-center py-2.5" data-testid="text-header-select-all">Select All</div>
-          <div className="text-center py-2.5" data-testid="text-header-view">View</div>
-          <div className="text-center py-2.5" data-testid="text-header-create">Create</div>
-          <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
-          <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-r-lg border border-l-0 border-gray-200 bg-white">
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] bg-[#52baf3] text-white text-[9px] font-semibold leading-tight sm:text-sm" data-testid="text-permissions-header">
+          <div className="px-1 py-2.5 sm:px-4" data-testid="text-header-menu-name">Menu Name</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-select-all"><span className="sm:hidden">Select<br />All</span><span className="hidden sm:inline">Select All</span></div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-view">View</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-create">Create</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-edit">Edit</div>
+          <div className="px-0.5 py-2.5 text-center" data-testid="text-header-delete">Delete</div>
         </div>
-        <ScrollArea className="flex-1">
-          {selectedRoleUuid && stateQuery.data?.allowed && <>
-            <CompanyFormsPermissionEditor key={`forms-${selectedRoleUuid}`} roleId={selectedRoleUuid} />
-            <TrainingComplianceRolePermissionEditor key={`training-${selectedRoleUuid}`} roleUuid={selectedRoleUuid} />
-          </>}
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="min-w-0">
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
@@ -566,91 +577,275 @@ export default function AccessControlPage() {
               No menu items configured. Add menu items to set up access control.
             </div>
           )}
+          {selectedRoleUuid && stateQuery.data?.allowed && <div
+            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 bg-sky-50/70"
+            data-testid="company-forms-permissions"
+          >
+            <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Company Forms</div>
+            <div aria-hidden="true" />
+            {companyFormsQuery.isLoading || companyFormGrantsRoleUuid !== selectedRoleUuid && !companyFormsQuery.isError ? (
+              <div className="col-span-4 px-3 py-2.5">
+                <div className="h-9 animate-pulse rounded-md bg-gray-100" aria-label="Loading Company Forms permissions" />
+              </div>
+            ) : companyFormsQuery.isError || !companyFormGrants ? (
+              <div className="col-span-4 flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm text-red-700" role="alert">
+                <span>Unable to load Company Forms permissions.</span>
+                <button className="underline" onClick={() => companyFormsQuery.refetch()}>Retry</button>
+              </div>
+            ) : (
+              <CompanyFormsPermissionEditor
+                grants={companyFormGrants}
+                disabled={grantControlsDisabled}
+                onChange={nextGrants => {
+                  setCompanyFormGrants(nextGrants);
+                  setIsDirty(true);
+                  setCombinedSaveError("");
+                }}
+              />
+            )}
+          </div>}
+          {selectedRoleUuid && stateQuery.data?.allowed && <div
+            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 bg-sky-50/70"
+            data-testid="training-compliance-permissions"
+          >
+            <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Override deployment block</div>
+            <div aria-hidden="true" />
+            {trainingComplianceQuery.isLoading ||
+              (trainingComplianceRoleUuid !== selectedRoleUuid &&
+                (trainingComplianceQuery.isFetching || !trainingComplianceQuery.isError)) ? (
+              <div className="col-span-4 px-3 py-2.5">
+                <div className="h-9 animate-pulse rounded-md bg-gray-100" aria-label="Loading deployment override permission" />
+              </div>
+            ) : trainingComplianceQuery.isError || trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data ? (
+              <div className="col-span-4 flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm text-red-700" role="alert">
+                <span>Unable to load deployment override permission.</span>
+                <button className="underline" onClick={() => trainingComplianceQuery.refetch()}>Retry</button>
+              </div>
+            ) : (
+              <TrainingCompliancePermissionRow
+                allowed={trainingComplianceAllowed}
+                disabled={grantControlsDisabled}
+                onChange={nextAllowed => {
+                  setTrainingComplianceAllowed(nextAllowed);
+                  setIsDirty(true);
+                  setCombinedSaveError("");
+                }}
+              />
+            )}
+          </div>}
+          </div>
         </ScrollArea>
+        </div>
+        {combinedSaveError && (
+          <p role="alert" className="border-t border-red-200 bg-red-50 px-4 py-2 text-right text-sm text-red-800 sm:text-left">
+            {combinedSaveError}
+          </p>
+        )}
         <div className="flex justify-end p-3 border-t border-gray-200 bg-gray-50">
           <Button
             onClick={handleSave}
-            disabled={!isDirty || savePermissionsMutation.isPending || !selectedRoleUuid}
+            disabled={
+              !isDirty || grantControlsDisabled || !selectedRoleUuid ||
+              !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid || companyFormsQuery.isLoading || companyFormsQuery.isFetching || companyFormsQuery.isError ||
+              trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data || trainingComplianceQuery.isLoading || trainingComplianceQuery.isFetching || trainingComplianceQuery.isError ||
+              permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError
+            }
             className="bg-[#16569e] hover:bg-[#0f4078] text-white px-6"
             data-testid="button-save-access-control"
           >
-            {savePermissionsMutation.isPending ? "Saving..." : "Save Changes"}
+            {combinedSavePending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>
       </div>
-      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" aria-labelledby="access-audit-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <History size={18} className="text-[#16569e]" aria-hidden="true" />
-            <h2 id="access-audit-heading" className="font-semibold text-gray-800">Access audit history</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              Event filter
-              <select value={auditFilter} onChange={event => setAuditFilter(event.target.value as typeof auditFilter)} className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm">
-                <option value="all">All events</option>
-                <option value="management">Management</option>
-                <option value="void_completed">Void completed</option>
-                <option value="parent_sync">Parent sync</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              Role
-              <select value={auditRoleId} onChange={event => setAuditRoleId(event.target.value)} className="h-9 max-w-[220px] rounded-md border border-gray-300 bg-white px-2 text-sm">
-                <option value="">All roles</option>
-                {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
-              </select>
-            </label>
-          </div>
+      </div>
+      <AlertDialog open={!!roleChangeRequest} onOpenChange={open => { if (!open) setRoleChangeRequest(null); }}>
+        <AlertDialogContent data-testid="unsaved-role-change-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved permission changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Menu, Company Forms, and Override deployment block permission edits are unsaved. Changing roles will discard all three sets of edits.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-role-change">Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-role-change"
+              onClick={event => {
+                event.preventDefault();
+                if (roleChangeRequest) applyRoleSelection(roleChangeRequest);
+              }}
+              disabled={combinedSavePending}
+            >
+              Discard and change role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={managementOpen} onOpenChange={setManagementOpen}>
+      <DialogContent aria-describedby={undefined} className="max-h-[92vh] w-[min(960px,96vw)] max-w-none overflow-y-auto border-slate-200 bg-[#fbfcfd] p-0" data-testid="management-grants-dialog">
+      <DialogHeader className="border-b px-6 py-4 pr-12">
+        <DialogTitle>Management grants</DialogTitle>
+      </DialogHeader>
+      <div className="px-6 pb-5">
+      <section className="rounded-lg border border-gray-200 bg-white overflow-hidden" aria-labelledby="management-grants-heading" data-testid="management-grants-panel">
+        <div className="flex items-center gap-2 bg-[#16569e] px-4 py-3 text-white">
+          <ShieldCheck size={18} aria-hidden="true" />
+          <h2 id="management-grants-heading" className="font-semibold">Management grants</h2>
         </div>
-        {auditQuery.isLoading ? (
-          <div className="space-y-2 p-4" aria-label="Loading audit history">
-            {[1, 2, 3].map(row => <div key={row} className="h-14 animate-pulse rounded bg-gray-100" />)}
+        <p className="border-b border-gray-200 px-4 py-3 text-sm text-gray-700">This controls which roles may administer Access Control itself, including granting permissions to other roles.</p>
+        <p className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#16569e]" data-testid="management-target-role">
+          Management access applies to: {managementRole?.assignedRole || "Choose a role"}
+        </p>
+        {stateQuery.isLoading ? (
+          <div className="p-4 space-y-3" aria-label="Loading access control state">
+            <div className="h-4 w-1/3 rounded bg-gray-100 animate-pulse" />
+            <div className="h-10 rounded bg-gray-100 animate-pulse" />
           </div>
-        ) : auditQuery.isError ? (
-          <div className="flex items-center justify-between p-4" role="alert">
-            <p className="text-sm text-red-700">Unable to load audit history.</p>
-            <Button variant="outline" size="sm" onClick={() => auditQuery.refetch()}>Retry</Button>
+        ) : stateQuery.isError ? (
+          <div className="flex items-center justify-between gap-3 p-4" role="alert">
+            <p className="text-sm text-red-700">Unable to load management access state.</p>
+            <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button>
           </div>
-        ) : !auditQuery.data?.length ? (
-          <p className="px-4 py-8 text-center text-sm text-gray-500">No audit events match this filter.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {auditQuery.data.map(row => (
-              <article key={row.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-gray-800">{row.event}</span>
-                    {row.action && <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-800">{row.action}</span>}
-                    {row.resource && <span className="text-xs text-gray-500">{row.resource}</span>}
-                  </div>
-                  <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Actor: </dt><dd className="inline break-words text-gray-700">{renderAuditJson(row.actor)}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Role UUID: </dt><dd className="inline break-all font-mono text-gray-700">{row.role_id === undefined ? "Missing" : row.role_id === null ? "null" : row.role_id}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Audit ID: </dt><dd className="inline break-all font-mono text-gray-700">{row.id}</dd></div>
-                    <div className="min-w-0"><dt className="inline font-semibold text-gray-500">Recorded: </dt><dd className="inline break-all font-mono text-gray-700">{row.recorded_at ?? (Object.prototype.hasOwnProperty.call(row, "recorded_at") ? "null" : "Missing")}</dd></div>
-                  </dl>
+          <div className="p-4">
+            <div className="grid gap-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(250px,1.2fr)_auto] md:items-end">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="management-role-select">Role</label>
+                <select
+                  id="management-role-select"
+                  value={managementRoleUuid ?? ""}
+                  onChange={event => {
+                    setManagementRoleUuid(event.target.value);
+                    setManagementDraft(false);
+                    setManagementError("");
+                  }}
+                  disabled={saveManagementMutation.isPending}
+                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                  aria-label="Choose role for management grant"
+                >
+                  {(rolesData as RoleApi[]).map(role => <option key={role.ruid} value={role.ruid}>{role.assignedRole}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold text-gray-600">Parent category <span className="font-normal">(read-only)</span></div>
+                <div className="flex h-10 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
+                  {managementRole?.roletype || "Not assigned"}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="min-w-0 rounded border border-gray-200 bg-gray-50 p-2">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Before</div>
-                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-gray-800">{auditValue(row, "before_value")}</pre>
-                  </div>
-                  <div className="min-w-0 rounded border border-gray-200 bg-gray-50 p-2">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">After</div>
-                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-gray-800">{auditValue(row, "after_value")}</pre>
-                  </div>
-                  <details className="col-span-2">
-                      <summary className="cursor-pointer text-xs font-medium text-[#16569e]">Details</summary>
-                      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-xs">{renderAuditJson(row.details)}</pre>
-                  </details>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {managementQuery.isLoading ? <div className="h-10 w-40 animate-pulse rounded bg-gray-100" /> : (
+                  <label className={`flex min-h-10 items-center gap-2 text-sm ${stateQuery.data?.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+                    <Checkbox
+                      checked={managementDraft}
+                      disabled={!stateQuery.data?.allowed || saveManagementMutation.isPending || managementQuery.isFetching || managementQuery.isError}
+                      onCheckedChange={value => setManagementDraft(value === true)}
+                      aria-label="Management access granted"
+                    />
+                    Management access
+                  </label>
+                )}
+                <Button
+                  onClick={() => {
+                    setManagementError("");
+                    if (managementRoleUuid && managementRole) {
+                      setManagementConfirmation({ roleUuid: managementRoleUuid, roleName: managementRole.assignedRole, allowed: managementDraft });
+                    }
+                  }}
+                  disabled={!stateQuery.data?.allowed || !managementRoleUuid || managementQuery.isLoading || managementQuery.isFetching || managementQuery.isError || managementDraft === managementQuery.data?.allowed || saveManagementMutation.isPending}
+                  className="bg-[#16569e] text-white hover:bg-[#0f4078]"
+                  data-testid="button-review-management-grant"
+                >
+                  {saveManagementMutation.isPending ? "Saving…" : "Save grant"}
+                </Button>
+              </div>
+            </div>
+            {!stateQuery.data?.allowed && <p className="mt-3 text-sm text-gray-600" role="status">Management grant editing is unavailable in the current server mode.</p>}
+            {managementQuery.isError && <p className="mt-3 text-sm text-red-700" role="alert">Unable to load this role’s management grant. <button className="underline" onClick={() => managementQuery.refetch()}>Retry</button></p>}
+            {managementError && <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{managementError}</p>}
+            <div className="mt-5 border-t border-gray-200 pt-4" data-testid="management-explicit-managers">
+              <h3 className="text-sm font-semibold text-gray-800">Roles with management access</h3>
+              {explicitManagers === undefined ? (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-3" role="status">
+                  <p className="text-sm text-gray-600">Management role list is unavailable.</p>
+                  <Button variant="outline" size="sm" onClick={() => stateQuery.refetch()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />Retry
+                  </Button>
                 </div>
-              </article>
-            ))}
+              ) : stateQuery.data?.mode === "name_bootstrap" && explicitManagers.length === 0 ? (
+                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950" role="status" data-testid="management-fallback-warning">
+                  <p>
+                    Management access is currently granted by role name — Admin, Super Admin or Sail Admin — because no role holds an explicit grant.
+                  </p>
+                  <p className="mt-1">
+                    This is a temporary setup state. Granting an explicit manager closes it, and the name-based route then stops working.
+                  </p>
+                  {!stateQuery.data.categoryReady && (
+                    <p className="mt-1">
+                      The parent SAIL Admin category has not been supplied. This is resolved in the parent application, not here.
+                    </p>
+                  )}
+                </div>
+              ) : explicitManagers.length > 0 ? (
+                <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200" aria-label="Roles with explicit management access">
+                  {explicitManagers.map(manager => (
+                    <li key={manager.roleId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm">
+                      <span className="font-medium text-gray-800">{manager.roleName}</span>
+                      {manager.roleId === stateQuery.data?.currentRoleId && (
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">Your role</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-600" role="status">
+                  No explicit management grants are recorded.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </section>
+      </div>
+      </DialogContent>
+      </Dialog>
+      <AlertDialog open={!!managementConfirmation} onOpenChange={open => { if (!open) setManagementConfirmation(null); }}>
+        <AlertDialogContent data-testid="management-grant-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{managementConfirmation?.allowed ? "Grant management access?" : "Remove management access?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {managementConfirmation?.allowed
+                ? `Granting “${managementConfirmation.roleName}” management access lets this role administer Access Control and grant permissions to other roles.`
+                : `Removing management access from “${managementConfirmation?.roleName ?? "this role"}” revokes its explicit permission to administer Access Control and grant permissions to other roles. The server still prevents removal of the last eligible manager, and recovery rules remain unchanged.`}
+            </AlertDialogDescription>
+            {!managementConfirmation?.allowed && managementConfirmation?.roleUuid === stateQuery.data?.currentRoleId && (
+              <div className="mt-3 rounded-md border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" role="alert" data-testid="management-own-role-warning">
+                This is your own role. Removing its management access may lock you out of Access Control, even if other manager roles remain. The server will decide whether this change is allowed.
+              </div>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-management-confirmation">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-management-change"
+              onClick={event => {
+                event.preventDefault();
+                const confirmation = managementConfirmation;
+                if (!confirmation) return;
+                setManagementConfirmation(null);
+                saveManagementMutation.mutate({
+                  roleUuid: confirmation.roleUuid,
+                  roleName: confirmation.roleName,
+                  allowed: confirmation.allowed,
+                });
+              }}
+              disabled={saveManagementMutation.isPending}
+            >
+              Confirm {managementConfirmation?.allowed ? "grant" : "removal"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

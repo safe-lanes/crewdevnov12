@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -127,6 +128,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     rankId,
     planningData
 }) => {
+    const { ask, dialog } = useAppDialog();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
@@ -249,8 +251,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     }, [open, planningData, form, rankId, vesselUuid]);
 
-    const handleDialogOpenChange = (nextOpen: boolean) => {
-        if (!nextOpen && formIsDirty && !window.confirm("Discard unsaved changes?")) return;
+    const handleDialogOpenChange = async (nextOpen: boolean) => {
+        if (!nextOpen && formIsDirty && !await ask("Discard unsaved changes?", {
+          title: "Close reliever status", actionLabel: "Discard changes", cancelLabel: "Keep editing",
+        })) return;
         onOpenChange(nextOpen);
     };
 
@@ -757,6 +761,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     return (
         <>
+            {dialog}
             <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
                 if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); setTrainingOverrideReason(""); setRequestChecklistOverride(false); setRequestTrainingOverride(false); }
             }}>
@@ -795,14 +800,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             {forbidden && <p className="text-sm text-rose-800" role="status">An outstanding or started mandatory form, or an unchecked stage, must be completed first. An override is not available.</p>}
                             {formBlockers.length > 0 && !forbidden && (!checklistConflict.canOverride || !canOverrideChecklist) && <p className="text-sm text-slate-600" role="status">A Company Forms override is not available for this checklist or your role.</p>}
                             {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && trainingPermissionQuery.isLoading && <p className="text-sm text-slate-600" role="status">Checking your training override permission…</p>}
-                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && !trainingPermissionQuery.isLoading && trainingPermissionQuery.data?.allowed !== true && <p className="text-sm text-slate-600" role="status">Your role does not have permission to override training compliance.</p>}
+                            {trainingBlockers.length > 0 && checklistConflict.canOverrideTraining && !trainingPermissionQuery.isLoading && trainingPermissionQuery.data?.allowed !== true && <p className="text-sm text-slate-600" role="status">Your role does not have Override deployment block permission.</p>}
                             {trainingBlockers.length > 0 && !checklistConflict.canOverrideTraining && !forbidden && <p className="text-sm text-slate-600" role="status">Training compliance cannot be overridden for these results.</p>}
                             {formsEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
                                 <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestChecklistOverride} onCheckedChange={checked => setRequestChecklistOverride(checked === true)} />Request a Company Forms checklist override</label>
                                 {requestChecklistOverride && <><Label htmlFor="checklist-override-reason">Reason for Company Forms override</Label><Textarea id="checklist-override-reason" value={overrideReason} onChange={event => setOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding before the forms are clear." /><p className="text-xs text-slate-600">This reason is recorded with the planning change. It does not complete any form.</p></>}
                             </div>}
                             {trainingEligible && <div className="space-y-2 rounded-md border border-slate-200 p-3">
-                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestTrainingOverride} onCheckedChange={checked => setRequestTrainingOverride(checked === true)} />Request a training compliance override</label>
+                                <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={requestTrainingOverride} onCheckedChange={checked => setRequestTrainingOverride(checked === true)} />Request Override deployment block</label>
                                 {requestTrainingOverride && <><Label htmlFor="training-override-reason">Reason for training override</Label><Textarea id="training-override-reason" value={trainingOverrideReason} onChange={event => setTrainingOverrideReason(event.target.value)} placeholder="Explain why deployment is proceeding with these training results." /><p className="text-xs text-slate-600">This reason is recorded separately from any Company Forms override.</p></>}
                             </div>}
                         </div>;

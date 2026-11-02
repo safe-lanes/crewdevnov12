@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import {
   useVesselTypesV2,
@@ -131,6 +132,7 @@ function StatusCell({ value }: { value: string }) {
 
 export default function WageScalesPage() {
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
   const { canCreate, canEdit, canDelete } = usePermissions();
   const mayCreate = canCreate("Account Wage Scales");
   const mayEdit = canEdit("Account Wage Scales");
@@ -315,7 +317,12 @@ export default function WageScalesPage() {
   };
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete draft "${row.scaleName}"?`)) return;
+    const confirmed = await ask(`Delete draft "${row.scaleName}"?`, {
+      title: "Delete wage scale draft",
+      actionLabel: "Delete draft",
+      cancelLabel: "Keep draft",
+    });
+    if (!confirmed) return;
     try {
       await accountsApiV2.wageScales.remove(row.scaleUuid);
       await queryClient.invalidateQueries({ queryKey: LIST_KEY });
@@ -397,6 +404,7 @@ export default function WageScalesPage() {
               )}
               {mayDelete && row.status === "draft" && (
                 <button
+                  type="button"
                   className="text-red-500 hover:text-red-700"
                   onClick={() => handleDelete(row)}
                   data-testid={`button-delete-scale-${row.scaleUuid}`}
@@ -416,12 +424,16 @@ export default function WageScalesPage() {
 
   if (openUuid) {
     return (
-      <WageScaleEditor scaleUuid={openUuid} onBack={() => setOpenUuid(null)} />
+      <>
+        <WageScaleEditor scaleUuid={openUuid} onBack={() => setOpenUuid(null)} />
+        {dialog}
+      </>
     );
   }
 
   return (
     <div className="p-4 flex flex-col h-full" data-testid="page-wage-scales">
+      {dialog}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-[#16569e]">Wage Scales</h1>

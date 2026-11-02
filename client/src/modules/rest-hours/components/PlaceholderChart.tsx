@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useAppDialog } from '@/hooks/use-app-dialog';
 
 interface PlaceholderChartProps {
   title: string;
@@ -9,11 +10,15 @@ interface PlaceholderChartProps {
 
 export const PlaceholderChart = ({ title, onRenderToolbar }: PlaceholderChartProps) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const { notify, dialog } = useAppDialog();
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     console.log(`Download triggered for: ${title}`);
-    alert(`Download functionality will be implemented for ${title} chart`);
-  }, [title]);
+    await notify(`Download functionality will be implemented for ${title} chart`, {
+      title: "Download",
+      actionLabel: "OK",
+    });
+  }, [title, notify]);
 
   // Create toolbar element (memoized to prevent unnecessary re-renders)
   const toolbar = useMemo(() => (
@@ -61,6 +66,7 @@ export const PlaceholderChart = ({ title, onRenderToolbar }: PlaceholderChartPro
                 {title}
               </h2>
               <button
+                type="button"
                 onClick={handleDownload}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                 data-testid="button-download-fullscreen"
@@ -84,6 +90,7 @@ export const PlaceholderChart = ({ title, onRenderToolbar }: PlaceholderChartPro
           </div>
         </DialogContent>
       </Dialog>
+      {dialog}
     </>
   );
 };

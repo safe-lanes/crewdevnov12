@@ -333,6 +333,7 @@ describe("GenericFormEditor release workflow", () => {
 
     click(editor.querySelector<HTMLElement>('[data-testid="button-toggle-applicability-settings"]')!);
     await flushAsyncWork();
+    expect(editor.querySelector('[data-testid="button-toggle-applicability-settings"]')?.textContent).toContain("When this form applies");
     click(document.body.querySelector<HTMLElement>("#applicability-conditional")!);
     await flushAsyncWork();
     const releaseButton = editor.querySelector<HTMLButtonElement>('[data-testid="button-release-version"]');

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2, ChevronUp, ChevronDown, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PromotionHierarchy as PromotionHierarchyDB } from "@shared/schema";
@@ -37,6 +38,7 @@ interface PromotionHierarchyDialogProps {
 
 export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/api/promotion-hierarchies' }: PromotionHierarchyDialogProps) {
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [groupName, setGroupName] = useState("");
   const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
@@ -375,10 +377,15 @@ export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/a
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            if (confirm(`Delete "${hierarchy.groupName}" hierarchy?`)) {
-                              deleteMutation.mutate(hierarchy.id);
-                            }
+                          type="button"
+                          onClick={async () => {
+                            const confirmed = await ask(`Delete "${hierarchy.groupName}" hierarchy?`, {
+                              title: "Delete hierarchy",
+                              actionLabel: "Delete hierarchy",
+                              cancelLabel: "Keep hierarchy",
+                            });
+                            if (!confirmed) return;
+                            deleteMutation.mutate(hierarchy.id);
                           }}
                           data-testid={`button-delete-hierarchy-${hierarchy.id}`}
                         >
@@ -416,6 +423,7 @@ export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/a
           </Button>
         </DialogFooter>
       </DialogContent>
+      {dialog}
     </Dialog>
   );
 }

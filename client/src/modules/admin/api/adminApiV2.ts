@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/queryClient';
+import type { CompanyFormGrants } from '@shared/v2/admin/companyFormPermissions';
 
 const V2_BASE = '/api/v2/admin';
 
@@ -537,6 +538,34 @@ export const adminApiV2 = {
     return res.json();
   },
 
+  async saveCombinedAccessControlPermissions(
+    ruid: string,
+    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean },
+  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean }> {
+    const res = await apiRequest(
+      'PUT',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/combined-permissions`,
+      payload,
+    );
+    return res.json();
+  },
+
+  async getRoleCompanyFormGrants(ruid: string): Promise<{ grants: CompanyFormGrants }> {
+    const res = await apiRequest(
+      'GET',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/action-permissions`,
+    );
+    return res.json();
+  },
+
+  async getRoleTrainingComplianceGrant(ruid: string): Promise<{ allowed: boolean }> {
+    const res = await apiRequest(
+      'GET',
+      `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/training-compliance`,
+    );
+    return res.json();
+  },
+
   async getMyPermissions() {
     const res = await fetch(`${V2_BASE}/access-control/my-permissions`);
     if (!res.ok) throw new Error('Failed to fetch my permissions');
@@ -558,8 +587,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getAccessControlAudit(filter: string, roleId?: string) {
-    const params = new URLSearchParams({ filter });
+  async getAccessControlAudit(filter: string, roleId?: string, options: Record<string, string> = {}) {
+    const params = new URLSearchParams({ filter, ...options });
     if (roleId) params.set('roleId', roleId);
     const res = await apiRequest('GET', `${V2_BASE}/access-control/audit?${params.toString()}`);
     return res.json();

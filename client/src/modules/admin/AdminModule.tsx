@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon, Upload, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { useAllVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
@@ -588,6 +589,7 @@ interface SeafarerData {
 
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
+  const { ask, dialog } = useAppDialog();
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions, userType, accessControlManagement } = usePermissions();
   const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
@@ -3756,10 +3758,14 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
 
-  const handleDeleteForm = (form: Form) => {
-    if (window.confirm(`Are you sure you want to delete the form "${form.name}"?`)) {
-      deleteFormMutation.mutate(form.id);
-    }
+  const handleDeleteForm = async (form: Form) => {
+    const confirmed = await ask(`Are you sure you want to delete the form "${form.name}"?`, {
+      title: "Delete form",
+      actionLabel: "Delete form",
+      cancelLabel: "Keep form",
+    });
+    if (!confirmed) return;
+    deleteFormMutation.mutate(form.id);
   };
 
   const handleEditClick = (form: Form) => {
@@ -8570,9 +8576,16 @@ const AdminModuleInner = (): JSX.Element => {
                     </>}
                     {!form.archivedAt && (permissions.length === 0 || canDelete("Forms")) &&
                       <Button variant="ghost" size="icon" title="Archive Company Form" aria-label={`Archive ${form.name}`}
+                        type="button"
                         disabled={archiveCompanyMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Archive "${form.name}"? Existing submissions will stay readable, but this form cannot be edited or used for new submissions.`)) archiveCompanyMutation.mutate(form.id);
+                        onClick={async () => {
+                          const confirmed = await ask(`Archive "${form.name}"? Existing submissions will stay readable, but this form cannot be edited or used for new submissions.`, {
+                            title: "Archive form",
+                            actionLabel: "Archive form",
+                            cancelLabel: "Keep form",
+                          });
+                          if (!confirmed) return;
+                          archiveCompanyMutation.mutate(form.id);
                         }}><Archive className="h-4 w-4" /></Button>}
                   </div>
                 </TableCell>
@@ -8864,7 +8877,11 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
             {selectedAdminPage === "masters" && renderDataMastersModule()}
             {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
-            {selectedAdminPage === "access-control" && <AccessControlPage />}
+            {selectedAdminPage === "access-control" && (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <AccessControlPage />
+              </div>
+            )}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
           </>
         )}
@@ -9263,6 +9280,7 @@ const AdminModuleInner = (): JSX.Element => {
         })()}
         canEdit={permissions.length === 0 || canEdit("Rank Admin")}
       />
+      {dialog}
     </>
   );
 };

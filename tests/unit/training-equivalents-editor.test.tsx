@@ -14,8 +14,9 @@ const vessel = "a4900000-0000-4000-8000-000000000012";
 let state: any;
 function mount(editable = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><TrainingEquivalentsEditor
-    vesselId={vessel} editable={editable} draftData={{ applicableTrainingIds: [101] }} /></QueryClientProvider>);
+  const view = (vesselId: string) => <QueryClientProvider client={client}><TrainingEquivalentsEditor
+    vesselId={vesselId} editable={editable} draftData={{ applicableTrainingIds: [101] }} /></QueryClientProvider>;
+  return { ...render(view(vessel)), view };
 }
 beforeEach(() => {
   state = { vesselId: vessel, source: { kind: "draft", uuid: draft, revision: "R1" },
@@ -35,6 +36,30 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("Training Matrix equivalent authoring", () => {
+  it.each(["vessel", "revision"])("cancel preserves dirty links and confirm discards them on %s switch", async kind => {
+    const { rerender, view } = mount();
+    fireEvent.click(await screen.findByTestId(`training-equivalents-picker-${a}`));
+    fireEvent.click(await screen.findByText("Course C"));
+    fireEvent.click(screen.getByTestId(`training-equivalents-picker-${a}`));
+    const choose = () => kind === "vessel"
+      ? rerender(view("a4900000-0000-4000-8000-000000000099"))
+      : fireEvent.change(screen.getByTestId("training-equivalents-revision-select"), { target: { value: revision } });
+    choose();
+    const message = kind === "vessel" ? "Discard unsaved equivalence changes and switch vessel?" : "Discard unsaved equivalence changes and view another revision?";
+    expect(await screen.findByText(message)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    if (kind === "vessel") {
+      expect(screen.getByText("Unsaved changes belong to your previous vessel selection. Switch back to continue editing, or discard them.")).toBeTruthy();
+      expect(screen.getByTestId(`training-equivalents-readonly-${a}`).textContent).toContain("Course C");
+    } else expect(screen.getByText("Unsaved changes")).toBeTruthy();
+    expect(apiRequest).not.toHaveBeenCalledWith("PUT", expect.anything(), expect.anything());
+    if (kind === "vessel") rerender(view(vessel));
+    choose();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard and switch" }));
+    await waitFor(() => expect(screen.queryByText("Unsaved changes")).toBeNull());
+    expect(apiRequest).not.toHaveBeenCalledWith("PUT", expect.anything(), expect.anything());
+  });
   it("saves UUID choices with current applicability and clears the dirty state", async () => {
     mount();
     fireEvent.click(await screen.findByTestId(`training-equivalents-picker-${a}`));

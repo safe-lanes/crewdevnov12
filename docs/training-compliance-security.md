@@ -10,7 +10,7 @@ UUID possession and browser-supplied vessel claims never confer authority.
 Private file reads additionally require the current tenant's storage prefix.
 Legacy inline-file collection responses require the same subject access.
 
-Later compliance slices use a separate **Override training compliance**
+Later compliance slices use a separate **Override deployment block**
 permission, default off for every parent role. **Override checklist** never
 overrides training gaps. Training override records server identity, timestamp,
 written reason and the overridden results. Existing Company Forms restrictions

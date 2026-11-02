@@ -1,14 +1,18 @@
 import type { Request } from "express";
+import { isDeepStrictEqual } from "node:util";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { resolveRequestRole, type ResolvedRole } from "../../auth/roleResolutionService";
+import { liveAuditActionLabel } from "../../../../shared/v2/admin/accessAuditPresentation";
 
 export class AccessControlError extends Error {
   constructor(message: string, public status = 403) { super(message); }
 }
 export const normalizeRole = (value: string) => value.trim().toLowerCase();
 const interimNames = new Set(["admin", "super admin", "sail admin"]);
-export type AuditActor = { masterUserId: number; roleId?: string; roleName?: string; userType: string; source: string };
+export type AuditActor = { masterUserId: number; roleId?: string; roleName?: string; userType: string; source: string;
+  /** Server-derived snapshot, never copied from a request body. */
+  displayName?: string | null };
 export async function lockAccessControl(tx: any) {
   // Database-local key: one lock per tenant DB, shared by all grant writes and parent sync.
   await tx.execute(sql`SELECT pg_advisory_xact_lock(382, 1)`);
@@ -62,18 +66,57 @@ export async function accessControlAuthority(req: Request, executor?: any) {
   const resolved = await resolveRequestRole(req, tx);
   return authorityFor(resolved.ok ? resolved.role : undefined, await managementSnapshot(tx));
 }
+/** Read-only display information; authority and grant-write safeguards are unchanged. */
+export async function accessControlDisplayState(req: Request) {
+  return getDb().transaction(async (tx: any) => {
+    await lockAccessControl(tx);
+    const resolved = await resolveRequestRole(req, tx);
+    const snapshot = await managementSnapshot(tx);
+    return {
+      ...authorityFor(resolved.ok ? resolved.role : undefined, snapshot),
+      currentRoleId: resolved.ok ? resolved.role.roleId : null,
+      // Stored explicit grants are not the same as the eligible-manager count.
+      // Do not silently omit a holder because it currently lacks a linked user.
+      explicitManagers: snapshot.roles.filter(r => r.decision === true)
+        .map(r => ({ roleId: r.ruid as string, roleName: r.assigned_role as string }))
+        .sort((a, b) => a.roleName.localeCompare(b.roleName) || a.roleId.localeCompare(b.roleId)),
+    };
+  });
+}
 export async function authenticatedActor(req: Request, tx: any): Promise<AuditActor> {
   const resolution = await resolveRequestRole(req, tx);
   if (!resolution.ok) throw new AccessControlError("Trusted authenticated editor unavailable.");
   const r = resolution.role;
   return { masterUserId: r.masterUserId, roleId: r.roleId, roleName: r.roleName,
-    userType: r.masterUserType, source: "access_control" };
+    userType: r.masterUserType, source: "access_control",
+    displayName: await auditActorDisplayName(tx, r.masterUserId) };
+}
+async function auditActorDisplayName(tx: any, masterUserId: number): Promise<string | null> {
+  const result = await tx.execute(sql`SELECT coalesce(nullif(btrim(fullname),''),nullif(btrim(display_name),''),
+    nullif(trim(concat_ws(' ',firstname,lastname)),'')) AS name
+    FROM master_users WHERE id=${masterUserId}`);
+  return result.rows[0]?.name ?? null;
 }
 export async function appendAudit(tx: any, actor: AuditActor, event: string, roleId: string | null,
-  resource: string, action: string, before: unknown, after: unknown, details: unknown = {}) {
+  resource: string, action: string, before: unknown, after: unknown, details: unknown = {},
+  affectedRoleName?: string | null) {
+  // Compare the actual JSON values stored, not key order or object identity.
+  // This applies to every event, including internal writers and null/null.
+  const beforeJson = JSON.stringify(before ?? null), afterJson = JSON.stringify(after ?? null);
+  if (isDeepStrictEqual(JSON.parse(beforeJson), JSON.parse(afterJson))) return;
+  // Parent sync snapshots this before replacing users. Other internal writers
+  // without a snapshot are resolved here, using this transaction's database.
+  const { displayName, ...identifiers } = actor;
+  const frozenName = displayName === undefined ? await auditActorDisplayName(tx, actor.masterUserId) : displayName;
+  const roleName = roleId ? affectedRoleName === undefined ?
+    (await tx.execute(sql`SELECT assigned_role FROM adm_rolemaster_ac WHERE ruid=${roleId}`)).rows[0]?.assigned_role :
+    affectedRoleName : null;
   await tx.execute(sql`INSERT INTO adm_access_control_audit
-    (event,actor,role_id,resource,action,before_value,after_value,details)
-    VALUES (${event},${JSON.stringify(actor)}::jsonb,${roleId},${resource},${action},
+    (event,actor,actor_display_name,role_id,affected_role_name,permission_display_label,resource,action,before_value,after_value,details)
+    VALUES (${event},${JSON.stringify(identifiers)}::jsonb,
+      ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},
+      ${roleId ? roleName?.trim() || "a role whose name was not recorded" : null},
+      ${liveAuditActionLabel({ id: "", event, resource, action })},${resource},${action},
       ${before === null ? null : JSON.stringify(before)}::jsonb,
       ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb)`);
 }
@@ -97,7 +140,11 @@ export async function managedWrite<T>(req: Request, write: (tx: any, actor: Audi
   });
 }
 export async function saveActionDecisions(req: Request, roleId: string, resource: string, decisions: Record<string, boolean>) {
-  return managedWrite(req, async (tx, actor) => {
+  return managedWrite(req, (tx, actor) => writeActionDecisions(tx, actor, roleId, resource, decisions));
+}
+/** Transaction-scoped writer shared by standalone and atomic role saves. */
+export async function writeActionDecisions(tx: any, actor: AuditActor, roleId: string,
+  resource: string, decisions: Record<string, boolean>) {
     const snapshot = await managementSnapshot(tx);
     if (!snapshot.grantTargets.some(r => r.ruid === roleId)) throw new AccessControlError("Active eligible parent role not found.", 400);
     for (const [action, allowed] of Object.entries(decisions)) {
@@ -112,5 +159,4 @@ export async function saveActionDecisions(req: Request, roleId: string, resource
       await appendAudit(tx, actor, "grant_change", roleId, resource, action, before, allowed);
     }
     return decisions;
-  });
 }
