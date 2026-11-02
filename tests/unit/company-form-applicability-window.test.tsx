@@ -60,11 +60,59 @@ describe("Company Form applicability window state", () => {
     expect(screen.getByTestId("company-form-applicability-window").contains(screen.getByTestId("company-form-rule-trial"))).toBe(true);
     const trial = screen.getByTestId("company-form-rule-trial");
     expect(screen.getByTestId("applicability-summary").compareDocumentPosition(trial) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(trial.compareDocumentPosition(screen.getByRole("heading", { name: "Who this applies to" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const conditions = screen.getByRole("heading", { name: "Conditions", exact: true });
+    const obligation = screen.getByText("Completion obligation", { exact: true });
+    expect(conditions.compareDocumentPosition(obligation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(obligation.compareDocumentPosition(screen.getByTestId("applicability-summary")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(trial.compareDocumentPosition(screen.getByText("The stage is set using the selector in the configuration header.")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull();
+    expect(screen.queryByText("Completion obligation", { exact: true })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
     expect(screen.queryByTestId("company-form-rule-trial")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull();
+  });
+
+  it("still confirms before discarding groups; cancel preserves them and accepting clears them", async () => {
+    render(<Harness />);
+    await ready();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Add crew group" }));
+    expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(2);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/configured conditions/i));
+    expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }).getAttribute("aria-checked")).toBe("true");
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
+    expect(screen.queryByRole("heading", { name: "Conditions", exact: true })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies when conditions match", exact: true }));
+    expect(screen.getAllByText(/^Crew group \d$/)).toHaveLength(1);
+    expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
+  });
+
+  it("still confirms Manual only resets obligation and effective-date settings, with no retained state", async () => {
+    render(<Harness />);
+    await ready();
+    fireEvent.click(screen.getByLabelText(/^optional$/i));
+    fireEvent.click(screen.getByLabelText("On a specific date"));
+    const date = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(date, { target: { value: "2030-11-02" } });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/obligation.*effective.date/i));
+    expect((screen.getByLabelText(/^optional$/i) as HTMLInputElement).checked).toBe(true);
+    expect(date.value).toBe("2030-11-02");
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Manual only", exact: true }));
+    expect(screen.queryByText("Completion obligation", { exact: true })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Applies to all", exact: true }));
+    expect((screen.getByLabelText(/^mandatory$/i) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("On release") as HTMLInputElement).checked).toBe(true);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(mocks.api.mock.calls.filter(([method]) => method === "PUT")).toHaveLength(0);
   });
 
   it("asks before closing dirty settings and keeps edits when cancelled", async () => {

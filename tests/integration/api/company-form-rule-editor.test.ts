@@ -79,6 +79,7 @@ describe("Company Form rule editor read-only authoring APIs", () => {
     const directory = ".local/verification/form-rule-trial-promotion/isolated";
     await fs.mkdir(directory, { recursive: true });
     const browser = await chromium.launch({ executablePath: execFileSync("which", ["chromium"], { encoding: "utf8" }).trim(), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+    const failures: string[] = [];
     try {
       const actor = (await pool.query(`SELECT u.id,u.role,r.ruid FROM master_users u JOIN adm_rolemaster_ac r
         ON r.assigned_role=u.role AND r.is_active AND NOT r.is_deleted WHERE u.id=24`)).rows[0];
@@ -102,6 +103,8 @@ describe("Company Form rule editor read-only authoring APIs", () => {
       });
       const before = await snapshot();
       const page = await context.newPage();
+      page.on("response", r => { if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`); });
+      page.on("requestfailed", r => failures.push(`${r.failure()?.errorText} ${r.url()}`));
       const errors: string[] = [];
       page.on("pageerror", e => errors.push(e.message));
       await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
@@ -139,6 +142,13 @@ describe("Company Form rule editor read-only authoring APIs", () => {
         noPolicyOrOperationalWrites: true, keyboard: "Search → Tab → Test this draft → Enter",
         fixtureForm: formId, versionId: version.id }, null, 2));
       await context.close();
+    } catch (error) {
+      const page = browser.contexts()[0]?.pages()[0];
+      if (page) {
+        await page.screenshot({ path: `${directory}/failure.jpg`, animations: "disabled" });
+        await fs.writeFile(`${directory}/failure.json`, JSON.stringify({ failures, url: page.url(), text: await page.locator("body").innerText() }, null, 2));
+      }
+      throw error;
     } finally { await browser.close(); }
   }, 90000);
   it("starts manual only and trials two sets with different outcomes without saving any policy or operational records", async () => {
