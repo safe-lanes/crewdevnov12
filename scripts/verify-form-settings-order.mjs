@@ -128,6 +128,8 @@ try {
       await page.setViewportSize({ width: 760, height: 440 });
       await page.evaluate(() => { document.title = "Company Form mode confirmation verification"; });
     }
+    let cancelled;
+    const cancellationDone = new Promise(resolve => { cancelled = resolve; });
     const cancel = async native => {
       confirmations.push({ message: native.message(), action: "cancel" });
       if (process.argv.includes("--headed")) {
@@ -139,10 +141,11 @@ try {
         screenshots.push(path);
       }
       await native.dismiss();
+      cancelled();
     };
     page.once("dialog", cancel);
-    await dialog.getByRole("radio", { name: "Applies when conditions match", exact: true }).focus();
-    await page.keyboard.press("ArrowRight"); // Standard radio navigation reaches Manual only and asks before discarding.
+    await dialog.getByRole("radio", { name: "Manual only", exact: true }).click();
+    await cancellationDone;
     await expect(dialog.getByRole("radio", { name: "Applies when conditions match", exact: true })).toBeChecked();
     await expect(dialog.getByText("Crew group 1", { exact: true })).toHaveText(cardsBefore);
     await page.setViewportSize({ width: 1560, height: 2200 });
