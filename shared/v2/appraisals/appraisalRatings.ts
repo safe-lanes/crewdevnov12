@@ -3,6 +3,8 @@
 // stores them from the rows it holds, never from a client, and the form shows
 // the same numbers while it is being filled in.
 
+import { getEffectivenessScore, type EffectivenessOption } from "../../appraisal-effectiveness";
+
 // A Part C/D row, as the form holds it or as it is stored.
 export interface RatedRow {
   weight?: number | string | null;
@@ -15,25 +17,20 @@ export interface AppraisalRatings {
   overallRating: string | null;
 }
 
-// The rating each effectiveness counts for. Any other value counts its weight
-// with a rating of 0.
-const EFFECTIVENESS_RATING: Record<string, number> = {
-  "5-exceeds-expectations": 5,
-  "4-meets-expectations": 4,
-  "3-somewhat-meets-expectations": 3,
-  "2-below-expectations": 2,
-  "1-significantly-below-expectations": 1,
-};
-
 // The weighted average of the rows that have an effectiveness and a weight, to
-// one decimal place. null when no row counts.
-export function sectionRating(rows: readonly RatedRow[] | null | undefined): string | null {
+// one decimal place. null when no row counts. Each effectiveness counts for
+// the score its form version's `options` give it, or the fixed 1–5 scale when
+// the version has none (null); any other value counts its weight with 0.
+export function sectionRating(
+  rows: readonly RatedRow[] | null | undefined,
+  options: readonly EffectivenessOption[] | null = null,
+): string | null {
   let totalScore = 0;
   let totalWeight = 0;
   for (const row of rows ?? []) {
     const weight = Number(row?.weight);
     if (!row?.effectiveness || !weight) continue;
-    const rating = EFFECTIVENESS_RATING[row.effectiveness] ?? 0;
+    const rating = getEffectivenessScore(row.effectiveness, options);
     totalScore += (rating * weight) / 100;
     totalWeight += weight;
   }
@@ -45,9 +42,9 @@ export function sectionRating(rows: readonly RatedRow[] | null | undefined): str
 export function appraisalRatings(sections: {
   competenceAssessments?: readonly RatedRow[] | null;
   behaviouralAssessments?: readonly RatedRow[] | null;
-}): AppraisalRatings {
-  const competenceRating = sectionRating(sections.competenceAssessments);
-  const behavioralRating = sectionRating(sections.behaviouralAssessments);
+}, options: readonly EffectivenessOption[] | null = null): AppraisalRatings {
+  const competenceRating = sectionRating(sections.competenceAssessments, options);
+  const behavioralRating = sectionRating(sections.behaviouralAssessments, options);
 
   const scores = [competenceRating, behavioralRating]
     .map(s => (s !== null ? parseFloat(s) : 0))

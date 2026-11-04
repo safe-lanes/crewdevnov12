@@ -26,6 +26,21 @@ import { sendEmail, logEmailEvent } from "../../shared/emailService";
 import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
 import { apprOfficeReviewsV2 } from "../../../../shared/v2/appraisals/schema";
 import {
+  DERIVED_RATING_FIELDS,
+  HEADER_FIELDS,
+  PART_A_FIELDS,
+  SECTION_KEYS,
+  sameValue,
+  type AppraisalChanges,
+  type AppraisalSectionKey,
+} from "../../../../shared/v2/appraisals/appraisalChanges";
+import { appraisalRatings, type AppraisalRatings } from "../../../../shared/v2/appraisals/appraisalRatings";
+import {
+  isAppraisalStatusRegression,
+  normalizeAppraisalStatus,
+} from "../../../../shared/v2/appraisals/appraisalStatus";
+import type { InsertAppraisalResultV2 } from "../../../../shared/v2/appraisals/types";
+import {
   AppraisalRatingVersionError,
   readEffectivenessOptions,
   validateEffectivenessSelections,
@@ -87,11 +102,24 @@ export class AppraisalIdConflictError extends Error {
   }
 }
 
+// The rating options of a form version; null means the fixed 1–5 scale.
+type RatingOptions = readonly EffectivenessOption[] | null;
+
+// The sections whose rows hold a rating: the uuid column of their stored rows
+// (as in each repository's ChildTableConfig) and the field with the rating.
+const RATED_SECTIONS = {
+  trainings: { uuidKey: "trainingUuid", field: "evaluation" },
+  targets: { uuidKey: "targetUuid", field: "evaluation" },
+  competenceAssessments: { uuidKey: "competenceUuid", field: "effectiveness" },
+  behaviouralAssessments: { uuidKey: "behaviouralUuid", field: "effectiveness" },
+} as const;
+
 // A create whose checks have passed, ready to be written (in a transaction).
 type PreparedCreate = {
   row: InsertAppraisalResultV2 & { appraisalUuid: string; crewMemberId: string };
   appraisalData: any;
   auditUserUuid?: string;
+  ratingOptions: RatingOptions;
 };
 
 type SubmitStageName = "stage1" | "stage2" | "stage3";
@@ -105,6 +133,7 @@ type PreparedStage = {
   reviewerList: { userUuid?: string; reviewerName?: string; designation?: string }[];
   // Each assigned reviewer gets a G1 row at Stage 2, but never after Stage 3 (APD-20).
   addAssignedReviewers: boolean;
+  ratingOptions: RatingOptions;
 };
 
 function statusRequiresAppraisalVersionPin(status: string | null | undefined): boolean {
@@ -419,6 +448,42 @@ export class AppraisalResultsService {
     validateEffectivenessSelections({ trainings, targets, competenceAssessments, behaviouralAssessments }, options);
   }
 
+  // The rated rows as a save draft leaves them: the stored rows with the
+  // change-set's rows and deletions applied (APD-16). Only the rating field
+  // of each row is kept.
+  private async ratedRowsAfterChanges(
+    appraisalUuid: string,
+    sections: AppraisalChanges["sections"] = {},
+  ): Promise<EffectivenessSelections> {
+    const repos = {
+      trainings: trainingsRepo,
+      targets: targetsRepo,
+      competenceAssessments: competenceAssessmentsRepo,
+      behaviouralAssessments: behaviouralAssessmentsRepo,
+    };
+    const result: Record<string, { [field: string]: unknown }[]> = {};
+    for (const key of Object.keys(RATED_SECTIONS) as (keyof typeof RATED_SECTIONS)[]) {
+      const { uuidKey, field } = RATED_SECTIONS[key];
+      const changes = sections?.[key];
+      const changed = new Map((changes?.rows ?? []).map((r) => [r.uuid, r]));
+      const deleted = new Set(changes?.deleted ?? []);
+      const stored: any[] = (await repos[key].findByAppraisalUuids([appraisalUuid])).get(appraisalUuid) || [];
+      const storedUuids = new Set(stored.map((r) => r[uuidKey]));
+      result[key] = [
+        ...stored
+          .filter((r) => !deleted.has(r[uuidKey]))
+          .map((r) => {
+            const change = changed.get(r[uuidKey]);
+            return { [field]: change && field in change ? change[field] : r[field] };
+          }),
+        ...[...changed.values()]
+          .filter((r) => !storedUuids.has(r.uuid))
+          .map((r) => ({ [field]: r[field] })),
+      ];
+    }
+    return result as EffectivenessSelections;
+  }
+
   async getAll() {
     const appraisals = await appraisalResultsRepo.findAll();
     if (appraisals.length === 0) return [];
@@ -557,7 +622,7 @@ export class AppraisalResultsService {
       ? auditData.appraisalData
       : JSON.parse(auditData.appraisalData || "{}");
 
-    const appraisalUuid = uuidv4();
+    const crewMemberId = await this.assertCrewReference(auditData.crewMemberId);
 
     const expectedVersionId: unknown = auditData.expectedFormVersionId;
     if (expectedVersionId !== undefined && (
@@ -599,59 +664,121 @@ export class AppraisalResultsService {
     }
     validateEffectivenessSelections(appraisalData, options);
 
-    const created = await appraisalResultsRepo.createWithUuid({
-      appraisalUuid,
-      crewMemberId: auditData.crewMemberId,
-      formUuid: auditData.formId?.toString() || null,
-      formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
-      formVersionId,
-      formVersionUuid,
-      appraisalType: auditData.appraisalType || "",
-      appraisalDate: auditData.appraisalDate || new Date().toISOString(),
-      seafarersName: appraisalData.seafarersName || null,
-      seafarersRank: appraisalData.seafarersRank || null,
-      nationality: appraisalData.nationality || null,
-      vessel: appraisalData.vessel || null,
-      signOn: appraisalData.signOn || null,
-      appraisalPeriodFrom: appraisalData.appraisalPeriodFrom || null,
-      appraisalPeriodTo: appraisalData.appraisalPeriodTo || null,
-      personalityIndexCategory: appraisalData.personalityIndexCategory || null,
-      primaryAppraiser: appraisalData.primaryAppraiser || null,
-      competenceRating: auditData.competenceRating || null,
-      behavioralRating: auditData.behavioralRating || null,
-      overallRating: auditData.overallRating || null,
-      submittedBy: auditData.submittedBy || "Unknown",
-      status: auditData.status || "draft",
-      createdByUuid: auditData.createdByUuid || null,
-      updatedByUuid: auditData.updatedByUuid || null,
-    });
+    // APD-56: stored as master keys, not names.
+    const appraisalType = await resolveAppraisalTypeRef(auditData.appraisalType);
+    const vessel = await resolveAppraisalVesselRef(appraisalData.vessel);
 
-    const auditUserUuid = auditData.createdByUuid || null;
-    await Promise.all([
-      trainingsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainings || [], auditUserUuid),
-      targetsRepo.syncForAppraisal(appraisalUuid, appraisalData.targets || [], auditUserUuid),
-      competenceAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid),
-      behaviouralAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments ? appraisalData.behaviouralAssessments || [] : [], auditUserUuid),
-      trainingNeedsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid),
-      recommendationsRepo.syncForAppraisal(appraisalUuid, appraisalData.recommendations || [], auditUserUuid),
-      appraiserCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid),
-      seafarerCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid),
-      officeReviewsRepo.syncForAppraisal(appraisalUuid, appraisalData.officeReviews || [], auditUserUuid),
-      trainingFollowupsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid),
-    ]);
-
-    // Fire-and-forget: email any newly-added manual G1 reviewers (not assigned, not yet notified).
-    void notifyNewManualG1Reviewers(
-      appraisalUuid,
-      appraisalData.seafarersName || '',
-      appraisalData.seafarersRank || '',
-    );
-
-    return this.getById(created.id);
+    return {
+      appraisalData,
+      auditUserUuid: auditData.createdByUuid || undefined,
+      ratingOptions: options,
+      row: {
+        appraisalUuid,
+        crewMemberId,
+        formUuid: auditData.formId?.toString() || null,
+        formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
+        formVersionId,
+        formVersionUuid,
+        appraisalType,
+        appraisalDate: auditData.appraisalDate || new Date().toISOString(),
+        seafarersName: appraisalData.seafarersName || null,
+        seafarersRank: appraisalData.seafarersRank || null,
+        nationality: appraisalData.nationality || null,
+        vessel,
+        signOn: appraisalData.signOn || null,
+        appraisalPeriodFrom: appraisalData.appraisalPeriodFrom || null,
+        appraisalPeriodTo: appraisalData.appraisalPeriodTo || null,
+        personalityIndexCategory: appraisalData.personalityIndexCategory || null,
+        primaryAppraiser: appraisalData.primaryAppraiser || null,
+        // Derived from the Part C/D rows once they are written (APD-49); the
+        // body's ratings are ignored.
+        competenceRating: null,
+        behavioralRating: null,
+        overallRating: null,
+        submittedBy: auditData.submittedBy || "Unknown",
+        status: auditData.status || "draft",
+        createdByUuid: auditData.createdByUuid || null,
+        updatedByUuid: auditData.updatedByUuid || null,
+      },
+    };
   }
 
-  async update(id: number, body: any) {
-    const existing = await appraisalResultsRepo.findById(id);
+  // Writes a prepared create inside `tx`. Returns null when a parallel request
+  // with the same id inserted it first; its sections are already saved, so
+  // nothing is written here.
+  private async writeCreate(prepared: PreparedCreate, tx: any) {
+    const { appraisalData, auditUserUuid } = prepared;
+    const { appraisalUuid } = prepared.row;
+    const row = await appraisalResultsRepo.createIfAbsent(prepared.row, tx);
+    if (!row) return null;
+
+    // Sequential: one transaction runs on one connection.
+    await trainingsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainings || [], auditUserUuid, tx);
+    await targetsRepo.syncForAppraisal(appraisalUuid, appraisalData.targets || [], auditUserUuid, tx);
+    await competenceAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments || [], auditUserUuid, tx);
+    await behaviouralAssessmentsRepo.syncForAppraisal(appraisalUuid, appraisalData.competenceAssessments ? appraisalData.behaviouralAssessments || [] : [], auditUserUuid, tx);
+    await trainingNeedsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingNeeds || [], auditUserUuid, tx);
+    await recommendationsRepo.syncForAppraisal(appraisalUuid, appraisalData.recommendations || [], auditUserUuid, tx);
+    await appraiserCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.appraiserComments || [], auditUserUuid, tx);
+    await seafarerCommentsRepo.syncForAppraisal(appraisalUuid, appraisalData.seafarerComments || [], auditUserUuid, tx);
+    await officeReviewsRepo.syncForAppraisal(appraisalUuid, appraisalData.officeReviews || [], auditUserUuid, tx);
+    await trainingFollowupsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid, tx);
+    await this.refreshRatings(appraisalUuid, tx, row, prepared.ratingOptions);
+    return row;
+  }
+
+  // The rating options of the form version an appraisal is pinned to. null
+  // (the fixed 1–5 scale) when it is not pinned or its form defines none.
+  private async ratingOptionsOf(formVersionId: number | null | undefined): Promise<RatingOptions> {
+    if (formVersionId == null) return null;
+    const version = await formsService.getVersionConfiguration(formVersionId);
+    return readEffectivenessOptions(version.rankGroupConfig);
+  }
+
+  // The ratings of the appraisal's live Part C/D rows, read inside `tx` so the
+  // rows this transaction wrote count (APD-49). Each effectiveness scores as
+  // the appraisal's form version defines it.
+  private async deriveRatings(appraisalUuid: string, tx: any, options: RatingOptions): Promise<AppraisalRatings> {
+    const competence = await competenceAssessmentsRepo.findByAppraisalUuids([appraisalUuid], tx);
+    const behavioural = await behaviouralAssessmentsRepo.findByAppraisalUuids([appraisalUuid], tx);
+    return appraisalRatings({
+      competenceAssessments: competence.get(appraisalUuid) ?? [],
+      behaviouralAssessments: behavioural.get(appraisalUuid) ?? [],
+    }, options);
+  }
+
+  // Stores the ratings derived from the appraisal's Part C/D rows where they
+  // differ from `stored` (the main row as this transaction left it; read when
+  // not given). Anything that writes Part C/D rows calls this in the same
+  // transaction, including the ship/shore sync after it merges those rows: the
+  // ratings always follow the rows, and a rating a client sends is never
+  // stored (APD-49). `options` are the form version's rating options; they are
+  // looked up from the stored pin when not given.
+  async refreshRatings(
+    appraisalUuid: string,
+    tx: any,
+    stored?: Partial<AppraisalRatings> & { formVersionId?: number | null },
+    options?: RatingOptions,
+  ) {
+    const current = stored ?? await appraisalResultsRepo.findByAppraisalUuidIncludingDeleted(appraisalUuid, tx);
+    if (!current) return;
+    const ratingOptions = options !== undefined ? options : await this.ratingOptionsOf(current.formVersionId);
+    const changed = changedRatings(await this.deriveRatings(appraisalUuid, tx, ratingOptions), current);
+    if (Object.keys(changed).length > 0) {
+      await appraisalResultsRepo.updateByAppraisalUuid(appraisalUuid, changed, tx);
+    }
+  }
+
+  // Save draft. `changes` holds only what the user changed since the form was
+  // loaded (APD-16), so only those fields of those rows are written: a stale
+  // copy of the form cannot overwrite someone else's edits. Child rows are
+  // matched by uuid, sections that are not sent are left alone, and a save
+  // with no real change writes nothing at all.
+  async update(
+    appraisalUuid: string,
+    body: { changes: AppraisalChanges; auditUserUuid?: string | null; expectedFormVersionId?: unknown },
+  ) {
+    const existing = await appraisalResultsRepo.findByAppraisalUuid(appraisalUuid);
     if (!existing) return null;
 
     const auditUserUuid = body.auditUserUuid || null;
@@ -676,18 +803,19 @@ export class AppraisalResultsService {
       if (!sameValue((existing as any)[field], value)) updateFields[field] = value;
     }
 
-    const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
+    const ratingVersion = await this.resolveAppraisalRatingVersion({
       status: (updateFields.status as string | undefined) ?? existing.status,
       rank: header.seafarersRank ?? existing.seafarersRank,
       formVersionId: existing.formVersionId,
       formVersionUuid: existing.formVersionUuid,
-      expectedFormVersionId: auditData.expectedFormVersionId,
+      expectedFormVersionId: body.expectedFormVersionId,
     });
     const resolvedPin = ratingVersion.newPin;
-    if (appraisalData) {
-      validateEffectivenessSelections(appraisalData, ratingVersion.options);
-    } else {
-      await this.validatePersistedAppraisalRatings(existing.appraisalUuid, {}, ratingVersion.options);
+    if (ratingVersion.options !== null) {
+      validateEffectivenessSelections(
+        await this.ratedRowsAfterChanges(existing.appraisalUuid, sections),
+        ratingVersion.options,
+      );
     }
     if (resolvedPin) {
       updateFields.formVersionId = resolvedPin.formVersionId;
@@ -721,7 +849,7 @@ export class AppraisalResultsService {
       // APD-49: the ratings follow the Part C/D rows as they are now, with this
       // save's changes merged into what other saves wrote.
       if (sections.competenceAssessments || sections.behaviouralAssessments) {
-        Object.assign(updateFields, changedRatings(await this.deriveRatings(existing.appraisalUuid, tx), existing));
+        Object.assign(updateFields, changedRatings(await this.deriveRatings(existing.appraisalUuid, tx, ratingVersion.options), existing));
       }
 
       // Any UPDATE stamps updated_at, so the main row is written only when the
@@ -772,12 +900,14 @@ export class AppraisalResultsService {
     options?: { create?: any; stage1?: any },
   ) {
     const auditUserUuid = (data as any)?.auditUserUuid ?? null;
+    // The form version the client loaded applies to everything this submit does.
+    const expectedFormVersionId = (data as any)?.expectedFormVersionId;
 
     let appraisal: any;
     let newAppraisal: PreparedCreate | null = null;
     if (options?.create) {
       // The actor of the submit wins over any the create body carries (APD-31).
-      const createData = applyAuditUser({ ...options.create, submittedBy, auditUserUuid }, true);
+      const createData = applyAuditUser({ ...options.create, submittedBy, auditUserUuid, expectedFormVersionId }, true);
       // Found: a repeat of a submit that already created it (a retry after a
       // lost response), so it is not created again.
       appraisal = await this.findExistingCreate(appraisalUuid, createData.crewMemberId);
@@ -792,7 +922,7 @@ export class AppraisalResultsService {
 
     const steps: PreparedStage[] = [];
     if (stage === "stage2" && options?.stage1 && !appraisal.stage1Status) {
-      const stage1Step = await this.prepareStage(appraisal, "stage1", { ...options.stage1, auditUserUuid }, submittedBy);
+      const stage1Step = await this.prepareStage(appraisal, "stage1", { ...options.stage1, auditUserUuid, expectedFormVersionId }, submittedBy);
       steps.push(stage1Step);
       // Stage 2 is checked against the appraisal as Stage 1 leaves it.
       appraisal = { ...appraisal, ...stage1Step.stageUpdate };
@@ -959,6 +1089,7 @@ export class AppraisalResultsService {
       data,
       reviewerList,
       addAssignedReviewers: !appraisal.stage3Status,
+      ratingOptions: ratingVersion.options,
     };
   }
 
@@ -976,7 +1107,7 @@ export class AppraisalResultsService {
     } else if (stage === "stage2") {
       await competenceAssessmentsRepo.syncForAppraisal(appraisalUuid, data.competenceAssessments || [], auditUserUuid, tx);
       await behaviouralAssessmentsRepo.syncForAppraisal(appraisalUuid, data.behaviouralAssessments || [], auditUserUuid, tx);
-      await this.refreshRatings(appraisalUuid, tx, row);
+      await this.refreshRatings(appraisalUuid, tx, row, step.ratingOptions);
       await trainingNeedsRepo.syncForAppraisal(appraisalUuid, data.trainingNeeds || [], auditUserUuid, tx);
       await recommendationsRepo.syncForAppraisal(appraisalUuid, data.recommendations || [], auditUserUuid, tx);
       await appraiserCommentsRepo.syncForAppraisal(appraisalUuid, data.appraiserComments || [], auditUserUuid, tx);

@@ -1,6 +1,18 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { AppraisalResultsService, FormVersionPinError } from "../services";
+import { AppraisalResultsService, FormVersionPinError, CrewReferenceError, AppraisalIdConflictError } from "../services";
+import { AppraisalRowOwnershipError, AppraisalRowFieldLockedError } from "../repositories/childRowSync";
+import { getActor } from "../../accounts/controllers/_auth";
+import { resolveAppraisalActor } from "../utils/requestActor";
+import { MasterReferenceError } from "../utils/masterRefs";
+import {
+  HEADER_FIELDS,
+  PART_G_SECTIONS,
+  SECTION_KEYS,
+  STAGE_SECTIONS,
+  type AppraisalChanges,
+  type AppraisalStage,
+} from "../../../../shared/v2/appraisals/appraisalChanges";
 import {
   AppraisalRatingVersionError,
   EffectivenessConfigurationError,
@@ -8,36 +20,74 @@ import {
 
 const service = new AppraisalResultsService();
 
+const PART_G_SHIP_ERROR = "Part G is for office use only. Ship users cannot change it.";
+
+// Every write records who made it, taken from the login (APD-31). A write
+// whose user cannot be identified is refused rather than saved as "Unknown".
+const SIGN_IN_ERROR = "Your sign-in could not be verified. Reload the page and try again.";
+
+const rowUuidSchema = z.string().min(1).max(64);
+
+const sectionChangesSchema = z.object({
+  rows: z.array(z.object({ uuid: rowUuidSchema }).passthrough()),
+  deleted: z.array(rowUuidSchema).optional(),
+});
+
+// Save draft: only what the user changed since the form was loaded.
+const saveDraftSchema = z.object({
+  changes: z.object({
+    header: z.object(
+      Object.fromEntries(HEADER_FIELDS.map((f) => [f, z.string().nullable().optional()])),
+    ).strict().optional(),
+    sections: z.object(
+      Object.fromEntries(SECTION_KEYS.map((k) => [k, sectionChangesSchema.optional()])),
+    ).strict().optional(),
+  }),
+  // The form version the client loaded its rating options from. The service
+  // checks it against the appraisal's version (crew_dev 7ade72bf).
+  expectedFormVersionId: z.unknown().optional(),
+});
+
+// A stage submit's section arrays, one per key in STAGE_SECTIONS (APD-29).
+// z.object drops keys it does not list, so every section the service saves for
+// a stage must be listed here, or it never reaches the service.
+function stageSectionsShape<S extends AppraisalStage>(stage: S) {
+  return Object.fromEntries(
+    STAGE_SECTIONS[stage].map((k) => [k, z.array(z.any()).optional()]),
+  ) as Record<(typeof STAGE_SECTIONS)[S][number], z.ZodOptional<z.ZodArray<z.ZodAny>>>;
+}
+
+const stage1DataSchema = z.object({
+  seafarersName: z.string().min(1),
+  seafarersRank: z.string().min(1),
+  nationality: z.string().nullish(),
+  vessel: z.string().min(1),
+  appraisalType: z.string().min(1),
+  signOn: z.string().optional(),
+  appraisalPeriodFrom: z.string().optional(),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
+  primaryAppraiser: z.string().optional(),
+  ...stageSectionsShape("stage1"),
+});
+
+// The body POST / takes, sent with a stage submit of a form that was never
+// saved: the appraisal is created in the same transaction as the stage
+// (APD-30). The service checks it the way create() does.
+const createBodySchema = z.object({
+  crewMemberId: z.union([z.string(), z.number()]).nullish(),
+  appraisalData: z.record(z.any()),
+}).passthrough();
+
 const stage1SubmissionSchema = z.object({
   expectedFormVersionId: z.unknown().optional(),
-  data: z.object({
-    seafarersName: z.string().min(1),
-    seafarersRank: z.string().min(1),
-    nationality: z.string().nullish(),
-    vessel: z.string().min(1),
-    appraisalType: z.string().min(1),
-    signOn: z.string().optional(),
-    appraisalPeriodFrom: z.string().optional(),
-    appraisalPeriodTo: z.string().optional(),
-    personalityIndexCategory: z.string().optional(),
-    primaryAppraiser: z.string().optional(),
-    trainings: z.array(z.any()).optional(),
-    targets: z.array(z.any()).optional(),
-  }),
-  submittedBy: z.string().optional(),
+  data: stage1DataSchema,
+  create: createBodySchema.optional(),
 });
 
 const stage2SubmissionSchema = z.object({
   expectedFormVersionId: z.unknown().optional(),
   data: z.object({
-    trainings: z.array(z.any()).optional(),
-    targets: z.array(z.any()).optional(),
-    competenceAssessments: z.array(z.any()).optional(),
-    behaviouralAssessments: z.array(z.any()).optional(),
-    trainingNeeds: z.array(z.any()).optional(),
-    recommendations: z.array(z.any()).optional(),
-    appraiserComments: z.array(z.any()).optional(),
-    seafarerComments: z.array(z.any()).optional(),
     ...stageSectionsShape("stage2"),
     reviewers: z.array(z.object({
       userUuid: z.string().optional(),
@@ -58,13 +108,6 @@ const stage2SubmissionSchema = z.object({
 
 const stage3SubmissionSchema = z.object({
   expectedFormVersionId: z.unknown().optional(),
-  data: z.object({
-    trainings: z.array(z.any()).optional(),
-    officeReviews: z.array(z.any()).optional(),
-    trainingFollowups: z.array(z.any()).optional(),
-  }),
-  submittedBy: z.string().optional(),
-});
   data: z.object(stageSectionsShape("stage3")),
 });
 
@@ -185,7 +228,11 @@ export class AppraisalResultsController {
       if (getActor(req).vesselUser && PART_G_SECTIONS.some((k) => changes.sections?.[k])) {
         return res.status(403).json({ error: PART_G_SHIP_ERROR });
       }
-      const appraisal = await service.update(appraisalUuid, { changes, auditUserUuid: actor.userUuid });
+      const appraisal = await service.update(appraisalUuid, {
+        changes,
+        auditUserUuid: actor.userUuid,
+        expectedFormVersionId: parsed.data.expectedFormVersionId,
+      });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -198,7 +245,7 @@ export class AppraisalResultsController {
       if (error instanceof EffectivenessConfigurationError) {
         return res.status(400).json({ error: error.message });
       }
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof MasterReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to update appraisal" });
@@ -232,9 +279,8 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, expectedFormVersionId } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage1", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown");
+      const { data, create, expectedFormVersionId } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage1", { ...data, auditUserUuid: actor.userUuid, expectedFormVersionId }, actor.name, { create });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -247,7 +293,7 @@ export class AppraisalResultsController {
       if (error instanceof EffectivenessConfigurationError) {
         return res.status(400).json({ error: error.message });
       }
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof MasterReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -267,15 +313,8 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, competenceRating, behavioralRating, overallRating, expectedFormVersionId } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
-      // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(id, "stage2", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown", {
-        competenceRating,
-        behavioralRating,
-        overallRating,
-      });
+      const { data, create, stage1, expectedFormVersionId } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage2", { ...data, auditUserUuid: actor.userUuid, expectedFormVersionId }, actor.name, { create, stage1 });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -288,7 +327,7 @@ export class AppraisalResultsController {
       if (error instanceof EffectivenessConfigurationError) {
         return res.status(400).json({ error: error.message });
       }
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof CrewReferenceError || error instanceof MasterReferenceError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof AppraisalIdConflictError) {
@@ -312,9 +351,8 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, expectedFormVersionId } = validationResult.data;
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage3", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown");
+      const { data, expectedFormVersionId } = validationResult.data;
+      const appraisal = await service.submitStage(appraisalUuid, "stage3", { ...data, auditUserUuid: actor.userUuid, expectedFormVersionId }, actor.name);
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -327,7 +365,7 @@ export class AppraisalResultsController {
       if (error instanceof EffectivenessConfigurationError) {
         return res.status(400).json({ error: error.message });
       }
-      if (error instanceof FormVersionPinError) {
+      if (error instanceof FormVersionPinError || error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: error.message || "Failed to submit stage 3" });
