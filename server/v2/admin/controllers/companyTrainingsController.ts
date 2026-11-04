@@ -35,6 +35,9 @@ export const companyTrainingsController = {
       const record = await companyTrainingsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
+      if (error.message?.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("Error creating company training:", error);
       res.status(500).json({ error: "Failed to create company training" });
     }

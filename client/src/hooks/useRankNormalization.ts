@@ -66,8 +66,12 @@ export function addRankAliasesToMap(map: Map<string, number>, rankName: string, 
   });
 }
 
+// Stable default while the ranks load, so the memos below don't re-run on
+// every render.
+const EMPTY_COMPANY_RANKS: CompanyRank[] = [];
+
 export function useRankNormalization() {
-  const { data: companyRanks = [], isLoading } = useQuery<CompanyRank[]>({
+  const { data: companyRanks = EMPTY_COMPANY_RANKS, isLoading } = useQuery<CompanyRank[]>({
     queryKey: ['/api/v2/admin/company-ranks'],
   });
 
@@ -95,7 +99,10 @@ export function useRankNormalization() {
     };
   }, [companyRanks]);
 
-  const normalizeRank = (rankOrRole: string): string => {
+  // useCallback: callers list normalizeRank in effect and memo deps (e.g.
+  // PromotionReviewForm's A2 config); a new function each render made those
+  // effects set state on every render ("Maximum update depth exceeded").
+  const normalizeRank = useCallback((rankOrRole: string): string => {
     if (!rankOrRole || typeof rankOrRole !== 'string') return rankOrRole || '';
 
     // First check if exact match exists in roleToParentMap (for role variants)
@@ -125,11 +132,11 @@ export function useRankNormalization() {
     // DO NOT apply RANK_ALIASES here - we want to keep Rank Labels (e.g., "3rd Officer")
     // as-is for filtering. RANK_ALIASES is only for internal sort order lookups.
     return baseRank;
-  };
+  }, [roleToParentMap]);
 
-  const getParentRankByRankId = (rankId: string): string | undefined => {
+  const getParentRankByRankId = useCallback((rankId: string): string | undefined => {
     return rankIdToParentMap.get(rankId);
-  };
+  }, [rankIdToParentMap]);
 
   const isVariantRank = useCallback((rankName: string): boolean => {
     if (!rankName) return false;
