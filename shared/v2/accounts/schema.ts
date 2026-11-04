@@ -340,6 +340,7 @@ export const accAdvancesV2 = pgTable(
     engagementUuid: text("engagement_uuid"),
     period: text("period"), // YYYY-MM
     writeOffPeriod: text("write_off_period"), // YYYY-MM; null for legacy closures
+    cancelledPeriod: text("cancelled_period"), // YYYY-MM; null for legacy cancellations
     recoveryPayElementUuid: text("recovery_pay_element_uuid"),
     ...auditColumns,
   },

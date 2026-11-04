@@ -1,0 +1,81 @@
+[
+ {
+  "id": "V01",
+  "turn": 1,
+  "cat": "clarification-wording",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many engineers are on board MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3313,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8515,
+   "completion_tokens": 106
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "ms": 7
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **4 engineers** are on board **MV Beta Ocean**.\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, unit people.\n\nSome definitions are provisional (trial)."
+ },
+ {
+  "id": "V01",
+  "turn": 2,
+  "cat": "clarification-wording",
+  "heldOut": false,
+  "instance": "single",
+  "q": "and how many of them are on their main contract?",
+  "status": 200,
+  "pass": true,
+  "queryOk": null,
+  "dataOk": null,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 1898,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 4198,
+   "completion_tokens": 58
+  },
+  "toolsUsed": [],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "I can’t access contract data yet. I can answer live questions about crew on board, licences/certificates, training-course expiry, sign-on dates, and recorded relief-due dates. You can also ask a documentation question such as “How do I plan a relief?”"
+ }
+]

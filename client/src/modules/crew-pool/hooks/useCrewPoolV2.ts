@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { crewPoolApiV2 } from '../api/crewPoolApiV2';
 import { getCrewUserId } from '@/lib/crewUser';
+import { apiRequest } from '@/lib/queryClient';
 
 // Inject audit user UUID into request data
 function withAuditUser<T>(data: T): T {
@@ -90,6 +91,22 @@ export function useCrewListV2(params?: {
       // API returns { data: [...], pagination: {...} }
       const rawData = Array.isArray(response) ? response : (response.data || []);
       return rawData.map(mapV2CrewToLegacy);
+    },
+    staleTime: V2_STALE_TIME,
+  });
+}
+
+export function useReactivatedCrewListV2(enabled: boolean) {
+  return useQuery({
+    queryKey: [V2_QUERY_KEY, 'crew', 'list', { view: 'reactivated' }],
+    enabled,
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/v2/crew-pool/crew/reactivated');
+      const result = await response.json();
+      return result.data.map((crew: any) => ({
+        ...mapV2CrewToLegacy(crew),
+        reactivation: crew.reactivation,
+      }));
     },
     staleTime: V2_STALE_TIME,
   });

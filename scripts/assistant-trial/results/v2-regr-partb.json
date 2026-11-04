@@ -1,0 +1,2431 @@
+[
+ {
+  "id": "C01",
+  "turn": 1,
+  "cat": "simple-list",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4848,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18946,
+   "completion_tokens": 193
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 8,
+    "totals": {
+     "assignments": 8,
+     "people": 8
+    },
+    "returned": 8,
+    "nextOffset": null,
+    "ms": 459
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **8 crew members** on board **MV Alpha Star**:\n\n| Name | Rank |\n|---|---|\n| Aldric Vexmoor | Master |\n| Benedek Quorrlyn | Chief Officer |\n| Corvina Tallowind | 2nd Officer |\n| Dagny Brisketh | Chief Engineer |\n| Elsbet Orvanne | 2nd Engineer |\n| Faustin Kelderwick | 3rd Engineer |\n| Gisla Marrowfen | Bosun |\n| Hadrian Pellisande | Chief Cook |\n\nFilters: vessel MV Alpha Star, on board, unit people.\n\nShowing all 8 matching crew members."
+ },
+ {
+  "id": "C02",
+  "turn": 1,
+  "cat": "simple-count",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on MV Beta Ocean right now?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3463,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18384,
+   "completion_tokens": 90
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": true,
+    "total": 7,
+    "totals": {
+     "assignments": 7,
+     "people": 7
+    },
+    "ms": 20
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **7 crew members** are on **MV Beta Ocean** right now.\n\nFilters: vessel MV Beta Ocean, on board, unit people."
+ },
+ {
+  "id": "C03",
+  "turn": 1,
+  "cat": "simple-count",
+  "heldOut": true,
+  "instance": "single",
+  "q": "crew count for the whole fleet?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3451,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18344,
+   "completion_tokens": 74
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people"
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "ms": 14
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**20 crew members** are currently on board across the whole fleet.\n\nFilters: whole fleet; on board; unit: people."
+ },
+ {
+  "id": "C04",
+  "turn": 1,
+  "cat": "combined-filter",
+  "heldOut": false,
+  "instance": "single",
+  "q": "List the engineers on board MV Alpha Star",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4718,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18803,
+   "completion_tokens": 237
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "MV Alpha Star"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "assignments": 3,
+     "people": 3
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "ms": 29
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on date | Relief due |\n|---|---|---|---|---|\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 | 2027-03-01 |\n| Faustin Kelderwick | 3rd Engineer | MV Alpha Star | 2026-10-05 | 2027-04-05 |\n\n**Total: 3 engineers on board** (3 people and 3 assignments).\n\nFilters: vessel MV Alpha Star, rank group engineers, on-board crew, unit people.\n\nShowing all 3 matching crew members."
+ },
+ {
+  "id": "C05",
+  "turn": 1,
+  "cat": "documents-window",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which certificates expire in the next 60 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6669,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19144,
+   "completion_tokens": 496
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 18,
+    "totals": {
+     "documents": 18,
+     "people": 14
+    },
+    "returned": 10,
+    "nextOffset": 10,
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 89
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**18 certificates held by 14 crew members** are included:\n- **3 already expired**\n- **15 expiring by 2026-12-31**\n\n| Crew member | Rank | Vessel | Certificate | Expiry | Status |\n|---|---|---|---|---|---|\n| Ulric Penhallow | Chief Officer | — | Basic Safety Training | 2024-03-01 | **Expired** |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | CoC Chief Engineer | 2026-09-30 | **Expired** |\n| Marek Oldenvaal | Master | MV Beta Ocean | CoC Master | 2026-10-15 | **Expired** |\n| Corvina Tallowind | Second Officer | MV Alpha Star | Crowd Management | 2026-11-01 | Upcoming |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | Ship Security Officer | 2026-11-05 | Upcoming |\n| Aldric Vexmoor | Master | MV Alpha Star | CoC Master | 2026-11-10 | Upcoming |\n| Ulric Penhallow | Chief Officer | — | CoC Chief Mate | 2026-11-12 | Upcoming |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | CoC Chief Engineer | 2026-11-15 | Upcoming |\n| Ilvar Strandquist | Third Officer | — | Basic Safety Training | 2026-11-18 | Upcoming |\n| Tamsin Ebberline | Chief Engineer | MV Alpha Trader | Advanced Fire Fighting | 2026-11-20 | Upcoming |\n\nThere are **8 more certificates**; I can show them next. **2 records have a missing or unreadable expiry date and are not included.**\n\n*Some definitions are provisional (trial).*\n\nFilters: expiry window next 60 days, both licences/certificates and training certificates, unit documents.\n\nOf these, 3 documents (3 people) already expired as of 2026-11-01; 15 documents (12 people) expire by 2026-12-31.\n\nShowing 10 of 18 matching documents (records 1–10; 8 more available)."
+ },
+ {
+  "id": "C06",
+  "turn": 1,
+  "cat": "people-vs-documents",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew members have a licence or certificate expiring within 30 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4437,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18521,
+   "completion_tokens": 164
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 30,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 12,
+    "totals": {
+     "documents": 13,
+     "people": 12
+    },
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 23
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**12 crew members** have **13 licences or certificates** that are already expired or expiring by **1 December 2026**:\n\n- **3 crew members** hold **3 already-expired documents**.\n- **10 crew members** hold **10 documents expiring by 1 December 2026**.\n\n**2 records** have missing or unreadable expiry dates and are not included.\n\nFilters: expiry window next 30 days; both licences/certificates and training certificates; unit people.\n\nOf these, 3 documents (3 people) already expired as of 2026-11-01; 10 documents (10 people) expire by 2026-12-01."
+ },
+ {
+  "id": "C07",
+  "turn": 1,
+  "cat": "people-vs-documents",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many engineers on MV Beta Ocean have certificates expiring in the next 60 days, and how many certificates is that?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4347,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18864,
+   "completion_tokens": 197
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ],
+     "crewOnBoard": true,
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "documents": 5,
+     "people": 2
+    },
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 0
+    },
+    "ms": 34
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**2 engineers on MV Beta Ocean hold 5 certificates** expiring in the next **60 days**.  \n- Already expired: **0 certificates held by 0 people**\n- Expiring by **2026-12-31**: **5 certificates held by 2 people**\n\n**1 record** has a missing or unreadable expiry date and is not included.\n\nFilters: vessel MV Beta Ocean, engineers, on board, both licence/certificate and training documents, expiry window next 60 days, unit people and documents.\n\nOf these, 0 documents (0 people) already expired as of 2026-11-01; 5 documents (2 people) expire by 2026-12-31."
+ },
+ {
+  "id": "C08",
+  "turn": 1,
+  "cat": "grouping",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Show the on-board crew with documents expiring in the next 60 days, by vessel",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4591,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18715,
+   "completion_tokens": 246
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "group",
+     "unit": "people",
+     "groupBy": [
+      "vesselName"
+     ],
+     "crewOnBoard": true,
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 11,
+    "totals": {
+     "documents": 14,
+     "people": 11
+    },
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 32
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Vessel | Crew members | Documents |\n|---|---:|---:|\n| MV Alpha Star | 4 | 4 |\n| MV Beta Ocean | 4 | 7 |\n| MV Alpha Trader | 3 | 3 |\n| **Total** | **11** | **14** |\n\nThe 60-day window runs through **2026-12-31**. Of these, **2 documents held by 2 crew members are already expired**, and **12 documents held by 9 crew members are upcoming**. One document has an unreadable expiry date and one has no expiry date; these are not included.\n\nFilters: on-board crew; documents of both licence/certificate and training types; expiry window next 60 days; grouped by vessel; unit: people.\n\nOf these, 2 documents (2 people) already expired as of 2026-11-01; 12 documents (9 people) expire by 2026-12-31."
+ },
+ {
+  "id": "C09",
+  "turn": 1,
+  "cat": "documents-expired",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Which documents have already expired?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4515,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18648,
+   "completion_tokens": 229
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "sort": "expiry_asc",
+     "limit": 10,
+     "expiryState": "expired"
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "documents": 3,
+     "people": 3
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 36
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n3 documents held by 3 crew members have already expired:\n\n| Crew member | Rank | Vessel | Document | Expiry date |\n|---|---|---|---|---|\n| Ulric Penhallow | Chief Officer | Not assigned | Basic Safety Training | 2024-03-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | CoC Chief Engineer | 2026-09-30 |\n| Marek Oldenvaal | Master | MV Beta Ocean | CoC Master | 2026-10-15 |\n\n1 document has an unreadable expiry date and 1 has no expiry date; these are not included.\n\nSome definitions are provisional (trial).\n\nFilters: expired documents, all vessels and crew, both licence and training documents, unit documents.\n\nOf these, 3 documents (3 people) already expired as of 2026-11-01; 0 documents (0 people) have not expired yet.\n\nShowing all 3 matching documents."
+ },
+ {
+  "id": "C10",
+  "turn": 1,
+  "cat": "documents-window",
+  "heldOut": false,
+  "instance": "single",
+  "q": "certificates expiring in the next 2 months",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3888,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18509,
+   "completion_tokens": 139
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "count",
+     "unit": "documents",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 2,
+      "unit": "months"
+     }
+    },
+    "ok": true,
+    "total": 19,
+    "totals": {
+     "documents": 19,
+     "people": 14
+    },
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 29
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n- **19 certificates/documents** are included:\n  - **3 already expired**\n  - **16 expiring by 1 January 2027**\n- These belong to **14 crew members**.\n- **2 records** have missing or unreadable expiry dates and are not included.\n\nFilters: certificates and training documents, expiry window next 2 calendar months, unit documents.\n\nOf these, 3 documents (3 people) already expired as of 2026-11-01; 16 documents (12 people) expire by 2027-01-01."
+ },
+ {
+  "id": "C11",
+  "turn": 1,
+  "cat": "clarify",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Anything expiring soon?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": null,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 1637,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9051,
+   "completion_tokens": 30
+  },
+  "toolsUsed": [],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "Which period should I check for upcoming expiries—for example, the next 30 days, 60 days, or 2 months?"
+ },
+ {
+  "id": "C12",
+  "turn": 1,
+  "cat": "ambiguous",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board Alpha?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3746,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18266,
+   "completion_tokens": 75
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "Alpha"
+     ]
+    },
+    "ok": false,
+    "code": "vessel_ambiguous",
+    "ms": 10
+   }
+  ],
+  "answer": "The vessel name is ambiguous. Which vessel did you mean?\n\n- MV Alpha Star\n- MV Alpha Trader"
+ },
+ {
+  "id": "C13",
+  "turn": 1,
+  "cat": "not-found",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board MV Zeta?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3535,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18209,
+   "completion_tokens": 73
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "vessels": [
+      "MV Zeta"
+     ]
+    },
+    "ok": false,
+    "code": "vessel_not_found",
+    "ms": 15
+   }
+  ],
+  "answer": "The vessel **MV Zeta** was not found in the company’s Crewing data. Please check the vessel name."
+ },
+ {
+  "id": "C14",
+  "turn": 1,
+  "cat": "valid-zero",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board MV Gamma Bay?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3697,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18400,
+   "completion_tokens": 92
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "MV Gamma Bay"
+     ]
+    },
+    "ok": true,
+    "total": 0,
+    "totals": {
+     "assignments": 0,
+     "people": 0
+    },
+    "returned": 0,
+    "nextOffset": null,
+    "ms": 34
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nNo crew members are on board MV Gamma Bay.\n\nFilters: vessel MV Gamma Bay, on board, unit people.\n\nShowing 0 matching crew members."
+ },
+ {
+  "id": "C15",
+  "turn": 1,
+  "cat": "valid-zero",
+  "heldOut": true,
+  "instance": "single",
+  "q": "How many Bosuns are on MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3615,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18395,
+   "completion_tokens": 100
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "ranks": [
+      "Bosun"
+     ]
+    },
+    "ok": true,
+    "total": 0,
+    "totals": {
+     "assignments": 0,
+     "people": 0
+    },
+    "ms": 34
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **0 people** are on MV Beta Ocean as Bosuns.\n\nFilters: vessel MV Beta Ocean, rank Bosun, on-board crew, unit people."
+ },
+ {
+  "id": "C16",
+  "turn": 1,
+  "cat": "unknown-value",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many Admirals are on board?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3493,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18188,
+   "completion_tokens": 72
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "ranks": [
+      "Admiral"
+     ]
+    },
+    "ok": false,
+    "code": "rank_not_recognised",
+    "ms": 18
+   }
+  ],
+  "answer": "“Admiral” is not a recognised rank in Crewing data, so I can’t return a count.\n\nFilters: rank Admiral; unit people."
+ },
+ {
+  "id": "C17",
+  "turn": 1,
+  "cat": "pagination",
+  "heldOut": false,
+  "instance": "single",
+  "q": "List all crew on board across the fleet",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5667,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19057,
+   "completion_tokens": 378
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "offset": 0,
+     "sort": "name"
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "returned": 10,
+    "nextOffset": 10,
+    "ms": 39
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **20 crew members on board across the fleet**. The first 10 are:\n\n| Name | Rank | Vessel | Sign-on date |\n|---|---|---|---|\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-06-01 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | 2026-07-15 |\n| Corvina Tallowind | 2nd Officer | MV Alpha Star | 2026-08-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 |\n| Faustin Kelderwick | 3rd Engineer | MV Alpha Star | 2026-10-05 |\n| Gisla Marrowfen | Bosun | MV Alpha Star | Not recorded |\n| Hadrian Pellisande | Chief Cook | MV Alpha Star | 2026-10-20 |\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-04-01 |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | 2026-08-20 |\n\nThere are **10 more crew members**. Ask “show more” to continue.\n\nFilters: fleet-wide; on board; unit: people.\n\nShowing 10 of 20 matching crew members (records 1–10; 10 more available)."
+ },
+ {
+  "id": "C17",
+  "turn": 2,
+  "cat": "pagination",
+  "heldOut": false,
+  "instance": "single",
+  "q": "show more",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5699,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19796,
+   "completion_tokens": 365
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "offset": 10
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "returned": 10,
+    "nextOffset": null,
+    "ms": 26
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThe remaining **10 crew members** are:\n\n| Name | Rank | Vessel | Sign-on date |\n|---|---|---|---|\n| Tamsin Ebberline | Chief Engineer | MV Alpha Trader | 2026-09-01 |\n| Tobiah Rendlesham | Deck Cadet | MV Alpha Trader | 2026-10-01 |\n| Sorrel Wainfleet | Gas Engineer | MV Alpha Trader | 2026-09-15 |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | 2026-08-20 |\n| Oswin Larkspur | Chief Officer | MV Beta Ocean | 2026-10-25 |\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-04-01 |\n| Petra Wintermarsh | 2nd Engineer | MV Beta Ocean | 2026-10-15 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 2026-07-01 |\n| Quillon Rasterby | Electrical Officer | MV Beta Ocean | 2026-09-10 |\n| Rasmine Thornquay | Oiler | MV Beta Ocean | 2026-06-20 |\n\nThat completes the list: **20 crew members on board** across the fleet.\n\nFilters: fleet-wide; on board; unit: people.\n\nShowing 10 of 20 matching crew members (records 11–20; end of list)."
+ },
+ {
+  "id": "C18",
+  "turn": 1,
+  "cat": "follow-up",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on board MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3568,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18381,
+   "completion_tokens": 89
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 8,
+    "totals": {
+     "assignments": 8,
+     "people": 8
+    },
+    "ms": 13
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **8 crew members** are on board **MV Alpha Star**.\n\nFilters: vessel MV Alpha Star; on board; unit people."
+ },
+ {
+  "id": "C18",
+  "turn": 2,
+  "cat": "follow-up",
+  "heldOut": false,
+  "instance": "single",
+  "q": "only engineers",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3505,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18693,
+   "completion_tokens": 95
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Alpha Star"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "assignments": 3,
+     "people": 3
+    },
+    "ms": 14
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **3 crew members** in the engineers group are on board **MV Alpha Star**.\n\nFilters: vessel MV Alpha Star; on board; rank group engineers; unit people."
+ },
+ {
+  "id": "C18",
+  "turn": 3,
+  "cat": "follow-up",
+  "heldOut": false,
+  "instance": "single",
+  "q": "same for MV Beta Ocean",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3559,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18836,
+   "completion_tokens": 104
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "assignments": 3,
+     "people": 3
+    },
+    "ms": 14
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **3 crew members** in the engineers group are on board **MV Beta Ocean**.\n\nFilters: vessel MV Beta Ocean; on board; rank group engineers; unit people."
+ },
+ {
+  "id": "C19",
+  "turn": 1,
+  "cat": "follow-up",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Which certificates expire in the next 30 days on MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4809,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18914,
+   "completion_tokens": 271
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "vessels": [
+      "MV Alpha Star"
+     ],
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 30,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "documents": 4,
+     "people": 4
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 0,
+     "noExpiryDate": 0
+    },
+    "ms": 16
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**4 certificates held by 4 crew members** on **MV Alpha Star** are included: **1 already expired** and **3 expiring by 2026-12-01**.\n\n| Crew member | Rank | Certificate | Expiry | Status |\n|---|---|---|---|---|\n| Dagny Brisketh | Chief Engineer | CoC Chief Engineer | 2026-09-30 | **Expired** |\n| Corvina Tallowind | Second Officer | Crowd Management | 2026-11-01 | Upcoming |\n| Benedek Quorrlyn | Chief Officer | Ship Security Officer | 2026-11-05 | Upcoming |\n| Aldric Vexmoor | Master | CoC Master | 2026-11-10 | Upcoming |\n\nFilters: vessel MV Alpha Star, certificates (licences and training), expiry window next 30 days, unit documents.\n\nOf these, 1 document (1 person) already expired as of 2026-11-01; 3 documents (3 people) expire by 2026-12-01.\n\nShowing all 4 matching documents."
+ },
+ {
+  "id": "C19",
+  "turn": 2,
+  "cat": "follow-up",
+  "heldOut": true,
+  "instance": "single",
+  "q": "and the expired ones?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4051,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19200,
+   "completion_tokens": 152
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "sort": "expiry_asc",
+     "limit": 10,
+     "vessels": [
+      "MV Alpha Star"
+     ],
+     "expiryState": "expired"
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "documents": 1,
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 0,
+     "noExpiryDate": 0
+    },
+    "ms": 82
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**1 expired certificate**, held by **1 crew member**, was found on **MV Alpha Star**.\n\n| Crew member | Rank | Certificate | Expiry |\n|---|---|---|---|\n| Dagny Brisketh | Chief Engineer | CoC Chief Engineer | 2026-09-30 (**Expired**) |\n\nFilters: vessel MV Alpha Star, expired certificates (licences and training), unit documents.\n\nOf these, 1 document (1 person) already expired as of 2026-11-01; 0 documents (0 people) have not expired yet.\n\nShowing all 1 matching documents."
+ },
+ {
+  "id": "C20",
+  "turn": 1,
+  "cat": "people-vs-documents",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which engineers on MV Beta Ocean have certificates expiring in the next 60 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4930,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18999,
+   "completion_tokens": 246
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ],
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "documents": 5,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 0
+    },
+    "ms": 103
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**2 engineers** on **MV Beta Ocean** hold **5 certificates** expiring in the next 60 days. None are already expired; all 5 are upcoming by **31 December 2026**.\n\n| Name | Rank | Certificates | Earliest expiry |\n|---|---|---:|---|\n| Orrin Haverlock | Chief Engineer | 3 | 15 Nov 2026 |\n| Petra Wintermarsh | Second Engineer | 2 | 25 Nov 2026 |\n\n1 record has a missing or unreadable expiry date and is not included.\n\nFilters: vessel MV Beta Ocean; rank group engineers; on-board crew; both licence/certificate and training documents; expiry window next 60 days; unit people.\n\nOf these, 0 documents (0 people) already expired as of 2026-11-01; 5 documents (2 people) expire by 2026-12-31.\n\nShowing all 2 matching crew members."
+ },
+ {
+  "id": "C20",
+  "turn": 2,
+  "cat": "people-vs-documents",
+  "heldOut": false,
+  "instance": "single",
+  "q": "how many certificates is that in total?",
+  "status": 200,
+  "pass": false,
+  "queryOk": null,
+  "dataOk": null,
+  "answerOk": false,
+  "missing": [
+   "\\b5\\b"
+  ],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3514,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18923,
+   "completion_tokens": 138
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "I kept these filters: **MV Beta Ocean**, **engineers**, and certificates **expired or expiring within the next 60 days**. The on-board filter was not applied because it was not part of the previous question.\n\nWould you like me to count the certificates with **on-board crew only**?"
+ },
+ {
+  "id": "C21",
+  "turn": 1,
+  "cat": "cross-area",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Which crew on board have a certificate expiring within 30 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6101,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19203,
+   "completion_tokens": 464
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 30,
+      "unit": "days"
+     },
+     "crewOnBoard": true
+    },
+    "ok": true,
+    "total": 9,
+    "totals": {
+     "documents": 9,
+     "people": 9
+    },
+    "returned": 9,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 54
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**9 crew members** on board have **9 certificates/documents** that are expired or expiring within 30 days. **2 are already expired; 7 expire by 2026-12-01.**\n\n| Crew member | Rank | Vessel | Certificate/document | Expiry |\n|---|---|---|---|---|\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | CoC Chief Engineer **(expired)** | 2026-09-30 |\n| Marek Oldenvaal | Master | MV Beta Ocean | CoC Master **(expired)** | 2026-10-15 |\n| Corvina Tallowind | Second Officer | MV Alpha Star | Crowd Management | 2026-11-01 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | Ship Security Officer | 2026-11-05 |\n| Aldric Vexmoor | Master | MV Alpha Star | CoC Master | 2026-11-10 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | CoC Chief Engineer | 2026-11-15 |\n| Tamsin Ebberline | Chief Engineer | MV Alpha Trader | Advanced Fire Fighting | 2026-11-20 |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean | CoC Second Engineer | 2026-11-25 |\n| Tobiah Rendlesham | Deck Cadet | MV Alpha Trader | Basic Safety Training | 2026-11-30 |\n\n1 document has an unreadable expiry date and 1 has no expiry date; these are not included.\n\nFilters: on-board crew; both licences/certificates and training certificates; expiry window next 30 days; unit people.\n\nOf these, 2 documents (2 people) already expired as of 2026-11-01; 7 documents (7 people) expire by 2026-12-01.\n\nShowing all 9 matching crew members."
+ },
+ {
+  "id": "C22",
+  "turn": 1,
+  "cat": "combined-filter",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many Indian crew are on board?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4148,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18358,
+   "completion_tokens": 75
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "nationalities": [
+      "Indian"
+     ]
+    },
+    "ok": true,
+    "total": 5,
+    "totals": {
+     "assignments": 5,
+     "people": 5
+    },
+    "ms": 36
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **5 Indian crew members** are on board.\n\nFilters: nationality Indian; on board; unit people."
+ },
+ {
+  "id": "C23",
+  "turn": 1,
+  "cat": "grouping",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Crew on board by nationality",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3879,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18451,
+   "completion_tokens": 123
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "group",
+     "unit": "people",
+     "groupBy": [
+      "nationality"
+     ]
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "ms": 94
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**20 crew members on board**, by nationality:\n\n| Nationality | Crew members |\n|---|---:|\n| Philippines | 8 |\n| India | 5 |\n| Ukraine | 3 |\n| United Kingdom | 3 |\n| Croatia | 1 |\n\nFilters: on-board crew; grouped by nationality; unit: people."
+ },
+ {
+  "id": "C24",
+  "turn": 1,
+  "cat": "date-window",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who joined a vessel in the last 30 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5010,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18702,
+   "completion_tokens": 239
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "sort": "sign_on_desc",
+     "limit": 10,
+     "signOnWithin": {
+      "direction": "last",
+      "amount": 30,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableSignOnDate": 1
+    },
+    "ms": 23
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**4 crew members** joined a vessel in the last 30 days:\n\n| Name | Rank | Vessel | Sign-on date |\n|---|---|---|---|\n| Oswin Larkspur | Chief Officer | MV Beta Ocean | 25 Oct 2026 |\n| Hadrian Pellisande | Chief Cook | MV Alpha Star | 20 Oct 2026 |\n| Petra Wintermarsh | 2nd Engineer | MV Beta Ocean | 15 Oct 2026 |\n| Faustin Kelderwick | 3rd Engineer | MV Alpha Star | 5 Oct 2026 |\n\n1 record has an unreadable sign-on date and is not included.\n\nFilters: last 30 days, people, all vessels and ranks.\n\nShowing all 4 matching crew members."
+ },
+ {
+  "id": "C25",
+  "turn": 1,
+  "cat": "person",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Is Orrin Haverlock on board, and which of his certificates expire in the next 60 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6448,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28422,
+   "completion_tokens": 300
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_assignments",
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Orrin Haverlock"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 21
+   },
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people"
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "ms": 22
+   },
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000015"
+     ],
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "documents": 3,
+     "people": 1
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 0,
+     "noExpiryDate": 0
+    },
+    "ms": 53
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nYes. **Orrin Haverlock is on board MV Beta Ocean**.\n\n**3 certificates** expire in the next **60 days**:\n\n| Certificate | Type | Expiry |\n|---|---|---|\n| CoC Chief Engineer | Licence | 15 Nov 2026 |\n| Advanced Fire Fighting | Training | 10 Dec 2026 |\n| Medical First Aid | Training | 20 Dec 2026 |\n\nThere are **0 already expired** and **3 upcoming** certificates in this window.\n\nFilters: person Orrin Haverlock; on-board assignment; certificates of both licence and training types; expiry window next 60 days; unit: documents.\n\nOf these, 0 documents (0 people) already expired as of 2026-11-01; 3 documents (1 person) expire by 2026-12-31.\n\nShowing all 3 matching documents."
+ },
+ {
+  "id": "C26",
+  "turn": 1,
+  "cat": "person",
+  "heldOut": true,
+  "instance": "single",
+  "q": "What certificates does Petra hold, and when do they expire?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5817,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 27916,
+   "completion_tokens": 182
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Petra"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 19
+   },
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "limit": 10,
+     "sort": "expiry_asc",
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000016"
+     ]
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "documents": 3,
+     "people": 1
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "ms": 32
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPetra Wintermarsh holds **3 certificates/documents**:\n\n| Certificate | Type | Expires |\n|---|---|---|\n| CoC Second Engineer | Licence | 2026-11-25 |\n| Basic Safety Training | Training | 2026-12-31 |\n| Tanker Familiarisation | Training | 2027-01-01 |\n\nFilters: person Petra Wintermarsh; all certificate and training document types; unit: documents.\n\nShowing all 3 matching documents."
+ },
+ {
+  "id": "C27",
+  "turn": 1,
+  "cat": "unsupported",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What is the monthly wage of the Master on MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": null,
+  "dataOk": null,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 2220,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9059,
+   "completion_tokens": 53
+  },
+  "toolsUsed": [],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "I can’t access wage data yet. I can answer live questions about crew on board, licences and training certificates, availability, relief due dates, rest hours, rotation approvals, manning, and appraisals—or help with documented SAIL procedures."
+ },
+ {
+  "id": "C28",
+  "turn": 1,
+  "cat": "unsupported-or-provisional",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Which crew are due for relief next month?",
+  "status": 200,
+  "pass": false,
+  "queryOk": false,
+  "dataOk": false,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5698,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19046,
+   "completion_tokens": 335
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "list",
+     "sort": "relief_due_asc",
+     "limit": 10,
+     "dueWithin": {
+      "direction": "next",
+      "amount": 1,
+      "unit": "months"
+     },
+     "dueState": "due"
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "excluded": {
+     "noDueDate": 1,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 1
+    },
+    "ms": 57
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **4 crew assignments** due for relief within the next month, including **2 already overdue**:\n\n| Crew member | Rank | Vessel | Relief due | Status |\n|---|---|---|---|---|\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-10-01 | **Overdue** |\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-10-20 | **Overdue** |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-11-10 | Due |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | 2026-11-20 | Due |\n\nFor Aldric Vexmoor, the recorded relief-due date is **2026-10-20**, differing from the contract end date of **2026-10-01**.\n\n**1 record has no due date and 1 has an unreadable sign-on date, so they are not included.**\n\nFilters: next 1 calendar month (2026-11-01 to 2026-12-01), due or overdue relief, all vessels and ranks, unit: assignments.\n\nShowing all 4 matching assignments."
+ },
+ {
+  "id": "C29",
+  "turn": 1,
+  "cat": "how-to",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How do I add a new licence to a crew member?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": null,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6717,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19222,
+   "completion_tokens": 115
+  },
+  "toolsUsed": [
+   "search_module_docs"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "The available documentation does not describe how to add a new licence to an existing crew member. It only documents creating a new crew record and editing other crew-related sections.\n\n**Source:** *Crewing - Crewing User Manual R2_10.06.2026*, sections 1.2.1.3, 1.3.1.5, and 1.4.1.7."
+ },
+ {
+  "id": "C30",
+  "turn": 1,
+  "cat": "denied",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3243,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18191,
+   "completion_tokens": 65
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": false,
+    "code": "not_allowed",
+    "ms": 0
+   }
+  ],
+  "answer": "I’m sorry, but your role cannot view live crew-on-board data."
+ },
+ {
+  "id": "C31",
+  "turn": 1,
+  "cat": "denied",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3218,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18189,
+   "completion_tokens": 69
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": false,
+    "code": "not_allowed",
+    "ms": 3
+   }
+  ],
+  "answer": "I’m sorry, but your role cannot access live crew data, so I can’t retrieve the number on **MV Beta Ocean**."
+ },
+ {
+  "id": "C32",
+  "turn": 1,
+  "cat": "isolation",
+  "heldOut": false,
+  "instance": "mt",
+  "q": "How many crew are on board MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3966,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18381,
+   "completion_tokens": 90
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 8,
+    "totals": {
+     "assignments": 8,
+     "people": 8
+    },
+    "ms": 13
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **8 crew members** are on board **MV Alpha Star**.\n\nFilters: vessel MV Alpha Star; on-board crew; unit people."
+ },
+ {
+  "id": "C33",
+  "turn": 1,
+  "cat": "isolation",
+  "heldOut": false,
+  "instance": "mt",
+  "q": "How many crew are on board MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3192,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18381,
+   "completion_tokens": 89
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 5,
+    "totals": {
+     "assignments": 5,
+     "people": 5
+    },
+    "ms": 17
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **5 crew members** are on board **MV Alpha Star**.\n\nFilters: vessel MV Alpha Star, on board, unit people."
+ },
+ {
+  "id": "C34",
+  "turn": 1,
+  "cat": "isolation",
+  "heldOut": false,
+  "instance": "mt",
+  "q": "Who is on board MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3765,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18209,
+   "completion_tokens": 82
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": false,
+    "code": "vessel_not_found",
+    "ms": 12
+   }
+  ],
+  "answer": "I couldn’t find a vessel named **MV Beta Ocean** in the company’s Crewing data. Please provide the vessel’s name exactly as shown in SAIL.\n\n"
+ },
+ {
+  "id": "N01",
+  "turn": 1,
+  "cat": "handover (A1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is on board MV Beta Ocean as Chief Officer?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4076,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18561,
+   "completion_tokens": 124
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "sort": "name",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "ranks": [
+      "Chief Officer"
+     ]
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 47
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **2 people** on board **MV Beta Ocean** as Chief Officer:\n\n- Nadira Sklemmon\n- Oswin Larkspur\n\nFilters: vessel MV Beta Ocean, rank Chief Officer, on board, unit people.\n\nShowing all 2 matching crew members."
+ },
+ {
+  "id": "N02",
+  "turn": 1,
+  "cat": "planned reliever (A1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Is Kestrel Duvanne on board a vessel at the moment?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 8029,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28328,
+   "completion_tokens": 118
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Kestrel Duvanne"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 20
+   },
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10
+    },
+    "ok": true,
+    "total": 20,
+    "totals": {
+     "assignments": 20,
+     "people": 20
+    },
+    "returned": 10,
+    "nextOffset": 10,
+    "ms": 28
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **Kestrel Duvanne is not shown as on board a vessel.** Their current vessel is not recorded.\n\nFilters: on-board crew assignments, people.\n\nShowing 10 of 20 matching crew members (records 1–10; 10 more available)."
+ },
+ {
+  "id": "N03",
+  "turn": 1,
+  "cat": "rank config (A5)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many engineers are on MV Alpha Trader?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3959,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18578,
+   "completion_tokens": 125
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Alpha Trader"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "assignments": 1,
+     "people": 1
+    },
+    "ms": 34
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **1 engineer** is on **MV Alpha Trader**.\n\nTwo people on board hold ranks with no category in Rank Administration (**Deck Cadet** and **Gas Engineer**) and are not counted as engineers.\n\nFilters: vessel MV Alpha Trader, rank group engineers, on-board people.\n\nNot counted in any rank group: 2 crew on board whose ranks have no category in Rank Administration (Deck Cadet, Gas Engineer)."
+ },
+ {
+  "id": "N04",
+  "turn": 1,
+  "cat": "upcoming only (A4)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which certificates of crew on board expire within 60 days? Only the ones that have not expired yet.",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6091,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19293,
+   "completion_tokens": 486
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "sort": "expiry_asc",
+     "limit": 10,
+     "expiryState": "not_expired",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     },
+     "crewOnBoard": true
+    },
+    "ok": true,
+    "total": 12,
+    "totals": {
+     "documents": 12,
+     "people": 9
+    },
+    "returned": 10,
+    "nextOffset": 10,
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 1
+    },
+    "ms": 18
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**12 certificates held by 9 crew members** expire within the next 60 days and have not yet expired. The first 10 are shown:\n\n| Crew member | Rank | Vessel | Certificate | Expiry |\n|---|---|---|---|---|\n| Corvina Tallowind | Second Officer | MV Alpha Star | Crowd Management | 2026-11-01 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | Ship Security Officer | 2026-11-05 |\n| Aldric Vexmoor | Master | MV Alpha Star | CoC Master | 2026-11-10 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | CoC Chief Engineer | 2026-11-15 |\n| Tamsin Ebberline | Chief Engineer | MV Alpha Trader | Advanced Fire Fighting | 2026-11-20 |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean | CoC Second Engineer | 2026-11-25 |\n| Tobiah Rendlesham | Deck Cadet | MV Alpha Trader | Basic Safety Training | 2026-11-30 |\n| Sorrel Wainfleet | Gas Engineer | MV Alpha Trader | CoC Gas Engineer | 2026-12-05 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | Advanced Fire Fighting | 2026-12-10 |\n| Oswin Larkspur | Chief Officer | MV Beta Ocean | CoC Chief Mate | 2026-12-15 |\n\nThere are **2 more certificates**. **1 record has an unreadable expiry date and 1 has no expiry date; they are not included.**\n\nFilters: crew on board; upcoming certificates only; expiry within the next 60 days; unit: documents.\n\nOf these, 0 documents (0 people) already expired as of 2026-11-01; 12 documents (9 people) expire by 2026-12-31.\n\nShowing 10 of 12 matching documents (records 1–10; 2 more available)."
+ },
+ {
+  "id": "N05",
+  "turn": 1,
+  "cat": "rank config (A5)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which deck ratings are on board?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4914,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18708,
+   "completion_tokens": 165
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "offset": 0,
+     "sort": "name",
+     "rankGroups": [
+      "deck_ratings"
+     ]
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 25
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**2 deck-rating crew members are on board:**\n\n| Name | Rank | Vessel |\n|---|---|---|\n| Gisla Marrowfen | Bosun | MV Alpha Star |\n| Una Marchbanks | AB | MV Alpha Trader |\n\n2 other crew on board hold ranks without a category in Rank Administration—Deck Cadet and Gas Engineer—and are not counted.\n\nFilters: rank group deck ratings; on board; unit people.\n\nNot counted in any rank group: 2 crew on board whose ranks have no category in Rank Administration (Deck Cadet, Gas Engineer).\n\nShowing all 2 matching crew members."
+ },
+ {
+  "id": "N06",
+  "turn": 1,
+  "cat": "terminated (A6)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Which licences does Pelham Ashgrove hold and when do they expire?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5536,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 27731,
+   "completion_tokens": 137
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Pelham Ashgrove"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 17
+   },
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "sort": "expiry_asc",
+     "limit": 10,
+     "documentTypes": [
+      "licence"
+     ],
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000024"
+     ]
+    },
+    "ok": true,
+    "total": 0,
+    "totals": {
+     "documents": 0,
+     "people": 0
+    },
+    "returned": 0,
+    "nextOffset": null,
+    "ms": 22
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nPelham Ashgrove holds **0 licences** recorded in Crewing, so there are no licence expiry dates to report.\n\nFilters: person Pelham Ashgrove, licences only, unit documents.\n\nShowing 0 matching documents."
+ },
+ {
+  "id": "N07",
+  "turn": 1,
+  "cat": "inactive (A6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which Medical First Aid certificates expire in the next 30 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4105,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18613,
+   "completion_tokens": 176
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "list",
+     "unit": "documents",
+     "limit": 10,
+     "offset": 0,
+     "documentNameContains": "Medical First Aid",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 30,
+      "unit": "days"
+     }
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "documents": 1,
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableExpiryDate": 0,
+     "noExpiryDate": 0
+    },
+    "ms": 15
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**1 Medical First Aid certificate** is expiring by **2026-12-01**. No certificates are already expired.\n\n| Crew member | Rank | Vessel | Certificate | Expiry |\n|---|---|---|---|---|\n| Rowena Castlewick | Chief Cook | Not specified | Medical First Aid (training) | 2026-11-25 |\n\n**Filters:** Medical First Aid; next 30 days; documents; all vessels and ranks.\n\nOf these, 0 documents (0 people) already expired as of 2026-11-01; 1 document (1 person) expire by 2026-12-01.\n\nShowing all 1 matching documents."
+ },
+ {
+  "id": "N08",
+  "turn": 1,
+  "cat": "primary only on request (A1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on board across the fleet, counting primary assignments only?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3399,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18372,
+   "completion_tokens": 86
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "crewStatus": [
+      "primary"
+     ]
+    },
+    "ok": true,
+    "total": 19,
+    "totals": {
+     "assignments": 19,
+     "people": 19
+    },
+    "ms": 15
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**19 crew members** are on board across the fleet, counting **primary assignments only**.\n\nFilters: fleet-wide; primary assignments only; unit: people."
+ }
+]

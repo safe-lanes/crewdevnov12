@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Edit2, Trash2 } from "lucide-react";
 import { PartGProps } from "./types";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 
 const PartGComponent: React.FC<PartGProps> = ({
   formMethods,
@@ -27,9 +28,11 @@ const PartGComponent: React.FC<PartGProps> = ({
   deleteTrainingFollowup,
   disableAddButtons = false,
 }) => {
+  const { requestText, dialog } = useAppDialog();
 
   return (
     <div className="space-y-6">
+      {dialog}
       <div className="pb-4 mb-6">
         <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part {getDynamicSectionLetter('G')}: Office Review & Followup</h3>
         <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
@@ -292,9 +295,13 @@ const PartGComponent: React.FC<PartGProps> = ({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               const currentComment = trainingFollowupComments[followup.id] || followup.comment || "";
-                              const newComment = prompt("Enter comment:", currentComment);
+                              const newComment = await requestText("Enter comment:", currentComment, {
+                                title: "Training comment",
+                                actionLabel: "Save comment",
+                                cancelLabel: "Keep comment",
+                              });
                               if (newComment !== null) {
                                 setTrainingFollowupComments(prev => ({
                                   ...prev,

@@ -39,5 +39,5 @@ export function trainingChecklistPolicy(check: ComplianceResult, blockExpiring: 
 
 export function trainingBlockerMessage(blockers: readonly TrainingBlocker[]) {
   return blockers.map(b => `${b.courseName ? `${b.courseName}: ` : ""}${b.reason} ` +
-    "Override training compliance with a written reason is required to proceed without correcting this gap.").join(" ");
+    "Override deployment block with a written reason is required to proceed without correcting this gap.").join(" ");
 }

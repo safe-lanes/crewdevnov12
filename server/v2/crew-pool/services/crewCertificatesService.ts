@@ -10,6 +10,7 @@ import {
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
 import { resolveCountryUuid } from "./masterDataResolver";
+import { ensureTrainingAttachmentReference } from "./trainingAttachmentReference";
 import {
   crewLicenses,
   crewLicensesAttachments,
@@ -363,12 +364,13 @@ export const crewCertificatesService = {
     const dataWithAudit = applyAuditUser(data, true);
 
     const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
-    return getDb().transaction(async (tx: any) => {
+    const saved = await getDb().transaction(async (tx: any) => {
       await lockCrewSuggestionAssignments(tx, crewUuid);
       const created = await crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId }, tx);
       await reconcileCrewSuggestions(crewUuid, tx);
       return created;
     });
+    return ensureTrainingAttachmentReference(saved);
   },
 
   async updateTraining(
@@ -376,16 +378,20 @@ export const crewCertificatesService = {
     data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
     const original = await this.getTrainingByUuid(trainUuid);
-    const dataWithAudit = applyAuditUser(certificateUpdateFields(data, original.crewUuid), false);
+    // Preserve ownership validation and prevent stale payloads from replacing
+    // the stored attachment reference, including an existing empty string.
+    const { attachmentRef: _attachmentRef, ...trainingData } = certificateUpdateFields(data, original.crewUuid);
+    const dataWithAudit = applyAuditUser(trainingData, false);
 
     const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
-    return getDb().transaction(async (tx: any) => {
+    const saved = await getDb().transaction(async (tx: any) => {
       await lockCrewSuggestionAssignments(tx, original.crewUuid);
       const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit, tx);
       if (!updated) throw new Error(`Failed to update training: ${trainUuid}`);
       await reconcileCrewSuggestions(original.crewUuid, tx);
       return updated;
     });
+    return ensureTrainingAttachmentReference(saved);
   },
 
   async deleteTraining(trainUuid: string): Promise<void> {
@@ -453,7 +459,7 @@ export const crewCertificatesService = {
     await crewMembersService.getByUuid(crewUuid);
 
     const { lockCrewSuggestionAssignments, reconcileCrewSuggestions } = await import("../../training-needs/complianceSuggestions");
-    return db.transaction(async (tx: any) => {
+    const saved = await db.transaction(async (tx: any) => {
       await lockCrewSuggestionAssignments(tx, crewUuid);
       const results: CrewTrainingCourse[] = [];
       const now = new Date();
@@ -470,8 +476,9 @@ export const crewCertificatesService = {
         let trainUuid: string;
 
         if (item.trainUuid) {
+          const { attachmentRef: _attachmentRef, ...trainingData } = item.data;
           const updated = await crewTrainingRepository.update(
-            item.trainUuid, applyAuditUser({ ...item.data, auditUserUuid }), tx,
+            item.trainUuid, applyAuditUser({ ...trainingData, auditUserUuid }), tx,
           );
           if (!updated) throw new Error(`Training ${item.trainUuid} not found`);
           trainUuid = item.trainUuid;
@@ -517,6 +524,14 @@ export const crewCertificatesService = {
       await reconcileCrewSuggestions(crewUuid, tx);
       return results;
     });
+
+    // Do not let reference allocation interfere with the existing bulk-save or
+    // attachment transaction. Sequential allocation also avoids self-contention.
+    const results: CrewTrainingCourse[] = [];
+    for (const training of saved) {
+      results.push(await ensureTrainingAttachmentReference(training, db));
+    }
+    return results;
   },
 
   // ============ Expiry Checks ============

@@ -6,6 +6,7 @@ import { insertAccAdvanceV2Schema } from "../../../../shared/v2/accounts/types";
 const updateSchema = insertAccAdvanceV2Schema.partial().omit({
   advanceUuid: true,
   writeOffPeriod: true,
+  cancelledPeriod: true,
 });
 
 function statusFor(error: any): number | null {
@@ -70,7 +71,11 @@ export const advancesController = {
   async create(req: Request, res: Response) {
     try {
       const parsed = insertAccAdvanceV2Schema
-        .omit({ advanceUuid: true, writeOffPeriod: true })
+        .omit({
+          advanceUuid: true,
+          writeOffPeriod: true,
+          cancelledPeriod: true,
+        })
         .safeParse(req.body);
       if (!parsed.success) {
         return res
@@ -116,6 +121,9 @@ export const advancesController = {
     try {
       const record = await advancesService.cancel(
         req.params.uuid,
+        typeof req.body?.cancelledPeriod === "string"
+          ? req.body.cancelledPeriod
+          : "",
         getAuditUserUuid(req),
       );
       res.json(record);

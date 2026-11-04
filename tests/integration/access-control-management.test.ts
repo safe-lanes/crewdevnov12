@@ -5,16 +5,20 @@ import { sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Request } from "express";
-import { hasCompanyFormPermission } from "../../shared/v2/admin/companyFormPermissions";
+import { hasCompanyFormPermission, emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
+import { AUDIT_ACTION_LABELS, liveAuditActionLabel } from "../../shared/v2/admin/accessAuditPresentation";
 const holder = vi.hoisted(() => ({ db: null as any }));
 vi.mock("@server/v2/db", () => ({ getDb: () => holder.db }));
 import { accessControlAuthority, appendAudit, lockAccessControl, managedWrite, managementSnapshot,
   saveActionDecisions } from "@server/v2/admin/services/accessControlManagement";
 import { roleSyncTransition, parentSyncActor } from "@server/v2/admin/services/accessControlParentSync";
-import { writeCatalogue, writeMenuGrants } from "@server/v2/admin/services/accessControlWrites";
+import { writeCatalogue, writeMenuGrants, writeCombinedRoleGrants } from "@server/v2/admin/services/accessControlWrites";
 import { accessControlController } from "@server/v2/admin/controllers/accessControlController";
+import { trainingComplianceSettingsController } from "@server/v2/admin/controllers/trainingComplianceSettingsController";
 import { actionPermissionsController } from "@server/v2/admin/controllers/actionPermissionsController";
 import { MastersRepository } from "@server/v2/masters/repositories/mastersRepository";
+import { readAccessAuditPage } from "@server/v2/admin/services/accessAuditRead";
+import { accessAuditExportRow } from "../../shared/v2/admin/accessAuditExport";
 
 const schema = `test_ac_${randomUUID().replaceAll("-", "")}`;
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}`, max: 6 });
@@ -57,6 +61,11 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0233_resource_action_permissions.sql", "utf8"));
   await pool.query(await readFile("migrations/0235_preserve_company_grants_on_role_sync.sql", "utf8"));
   await pool.query(await readFile("migrations/0236_access_control_management.sql", "utf8"));
+  await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('company_forms','override_checklist','Override checklist',7)");
+  await pool.query("INSERT INTO adm_permission_actions(resource,action,label,sort_order) VALUES ('training_compliance','override','Override deployment block',1)");
+  await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
+  await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
+  await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -65,6 +74,315 @@ beforeEach(async () => {
   await pool.query("INSERT INTO adm_menumaster_ac(muid,name,route) VALUES ('crew','Crew Database','/crew'),('admin-menu','Admin','/admin')");
 });
 describe("Access Control real database authority, audit and parent synchronization", () => {
+  const combinedBody = () => ({
+    permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
+    companyFormGrants: { ...emptyCompanyFormGrants(), view: true, witness: true },
+    trainingComplianceAllowed: true,
+  });
+  it("atomically saves grid and Company Forms with frozen audit names and no-change suppression", async () => {
+    await pool.query("UPDATE master_users SET firstname='Original',lastname='Manager' WHERE id=1");
+    const request = req(1, combinedBody());
+    request.params = { ruid: "target" };
+    expect((await response(accessControlController.saveCombinedPermissions, request)).statusCode).toBe(200);
+    expect((await pool.query("SELECT canview FROM adm_roleaccess_ac WHERE role_id='target' AND menu_id='crew'")).rows[0].canview).toBe(true);
+    expect((await pool.query("SELECT allowed FROM adm_resource_action_grants WHERE role_id='target' AND resource='company_forms' AND action='witness'")).rows[0].allowed).toBe(true);
+    const entries = await audit();
+    expect(entries).toHaveLength(12); // four grid, seven form, one deployment-block decision
+    expect(entries.find(e => e.resource === "training_compliance" && e.action === "override"))
+      .toMatchObject({ before_value: null, after_value: true });
+    for (const entry of entries) expect(entry).toMatchObject({
+      actor_display_name: "Original Manager", affected_role_name: "Documentation Reviewer",
+      role_id: "target", event: "grant_change",
+    });
+    expect(entries.find(e => e.resource === "company_forms" && e.action === "void_completed"))
+      .toMatchObject({ before_value: null, after_value: false });
+    const before = await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action");
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    expect(await audit()).toEqual(entries);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(before.rows);
+    await pool.query("UPDATE master_users SET firstname='Changed' WHERE id=1; UPDATE adm_rolemaster_ac SET assigned_role='Changed role' WHERE ruid='target'");
+    expect(await audit()).toEqual(entries);
+  });
+  it("rolls back grid writes and their audit if Company Forms eligibility rejects the second writer", async () => {
+    await pool.query("UPDATE adm_rolemaster_ac SET parent_owned=false WHERE ruid='target'");
+    await expect(writeCombinedRoleGrants(req(1, combinedBody()), "target")).rejects.toThrow("Active eligible parent role not found");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("rolls back both groups and every audit row on a real database failure after grid writes", async () => {
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    const beforeMenus = (await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows;
+    const beforeForms = (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows;
+    const beforeAudit = await audit();
+    await pool.query(`CREATE FUNCTION refuse_form_write() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'Deliberate isolated-test Company Forms write failure'; END $$;
+      CREATE TRIGGER refuse_form_write BEFORE UPDATE ON adm_resource_action_grants
+      FOR EACH ROW EXECUTE FUNCTION refuse_form_write()`);
+    const body = combinedBody();
+    body.permissions[0].canview = false;
+    body.companyFormGrants.view = false;
+    const request = req(1, body); request.params = { ruid: "target" };
+    const result = await response(accessControlController.saveCombinedPermissions, request);
+    expect(result.statusCode).toBe(500);
+    expect(result.data.message).toBe("Access Control operation failed.");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows).toEqual(beforeMenus);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(beforeForms);
+    expect(await audit()).toEqual(beforeAudit);
+  });
+  it("refuses an invalid menu without writing form grants or audit", async () => {
+    const body = combinedBody(); body.permissions[0].menuId = "does-not-exist";
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Menu not found");
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("rolls back menu and Company Forms changes and audit when the third writer fails", async () => {
+    await writeCombinedRoleGrants(req(1, combinedBody()), "target");
+    const snapshot = async () => ({
+      menus: (await pool.query("SELECT * FROM adm_roleaccess_ac ORDER BY id")).rows,
+      grants: (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows,
+      audit: await audit(),
+    });
+    const before = await snapshot();
+    await pool.query(`CREATE FUNCTION refuse_training_write() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.resource='training_compliance' THEN RAISE EXCEPTION 'Deliberate third-writer failure'; END IF;
+      RETURN NEW; END $$;
+      CREATE TRIGGER refuse_training_write BEFORE UPDATE ON adm_resource_action_grants
+      FOR EACH ROW EXECUTE FUNCTION refuse_training_write()`);
+    const body = combinedBody();
+    body.permissions[0].canview = false;
+    body.companyFormGrants.view = false;
+    body.trainingComplianceAllowed = false;
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Deliberate third-writer failure");
+    expect(await snapshot()).toEqual(before);
+  });
+  it.each([undefined, null, "true", 1])("refuses invalid deployment override %s before any write", async value => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), trainingComplianceAllowed: value }), "target"))
+      .rejects.toThrow("Invalid payload");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("refuses unauthorised combined writes without changing either group", async () => {
+    await management(1, "ordinary", true); // disables the name fallback for Admin
+    const before = await audit();
+    await expect(writeCombinedRoleGrants(req(1, combinedBody()), "target")).rejects.toThrow("permission to manage Access Control");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants WHERE resource='company_forms'")).rows).toHaveLength(0);
+    expect(await audit()).toEqual(before);
+  });
+  it.each(["actor", "actor_display_name", "permission_display_label", "category", "timestamp"])("rejects browser-owned %s in the atomic payload", async key => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), [key]: "spoof" }), "target"))
+      .rejects.toThrow("server-owned");
+    expect(await audit()).toHaveLength(0);
+  });
+  it("validates the complete form map and duplicate menus before any writes", async () => {
+    await expect(writeCombinedRoleGrants(req(1, { ...combinedBody(), companyFormGrants: { view: true } }), "target")).rejects.toThrow("Invalid payload");
+    const body = combinedBody(); body.permissions.push({ ...body.permissions[0] });
+    await expect(writeCombinedRoleGrants(req(1, body), "target")).rejects.toThrow("Duplicate menu grants");
+    expect((await pool.query("SELECT * FROM adm_roleaccess_ac")).rows).toHaveLength(0);
+    expect(await audit()).toHaveLength(0);
+  });
+  it("returns an empty explicit list and the server-resolved role during name bootstrap", async () => {
+    const result = await response(accessControlController.state, req(1));
+    expect(result.statusCode).toBe(200);
+    expect(result.data).toMatchObject({ mode: "name_bootstrap", explicitManagers: [], currentRoleId: "admin" });
+  });
+  it("lists all explicit holders, including unlinked roles, without trusting browser identity or writing audit", async () => {
+    await management(1, "ordinary", true);
+    await management(4, "support", true);
+    await pool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned)
+      VALUES ('unlinked','Orphaned Manager','Office',true);
+      INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES ('unlinked','access_control','manage',true)`);
+    const before = await audit();
+    const grantsBefore = (await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows;
+    const result = await response(accessControlController.state,
+      req(4, { currentRoleId: "support", explicitManagers: [{ roleId: "fake", roleName: "Fake" }] }));
+    expect(result.data).toMatchObject({ mode: "management", currentRoleId: "ordinary", eligibleManagerCount: 2 });
+    expect(result.data.explicitManagers).toEqual([
+      { roleId: "ordinary", roleName: "Crewing Coordinator" },
+      { roleId: "unlinked", roleName: "Orphaned Manager" },
+      { roleId: "support", roleName: "Sail Admin" },
+    ]);
+    expect(await audit()).toEqual(before);
+    expect((await pool.query("SELECT * FROM adm_resource_action_grants ORDER BY role_id,resource,action")).rows).toEqual(grantsBefore);
+  });
+  it("keeps the actual fallback authority unchanged when only an unlinked explicit holder exists", async () => {
+    await pool.query(`INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned)
+      VALUES ('unlinked','Unlinked Manager','Office',true);
+      INSERT INTO adm_resource_action_grants(role_id,resource,action,allowed)
+      VALUES ('unlinked','access_control','manage',true)`);
+    const result = await response(accessControlController.state, req(1));
+    expect(result.data).toMatchObject({ mode: "name_bootstrap", eligibleManagerCount: 0,
+      explicitManagers: [{ roleId: "unlinked", roleName: "Unlinked Manager" }] });
+    expect(await authority(1)).toMatchObject({ mode: "name_bootstrap", allowed: true });
+  });
+  it("saves both training settings successfully without an audit entry for unchanged values, then records only the changed setting", async () => {
+    await pool.query(`CREATE TABLE adm_training_compliance_settings(singleton boolean PRIMARY KEY,
+      block_expiring_during_contract boolean NOT NULL, block_missing_expiry boolean NOT NULL);
+      INSERT INTO adm_training_compliance_settings VALUES(true,false,false)`);
+    const unchanged = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: false, blockMissingExpiry: false }));
+    expect(unchanged.statusCode).toBe(200);
+    expect(unchanged.data).toMatchObject({ blockExpiringDuringContract: false, blockMissingExpiry: false });
+    expect(await audit()).toEqual([]);
+    const changed = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: true, blockMissingExpiry: false }));
+    expect(changed.statusCode).toBe(200);
+    const records = await audit();
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ event: "training_setting_changed",
+      action: "block_expiring_during_contract", before_value: false, after_value: true });
+    const repeated = await response(trainingComplianceSettingsController.save,
+      req(1, { blockExpiringDuringContract: true, blockMissingExpiry: false }));
+    expect(repeated.statusCode).toBe(200);
+    expect(await audit()).toEqual(records);
+    expect((await pool.query("SELECT * FROM adm_training_compliance_settings")).rows).toEqual([{
+      singleton: true, block_expiring_during_contract: true, block_missing_expiry: false,
+    }]);
+  });
+  it.each(["grant_change", "training_setting_changed", "training_override", "checklist_override",
+    "role_eligibility_change", "company_document_branding", "parent_sync_management_eligibility",
+    "parent_sync_category_readiness", "parent_sync_rejected"])(
+    "suppresses identical JSON values centrally for %s, but records an actual change", async event => {
+      const actor = { ...source, displayName: "Test editor" };
+      await holder.db.transaction(async (tx: any) => {
+        for (const [before, after] of [[false, false], [true, true], [null, null],
+          [{ active: true, nested: { a: 1, b: 2 } }, { nested: { b: 2, a: 1 }, active: true }]]) {
+          await appendAudit(tx, actor, event, "target", "access_control", "manage", before, after);
+        }
+      });
+      expect(await audit()).toEqual([]);
+      await holder.db.transaction((tx: any) => appendAudit(tx, actor, event, "target",
+        "access_control", "manage", false, true));
+      expect(await audit()).toHaveLength(1);
+      expect((await audit())[0]).toMatchObject({ event, before_value: false, after_value: true,
+        affected_role_name: "Documentation Reviewer" });
+    });
+  it("freezes the server permission label across a later display-name change, without altering stored events", async () => {
+    const originalLabel = AUDIT_ACTION_LABELS.override;
+    await saveActionDecisions(req(1, { permission_display_label: "Browser forged label" }), "target", "training_compliance", { override: true });
+    const original = (await audit())[0];
+    expect(original.permission_display_label).toBe("Override deployment block");
+    try {
+      // Change the actual live display-label registry in this test process.
+      // This is the same isolated DB path as a later server label deployment.
+      AUDIT_ACTION_LABELS.override = "A later training permission name";
+      const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+      expect(result.items[0].sentence).toContain("Override deployment block");
+      expect(result.items[0].sentence).not.toContain("A later training permission name");
+      expect(accessAuditExportRow(result.items[0])).toMatchObject({
+        permission: "A later training permission name", frozenPermission: "Override deployment block",
+      });
+      expect(await audit()).toEqual([original]);
+      await saveActionDecisions(req(), "target", "training_compliance", { override: false });
+      expect((await audit()).at(-1).permission_display_label).toBe("A later training permission name");
+    } finally { AUDIT_ACTION_LABELS.override = originalLabel; }
+  });
+  it("adds the permission label column idempotently without backfilling legacy events", async () => {
+    await pool.query("ALTER TABLE adm_access_control_audit DROP COLUMN permission_display_label");
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,resource,action,before_value,after_value)
+      VALUES ('grant_change','{}','training_compliance','override','false','true')`);
+    const before = (await audit())[0];
+    await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
+    await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
+    const after = (await audit())[0];
+    expect(after).toEqual({ ...before, permission_display_label: null });
+    expect((await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0].sentence)
+      .toContain(liveAuditActionLabel(after));
+  });
+  it("freezes the affected role name across rename and deletion, with separate current/frozen export values", async () => {
+    await saveActionDecisions(req(), "target", "company_forms", { view: true });
+    const original = (await audit())[0];
+    expect(original.affected_role_name).toBe("Documentation Reviewer");
+    await pool.query("UPDATE adm_rolemaster_ac SET assigned_role='Renamed Reviewer' WHERE ruid='target'");
+    const read = async () => (await readAccessAuditPage({
+      query: { page: "1", search: "Documentation Reviewer" },
+    } as unknown as Request)).items[0];
+    const renamed = await read();
+    expect(renamed.sentence).toContain("Documentation Reviewer");
+    expect(renamed.sentence).not.toContain("Renamed Reviewer");
+    expect(accessAuditExportRow(renamed)).toMatchObject({
+      role: "Renamed Reviewer", frozenRole: "Documentation Reviewer",
+    });
+    await pool.query("DELETE FROM adm_rolemaster_ac WHERE ruid='target'");
+    const deleted = await read();
+    expect(deleted.sentence).toBe(renamed.sentence);
+    expect(accessAuditExportRow(deleted)).toMatchObject({ role: "", frozenRole: "Documentation Reviewer" });
+    expect((await audit())[0]).toEqual(original);
+  });
+  it("adds the role snapshot without rewriting legacy entries, preserving live fallback", async () => {
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value)
+      VALUES ('grant_change','{"masterUserId":1}','target','company_forms','view','false','true')`);
+    const original = await audit();
+    await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
+    expect(await audit()).toEqual(original);
+    const row = (await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0];
+    expect(row.affected_role_name).toBeNull();
+    expect(row.sentence).toContain("Documentation Reviewer");
+    expect(accessAuditExportRow(row)).toMatchObject({ role: "Documentation Reviewer", frozenRole: "" });
+  });
+  it("freezes a server-derived actor name and role across rename, reassignment and deletion", async () => {
+    await pool.query("UPDATE master_users SET fullname='Original Person' WHERE id=1");
+    await saveActionDecisions(req(1, { actor_display_name: "Browser forgery",
+      actor: { displayName: "Browser forgery" } }), "ordinary", "access_control", { manage: true });
+    const original = (await audit())[0];
+    expect(original.actor_display_name).toBe("Original Person");
+    expect(original.actor).toMatchObject({ masterUserId: 1, roleName: "Admin" });
+    expect(original.actor).not.toHaveProperty("displayName");
+    await pool.query("UPDATE master_users SET fullname='Renamed Person',role='Documentation Reviewer' WHERE id=1");
+    await pool.query("UPDATE adm_rolemaster_ac SET assigned_role='Renamed Admin' WHERE ruid='admin'");
+    const read = () => readAccessAuditPage({ query: { page: "1", search: "Original Person" } } as unknown as Request);
+    const renamed = (await read()).items[0];
+    expect(renamed.actor_display_name).toBe("Original Person");
+    expect(renamed.actor_name).toBe("Renamed Person");
+    expect(renamed.sentence).toContain("Original Person granted");
+    expect(renamed.sentence).not.toContain("Renamed Person");
+    expect(accessAuditExportRow(renamed)).toMatchObject({ person: "Renamed Person", frozenPerson: "Original Person" });
+    await pool.query("DELETE FROM master_users WHERE id=1");
+    const deleted = (await read()).items[0];
+    expect(deleted.actor_name).toBeNull();
+    expect(deleted.sentence).toBe(renamed.sentence);
+    expect(accessAuditExportRow(deleted)).toMatchObject({ person: "", frozenPerson: "Original Person" });
+    expect((await audit())[0]).toEqual(original);
+  });
+  it("keeps legacy entries null and uses their live lookup without a backfill", async () => {
+    await pool.query("UPDATE master_users SET fullname='Legacy Person' WHERE id=1");
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value)
+      VALUES ('grant_change','{"masterUserId":1,"roleName":"Admin"}','ordinary','company_forms','view','false','true')`);
+    const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+    expect(result.items[0].actor_display_name).toBeNull();
+    expect(result.items[0].sentence).toContain("Legacy Person granted");
+    expect(accessAuditExportRow(result.items[0])).toMatchObject({ person: "Legacy Person", frozenPerson: "" });
+  });
+  it("snapshots parent-sync identity before the source user is removed by replacement", async () => {
+    await pool.query("UPDATE master_users SET fullname='Parent Operator' WHERE id=1");
+    const captured = await parentSyncActor(req(1), "fixture.invalid");
+    await holder.db.transaction(async (tx: any) => {
+      await tx.execute(sql`DELETE FROM master_users WHERE id=1`);
+      await appendAudit(tx, captured, "parent_sync_category_readiness", null, "access_control",
+        "category_readiness", false, true);
+    });
+    expect((await audit())[0]).toMatchObject({ actor_display_name: "Parent Operator",
+      actor: { masterUserId: 1, source: "trusted_parent_sync:fixture.invalid" } });
+  });
+  it("the additive migration is idempotent and does not backfill or rewrite existing audit rows", async () => {
+    await pool.query(`INSERT INTO adm_access_control_audit(event,actor,resource,action)
+      VALUES ('grant_change','{"masterUserId":1}','company_forms','view')`);
+    const before = await audit();
+    await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
+    expect(await audit()).toEqual(before);
+    expect(before[0].actor_display_name).toBeNull();
+  });
+  it("records an unavailable name explicitly instead of borrowing a later name", async () => {
+    await management(1, "ordinary", true);
+    expect((await audit())[0].actor_display_name).toBe("A user whose name was not recorded");
+    await pool.query("UPDATE master_users SET fullname='Later Name' WHERE id=1");
+    const result = await readAccessAuditPage({ query: { page: "1" } } as unknown as Request);
+    expect(result.items[0].sentence).toContain("A user whose name was not recorded granted");
+    expect(result.items[0].sentence).not.toContain("Later Name");
+  });
   it("fresh bootstrap uses exactly the original normalized whitelist", async () => {
     for (const id of [1, 2, 3]) expect((await authority(id)).mode).toBe("name_bootstrap");
     expect((await authority(4)).allowed).toBe(false);
@@ -370,8 +688,10 @@ describe("Access Control real database authority, audit and parent synchronizati
     else expect((await authority(4)).mode).toBe("management");
   });
   it("sync audit identity comes from authenticated master user and configured host", async () => {
-    const request = req(1, { auditUserUuid: "spoof", actor: { id: 99 } });
-    expect(await parentSyncActor(request, "parent.example")).toEqual({ masterUserId: 1, userType: "Office", source: "trusted_parent_sync:parent.example" });
+    await pool.query("UPDATE master_users SET fullname='Parent Account' WHERE id=1");
+    const request = req(1, { auditUserUuid: "spoof", actor: { id: 99, displayName: "Browser forgery" } });
+    expect(await parentSyncActor(request, "parent.example")).toEqual({ masterUserId: 1, userType: "Office",
+      source: "trusted_parent_sync:parent.example", displayName: "Parent Account" });
     await expect(parentSyncActor({ ...request, user: { id: 1, userType: "Ship" } } as Request, "parent.example")).rejects.toThrow("identity mismatch");
     await expect(new MastersRepository().syncMasterData("roles", snapshotRows())).rejects.toThrow("source required");
   });

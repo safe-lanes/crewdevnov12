@@ -3,7 +3,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { admMenuMasterAc, admRoleMasterAc, admRoleAccessAc } from "../../../../shared/v2/admin/schema";
-import { AccessControlError, appendAudit, managedWrite } from "./accessControlManagement";
+import { AccessControlError, appendAudit, managedWrite, writeActionDecisions, type AuditActor } from "./accessControlManagement";
+import { companyFormGrantsSchema } from "./companyFormGrantSchema";
 
 const menuFields = z.object({ name: z.string().min(1), displayName: z.string().nullable().optional(),
   route: z.string().min(1), parentMenu: z.string().nullable().optional(), isActive: z.boolean().optional(),
@@ -48,9 +49,29 @@ export async function writeCatalogue(req: Request, kind: "role" | "menu", operat
 }
 export async function writeMenuGrants(req: Request, roleId: string) {
   const { permissions } = parse(menuGrants, req.body);
+  validateMenuDecisions(permissions);
+  return managedWrite(req, (tx, actor) => writeMenuDecisions(tx, actor, roleId, permissions));
+}
+type MenuDecision = z.infer<typeof menuGrants>["permissions"][number];
+function validateMenuDecisions(permissions: MenuDecision[]) {
   if (new Set(permissions.map((p: any) => p.menuId)).size !== permissions.length)
     throw new AccessControlError("Duplicate menu grants.", 400);
+}
+/** No nested transaction: all three permission writers and audits share tx. */
+export async function writeCombinedRoleGrants(req: Request, roleId: string) {
+  const body = parse(menuGrants.extend({
+    companyFormGrants: companyFormGrantsSchema,
+    trainingComplianceAllowed: z.boolean(),
+  }), req.body);
+  validateMenuDecisions(body.permissions);
   return managedWrite(req, async (tx, actor) => {
+    const permissions = await writeMenuDecisions(tx, actor, roleId, body.permissions);
+    const companyFormGrants = await writeActionDecisions(tx, actor, roleId, "company_forms", body.companyFormGrants);
+    await writeActionDecisions(tx, actor, roleId, "training_compliance", { override: body.trainingComplianceAllowed });
+    return { permissions, companyFormGrants, trainingComplianceAllowed: body.trainingComplianceAllowed };
+  });
+}
+async function writeMenuDecisions(tx: any, actor: AuditActor, roleId: string, permissions: MenuDecision[]) {
     const role = (await tx.select().from(admRoleMasterAc).where(and(eq(admRoleMasterAc.ruid, roleId),
       eq(admRoleMasterAc.isDeleted, false))))[0];
     if (!role) throw new AccessControlError("Role not found.", 404);
@@ -61,7 +82,7 @@ export async function writeMenuGrants(req: Request, roleId: string) {
       if (!menu) throw new AccessControlError("Menu not found.", 400);
       const before = (await tx.select().from(admRoleAccessAc).where(and(eq(admRoleAccessAc.roleId, roleId),
         eq(admRoleAccessAc.menuId, p.menuId), eq(admRoleAccessAc.isDeleted, false))))[0];
-      const changes = ["canview", "cancreate", "canedit", "candelete"].filter(k => (before?.[k] ?? null) !== p[k]);
+      const changes = (["canview", "cancreate", "canedit", "candelete"] as const).filter(k => (before?.[k] ?? null) !== p[k]);
       if (!changes.length) { results.push(before); continue; }
       const values = { canview: p.canview, cancreate: p.cancreate, canedit: p.canedit, candelete: p.candelete,
         updatedByUuid: String(actor.masterUserId), updatedAt: sql`now()` };
@@ -74,5 +95,4 @@ export async function writeMenuGrants(req: Request, roleId: string) {
       results.push(rows[0]);
     }
     return results;
-  });
 }

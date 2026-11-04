@@ -2,7 +2,9 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TrainingCompliancePolicySetting, TrainingComplianceRolePermissionEditor } from "../../client/src/modules/vessel/components/TrainingComplianceAccessEditors";
+import { TrainingCompliancePolicySetting, TrainingCompliancePermissionRow } from "../../client/src/modules/vessel/components/TrainingComplianceAccessEditors";
+import { useRoleTrainingComplianceGrantV2, useSaveCombinedAccessControlPermissionsV2 } from "../../client/src/modules/admin/hooks/useAdminV2";
+import { emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
 import { AcceptedChecklistHistory } from "../../client/src/modules/vessel/components/AcceptedChecklistHistory";
 import { apiRequest } from "../../client/src/lib/queryClient";
 vi.mock("../../client/src/lib/queryClient", () => ({ apiRequest: vi.fn() }));
@@ -21,7 +23,7 @@ describe("training checklist settings and saved evidence", () => {
       blockMissingExpiry: false,
     }));
     mount(<TrainingCompliancePolicySetting />);
-    expect(await screen.findByText("Block mandatory courses expiring during contract")).toBeTruthy();
+    expect(await screen.findByText("Block seafarer deployment when mandatory courses expiring during contract")).toBeTruthy();
     const checkbox = await screen.findByTestId("training-block-expiring");
     await waitFor(() => expect(checkbox.getAttribute("data-state")).toBe("unchecked"));
     fireEvent.click(checkbox);
@@ -37,15 +39,37 @@ describe("training checklist settings and saved evidence", () => {
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("PUT", "/api/v2/admin/training-compliance/settings",
       { blockExpiringDuringContract: true, blockMissingExpiry: true }));
   });
-  it("saves an independent default-off grant per exact parent role UUID", async () => {
-    vi.mocked(apiRequest).mockImplementation(async (method: string) => json({ allowed: method === "PUT" }));
-    mount(<TrainingComplianceRolePermissionEditor roleUuid="parent-role-uuid" />);
+  it("saves the independent default-off grant for the exact parent role UUID through the combined operation", async () => {
+    const roleUuid = "parent-role-uuid";
+    let saved = false;
+    vi.mocked(apiRequest).mockImplementation(async (method, _url, body) => {
+      if (method === "PUT") saved = (body as { trainingComplianceAllowed: boolean }).trainingComplianceAllowed;
+      return json(method === "GET" ? { allowed: saved } : {});
+    });
+    function CombinedGridHarness() {
+      const query = useRoleTrainingComplianceGrantV2(roleUuid, { enabled: true });
+      const save = useSaveCombinedAccessControlPermissionsV2();
+      const [allowed, setAllowed] = React.useState(false);
+      React.useEffect(() => { if (query.data) setAllowed(query.data.allowed); }, [query.data]);
+      return <>
+        <TrainingCompliancePermissionRow allowed={allowed} onChange={setAllowed} disabled={query.isLoading} />
+        <button disabled={!query.data || save.isPending} onClick={() => save.mutate({
+          ruid: roleUuid, permissions: [], companyFormGrants: emptyCompanyFormGrants(), trainingComplianceAllowed: allowed,
+        })}>Save Changes</button>
+      </>;
+    }
+    mount(<CombinedGridHarness />);
     const checkbox = await screen.findByTestId("training-compliance-permission-checkbox");
     expect(checkbox.getAttribute("data-state")).toBe("unchecked");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled());
     fireEvent.click(checkbox);
-    fireEvent.click(screen.getByTestId("save-training-compliance-permission"));
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(apiRequest).toHaveBeenCalledWith("GET", "/api/v2/admin/access-control/roles/parent-role-uuid/training-compliance");
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("PUT",
-      "/api/v2/admin/access-control/roles/parent-role-uuid/training-compliance", { allowed: true }));
+      "/api/v2/admin/access-control/roles/parent-role-uuid/combined-permissions",
+      { permissions: [], companyFormGrants: emptyCompanyFormGrants(), trainingComplianceAllowed: true }));
+    expect(saved).toBe(true);
+    expect(screen.queryByTestId("save-training-compliance-permission")).not.toBeInTheDocument();
   });
   it("failed setting request gives a plain sentence and Retry", async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(Error("500: RAW SQL SECRET")).mockResolvedValue(json({ blockExpiringDuringContract: false }));

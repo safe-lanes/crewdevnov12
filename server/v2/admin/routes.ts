@@ -197,6 +197,7 @@ router.get("/access-control/roles/:ruid/management", requireTrustedAccessControl
 router.put("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.saveManagement);
 router.get("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.getPermissions);
 router.put("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.savePermissions);
+router.put("/access-control/roles/:ruid/combined-permissions", requireTrustedAccessControlAdmin(), accessControlController.saveCombinedPermissions);
 router.get("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.get);
 router.put("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.save);
 

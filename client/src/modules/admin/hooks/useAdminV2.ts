@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiV2 } from '../api/adminApiV2';
 import { getCrewUserId } from '@/lib/crewUser';
+import type { CompanyFormGrants } from '@shared/v2/admin/companyFormPermissions';
 
 const V2_KEY = '/api/v2/admin';
 const STALE_TIME = 60 * 1000;
@@ -738,6 +739,28 @@ export function useAccessControlPermissionsV2(ruid: string | null, options?: { e
   });
 }
 
+export function useRoleCompanyFormGrantsV2(ruid: string | null) {
+  const url = ruid
+    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(ruid)}/action-permissions`
+    : null;
+  return useQuery<{ grants: CompanyFormGrants }>({
+    queryKey: [url],
+    queryFn: () => ruid ? adminApiV2.getRoleCompanyFormGrants(ruid) : Promise.reject('No role selected'),
+    enabled: !!ruid,
+  });
+}
+
+export function useRoleTrainingComplianceGrantV2(ruid: string | null, options?: { enabled?: boolean }) {
+  const url = ruid
+    ? `/api/v2/admin/access-control/roles/${encodeURIComponent(ruid)}/training-compliance`
+    : null;
+  return useQuery<{ allowed: boolean }>({
+    queryKey: [url],
+    queryFn: () => ruid ? adminApiV2.getRoleTrainingComplianceGrant(ruid) : Promise.reject('No role selected'),
+    enabled: !!ruid && options?.enabled !== false,
+  });
+}
+
 export function useCreateAccessControlMenuV2() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -807,6 +830,36 @@ export function useSaveAccessControlPermissionsV2() {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/state'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/audit'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/my-permissions'] });
+    },
+  });
+}
+
+export function useSaveCombinedAccessControlPermissionsV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      ruid,
+      permissions,
+      companyFormGrants,
+      trainingComplianceAllowed,
+    }: {
+      ruid: string;
+      permissions: any[];
+      companyFormGrants: CompanyFormGrants;
+      trainingComplianceAllowed: boolean;
+    }) => adminApiV2.saveCombinedAccessControlPermissions(ruid, { permissions, companyFormGrants, trainingComplianceAllowed }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'permissions', variables.ruid] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/action-permissions`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/training-compliance`],
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/state'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/audit'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/my-permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-compliance/my-permission'] });
     },
   });
 }

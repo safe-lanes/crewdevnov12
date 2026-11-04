@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAppDialog } from '@/hooks/use-app-dialog';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
@@ -132,6 +133,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
 }
 
 export const RecruitmentModuleV2 = (): JSX.Element => {
+  const { ask, dialog } = useAppDialog();
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
   const [showFilters, setShowFilters] = useState(true);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
@@ -354,14 +356,19 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       }
     };
 
-    const handleDeleteClick = () => {
+    const handleDeleteClick = async () => {
       const candidateId = params.data.recCanUuid;
       const candidateName = `${params.data.firstName} ${params.data.familyName}` || params.data.fileNo;
       
-      const confirmed = window.confirm(
+      const confirmed = await ask(
         `Are you sure you want to delete "${candidateName}"?\n\n` +
         `This will remove the candidate from the list.\n` +
-        `File No: ${params.data.fileNo}`
+        `File No: ${params.data.fileNo}`,
+        {
+          title: "Delete candidate",
+          actionLabel: "Delete candidate",
+          cancelLabel: "Keep candidate",
+        },
       );
       
       if (!confirmed) {
@@ -412,6 +419,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         )}
         {hasDeletePerm && (
         <Button
+          type="button"
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0 hover:bg-red-100"
@@ -423,7 +431,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         )}
       </div>
     );
-  }, [deleteMutation, toast, permissions, canEdit, canDelete, currentMenuName, navigate]);
+  }, [ask, deleteMutation, toast, permissions, canEdit, canDelete, currentMenuName, navigate]);
 
   const columnDefs: ColDef[] = useMemo(() => {
     const baseColumns: ColDef[] = [
@@ -1103,6 +1111,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           navigate(`/recruitment/${encodeURIComponent(recCanUuid)}`);
         }}
       />
+      {dialog}
 
       {showApplicationForm && (
         <RecruitmentApplicationFormV2

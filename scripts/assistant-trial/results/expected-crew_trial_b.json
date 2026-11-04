@@ -1,0 +1,194 @@
+{
+  "db": "crew_trial_b",
+  "asOf": "2026-11-01",
+  "derivedAt": "2026-10-30T12:24:34.943Z",
+  "fingerprint": {
+    "crew": "9",
+    "plans": "10",
+    "licences": "1",
+    "trainings": "1",
+    "company_ranks": "40",
+    "data_md5": "7b62356709ff6f10da9ab66348c60f41"
+  },
+  "answers": {
+    "Q01": {
+      "text": "Fleet on board: people and assignments",
+      "people": 8,
+      "assignments": 9
+    },
+    "Q02": {
+      "text": "On board per vessel (people)",
+      "per_vessel": {
+        "MV Delta Sky": 4,
+        "MV Alpha Star": 5
+      }
+    },
+    "Q03": {
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "secondary": 1
+    },
+    "Q04": {
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "engineers": 3,
+      "unclassified_people": 0
+    },
+    "Q05": {
+      "text": "Officers / ratings / deck ratings / catering on board (people)",
+      "officers": 8,
+      "ratings": 0,
+      "deck_ratings": 0,
+      "catering": 0
+    },
+    "Q06": {
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "people": 1,
+      "unreadable": 0
+    },
+    "Q07": {
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "documents": 2,
+      "people": 2,
+      "inactive_docs": 0,
+      "missing": 0,
+      "unreadable": 0
+    },
+    "Q08": {
+      "text": "Documents of terminated crew that must NOT be listed (sanity: count in raw tables)",
+      "terminated_docs": 0
+    },
+    "Q09": {
+      "text": "Expired documents (any age)",
+      "documents": 0,
+      "people": 0
+    },
+    "Q10": {
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "documents": 1,
+      "people": 1,
+      "expired_docs": 0,
+      "upcoming_docs": 1,
+      "upcoming_people": 1
+    },
+    "Q11": {
+      "text": "Upcoming only, 30 days",
+      "documents": 1,
+      "people": 1
+    },
+    "Q12": {
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "documents": 2,
+      "people": 2,
+      "upcoming_docs": 2
+    },
+    "Q13": {
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "documents": 2
+    },
+    "Q14": {
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "documents": 2,
+      "people": 2,
+      "expired_docs": 0,
+      "per_vessel": {
+        "MV Delta Sky": 1,
+        "MV Alpha Star": 1
+      }
+    },
+    "Q15": {
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "documents": 2,
+      "people": 2,
+      "unclassified_people": 0
+    },
+    "Q16": {
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "on_as_of_day": 0
+    },
+    "P01": {
+      "text": "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+      "people": 0
+    },
+    "P02": {
+      "text": "B1 available by 2026-11-30",
+      "people": 1
+    },
+    "P03": {
+      "text": "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+      "people": 1,
+      "per_status": {
+        "on_leave": 1
+      }
+    },
+    "P04": {
+      "text": "B1 crew not on board without any availability date (excluded, reported)",
+      "no_date": 0
+    },
+    "P05": {
+      "text": "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+      "people": 1
+    },
+    "P06": {
+      "text": "B2 overdue (range end before as-of) on-board assignments",
+      "assignments": 0
+    },
+    "P07": {
+      "text": "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+      "assignments": 1
+    },
+    "P08": {
+      "text": "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+      "assignments": 4,
+      "differs": 1
+    },
+    "P09": {
+      "text": "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+      "positions": 9,
+      "filled": 8,
+      "vacant": 1,
+      "vacant_not_signed_on": 0
+    },
+    "P10": {
+      "text": "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+      "waiting": 1,
+      "drafts": 0
+    },
+    "P11": {
+      "text": "B4 entries waiting / approved / rejected across the waiting plans",
+      "waiting_entries": 1,
+      "approved_entries": 0,
+      "rejected_entries": 0
+    },
+    "P12": {
+      "text": "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+      "records": 1,
+      "violations": 1,
+      "ncs": 0
+    },
+    "P13": {
+      "text": "B3 same month WITH OPA (codes H/I count too)",
+      "records": 1,
+      "violations": 1,
+      "ncs": 0
+    },
+    "P14": {
+      "text": "B6 appraisals by status class, archived/terminated crew excluded",
+      "pending": 2,
+      "drafts": 0,
+      "completed": 1
+    },
+    "P15": {
+      "text": "B6 completed appraisals that carry an overall score (what a permitted user may see)",
+      "scored": 1
+    },
+    "P16": {
+      "text": "B6 appraisal vessel association (own recorded vessel name vs the vessel master): unmatched / ambiguous / missing",
+      "unmatched": 0,
+      "ambiguous": 1,
+      "missing": 1
+    },
+    "P17": {
+      "text": "B6 appraisals made on the FIRST vessel of the company (historical vessel, any status)",
+      "appraisals": 1
+    }
+  }
+}

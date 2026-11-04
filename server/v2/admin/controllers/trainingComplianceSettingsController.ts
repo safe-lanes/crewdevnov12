@@ -42,7 +42,7 @@ export const trainingComplianceSettingsController = {
   }),
   saveGrant: accessControlHandler(async req => {
     const parsed = z.object({ allowed: z.boolean() }).strict().safeParse(req.body);
-    if (!parsed.success) throw Object.assign(new Error("Supply only the Override training compliance flag."), { status: 400 });
+    if (!parsed.success) throw Object.assign(new Error("Supply only the Override deployment block flag."), { status: 400 });
     const saved = await saveActionDecisions(req, req.params.ruid, "training_compliance", { override: parsed.data.allowed });
     return { allowed: saved.override };
   }),

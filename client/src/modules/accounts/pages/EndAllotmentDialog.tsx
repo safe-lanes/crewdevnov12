@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { accountsApiV2, parseApiError } from "../api/accountsApiV2";
+import { accountsApiV2, parseApiError, type CashLockContext } from "../api/accountsApiV2";
 import { formatDate } from "../accountsFormat";
 
 interface EndAllotmentTarget {
@@ -28,12 +28,16 @@ interface EndAllotmentTarget {
 
 interface EndAllotmentDialogProps {
   target: EndAllotmentTarget;
+  lockContext: CashLockContext;
+  mutationBlocked: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
 export default function EndAllotmentDialog({
   target,
+  lockContext,
+  mutationBlocked,
   onClose,
   onSaved,
 }: EndAllotmentDialogProps) {
@@ -49,7 +53,7 @@ export default function EndAllotmentDialog({
     !!formatIsoDate(validTo) &&
     (!target.validFrom || validTo >= target.validFrom);
 
-  const canConfirm = dateAllowed && draftValid && !saving;
+  const canConfirm = dateAllowed && draftValid && !saving && !mutationBlocked;
 
   const endedFrom = dateAllowed
     ? new Date(`${validTo}T00:00:00.000Z`)
@@ -70,7 +74,12 @@ export default function EndAllotmentDialog({
   };
 
   const confirm = async () => {
-    if (savingRef.current || !dateAllowed || !draftValidRef.current) return;
+    if (
+      mutationBlocked ||
+      savingRef.current ||
+      !dateAllowed ||
+      !draftValidRef.current
+    ) return;
 
     savingRef.current = true;
     setSaving(true);
@@ -79,6 +88,7 @@ export default function EndAllotmentDialog({
       const record: any = await accountsApiV2.allotments.end(
         target.allotmentUuid,
         validTo,
+        lockContext,
       );
 
       toast({

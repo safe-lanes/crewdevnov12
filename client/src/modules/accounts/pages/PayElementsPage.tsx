@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import AgGridTable from "./AccountsGridTable";
@@ -133,6 +134,7 @@ function PayElementDateInput({ onDraftValidityChange, ...props }: PayElementDate
 
 export default function PayElementsPage() {
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
   const { canCreate, canEdit, canDelete } = usePermissions();
   const mayCreate = canCreate("Account Pay Elements");
   const mayEdit = canEdit("Account Pay Elements");
@@ -327,12 +329,15 @@ export default function PayElementsPage() {
   };
 
   const handleDelete = async (row: any) => {
-    if (
-      !window.confirm(
-        `Delete pay element "${row.name}"? This performs a soft-delete.`,
-      )
-    )
-      return;
+    const confirmed = await ask(
+      `Delete pay element "${row.name}"? This performs a soft-delete.`,
+      {
+        title: "Delete pay element",
+        actionLabel: "Delete pay element",
+        cancelLabel: "Keep pay element",
+      },
+    );
+    if (!confirmed) return;
     try {
       await accountsApiV2.payElements.remove(row.payElementUuid);
       await queryClient.invalidateQueries({ queryKey: LIST_KEY });
@@ -457,6 +462,7 @@ export default function PayElementsPage() {
             )}
             {mayDelete && (
               <button
+                type="button"
                 className="text-red-500 hover:text-red-700"
                 onClick={() => handleDelete(p.data)}
                 data-testid={`button-delete-element-${p.data?.code}`}
@@ -479,6 +485,7 @@ export default function PayElementsPage() {
 
   return (
     <div className="p-4 flex flex-col h-full" data-testid="page-pay-elements">
+      {dialog}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-[#16569e]">

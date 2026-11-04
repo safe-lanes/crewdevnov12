@@ -140,7 +140,7 @@ export const crewAttachmentAccess = attachmentGuard(async req => {
     return;
   }
   const list = req.path.match(/^\/crew\/([^/]+)(?:\/|$)/i);
-  if (list && !["enriched", "details", "by-emp-no"].includes(list[1].toLowerCase()))
+  if (list && !["enriched", "details", "by-emp-no", "reactivated"].includes(list[1].toLowerCase()))
     await authorizeAttachmentSubject(req, "Crew Database", decodeURIComponent(list[1]));
   const employee = req.path.match(/^\/crew\/by-emp-no\/([^/]+)(?:\/|$)/i);
   if (employee) {

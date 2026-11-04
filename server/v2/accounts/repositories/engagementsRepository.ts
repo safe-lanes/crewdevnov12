@@ -535,10 +535,10 @@ export class EngagementsRepository {
   /** Periods (of the given set) whose portage bill for the vessel is locked. */
   async findLockedPeriods(
     vesselUuid: string,
-    periods: string[],
+    periods?: string[],
   ): Promise<Set<string>> {
     const set = new Set<string>();
-    if (periods.length === 0) return set;
+    if (periods?.length === 0) return set;
     const db = getDb();
     const rows = await db
       .select({
@@ -550,7 +550,9 @@ export class EngagementsRepository {
       .where(
         and(
           eq(accPortageBillsV2.vesselUuid, vesselUuid),
-          inArray(accPortageBillsV2.period, periods),
+          periods
+            ? inArray(accPortageBillsV2.period, periods)
+            : undefined,
           eq(accPortageBillsV2.isDeleted, false),
         ),
       );

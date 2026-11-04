@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ function CbaDateInput({ onDraftValidityChange, ...props }: CbaDateInputProps) {
 
 export default function CbaReferencePage() {
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
   const { canCreate, canEdit, canDelete } = usePermissions();
   const mayCreate = canCreate("Account CBA Reference");
   const mayEdit = canEdit("Account CBA Reference");
@@ -230,7 +232,12 @@ export default function CbaReferencePage() {
   };
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete CBA reference "${row.cbaName}"?`)) return;
+    const confirmed = await ask(`Delete CBA reference "${row.cbaName}"?`, {
+      title: "Delete CBA reference",
+      actionLabel: "Delete reference",
+      cancelLabel: "Keep reference",
+    });
+    if (!confirmed) return;
     try {
       await accountsApiV2.cbaReference.remove(row.cbaRefUuid);
       await queryClient.invalidateQueries({ queryKey: LIST_KEY });
@@ -308,6 +315,7 @@ export default function CbaReferencePage() {
             )}
             {mayDelete && (
               <button
+                type="button"
                 className="text-red-500 hover:text-red-700"
                 onClick={() => handleDelete(p.data)}
                 data-testid={`button-delete-cba-${p.data?.cbaRefUuid}`}
@@ -326,6 +334,7 @@ export default function CbaReferencePage() {
 
   return (
     <div className="p-4 flex flex-col h-full" data-testid="page-cba-reference">
+      {dialog}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-[#16569e]">CBA Reference</h1>

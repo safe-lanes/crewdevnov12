@@ -1,5 +1,7 @@
 import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { employmentAfterReactivationOn } from "./employmentStatusSql";
+import { generateNextCrewEmpNo } from "./crewNumbering";
 import { getDb } from "../../db";
 import { CrewMembersRepository, crewTerminationsRepository } from "../repositories";
 import {
@@ -336,31 +338,7 @@ export const crewMembersService = {
   },
   
   async generateEmpNo(): Promise<string> {
-    const db = getDb();
-    // Get ALL empNo values from V2 table only (legacy will be deprecated)
-    // This handles mixed formats like A0029 (4 digits) and A000030 (6 digits)
-    // String comparison fails here, so we must compare numerically
-    
-    const results = await db
-      .select({ empNo: crewMembersV2.empNo })
-      .from(crewMembersV2)
-      .where(ilike(crewMembersV2.empNo, 'A%'));
-    
-    let maxNum = 0;
-    for (const row of results) {
-      if (row.empNo) {
-        const match = row.empNo.match(/A(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) {
-            maxNum = num;
-          }
-        }
-      }
-    }
-    
-    const nextNum = maxNum + 1;
-    return `A${nextNum.toString().padStart(6, '0')}`;
+    return generateNextCrewEmpNo();
   },
 
   async update(
@@ -522,6 +500,7 @@ export const crewMembersService = {
      *                like 'active' for backwards-compatible Crew Database UI.
      */
     view?: "active" | "all";
+    employmentDate?: string;
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
     const limit = Math.min(filters?.limit || 5000, 5000);
@@ -632,6 +611,9 @@ export const crewMembersService = {
         vpContractPeriodMonths: latestVesselPlanning.contractPeriodMonths,
         vpSignOnDate: latestVesselPlanning.vpSignOnDate,
         vpReliefDue: latestVesselPlanning.vpReliefDue,
+        ...(filters?.employmentDate ? {
+          employedAfterReactivation: employmentAfterReactivationOn(filters.employmentDate, false),
+        } : {}),
         vpVesselName: vpVesselNames.vessel,
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
@@ -717,6 +699,7 @@ export const crewMembersService = {
       const effectiveReliefDue = r.vpReliefDue || r.reliefDue;
       return {
         ...r.crew,
+        ...(filters?.employmentDate ? { employedAfterReactivation: r.employedAfterReactivation } : {}),
         nationalityUuid: r.crew.nationalityUuid,
         nationality: r.nationality,
         vesselTypeUuid: r.crew.vesselTypeUuid,
@@ -858,11 +841,16 @@ export const crewMembersService = {
    * List terminated crew (status='Terminated') with personal-details / last
    * vessel data so the Terminated tab can mirror Crew Database parity.
    */
-  async getTerminated(): Promise<any[]> {
+  async getTerminated(reactivated = false): Promise<any[]> {
     const db = getDb();
 
     const rows = await db
       .select({
+        ...(reactivated ? { reactivation: sql<any>`(SELECT json_build_object(
+          'date', r.reactivation_date, 'by', r.reactivated_by_name, 'reason', r.reason
+        ) FROM crew_reactivations r
+          WHERE r.is_deleted = false AND r.crew_uuid = ${crewMembersV2.crewUuid}
+          ORDER BY r.id DESC LIMIT 1)` } : {}),
         crew: crewMembersV2,
         nationality: masterNationalities.nationality,
         crewPool: crewPersonalDetails.crewPool,
@@ -880,7 +868,11 @@ export const crewMembersService = {
       .where(
         and(
           eq(crewMembersV2.isDeleted, false),
-          eq(crewMembersV2.status, "Terminated"),
+          reactivated ? and(
+            isNull(crewMembersV2.archivedAt),
+            sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} NOT LIKE 'Terminated%')`,
+            sql`EXISTS (SELECT 1 FROM crew_reactivations r WHERE r.is_deleted = false AND r.crew_uuid = ${crewMembersV2.crewUuid})`,
+          ) : eq(crewMembersV2.status, "Terminated"),
         ),
       )
       .orderBy(desc(crewMembersV2.updatedAt));
@@ -921,7 +913,8 @@ export const crewMembersService = {
         manningAgent: r.manningAgent,
         lastVessel: last?.vesselName || last?.vesselUuid || null,
         signOffDate: last?.signOffDate || null,
-        status: "Terminated",
+        status: reactivated ? r.crew.status : "Terminated",
+        ...(reactivated ? { reactivation: r.reactivation } : {}),
       };
     });
   },
@@ -1067,6 +1060,12 @@ export const crewMembersService = {
     }
 
     const updateData: any = { ...data, updatedAt: new Date() };
+
+    // Terminated crew can be reactivated only through the authorized action.
+    if (existing.status?.startsWith('Terminated')) {
+      delete updateData.status;
+      delete updateData.isActive;
+    }
 
     if (!options?.allowVesselClear) {
       const protectedFields = [

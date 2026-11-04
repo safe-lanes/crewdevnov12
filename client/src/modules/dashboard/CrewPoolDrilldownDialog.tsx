@@ -24,6 +24,7 @@ interface CrewRow {
   status?: string | null;
   notForHire?: boolean | null;
   lastTerminationDate?: string | null;
+  employedAfterReactivation?: boolean | null;
   createdAt?: string | Date | null;
   nationalityUuid?: string | null;
   nationality?: string | null;
@@ -132,16 +133,25 @@ export const CrewPoolDrilldownDialog = ({
 }: CrewPoolDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
+  const snapshotIsoForRanks = useMemo(() => {
+    const s = periodToSnapshotDate(period);
+    if (!s) return null;
+    const y = s.getFullYear();
+    const m = String(s.getMonth() + 1).padStart(2, "0");
+    const d = String(s.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [period]);
+
   // Same query key as CrewPoolRankChart so react-query shares cache.
   const { data: crew = [], isLoading } = useQuery<CrewRow[]>({
-    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true, employmentDate: snapshotIsoForRanks }],
     queryFn: async ({ signal }) => {
       const PAGE_SIZE = 1000;
       const all: CrewRow[] = [];
       let offset = 0;
       for (let i = 0; i < 100; i++) {
         const response = await fetch(
-          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}` + (snapshotIsoForRanks ? "&employmentDate=" + snapshotIsoForRanks : ""),
           { signal },
         );
         if (!response.ok) throw new Error("Failed to fetch crew list");
@@ -165,15 +175,6 @@ export const CrewPoolDrilldownDialog = ({
       ),
     [crew],
   );
-
-  const snapshotIsoForRanks = useMemo(() => {
-    const s = periodToSnapshotDate(period);
-    if (!s) return null;
-    const y = s.getFullYear();
-    const m = String(s.getMonth() + 1).padStart(2, "0");
-    const d = String(s.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, [period]);
 
   const { data: rankAsOf = {} } = useQuery<Record<string, string>>({
     queryKey: ["/api/v2/crew-pool/dashboard/ranks-as-of", snapshotIsoForRanks, empNos],
@@ -222,7 +223,7 @@ export const CrewPoolDrilldownDialog = ({
 
       // Mirror chart: excluded only if terminated on/before snapshot.
       const terminated = parseDate(c.lastTerminationDate);
-      if (terminated && terminated.getTime() <= snapshotDate.getTime()) return false;
+      if (!(c.employedAfterReactivation ?? !(terminated && terminated.getTime() <= snapshotDate.getTime()))) return false;
 
       // Mirror chart: compare against the rank held as of the snapshot.
       const rowRank = (

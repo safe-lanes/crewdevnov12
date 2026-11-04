@@ -312,12 +312,20 @@ describe("Verified tenant context and parent-ID synchronization", () => {
   it("preserves nonsequential parent IDs and resets the sequence in a simulated sync only", async () => {
     const values = vi.fn(async (_rows: unknown) => {});
     tenantOne.insert.mockReturnValue({ values });
+    // Reconciliation now reads and inserts through a transaction, one row at
+    // a time. Model an empty target instead of the retired bulk-insert API.
+    const from = vi.fn(async (_table: unknown) => []);
+    const transaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({ execute: tenantOne.execute, insert: tenantOne.insert, select: () => ({ from }) }));
+    Object.assign(tenantOne, { transaction });
     await tenantConnectionManager.runInTenantContext("tenant-one", () =>
       new MastersRepository().syncMasterData("users", [
         { id: 9999, uuid: "actor-one", role: "Recruiter" },
         { id: 42, uuid: "actor-two", role: "Viewer" },
       ]));
-    expect(values).toHaveBeenCalledWith([
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledWith(masterUsers);
+    expect(values.mock.calls.map(([row]) => row)).toEqual([
       { id: 9999, userUuid: "actor-one", role: "Recruiter" },
       { id: 42, userUuid: "actor-two", role: "Viewer" },
     ]);

@@ -98,21 +98,22 @@ describe("ReliefStatusEditDialog_v2 step 3 save behavior", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it("asks to discard dirty edits and preserves or closes according to the native confirmation", async () => {
-    const user = userEvent.setup();
+  it("asks to discard dirty edits and preserves or closes according to the in-app confirmation", async () => {
     const { onOpenChange } = renderDialog();
-    await user.clear(screen.getByTestId("input-reliever-contract-range-end"));
+    fireEvent.change(screen.getByTestId("input-reliever-contract-range-end"), { target: { value: "9" } });
+    expect(screen.getByTestId("input-reliever-contract-range-end")).toHaveValue(9);
 
-    const confirm = vi.fn().mockReturnValue(false);
-    Object.defineProperty(window, "confirm", { configurable: true, value: confirm });
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(confirm).toHaveBeenCalledWith("Discard unsaved changes?");
+    expect(await screen.findByText("Discard unsaved changes?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     expect(screen.getByText("Rank: Chief Officer")).toBeInTheDocument();
+    expect(screen.getByTestId("input-reliever-contract-range-end")).toHaveValue(9);
 
-    confirm.mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    fireEvent.click(await screen.findByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
   it("keeps the popup open after a successful checklist override acceptance", async () => {

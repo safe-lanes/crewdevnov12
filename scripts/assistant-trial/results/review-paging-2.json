@@ -1,0 +1,476 @@
+[
+ {
+  "id": "R02",
+  "turn": 1,
+  "cat": "primary-only-drift-probe",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many engineers are on board MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3291,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8515,
+   "completion_tokens": 103
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "ms": 10
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **4 engineers are on board MV Beta Ocean.**\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, unit people.\n\nSome definitions are provisional (trial)."
+ },
+ {
+  "id": "R02",
+  "turn": 2,
+  "cat": "primary-only-drift-probe",
+  "heldOut": false,
+  "instance": "single",
+  "q": "list them",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4972,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8941,
+   "completion_tokens": 263
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "rankGroups": [
+      "engineers"
+     ],
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "ms": 10
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on | Relief due |\n|---|---|---|---|---|\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 2026-07-01 | 2027-01-01 |\n| Quillon Rasterby | Electrical Officer | MV Beta Ocean | 2026-09-10 | 2027-03-10 |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean | 2026-10-15 | 2027-04-15 |\n| Faustin Kelderwick | Third Engineer | MV Beta Ocean | 2026-10-25 | Not recorded |\n\n**Total: 4 engineers (people), across 4 assignments.**\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, unit people.\n\nShowing all 4 matching crew members."
+ },
+ {
+  "id": "R02",
+  "turn": 3,
+  "cat": "primary-only-drift-probe",
+  "heldOut": false,
+  "instance": "single",
+  "q": "only the primary assignments please",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5123,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9348,
+   "completion_tokens": 240
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 10,
+     "rankGroups": [
+      "engineers"
+     ],
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "crewStatus": [
+      "primary"
+     ]
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "assignments": 3,
+     "people": 3
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "ms": 10
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on | Relief due |\n|---|---|---|---|---|\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 2026-07-01 | 2027-01-01 |\n| Quillon Rasterby | Electrical Officer | MV Beta Ocean | 2026-09-10 | 2027-03-10 |\n| Petra Wintermarsh | Second Engineer | MV Beta Ocean | 2026-10-15 | 2027-04-15 |\n\n**Total: 3 primary engineers (people).**\n\nSome definitions are provisional (trial).\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, primary assignments, unit people.\n\nShowing all 3 matching crew members."
+ },
+ {
+  "id": "R02",
+  "turn": 4,
+  "cat": "primary-only-drift-probe",
+  "heldOut": false,
+  "instance": "single",
+  "q": "how many certificates do they hold that expire in the next 60 days?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5014,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9652,
+   "completion_tokens": 168
+  },
+  "toolsUsed": [
+   "crewing_query_documents"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_documents",
+    "args": {
+     "mode": "count",
+     "unit": "documents",
+     "rankGroups": [
+      "engineers"
+     ],
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "crewOnBoard": true,
+     "expiryState": "not_expired",
+     "expiryWithin": {
+      "direction": "next",
+      "amount": 60,
+      "unit": "days"
+     },
+     "crewIds": []
+    },
+    "ok": true,
+    "total": 5,
+    "totals": {
+     "documents": 5,
+     "people": 2
+    },
+    "excluded": {
+     "unreadableExpiryDate": 1,
+     "noExpiryDate": 0
+    },
+    "ms": 10
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **They hold 5 certificates expiring in the next 60 days**, held by **2 engineers**.\n\n**1 record has a missing or unreadable expiry date and is not included.**\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, expiry within the next 60 days, not expired, unit documents."
+ },
+ {
+  "id": "R03",
+  "turn": 1,
+  "cat": "explicit-filter-removal",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many engineers are on board MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3357,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8515,
+   "completion_tokens": 99
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "assignments": 4,
+     "people": 4
+    },
+    "ms": 7
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **4 engineers** are on board **MV Beta Ocean**.\n\nFilters: vessel MV Beta Ocean, rank group engineers, on board, unit people."
+ },
+ {
+  "id": "R03",
+  "turn": 2,
+  "cat": "explicit-filter-removal",
+  "heldOut": false,
+  "instance": "single",
+  "q": "and across all vessels?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3272,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8625,
+   "completion_tokens": 95
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "rankGroups": [
+      "engineers"
+     ]
+    },
+    "ok": true,
+    "total": 7,
+    "totals": {
+     "assignments": 8,
+     "people": 7
+    },
+    "ms": 9
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **7 engineers** are on board across all vessels.\n\nSome definitions are provisional (trial).\n\nFilters: all vessels, rank group engineers, on board, unit people."
+ },
+ {
+  "id": "R03",
+  "turn": 3,
+  "cat": "explicit-filter-removal",
+  "heldOut": false,
+  "instance": "single",
+  "q": "and regardless of rank?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3006,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8713,
+   "completion_tokens": 93
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people"
+    },
+    "ok": true,
+    "total": 16,
+    "totals": {
+     "assignments": 17,
+     "people": 16
+    },
+    "ms": 9
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **16 people** are on board across all vessels, regardless of rank.\n\nSome definitions are provisional (trial).\n\nFilters: all vessels, all ranks, on board, unit people."
+ },
+ {
+  "id": "R05",
+  "turn": 1,
+  "cat": "show-more-paging",
+  "heldOut": false,
+  "instance": "single",
+  "q": "List the crew on board MV Alpha Star, 5 at a time",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5373,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 8855,
+   "completion_tokens": 311
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 5,
+     "offset": 0,
+     "sort": "name",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 8,
+    "totals": {
+     "assignments": 8,
+     "people": 8
+    },
+    "returned": 5,
+    "nextOffset": 5,
+    "ms": 7
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on | Relief due |\n|---|---|---|---|---|\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-06-01 | 2026-10-20 |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | 2026-07-15 | 2027-01-15 |\n| Corvina Tallowind | Second Officer | MV Alpha Star | 2026-08-01 | 2027-02-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 | 2026-11-10 |\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 | 2027-03-01 |\n\nShowing 5 of 8 crew members. There are 3 more; say “show more” to list them.\n\nFilters: vessel MV Alpha Star, on-board crew, unit people, sorted by name. Some definitions are provisional (trial).\n\nShowing 5 of 8 matching crew members (records 1–5; 3 more available)."
+ },
+ {
+  "id": "R05",
+  "turn": 2,
+  "cat": "show-more-paging",
+  "heldOut": false,
+  "instance": "single",
+  "q": "show more",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4588,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9296,
+   "completion_tokens": 221
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "list",
+     "unit": "people",
+     "limit": 5,
+     "offset": 5,
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 8,
+    "totals": {
+     "assignments": 8,
+     "people": 8
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "ms": 10
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Name | Rank | Vessel | Sign-on | Relief due |\n|---|---|---|---|---|\n| Elsbet Orvanne | 2nd Engineer | MV Alpha Star | 2026-09-01 | 2027-03-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-05-10 | 2026-11-10 |\n| Faustin Kelderwick | Third Engineer | MV Alpha Star | 2026-10-05 | 2027-04-05 |\n\nThis completes the list: 8 crew members total.\n\nFilters: vessel MV Alpha Star, on-board crew, unit people, records 6–8. Some definitions are provisional (trial).\n\nShowing 3 of 8 matching crew members (records 6–8; end of list)."
+ }
+]

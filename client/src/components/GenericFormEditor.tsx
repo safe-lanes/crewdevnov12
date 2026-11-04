@@ -2114,7 +2114,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       {isCompanyForm && selectedVersion && (
         <section
           className="mt-3 border-t pt-3"
-          aria-label="Company Form stage and applicability settings"
+          aria-label="Company Form stage and when this form applies"
           data-testid="company-form-header-settings"
         >
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -2158,13 +2158,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 </p>
                 {isApplicabilityDirty && <span className="text-xs font-medium text-amber-700">Unsaved policy changes</span>}
                 {applicabilitySummaryState.loading && (
-                  <span className="block text-xs text-gray-500" role="status">Loading applicability settings…</span>
+                  <span className="block text-xs text-gray-500" role="status">Loading form settings…</span>
                 )}
                 {applicabilitySummaryState.error && (
                   <span className="block text-xs text-red-700" role="alert">{applicabilitySummaryState.error}</span>
                 )}
                 {!applicabilitySummaryState.loading && !applicabilitySummaryState.canView && (
-                  <span className="block text-xs text-gray-600">You do not have permission to view applicability settings.</span>
+                  <span className="block text-xs text-gray-600">You do not have permission to view when this form applies.</span>
                 )}
                 {!applicabilitySummaryState.loading && applicabilitySummaryState.canView
                   && selectedVersion.status === "draft" && !applicabilitySummaryState.canEdit && (
@@ -2181,7 +2181,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 aria-controls="company-form-applicability-settings"
                 data-testid="button-toggle-applicability-settings"
               >
-                {applicabilitySummaryState.canEdit ? "Edit" : "View"}
+                When this form applies
               </Button>
             </div>
           </div>

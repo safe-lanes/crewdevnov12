@@ -37,6 +37,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
@@ -119,7 +120,7 @@ const SourceCellRenderer = (params: ICellRendererParams) => {
 
 type ActionsContext = {
   onEdit: (row: AggregatedRow) => void;
-  onDelete: (uuid: string) => void;
+  onDelete: (row: AggregatedRow) => void;
 };
 
 const ActionsCellRenderer = (
@@ -141,14 +142,11 @@ const ActionsCellRenderer = (
       </Button>
       {r.editable === "full" && (
         <Button
+          type="button"
           size="icon"
           variant="ghost"
           className="h-7 w-7"
-          onClick={() => {
-            if (confirm("Delete this training need?")) {
-              params.context.onDelete(r.sourceRefUuid);
-            }
-          }}
+          onClick={() => params.context.onDelete(r)}
           data-testid={`button-delete-${r.sourceRefUuid}`}
         >
           <Trash2 className="h-4 w-4 text-red-500" />
@@ -160,6 +158,7 @@ const ActionsCellRenderer = (
 
 export const Training = (): JSX.Element => {
   const { toast } = useToast();
+  const { ask, dialog } = useAppDialog();
 
   // Filter visibility (Filters button in header)
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -167,7 +166,7 @@ export const Training = (): JSX.Element => {
   // Two filter states: draft = what the user is editing, applied = what filters the table.
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTER);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTER);
-  const [dialog, setDialog] = useState<DialogMode>({ kind: "closed" });
+  const [entryDialog, setEntryDialog] = useState<DialogMode>({ kind: "closed" });
 
   const { data: rows = [], isLoading } = useQuery<AggregatedRow[]>({
     queryKey: ["/api/v2/training-needs"],
@@ -246,14 +245,19 @@ export const Training = (): JSX.Element => {
   }, []);
 
   const handleEditClick = useCallback(
-    (row: AggregatedRow) => setDialog({ kind: "edit", row }),
+    (row: AggregatedRow) => setEntryDialog({ kind: "edit", row }),
     []
   );
 
-  const handleDeleteClick = useCallback(
-    (uuid: string) => deleteMutation.mutate(uuid),
-    [deleteMutation]
-  );
+  const handleDeleteClick = useCallback(async (row: AggregatedRow) => {
+    const confirmed = await ask("Delete this training need?", {
+      title: "Delete training need",
+      actionLabel: "Delete training",
+      cancelLabel: "Keep training",
+    });
+    if (!confirmed) return;
+    deleteMutation.mutate(row.sourceRefUuid);
+  }, [ask, deleteMutation]);
 
   const columnDefs: ColDef[] = useMemo(
     () => [
@@ -390,7 +394,7 @@ export const Training = (): JSX.Element => {
           </Button>
           <Button
             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
-            onClick={() => setDialog({ kind: "new" })}
+            onClick={() => setEntryDialog({ kind: "new" })}
             data-testid="button-new-entry"
           >
             <PlusIcon className="h-3 w-3 mr-1" />
@@ -516,16 +520,17 @@ export const Training = (): JSX.Element => {
         </CardContent>
       </Card>
 
-      {dialog.kind !== "closed" && (
+      {entryDialog.kind !== "closed" && (
         <TrainingNeedDialog
-          mode={dialog}
-          onClose={() => setDialog({ kind: "closed" })}
+          mode={entryDialog}
+          onClose={() => setEntryDialog({ kind: "closed" })}
           companyTrainings={companyTrainings}
           ranks={ranks}
           crew={crew}
           users={users}
         />
       )}
+      {dialog}
     </div>
   );
 };
