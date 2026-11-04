@@ -425,7 +425,18 @@ export default function AllotmentsPage({
     gridApiRef.current = e.api;
   };
   const exportCsv = () => {
-    gridApiRef.current?.exportDataAsCsv({ fileName: "allotments.csv" });
+    gridApiRef.current?.exportDataAsCsv({
+      fileName: "allotments.csv",
+      processCellCallback: (p) => {
+        const columnId = p.column.getColId();
+        if (columnId === "kycComplete" || columnId === "bankVerified") {
+          return p.value ? "✓" : "";
+        }
+        return p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? "");
+      },
+    });
   };
 
   const cols: ColDef[] = useMemo(
