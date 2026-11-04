@@ -111,12 +111,68 @@ const CTM_LINE_TYPES = [
 
 type TabKind = "overtime" | "dated" | "allotment" | "amountRemarks";
 
+type MiscType = "earning" | "deduction";
+type MiscCategory = "one_off" | "other";
+
+interface MiscChoice {
+  category: MiscCategory;
+  element: any | null;
+}
+
 interface EntryTabDef {
   id: string;
   label: string;
   kind: TabKind;
-  element: any; // bound pay element (fixed per tab)
+  element: any;
   testId: string;
+  miscType?: MiscType;
+  miscAvailable?: boolean;
+}
+
+function miscOptions(
+  elements: any[],
+  config: any,
+  type: MiscType,
+): any[] {
+  const assigned = new Set(
+    [1, 2]
+      .filter(
+        (n) =>
+          config?.[`extraTab${n}Enabled`] &&
+          config?.[`extraTab${n}PayElementUuid`],
+      )
+      .map((n) => config[`extraTab${n}PayElementUuid`]),
+  );
+
+  return elements.filter(
+    (e) =>
+      e.status === "active" &&
+      e.type === type &&
+      ["one_off", "other"].includes(e.category) &&
+      e.calcMethod !== "scale_lookup" &&
+      !assigned.has(e.payElementUuid),
+  );
+}
+
+function mergeBatchRows(rows: any[], result: any): any[] {
+  const deleted = new Set(result.deleted ?? []);
+  const changed = new Map<string, any>(
+    [...(result.updated ?? []), ...(result.created ?? [])].map(
+      (row: any) => [row.txnUuid, row],
+    ),
+  );
+
+  const next = rows
+    .filter((row) => !deleted.has(row.txnUuid))
+    .map((row) => {
+      const replacement = changed.get(row.txnUuid);
+      changed.delete(row.txnUuid);
+      return replacement ?? row;
+    });
+
+  return [...next, ...changed.values()].filter(
+    (row) => !deleted.has(row.txnUuid),
+  );
 }
 
 interface CtmLineForm {
@@ -189,7 +245,10 @@ export default function VesselPortagePage() {
   const txnsKey = [
     `${ACCOUNTS_BASE}/monthly-transactions?vesselUuid=${vesselUuid}&period=${period}`,
   ];
-  const { data: txns = [] } = useQuery<any[]>({
+  const {
+    data: txns = [],
+    isSuccess: txnsLoaded,
+  } = useQuery<any[]>({
     queryKey: txnsKey,
     enabled: hasFilter,
   });
@@ -206,10 +265,16 @@ export default function VesselPortagePage() {
     queryKey: workspaceKey,
     enabled: hasFilter,
   });
-  const { data: payElements = [] } = useQuery<any[]>({
+  const {
+    data: payElements = [],
+    isSuccess: payElementsLoaded,
+  } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
   });
-  const { data: tenantConfig } = useQuery<any>({
+  const {
+    data: tenantConfig,
+    isSuccess: tenantConfigLoaded,
+  } = useQuery<any>({
     queryKey: [`${ACCOUNTS_BASE}/config`],
   });
   const { data: allotments = [] } = useQuery<any[]>({
@@ -345,11 +410,32 @@ export default function VesselPortagePage() {
     () => pickElement(payElements, "bond_slop_chest", "BOND"),
     [payElements],
   );
-  const otherElement = useMemo(
-    () =>
-      pickElement(payElements, "one_off") ?? pickElement(payElements, "other"),
-    [payElements],
-  );
+  const [edits, setEdits] = useState<Record<string, string>>({});
+
+  const [miscChoices, setMiscChoices] = useState<
+    Record<MiscType, MiscChoice>
+  >({
+    earning: { category: "one_off", element: null },
+    deduction: { category: "one_off", element: null },
+  });
+
+  const miscOptionsByType = useMemo<
+    Record<MiscType, any[]>
+  >(() => {
+    if (!payElementsLoaded || !tenantConfigLoaded) {
+      return { earning: [], deduction: [] };
+    }
+
+    return {
+      earning: miscOptions(payElements, tenantConfig, "earning"),
+      deduction: miscOptions(payElements, tenantConfig, "deduction"),
+    };
+  }, [
+    payElements,
+    tenantConfig,
+    payElementsLoaded,
+    tenantConfigLoaded,
+  ]);
 
   const entryTabs = useMemo<EntryTabDef[]>(() => {
     const tabs: EntryTabDef[] = [];
@@ -389,14 +475,34 @@ export default function VesselPortagePage() {
         testId: "tab-bond",
       });
     }
-    if (otherElement) {
-      tabs.push({
-        id: "other",
-        label: "Other deductions",
-        kind: "amountRemarks",
-        element: otherElement,
-        testId: "tab-other",
-      });
+    for (const type of ["earning", "deduction"] as const) {
+      const id = type === "earning" ? "other-earnings" : "other";
+      const choice = miscChoices[type];
+      const options = miscOptionsByType[type];
+
+      const current = options.find(
+        (e) =>
+          e.payElementUuid === choice.element?.payElementUuid &&
+          e.category === choice.category &&
+          e.calcMethod !== "rate_times_qty",
+      );
+
+      const hasPendingEdits = Object.keys(edits).some((key) =>
+        key.startsWith(`${id}::`),
+      );
+
+      if (options.length > 0 || hasPendingEdits) {
+        tabs.push({
+          id,
+          label:
+            type === "earning" ? "Other Earnings" : "Other Deductions",
+          kind: "amountRemarks",
+          element: current ?? choice.element,
+          testId: type === "earning" ? "tab-other-earnings" : "tab-other",
+          miscType: type,
+          miscAvailable: !!current,
+        });
+      }
     }
     for (const n of [1, 2] as const) {
       if (
@@ -422,7 +528,9 @@ export default function VesselPortagePage() {
     advanceElement,
     allotElement,
     bondElement,
-    otherElement,
+    miscChoices,
+    miscOptionsByType,
+    edits,
     tenantConfig,
     elementByUuid,
   ]);
@@ -434,11 +542,11 @@ export default function VesselPortagePage() {
 
   // ---- unsaved-edit state --------------------------------------------------
   // edits["tabId::crewUuid::colId"] = typed value ("" = clear the entry)
-  const [edits, setEdits] = useState<Record<string, string>>({});
   // user-added date columns per dated tab (YYYY-MM-DD)
   const [addedDates, setAddedDates] = useState<Record<string, string[]>>({});
   const [activeTab, setActiveTab] = useState("crew");
   const [saving, setSaving] = useState(false);
+  const miscSavesInFlight = useRef(new Set<string>());
 
   // Reset unsaved state when the vessel-month context changes.
   useEffect(() => {
@@ -449,11 +557,13 @@ export default function VesselPortagePage() {
   /** Per-tab saved transactions bound to the tab's element. */
   const tabTxns = useCallback(
     (tab: EntryTabDef) =>
-      vesselTxns.filter(
-        (t) =>
-          t.payElementUuid === tab.element.payElementUuid &&
-          t.sourceType !== "bond",
-      ),
+      tab.element
+        ? vesselTxns.filter(
+            (t) =>
+              t.payElementUuid === tab.element.payElementUuid &&
+              t.sourceType !== "bond",
+          )
+        : [],
     [vesselTxns],
   );
 
@@ -835,6 +945,24 @@ export default function VesselPortagePage() {
     async (tabId: string, opts?: { silent?: boolean }): Promise<boolean> => {
       const tab = tabById.get(tabId);
       if (!tab || dirtyCount(tabId) === 0) return true;
+      if (
+        tab.miscType &&
+        (!tab.miscAvailable || !tab.element || !txnsLoaded)
+      ) {
+        toast({
+          title: "Cannot save this selection",
+          description:
+            "The selected Pay Element is unavailable, or entries have not loaded. Your unsaved entries have been kept.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const miscSaveKey = `${vesselUuid}::${period}::${tabId}`;
+
+      if (tab.miscType && miscSavesInFlight.current.has(miscSaveKey)) {
+        return false;
+      }
       const batch = buildBatch(tab);
       if (
         batch.creates.length === 0 &&
@@ -851,9 +979,21 @@ export default function VesselPortagePage() {
         });
         return true;
       }
+      if (tab.miscType) {
+        miscSavesInFlight.current.add(miscSaveKey);
+      }
       setSaving(true);
       try {
-        await accountsApiV2.monthlyTransactions.batchSave(batch);
+        const result =
+          await accountsApiV2.monthlyTransactions.batchSave(batch);
+
+        if (tab.miscType) {
+          await queryClient.cancelQueries({ queryKey: txnsKey });
+
+          queryClient.setQueryData<any[]>(txnsKey, (rows = []) =>
+            mergeBatchRows(rows, result),
+          );
+        }
         setEdits((e) => {
           const next = { ...e };
           for (const k of Object.keys(next)) {
@@ -874,10 +1014,21 @@ export default function VesselPortagePage() {
         });
         return false;
       } finally {
+        if (tab.miscType) {
+          miscSavesInFlight.current.delete(miscSaveKey);
+        }
         setSaving(false);
       }
     },
-    [tabById, dirtyCount, buildBatch, toast],
+    [
+      tabById,
+      dirtyCount,
+      buildBatch,
+      toast,
+      txnsLoaded,
+      vesselUuid,
+      period,
+    ],
   );
 
   const saveAllDirty = useCallback(
@@ -1338,6 +1489,75 @@ export default function VesselPortagePage() {
     }
   };
 
+  const changeMiscChoice = (
+    tab: EntryTabDef,
+    category: MiscCategory,
+    element: any | null,
+  ) => {
+    if (!tab.miscType) return;
+
+    if (
+      saving ||
+      miscSavesInFlight.current.size > 0 ||
+      dirtyCount(tab.id) > 0
+    ) {
+      toast({
+        title: "Save your entries first",
+        description:
+          "Save the current Pay Element's entries before changing Category or Pay Element.",
+      });
+      return;
+    }
+
+    // Remove unchanged edit markers before rebinding this tab.
+    setEdits((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([key]) => !key.startsWith(`${tab.id}::`),
+        ),
+      ),
+    );
+
+    setMiscChoices((current) => ({
+      ...current,
+      [tab.miscType!]: { category, element },
+    }));
+  };
+
+  const discardUnavailableMiscEdits = (tab: EntryTabDef) => {
+    if (
+      !tab.miscType ||
+      saving ||
+      miscSavesInFlight.current.size > 0
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Discard the unsaved entries for this unavailable Pay Element? Saved records will not be changed.",
+      )
+    ) {
+      return;
+    }
+
+    setEdits((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([key]) => !key.startsWith(`${tab.id}::`),
+        ),
+      ),
+    );
+
+    setMiscChoices((current) => ({
+      ...current,
+      [tab.miscType!]: {
+        ...current[tab.miscType!],
+        element: null,
+      },
+    }));
+  };
+
   // ---- render ---------------------------------------------------------------
   const entryStatusCounts = ["draft", "submitted", "accepted", "rejected"].map(
     (s) => ({ status: s, count: counts[s] ?? 0 }),
@@ -1379,8 +1599,116 @@ export default function VesselPortagePage() {
     );
   };
 
+  const renderMiscSelectors = (tab: EntryTabDef) => {
+    if (!tab.miscType) return null;
+
+    const choice = miscChoices[tab.miscType];
+    const options = miscOptionsByType[tab.miscType].filter(
+      (e) => e.category === choice.category,
+    );
+
+    const hasUnsaved = dirtyCount(tab.id) > 0;
+    const busy = saving || miscSavesInFlight.current.size > 0;
+    const disabled = busy || hasUnsaved;
+
+    return (
+      <div className="rounded-md border bg-slate-50 p-3 space-y-2">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="w-full sm:w-[220px]">
+            <Label htmlFor={`category-${tab.id}`}>Category</Label>
+            <Select
+              value={choice.category}
+              disabled={disabled}
+              onValueChange={(value) =>
+                changeMiscChoice(
+                  tab,
+                  value as MiscCategory,
+                  null,
+                )
+              }
+            >
+              <SelectTrigger
+                id={`category-${tab.id}`}
+                data-testid={`select-category-${tab.id}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one_off">One-off</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-[320px]">
+            <Label htmlFor={`element-${tab.id}`}>Pay Element</Label>
+            <Select
+              value={
+                tab.miscAvailable
+                  ? choice.element?.payElementUuid ?? ""
+                  : ""
+              }
+              disabled={disabled || options.length === 0}
+              onValueChange={(uuid) => {
+                const element = options.find(
+                  (e) =>
+                    e.payElementUuid === uuid &&
+                    e.calcMethod !== "rate_times_qty",
+                );
+
+                if (element) {
+                  changeMiscChoice(tab, choice.category, element);
+                }
+              }}
+            >
+              <SelectTrigger
+                id={`element-${tab.id}`}
+                data-testid={`select-pay-element-${tab.id}`}
+              >
+                <SelectValue placeholder="Select Pay Element" />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((element) => (
+                  <SelectItem
+                    key={element.payElementUuid}
+                    value={element.payElementUuid}
+                    disabled={element.calcMethod === "rate_times_qty"}
+                  >
+                    {element.code} — {element.name}
+                    {element.calcMethod === "rate_times_qty"
+                      ? " — Requires quantity/rate entry"
+                      : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Only active {tab.miscType === "earning" ? "Earning" : "Deduction"}{" "}
+          elements in the selected category are listed. Wage Scale Lookup
+          elements and elements assigned to enabled custom tabs are excluded.
+        </p>
+
+        {options.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No applicable Pay Elements in this category.
+          </p>
+        )}
+
+        {hasUnsaved && (
+          <p className="text-xs text-amber-700">
+            Save your entries before changing Category or Pay Element.
+          </p>
+        )}
+      </div>
+    );
+  };
+
   const renderEntryTab = (tab: EntryTabDef) => (
     <TabsContent key={tab.id} value={tab.id} className="space-y-2">
+      {renderMiscSelectors(tab)}
       {isLocked && (
         <div
           className="border border-gray-300 bg-gray-50 rounded-md px-4 py-2 text-sm text-gray-700 flex items-center gap-1"
@@ -1400,6 +1728,29 @@ export default function VesselPortagePage() {
           would double-post.
         </div>
       )}
+      {tab.miscType && !tab.miscAvailable ? (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {tab.element
+              ? "The previously selected Pay Element is no longer available here. Saved records have not been changed."
+              : "Select a Category and Pay Element to view or enter amounts."}
+          </p>
+
+          {Object.keys(edits).some((key) =>
+            key.startsWith(`${tab.id}::`),
+          ) && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving || miscSavesInFlight.current.size > 0}
+              onClick={() => discardUnavailableMiscEdits(tab)}
+            >
+              Discard unsaved entries
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
       {renderSaveBar(tab)}
       {tab.kind === "dated" && gridEditable && (
         <div className="flex gap-2">
@@ -1432,13 +1783,26 @@ export default function VesselPortagePage() {
         </div>
       )}
       <EntryGrid
+        key={
+          tab.miscType
+            ? `${tab.id}:${tab.element.payElementUuid}`
+            : tab.id
+        }
         columns={buildColumns(tab)}
         rows={buildRows(tab)}
-        editable={gridEditable}
+        editable={
+          gridEditable &&
+          (!tab.miscType ||
+            (txnsLoaded &&
+              !saving &&
+              miscSavesInFlight.current.size === 0))
+        }
         onCellEdited={onCellEdited(tab.id)}
         onRejectedCellClicked={setRejectedTxn}
         testId={`grid-${tab.id}`}
       />
+        </>
+      )}
     </TabsContent>
   );
 
