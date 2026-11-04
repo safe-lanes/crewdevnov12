@@ -369,10 +369,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   // Fetch versions for the matched form so we can prefer the latest released
   // form-version over the legacy adm_rank_groups_v2.configuration column.
-  const { data: a2FormVersions = [] } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; status: string; configuration: string | null; releasedAt: string | null }>>({
+  const { data: a2FormVersionsData } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; status: string; configuration: string | null; releasedAt: string | null }>>({
     queryKey: [`/api/v2/admin/forms/${matchingRankGroupForA2?.formId}/versions`],
     enabled: !!matchingRankGroupForA2?.formId,
   });
+  // A `= []` default would be a new array each render while loading, which
+  // re-runs a2Config and the effects that depend on it.
+  const a2FormVersions = useMemo(() => a2FormVersionsData ?? [], [a2FormVersionsData]);
 
   // Task 334: if this review is pinned to a form version, load THAT version's
   // config instead of the latest released one.
