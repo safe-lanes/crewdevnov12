@@ -17,6 +17,21 @@ import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@sh
 import type { PromotionA2Config } from '@shared/schema';
 import { getBaseRank } from '@shared/crew-mapping';
 import { PromotionPositionSelectDialog } from '@/components/promotion-review-parts/PromotionPositionSelectDialog';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  PROMO_SECTION_KEYS,
+  buildPromotionChanges,
+  isEmptyPromotionChanges,
+  type PromoSectionKey,
+} from '@shared/v2/promotions/promotionChanges';
+import {
+  APPROVER_SECTIONS,
+  PART_A_SECTIONS,
+  snapshotFromState,
+  stateFromResponse,
+  type PromoListSnapshot,
+  type SelectedApprover,
+} from './promotionListChanges';
 
 type PromotionReviewResponse = PromotionReview & {
   selectedApproversForSubmission?: string | null;
@@ -203,7 +218,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
   }, [usersV2Data]);
 
-  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<{ userUuid: string; displayName: string }[]>([]);
+  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<SelectedApprover[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
 
@@ -242,13 +257,28 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const effectiveReviewUuid = savedReviewUuid ?? existingReviewData?.reviewUuid ?? null;
 
+  // One save: the request body, the child lists the server holds once it
+  // succeeds, and the CES / approver rows whose dates it checks first.
+  type PromotionSave = {
+    body: Record<string, any>;
+    saved: PromoListSnapshot;
+    dateRows: Omit<Parameters<typeof assertPromotionDateDrafts>[0], 'promotionDate'>;
+  };
   type SaveMutationAction = 'draft' | 'submit-b' | 'submit-c';
-  type SaveMutationVariables = { data: any; action: SaveMutationAction };
+  type SaveMutationVariables = { save: PromotionSave; action: SaveMutationAction };
+
+  // The child lists as the server holds them: from the GET when the form
+  // loads, then moved on by every successful save. A save sends only the
+  // difference to them (PRD-02 / PRD-03).
+  const listBaselineRef = useRef<PromoListSnapshot>({});
+  const markListsSaved = useCallback((saved: PromoListSnapshot) => {
+    listBaselineRef.current = { ...listBaselineRef.current, ...saved };
+  }, []);
 
   const dateDraftsRef = useRef<PromotionDateDrafts>(new Map());
-  const validateDatePayload = useCallback((data: Parameters<typeof assertPromotionDateDrafts>[0]) => {
+  const validateDatePayload = useCallback((save: PromotionSave) => {
     try {
-      assertPromotionDateDrafts(data, dateDraftsRef.current);
+      assertPromotionDateDrafts({ ...save.dateRows, promotionDate: save.body.promotionDate }, dateDraftsRef.current);
       return true;
     } catch (error) {
       toast({ title: "Invalid Date", description: error instanceof Error ? error.message : "Enter a valid date, or clear the field.", variant: "destructive" });
@@ -257,15 +287,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [toast]);
 
   const saveMutation = useMutation({
-    mutationFn: async ({ data }: SaveMutationVariables) => {
+    mutationFn: async ({ save }: SaveMutationVariables) => {
       const endpoint = effectiveReviewUuid
         ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
         : '/api/v2/promotions/reviews';
       const method = effectiveReviewUuid ? 'PATCH' : 'POST';
-      const response = await apiRequest(method, endpoint, { ...data, auditUserUuid: getCrewUserId() });
+      const response = await apiRequest(method, endpoint, { ...save.body, auditUserUuid: getCrewUserId() });
       return response;
     },
     onSuccess: (data: any, variables: SaveMutationVariables) => {
+      markListsSaved(variables.save.saved);
       if (data?.reviewUuid) {
         setSavedReviewUuid(data.reviewUuid);
       }
@@ -743,13 +774,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   useEffect(() => {
     setCesTests(prev => {
+      // The pinned version's config is still loading (e.g. right after Submit
+      // for Approval pins it): keep the rows, or their values would be lost.
+      if (!a2Config && isPinnedConfigLoading) return prev;
       if (a2Config?.cesTests?.length) {
-        const existingValuesMap = new Map(prev.map(test => [test.id, { date: test.date, score: test.score, result: test.result }]));
+        // Rows are matched by test position (`id`), which is also their key on
+        // the server (PRD-02), so the stored uuid stays with its position.
+        const existingValuesMap = new Map(prev.map(test => [test.id, { uuid: test.uuid, date: test.date, score: test.score, result: test.result }]));
         return a2Config.cesTests.map((test, index) => {
           const id = String(index + 1);
           const existing = existingValuesMap.get(id);
           return {
             id,
+            uuid: existing?.uuid,
             description: test.description || '',
             date: existing?.date || '',
             minScore: test.minScore ? String(test.minScore) : '',
@@ -762,7 +799,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         return [];
       }
     });
-  }, [a2Config]);
+  }, [a2Config, isPinnedConfigLoading]);
 
   const [criteriaComments, setCriteriaComments] = useState<Record<string, Comment[]>>({});
   const [newCriteriaComment, setNewCriteriaComment] = useState<Record<string, string>>({});
@@ -789,11 +826,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const [approvers, setApprovers] = useState<Approver[]>([]);
   const hasHydratedRef = useRef(false);
-
-  const nextApproverIdRef = useRef(3);
-  const nextCesTestIdRef = useRef(2);
-  const nextCommentIdRef = useRef(3);
-  const nextTrainingIdRef = useRef(1);
 
   const [vesselTypes, setVesselTypes] = useState<string[]>([]);
   const [vesselClasses, setVesselClasses] = useState<string[]>([]);
@@ -881,7 +913,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (existingReviewData && !hasHydratedRef.current) {
       hasHydratedRef.current = true;
       setSavedReviewId(existingReviewData.id);
-      
+      // Every stored row, also ones the form hides (blank CES rows), so the
+      // first save diffs against exactly what the server holds.
+      listBaselineRef.current = snapshotFromState(stateFromResponse(existingReviewData), PROMO_SECTION_KEYS, false);
+
       if (existingReviewData.selectedVesselTypeForA2_3b) {
         setSelectedVesselTypeForA2_3b(existingReviewData.selectedVesselTypeForA2_3b);
       }
@@ -932,16 +967,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           if (commentData.hasOwnProperty('a4') && Array.isArray(commentData.a4)) {
             setComments(commentData.a4);
             hasLoadedA4Ref.current = true;
-            if (commentData.a4.length > 0) {
-              const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
-              nextCommentIdRef.current = maxId + 1;
-            } else {
-              nextCommentIdRef.current = 1;
-            }
           } else {
             setComments([]);
             hasLoadedA4Ref.current = true;
-            nextCommentIdRef.current = 1;
           }
           
           if (commentData.hasOwnProperty('a3') && typeof commentData.a3 === 'object') {
@@ -953,14 +981,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         } catch {
           setComments([]);
           hasLoadedA4Ref.current = true;
-          nextCommentIdRef.current = 1;
         }
       } else {
         setComments([]);
         hasLoadedA4Ref.current = true;
-        nextCommentIdRef.current = 1;
       }
-      
+
       if (existingReviewData.trainingNeeds) {
         try {
           const training = typeof existingReviewData.trainingNeeds === 'string'
@@ -968,11 +994,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             : existingReviewData.trainingNeeds;
           if (Array.isArray(training) && training.length > 0) {
             setTrainingNeeds(training);
-            const maxId = training.reduce((max: number, t: TrainingRow) => {
-              const n = parseInt(t.id, 10);
-              return Number.isFinite(n) && n > max ? n : max;
-            }, 0);
-            nextTrainingIdRef.current = maxId + 1;
           }
         } catch {}
       }
@@ -988,13 +1009,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               isFromPartA: a.isFromPartA !== undefined ? a.isFromPartA : true
             }));
             setApprovers(approversWithFlag);
-            const maxApproverId = approversWithFlag.reduce((max: number, a: Approver) => {
-              const n = parseInt(a.id, 10);
-              return Number.isFinite(n) && n > max ? n : max;
-            }, 0);
-            if (maxApproverId >= nextApproverIdRef.current) {
-              nextApproverIdRef.current = maxApproverId + 1;
-            }
           }
         } catch {}
       }
@@ -1012,7 +1026,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                 );
                 return { userUuid: match?.userUuid || '', displayName: item };
               }
-              return { userUuid: item.userUuid || '', displayName: item.displayName || item.approver || '' };
+              return { uuid: item.uuid, userUuid: item.userUuid || '', displayName: item.displayName || item.approver || '' };
             });
             setSelectedApproversForSubmission(normalized);
           }
@@ -1052,7 +1066,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return prev.map(a => {
         if (a.userUuid) return a;
         const match = approverMasterData.find(m => m.displayName === a.displayName);
-        return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+        return match ? { ...a, userUuid: match.userUuid } : a;
       });
     });
   }, [approverMasterData]);
@@ -1062,11 +1076,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       hasLoadedA4Ref.current = true;
       const user = getCurrentUserDisplay();
       const defaultComments: Comment[] = [
-        { id: '1', user, text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
-        { id: '2', user, text: 'Pending completion of minimum rank experience and COC Master license.' },
+        { id: uuidv4(), user, text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
+        { id: uuidv4(), user, text: 'Pending completion of minimum rank experience and COC Master license.' },
       ];
       setComments(defaultComments);
-      nextCommentIdRef.current = 3;
     }
   }, [isLoadingReview, existingReviewData]);
 
@@ -1078,7 +1091,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
   };
 
-  const collectFormData = useCallback((formData: PromotionReviewFormData, scope: 'a' | 'b' | 'c' | 'full' = 'full') => {
+  const collectFormData = useCallback((
+    formData: PromotionReviewFormData,
+    scope: 'a' | 'b' | 'c' | 'full' = 'full',
+    options: { withApprovers?: boolean; approvers?: Approver[]; selectedApprovers?: SelectedApprover[] } = {},
+  ): PromotionSave => {
     const includeA = scope === 'a' || scope === 'full';
     const includeB = scope === 'b' || scope === 'full';
     const includeC = scope === 'c' || scope === 'full';
@@ -1179,19 +1196,42 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const shouldDowngradeFromInProgress = existingStatusNormalized === 'in_progress';
     const sendStatusAsDraft = !isExistingReview || shouldDowngradeFromInProgress;
 
-    return {
+    // Child lists: only what changed since they were loaded or last saved
+    // (PRD-02 / PRD-03). Part A saves its lists; Part B (or a save that asks
+    // for them) the approver lists. A4 comments without text and approvers
+    // without a name are not saved.
+    const includeApprovers = includeB || !!options.withApprovers || !!options.approvers;
+    const listApprovers = options.approvers ?? approvers;
+    const sections: PromoSectionKey[] = [
+      ...(includeA ? PART_A_SECTIONS : []),
+      ...(includeApprovers ? APPROVER_SECTIONS : []),
+    ];
+    const current = snapshotFromState({
+      cesTests,
+      trainingNeeds,
+      trainingComments,
+      criteriaComments,
+      a4Comments: commentsRef.current,
+      approvers: listApprovers,
+      selectedApprovers: options.selectedApprovers ?? selectedApproversForSubmission,
+    }, sections);
+    const { changes, saved } = buildPromotionChanges(listBaselineRef.current, current, effectiveReviewUuid);
+    // CES rows follow the admin config and are never removed by hand. One the
+    // config no longer shows stays stored.
+    if (changes.cesTests) {
+      delete changes.cesTests.deleted;
+      if (changes.cesTests.rows.length === 0) delete changes.cesTests;
+    }
+
+    const body = {
       crewMemberId: promotionData?.crewMemberId,
       promotionToRank: promotionData?.promotionToRank,
       ...(sendStatusAsDraft ? { status: 'draft' } : {}),
       selectedVesselTypeForA2_3b: includeA ? (selectedVesselTypeForA2_3b || null) : undefined,
       criteriaVerifiedStatus: includeA ? JSON.stringify(criteriaVerifiedStatus) : undefined,
       criteriaMeetsStatus: includeA ? JSON.stringify(criteriaMeetsStatus) : undefined,
-      cesTestsData: includeA ? JSON.stringify(cesTests) : undefined,
-      criteriaComments: includeA ? JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current.filter(c => c.text?.trim()) }) : undefined,
-      trainingNeeds: includeA ? JSON.stringify(trainingNeeds) : undefined,
+      changes: isEmptyPromotionChanges(changes) ? undefined : changes,
       partANotes: includeA ? (formData.partANotes || null) : undefined,
-      approvalData: includeB ? JSON.stringify(approvers) : undefined as string | undefined,
-      selectedApproversForSubmission: includeB ? JSON.stringify(selectedApproversForSubmission) : undefined as string | undefined,
       b2VesselTypes: includeB ? vesselTypes : undefined,
       b2FleetGroups: includeB ? vesselClasses : undefined,
       partBNotes: includeB ? (formData.partBNotes || null) : undefined,
@@ -1205,7 +1245,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       vesselAssigned: includeC ? vesselAssigned : undefined,
       promotionDate: includeC ? promotionDate : undefined,
       partCNotes: includeC ? (formData.partCNotes || null) : undefined,
+    } as Record<string, any>;
+
+    const save: PromotionSave = {
+      body,
+      saved,
+      dateRows: {
+        cesTests: includeA ? cesTests : undefined,
+        approvers: includeApprovers ? listApprovers.filter(a => a.approver?.trim()) : undefined,
+      },
     };
+    return save;
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedPosition, isOnboardPromotion, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
   const validateTrainingNames = useCallback(() => {
@@ -1225,38 +1275,34 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (!validateTrainingNames()) {
       return;
     }
-    const reviewData = collectFormData({
+    const withApprovers = approvers.some(a => a.approver?.trim()) || selectedApproversForSubmission.length > 0;
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    }, 'a');
-    const approversToPersist = approvers.filter(a => a.approver?.trim());
-    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
-      reviewData.approvalData = JSON.stringify(approversToPersist);
-      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
-    }
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'draft' });
+    }, 'a', { withApprovers });
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'draft' });
   }, [validateDatePayload, collectFormData, saveMutation, validateTrainingNames, approvers, selectedApproversForSubmission]);
 
   const handleSaveDraftB = useCallback(() => {
-    const reviewData = collectFormData({
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'b');
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'draft' });
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'draft' });
   }, [validateDatePayload, collectFormData, saveMutation]);
 
   const handleSaveDraftC = useCallback(() => {
-    const reviewData = collectFormData({
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'c');
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'draft' });
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'draft' });
   }, [validateDatePayload, collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
@@ -1295,14 +1341,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
       return;
     }
-    const reviewData = collectFormData({
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'b');
-    reviewData.status = 'approved';
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'submit-b' });
+    save.body.status = 'approved';
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'submit-b' });
   }, [validateDatePayload, collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast, existingReviewData, promotionData]);
 
   const handleSubmitPartC = useCallback(() => {
@@ -1360,28 +1406,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
       return;
     }
-    const reviewData = collectFormData({
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'c');
-    reviewData.status = 'completed';
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'submit-c' });
+    save.body.status = 'completed';
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'submit-c' });
   }, [validateDatePayload, collectFormData, saveMutation, promotionConfirmed, promotionDate, toast, isOnboardPromotion, isLoadingCurrentVesselRanks, isCurrentVesselRanksError, requiresPositionSelection, selectedPosition]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     if (!validateTrainingNames()) {
       return;
     }
-    const reviewData = collectFormData(data, 'full');
-    const approversToPersist = approvers.filter(a => a.approver?.trim());
-    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
-      reviewData.approvalData = JSON.stringify(approversToPersist);
-      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
-    }
-    if (!validateDatePayload(reviewData)) return;
-    saveMutation.mutate({ data: reviewData, action: 'draft' });
+    const save = collectFormData(data, 'full');
+    if (!validateDatePayload(save)) return;
+    saveMutation.mutate({ save, action: 'draft' });
   };
 
   const getMeetsCriterion = useCallback((required: string, result: string) => {
@@ -1532,34 +1573,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return 'pending';
   }, [criteriaData, isOtherCriteriaSubItem]);
 
-  const addCesTest = useCallback(() => {
-    const newId = nextCesTestIdRef.current.toString();
-    nextCesTestIdRef.current += 1;
-    setCesTests(prev => [...prev, {
-      id: newId,
-      description: '',
-      date: '',
-      minScore: '',
-      score: '',
-      result: ''
-    }]);
-  }, []);
-
-  const deleteCesTest = useCallback((id: string) => {
-    setCesTests(prev => prev.filter(t => t.id !== id));
-  }, []);
-
   const updateCesTest = useCallback((id: string, field: string, value: string) => {
     setCesTests(prev => prev.map(t =>
       t.id === id ? { ...t, [field]: value } : t
     ));
   }, []);
 
+  // A new row gets its uuid now, so every save (and a retried one) sends the
+  // same uuid for it (PRD-02).
   const addTrainingRow = useCallback(() => {
-    const newId = nextTrainingIdRef.current.toString();
-    nextTrainingIdRef.current += 1;
     setTrainingNeeds(prev => [...prev, {
-      id: newId,
+      id: uuidv4(),
       training: '',
       correspondingInDB: '',
       identifiedByUuid: '',
@@ -1570,8 +1594,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }]);
   }, []);
 
+  // The row's comments go with it, so they are not saved without a training.
   const deleteTrainingRow = useCallback((id: string) => {
     setTrainingNeeds(prev => prev.filter(t => t.id !== id));
+    setTrainingComments(prev => {
+      if (!(id in prev)) return prev;
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
   }, []);
 
   const updateTraining = useCallback((id: string, field: string, value: string) => {
@@ -1592,10 +1622,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           return true;
         })
         .map((template) => {
-          const newId = nextTrainingIdRef.current.toString();
-          nextTrainingIdRef.current += 1;
           return {
-            id: newId,
+            id: uuidv4(),
             training: template.name,
             correspondingInDB: template.ctUuid ?? '',
             identifiedByUuid: '',
@@ -1611,8 +1639,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, []);
 
   const addApprover = useCallback(() => {
-    const newId = nextApproverIdRef.current.toString();
-    nextApproverIdRef.current += 1;
+    const newId = uuidv4();
     const currentDate = new Date().toISOString().split('T')[0];
     setApprovers(prev => [...prev, {
       id: newId,
@@ -1654,8 +1681,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, []);
 
   const addComment = useCallback(() => {
-    const newId = nextCommentIdRef.current.toString();
-    nextCommentIdRef.current += 1;
+    const newId = uuidv4();
     const currentUserDisplay = getCurrentUserDisplay();
     setComments(prev => [...prev, {
       id: newId,
@@ -1700,9 +1726,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const resolvedApprovers = selectedApproversForSubmission.map(a => {
       if (a.userUuid) return a;
       const match = approverMasterData.find(m => m.displayName === a.displayName);
-      return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+      return match ? { ...a, userUuid: match.userUuid } : a;
     });
-    
+
     const unresolved = resolvedApprovers.filter(a => !a.userUuid);
     if (unresolved.length > 0) {
       toast({
@@ -1733,17 +1759,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const preservedNonPartA = approvers.filter(a => !a.isFromPartA);
     const mergedApprovers: Approver[] = [...newApprovers, ...preservedNonPartA];
 
-    const reviewData = collectFormData({
+    const save = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    }, 'a');
-    
-    reviewData.approvalData = JSON.stringify(mergedApprovers);
-    reviewData.selectedApproversForSubmission = JSON.stringify(resolvedApprovers);
-    reviewData.status = 'submitted';
+    }, 'a', { approvers: mergedApprovers, selectedApprovers: resolvedApprovers });
+    save.body.status = 'submitted';
 
-    if (!validateDatePayload(reviewData)) return;
+    if (!validateDatePayload(save)) return;
     setIsSubmittingForApproval(true);
     setSelectedApproversForSubmission(resolvedApprovers);
     setApprovers(mergedApprovers);
@@ -1756,8 +1779,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       : '/api/v2/promotions/reviews';
     const method = submitReviewUuid ? 'PATCH' : 'POST';
     
-    apiRequest(method, endpoint, { ...reviewData, auditUserUuid: getCrewUserId() })
+    apiRequest(method, endpoint, { ...save.body, auditUserUuid: getCrewUserId() })
       .then((data: any) => {
+        markListsSaved(save.saved);
         if (data?.reviewUuid) {
           setSavedReviewUuid(data.reviewUuid);
         }
@@ -1783,7 +1807,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [validateDatePayload, selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames]);
+  }, [validateDatePayload, selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames, approvers, markListsSaved]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1794,7 +1818,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       dateDrafts={dateDraftsRef.current}
       cesTests={cesTests}
       onUpdateCesTest={updateCesTest}
-      onDeleteCesTest={deleteCesTest}
       criteriaComments={criteriaComments}
       newCriteriaComment={newCriteriaComment}
       editingCriteriaComment={editingCriteriaComment}
@@ -1803,7 +1826,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       onSetEditingCriteriaComment={setEditingCriteriaComment}
       currentUserDisplay={currentUserDisplay}
     />
-  ), [cesTests, updateCesTest, deleteCesTest, criteriaComments, newCriteriaComment, editingCriteriaComment, currentUserDisplay]);
+  ), [cesTests, updateCesTest, criteriaComments, newCriteriaComment, editingCriteriaComment, currentUserDisplay]);
 
   // Task #569: stage-wise locking, mirroring the appraisal "Lock form" feature.
   // The admin lock flag lives on the "Promotion Review Form" admin form. While the
@@ -1936,7 +1959,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   editingCriteriaComment={editingCriteriaComment}
                   onSetEditingCriteriaComment={setEditingCriteriaComment}
                   onSetCriteriaComments={setCriteriaComments}
-                  onAddCesTest={addCesTest}
                   onShowChecklistForm={() => setShowChecklistForm(true)}
                   cesTestsSection={cesTestsSection}
                   checklistProgressData={existingReviewData?.checklistProgressData}

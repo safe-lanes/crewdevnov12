@@ -70,10 +70,12 @@ export function PromotionDateInput({
   );
 }
 
+// Refuses a save while a date field holds text that is not a valid date. The
+// rows are the CES tests and approvers this save includes.
 export function assertPromotionDateDrafts(
   data: {
-    cesTestsData?: string;
-    approvalData?: string;
+    cesTests?: { id: string; date?: string | null }[];
+    approvers?: { id: string; date?: string | null }[];
     promotionDate?: string | null;
   },
   drafts: PromotionDateDrafts
@@ -96,15 +98,11 @@ export function assertPromotionDateDrafts(
       );
     }
   };
-  if (data.cesTestsData !== undefined) {
-    for (const row of JSON.parse(data.cesTestsData)) {
-      check(`ces:${row.id}`, row.date, 'A2.7 test date');
-    }
+  for (const row of data.cesTests ?? []) {
+    check(`ces:${row.id}`, row.date, 'A2.7 test date');
   }
-  if (data.approvalData !== undefined) {
-    for (const row of JSON.parse(data.approvalData)) {
-      check(`approver:${row.id}`, row.date, 'B1 approver date');
-    }
+  for (const row of data.approvers ?? []) {
+    check(`approver:${row.id}`, row.date, 'B1 approver date');
   }
   if (data.promotionDate !== undefined) {
     check('promotion', data.promotionDate, 'C1.1 promotion date');

@@ -5,8 +5,14 @@ import { getDb } from "../../db.js";
 import { promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema.js";
 import { eq, and } from "drizzle-orm";
 import { serveAttachmentFromFilePath } from "../../shared/serveAttachmentHelper.js";
+import { AppraisalRowFieldLockedError, AppraisalRowOwnershipError } from "../../appraisals/repositories/childRowSync";
 
 const service = new PromotionReviewsService();
+
+// A child row of another review or list, or a key that may not change (PRD-02).
+function isChildRowError(error: unknown): error is Error {
+  return error instanceof AppraisalRowOwnershipError || error instanceof AppraisalRowFieldLockedError;
+}
 
 export class PromotionReviewsController {
   async getCriteriaMaster(_req: Request, res: Response) {
@@ -87,7 +93,7 @@ export class PromotionReviewsController {
       console.log(`[Promotions V2] Created review ${review?.reviewUuid} for crew ${review?.crewMemberId}`);
       res.status(201).json(review);
     } catch (error) {
-      if (error instanceof PromotionGuardError) {
+      if (error instanceof PromotionGuardError || isChildRowError(error)) {
         return res.status(400).json({ error: error.message });
       }
       console.error("[Promotions V2] Failed to create review:", error);
@@ -108,7 +114,7 @@ export class PromotionReviewsController {
       console.log(`[Promotions V2] Updated review ${reviewUuid}`);
       res.json(review);
     } catch (error) {
-      if (error instanceof PromotionGuardError) {
+      if (error instanceof PromotionGuardError || isChildRowError(error)) {
         return res.status(400).json({ error: error.message });
       }
       console.error("[Promotions V2] Failed to update review:", error);

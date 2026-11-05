@@ -3,6 +3,23 @@ import { getDb } from "../../db";
 import { promoCriteriaCommentsV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoCriteriaCommentV2, InsertPromoCriteriaCommentV2 } from "../../../../shared/v2/promotions/types";
 import { v4 as uuidv4 } from "uuid";
+import { syncChildRows, textField, type ChildTableConfig } from "../../appraisals/repositories/childRowSync";
+import type { PromoSectionChanges } from "../../../../shared/v2/promotions/promotionChanges";
+
+// Comments per criteria code (A4, A2.x, A2.7 CES tests): rows the user adds,
+// each with a uuid made by the browser (PRD-02). A comment never moves to
+// another criteria code.
+export const CRITERIA_COMMENT_ROWS: ChildTableConfig = {
+  table: promoCriteriaCommentsV2,
+  uuidKey: "ccUuid",
+  parentKey: "reviewUuid",
+  parentLabel: "promotion review",
+  fields: [
+    { ...textField("criteriaCode"), setOnce: true },
+    { column: "commentUser", from: ["user"], normalize: (row) => row.user || null },
+    { column: "commentText", from: ["text"], normalize: (row) => row.text || null },
+  ],
+};
 
 export class CriteriaCommentsRepository {
   async findByReviewUuid(reviewUuid: string): Promise<PromoCriteriaCommentV2[]> {
@@ -33,59 +50,9 @@ export class CriteriaCommentsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, comments: Omit<InsertPromoCriteriaCommentV2, "ccUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoCriteriaCommentV2[]> {
-    const db = getDb();
-    const existing = await db
-      .select()
-      .from(promoCriteriaCommentsV2)
-      .where(and(eq(promoCriteriaCommentsV2.reviewUuid, reviewUuid), eq(promoCriteriaCommentsV2.isDeleted, false)));
-
-    if (comments.length === 0) {
-      if (existing.length > 0) {
-        await db
-          .update(promoCriteriaCommentsV2)
-          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-          .where(and(eq(promoCriteriaCommentsV2.reviewUuid, reviewUuid), eq(promoCriteriaCommentsV2.isDeleted, false)));
-      }
-      return [];
-    }
-
-    const results: PromoCriteriaCommentV2[] = [];
-    const usedExistingIds: number[] = [];
-
-    for (let i = 0; i < comments.length; i++) {
-      const c = comments[i];
-      const match = existing.find(e =>
-        e.criteriaCode === c.criteriaCode &&
-        e.commentId === c.commentId &&
-        !usedExistingIds.includes(e.id)
-      );
-
-      if (match) {
-        usedExistingIds.push(match.id);
-        const updated = await db
-          .update(promoCriteriaCommentsV2)
-          .set({ commentUser: c.commentUser, commentText: c.commentText, sortOrder: i, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-          .where(eq(promoCriteriaCommentsV2.id, match.id))
-          .returning();
-        results.push(updated[0]);
-      } else {
-        const inserted = await db
-          .insert(promoCriteriaCommentsV2)
-          .values({ ...c, ccUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
-          .returning();
-        results.push(inserted[0]);
-      }
-    }
-
-    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
-    if (unusedIds.length > 0) {
-      await db
-        .update(promoCriteriaCommentsV2)
-        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-        .where(inArray(promoCriteriaCommentsV2.id, unusedIds));
-    }
-
-    return results;
+  // Saves the criteria comments of one change set: rows matched by uuid, only
+  // the sent fields written, only the listed rows deleted.
+  async applyChanges(reviewUuid: string, changes: PromoSectionChanges, auditUserUuid: string | null = null, executor: any = getDb()): Promise<number> {
+    return syncChildRows(executor, CRITERIA_COMMENT_ROWS, reviewUuid, changes, "patch", auditUserUuid);
   }
 }

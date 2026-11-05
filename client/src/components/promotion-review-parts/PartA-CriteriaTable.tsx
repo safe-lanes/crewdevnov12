@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, Info, MessageSquare, Trash2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import type { CriteriaRow, Comment } from './types';
 import { calculateChecklistProgressFromJson, type ChecklistProgressResult } from '@/modules/promotions/checklistProgressUtils';
 
@@ -26,7 +27,6 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   editingCriteriaComment: string | null;
   onSetEditingCriteriaComment: React.Dispatch<React.SetStateAction<string | null>>;
   onSetCriteriaComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
-  onAddCesTest: () => void;
   onShowChecklistForm: () => void;
   cesTestsSection: React.ReactNode;
   checklistProgressData?: string | null;
@@ -58,7 +58,6 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   editingCriteriaComment,
   onSetEditingCriteriaComment,
   onSetCriteriaComments,
-  onAddCesTest,
   onShowChecklistForm,
   cesTestsSection,
   checklistProgressData,
@@ -285,7 +284,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                     }}
                     onBlur={() => {
                       if (newCriteriaComment[row.id]?.trim()) {
-                        const commentId = Date.now().toString();
+                        const commentId = uuidv4();
                         onSetCriteriaComments(prev => ({
                           ...prev,
                           [row.id]: [

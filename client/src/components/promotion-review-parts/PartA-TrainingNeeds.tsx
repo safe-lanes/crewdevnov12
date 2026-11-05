@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import type { TrainingRow, Comment } from './types';
 import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
 import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from '@/hooks/v2/useMasterDataV2';
@@ -302,7 +303,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                                 }
                               } else if (commentText) {
                                 const newComment: Comment = {
-                                  id: `training-comment-${Date.now()}`,
+                                  id: uuidv4(),
                                   user: currentUserDisplay,
                                   text: commentText
                                 };

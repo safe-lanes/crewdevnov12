@@ -25,6 +25,12 @@ import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
 import { v4 as uuidv4 } from "uuid";
 import { getBaseRank } from "../../../../shared/crew-mapping";
+import {
+  LEGACY_LIST_FIELDS,
+  isEmptyPromotionChanges,
+  promotionChangesSchema,
+  type PromotionChanges,
+} from "../../../../shared/v2/promotions/promotionChanges";
 
 export const promotionReviewWritableSchema = z.object({
   crewMemberId: z.string().optional(),
@@ -34,11 +40,7 @@ export const promotionReviewWritableSchema = z.object({
   selectedVesselTypeForA23b: z.string().nullable().optional(),
   criteriaVerifiedStatus: z.string().optional(),
   criteriaMeetsStatus: z.string().optional(),
-  cesTestsData: z.string().optional(),
-  criteriaComments: z.string().optional(),
-  trainingNeeds: z.string().optional(),
-  approvalData: z.string().optional(),
-  selectedApproversForSubmission: z.string().optional(),
+  changes: promotionChangesSchema.optional(),
   checklistProgressData: z.string().optional(),
   promotionConfirmed: z.string().nullable().optional(),
   vesselAssigned: z.string().nullable().optional(),
@@ -75,6 +77,14 @@ export class PromotionGuardError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PromotionGuardError";
+  }
+}
+
+// A form older than PRD-02 sends whole child lists, which would delete rows
+// other sessions added. Refuse it before anything is written.
+function assertNoLegacyLists(data: Record<string, unknown>): void {
+  if (LEGACY_LIST_FIELDS.some((field) => data?.[field] !== undefined)) {
+    throw new PromotionGuardError("This page is out of date. Reload it and try again.");
   }
 }
 
@@ -233,8 +243,12 @@ function assembleV1Response(
     if (cs.meetsStatus !== null && cs.meetsStatus !== undefined) criteriaMeetsStatus[cs.criteriaCode] = cs.meetsStatus;
   }
 
+  // Every row carries its uuid (PRD-02); the form sends it back. Trainings and
+  // comments use it as their id too. A CES row keeps its test position as id,
+  // and a Part A approver its user uuid.
   const cesTestsData = cesTests.map(t => ({
     id: t.testId || t.ctUuid || '',
+    uuid: t.ctUuid,
     testId: t.testId || '',
     description: t.description || '',
     date: t.date || '',
@@ -247,17 +261,23 @@ function assembleV1Response(
   for (const cc of criteriaComments) {
     if (!criteriaCommentsObj[cc.criteriaCode]) criteriaCommentsObj[cc.criteriaCode] = [];
     criteriaCommentsObj[cc.criteriaCode].push({
-      id: cc.commentId || cc.ccUuid,
+      id: cc.ccUuid,
       user: cc.commentUser || '',
       text: cc.commentText || '',
     });
   }
+  // A3 comments are grouped by their training's uuid. A comment saved before
+  // migration 0275 holds the training's old counter instead; map it here too.
+  const trainingUuidOf = (trainingRowId: string): string => {
+    if (trainingNeeds.some(tn => tn.tnUuid === trainingRowId)) return trainingRowId;
+    return trainingNeeds.find(tn => tn.trainingRowId === trainingRowId)?.tnUuid ?? trainingRowId;
+  };
   const a3Comments: Record<string, any[]> = {};
   for (const tc of trainingComments) {
-    const key = tc.trainingRowId;
+    const key = trainingUuidOf(tc.trainingRowId);
     if (!a3Comments[key]) a3Comments[key] = [];
     a3Comments[key].push({
-      id: tc.commentId || tc.tcUuid,
+      id: tc.tcUuid,
       user: tc.commentUser || '',
       text: tc.commentText || '',
     });
@@ -267,7 +287,7 @@ function assembleV1Response(
   }
 
   const trainingNeedsData = trainingNeeds.map(tn => ({
-    id: tn.trainingRowId || tn.tnUuid,
+    id: tn.tnUuid,
     training: tn.training || '',
     correspondingInDB: tn.correspondingInDb || '',
     identifiedByUuid: tn.identifiedByUuid || '',
@@ -276,8 +296,16 @@ function assembleV1Response(
     completionDate: tn.completionDate || '',
   }));
 
-  const approvalData = approvals.filter(a => !a.isSelectedForSubmission).map(a => ({
-    id: a.approverId || a.apUuid,
+  // Part A approvers first, then the ones added in Part B (the order the form
+  // builds). A new row is saved after the existing ones, so sortOrder alone
+  // would put a later Part A approver after the manual ones.
+  const listedApprovers = approvals.filter(a => !a.isSelectedForSubmission);
+  const approvalData = [
+    ...listedApprovers.filter(a => a.isFromPartA),
+    ...listedApprovers.filter(a => !a.isFromPartA),
+  ].map(a => ({
+    id: a.isFromPartA ? (a.approverId || a.apUuid) : a.apUuid,
+    uuid: a.apUuid,
     date: a.date || '',
     approver: a.approver || '',
     status: a.status || '',
@@ -288,6 +316,7 @@ function assembleV1Response(
   const selectedApproversForSubmission = approvals
     .filter(a => a.isSelectedForSubmission)
     .map(a => ({
+      uuid: a.apUuid,
       userUuid: a.approverId || '',
       displayName: a.approver || '',
     }));
@@ -1724,9 +1753,9 @@ export class PromotionReviewsService {
   }
 
   async createReview(data: any) {
+    assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data, true);
-    const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-      trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
       selectedVesselTypeForA2_3b: _svt,
       b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
@@ -1779,8 +1808,7 @@ export class PromotionReviewsService {
       const review = await reviewsRepo.create(coreFields);
 
       await this.saveChildData(review.reviewUuid, {
-        criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-        trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
         b2VesselTypes, b2FleetGroups,
       }, coreFields.updatedByUuid ?? null);
 
@@ -1808,9 +1836,9 @@ export class PromotionReviewsService {
   }
 
   async updateReview(reviewUuid: string, data: any) {
+    assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data);
-    const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-      trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
       id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
       selectedVesselTypeForA2_3b: _svt2,
       b2VesselTypes, b2FleetGroups,
@@ -1932,8 +1960,7 @@ export class PromotionReviewsService {
       if (!review) return null;
 
       await this.saveChildData(reviewUuid, {
-        criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-        trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
         b2VesselTypes, b2FleetGroups,
       }, coreFields.updatedByUuid ?? null);
 
@@ -1965,6 +1992,13 @@ export class PromotionReviewsService {
   }
 
   private async saveChildData(reviewUuid: string, data: any, auditUserUuid: string | null = null) {
+    // Child lists first, in one transaction: a refused change set (a row of
+    // another review, a key that may not change) writes none of them.
+    const changes: PromotionChanges | undefined = data.changes;
+    if (!isEmptyPromotionChanges(changes)) {
+      await this.applyListChanges(reviewUuid, changes!, auditUserUuid);
+    }
+
     const tasks: Promise<any>[] = [];
 
     if (data.criteriaVerifiedStatus !== undefined || data.criteriaMeetsStatus !== undefined) {
@@ -1977,109 +2011,6 @@ export class PromotionReviewsService {
           meetsStatus: meets[code] ?? null,
         }, auditUserUuid));
       }
-    }
-
-    if (data.cesTestsData !== undefined) {
-      const tests = this.parseJson(data.cesTestsData, []);
-      tasks.push(cesTestsRepo.replaceForReview(reviewUuid, tests.map((t: any) => ({
-        testId: t.testId || t.test_id || t.id || null,
-        description: t.description || null,
-        date: t.date || null,
-        minScore: t.minScore || t.min_score || null,
-        score: t.score || null,
-        result: t.result || null,
-      })), auditUserUuid));
-    }
-
-    if (data.criteriaComments !== undefined) {
-      const commentsObj = this.parseJson(data.criteriaComments, {});
-      const criteriaCommentRows: any[] = [];
-      const trainingCommentRows: any[] = [];
-
-      const flatComments: Record<string, any[]> = {};
-      for (const [key, value] of Object.entries(commentsObj)) {
-        if (key === 'a3' && value && typeof value === 'object' && !Array.isArray(value)) {
-          for (const [subKey, subValue] of Object.entries(value as Record<string, any>)) {
-            if (Array.isArray(subValue)) {
-              const normalizedKey = subKey.startsWith('a3_') ? subKey : `a3_${subKey}`;
-              flatComments[normalizedKey] = subValue;
-            }
-          }
-        } else if (Array.isArray(value)) {
-          flatComments[key] = value;
-        }
-      }
-
-      for (const [key, comments] of Object.entries(flatComments)) {
-        if (key.startsWith('a3_')) {
-          const trainingRowId = key.replace('a3_', '');
-          for (const c of comments) {
-            trainingCommentRows.push({
-              trainingRowId,
-              commentId: c.id || null,
-              commentUser: c.user || null,
-              commentText: c.text || null,
-            });
-          }
-        } else {
-          for (const c of comments) {
-            criteriaCommentRows.push({
-              criteriaCode: key,
-              commentId: c.id || null,
-              commentUser: c.user || null,
-              commentText: c.text || null,
-            });
-          }
-        }
-      }
-      tasks.push(criteriaCommentsRepo.replaceForReview(reviewUuid, criteriaCommentRows, auditUserUuid));
-      tasks.push(trainingCommentsRepo.replaceForReview(reviewUuid, trainingCommentRows, auditUserUuid));
-    }
-
-    if (data.trainingNeeds !== undefined) {
-      const needs = this.parseJson(data.trainingNeeds, []);
-      tasks.push(trainingNeedsRepo.replaceForReview(reviewUuid, needs.map((n: any) => ({
-        trainingRowId: n.id || null,
-        training: n.training || null,
-        correspondingInDb: n.correspondingInDB || n.correspondingInDb || null,
-        identifiedByUuid: n.identifiedByUuid || null,
-        category: n.category || null,
-        status: n.status || null,
-        completionDate: n.completionDate || n.completion_date || null,
-      })), auditUserUuid));
-    }
-
-    if (data.approvalData !== undefined || data.selectedApproversForSubmission !== undefined) {
-      const approvalRows: any[] = [];
-      const approvals = this.parseJson(data.approvalData, []);
-      for (const a of approvals) {
-        approvalRows.push({
-          approverId: a.id || null,
-          date: a.date || null,
-          approver: a.approver || null,
-          status: a.status || null,
-          approval: a.approval || null,
-          comments: a.comments || null,
-          isFromPartA: a.isFromPartA || false,
-          isSelectedForSubmission: false,
-        });
-      }
-      const selectedApprovers = this.parseJson(data.selectedApproversForSubmission, []);
-      for (const item of selectedApprovers) {
-        if (typeof item === 'string') {
-          approvalRows.push({
-            approver: item,
-            isSelectedForSubmission: true,
-          });
-        } else {
-          approvalRows.push({
-            approverId: item.userUuid || null,
-            approver: item.displayName || item.approver || '',
-            isSelectedForSubmission: true,
-          });
-        }
-      }
-      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows, auditUserUuid));
     }
 
     if (data.checklistProgressData !== undefined) {
@@ -2256,6 +2187,33 @@ export class PromotionReviewsService {
     }
 
     if (tasks.length > 0) await Promise.all(tasks);
+  }
+
+  // Applies a child-list change set (PRD-02 / PRD-03): rows are matched by
+  // uuid (keyed rows also by key), only the sent fields are written and only
+  // the listed rows are deleted. Rows nobody touched stay as they are.
+  private async applyListChanges(reviewUuid: string, changes: PromotionChanges, auditUserUuid: string | null) {
+    await getDb().transaction(async (tx: any) => {
+      if (changes.cesTests) {
+        await cesTestsRepo.applyChanges(reviewUuid, changes.cesTests, auditUserUuid, tx);
+      }
+      if (changes.criteriaComments) {
+        await criteriaCommentsRepo.applyChanges(reviewUuid, changes.criteriaComments, auditUserUuid, tx);
+      }
+      // Comments before trainings, so a comment sent for a training that this
+      // save deletes is deleted with it.
+      if (changes.trainingComments) {
+        await trainingCommentsRepo.applyChanges(reviewUuid, changes.trainingComments, auditUserUuid, tx);
+      }
+      if (changes.trainingNeeds) {
+        await trainingNeedsRepo.applyChanges(reviewUuid, changes.trainingNeeds, auditUserUuid, tx);
+        await trainingCommentsRepo.softDeleteForTrainings(reviewUuid, changes.trainingNeeds.deleted ?? [], auditUserUuid, tx);
+      }
+      for (const list of ["approvers", "partAApprovers", "selectedApprovers"] as const) {
+        const section = changes[list];
+        if (section) await approvalsRepo.applyChanges(reviewUuid, list, section, auditUserUuid, tx);
+      }
+    });
   }
 
   private parseJson(value: any, fallback: any): any {

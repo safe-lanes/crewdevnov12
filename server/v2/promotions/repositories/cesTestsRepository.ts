@@ -3,6 +3,29 @@ import { getDb } from "../../db";
 import { promoCesTestsV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoCesTestV2, InsertPromoCesTestV2 } from "../../../../shared/v2/promotions/types";
 import { v4 as uuidv4 } from "uuid";
+import { keyField, syncChildRows, textField, type ChildTableConfig } from "../../appraisals/repositories/childRowSync";
+import { promoRowUuid, type PromoSectionChanges } from "../../../../shared/v2/promotions/promotionChanges";
+
+// A2.7 CES tests: one row per test position (testId) per review. The uuid is
+// worked out from the review and the position, so ship and office save the
+// same row (PRD-02).
+export const CES_TEST_ROWS: ChildTableConfig = {
+  table: promoCesTestsV2,
+  uuidKey: "ctUuid",
+  parentKey: "reviewUuid",
+  parentLabel: "promotion review",
+  fields: [
+    keyField("testId"),
+    textField("description"),
+    textField("date"),
+    textField("minScore"),
+    textField("score"),
+    textField("result"),
+  ],
+  matchKey: ["testId"],
+  uuidFor: (row, reviewUuid) => promoRowUuid(reviewUuid, "cesTests", String(row.testId)),
+  revive: true,
+};
 
 export class CesTestsRepository {
   async findByReviewUuid(reviewUuid: string): Promise<PromoCesTestV2[]> {
@@ -53,57 +76,9 @@ export class CesTestsRepository {
     return results.length > 0;
   }
 
-  async replaceForReview(reviewUuid: string, tests: Omit<InsertPromoCesTestV2, "ctUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoCesTestV2[]> {
-    const db = getDb();
-    const existing = await db
-      .select()
-      .from(promoCesTestsV2)
-      .where(and(eq(promoCesTestsV2.reviewUuid, reviewUuid), eq(promoCesTestsV2.isDeleted, false)));
-
-    if (tests.length === 0) {
-      if (existing.length > 0) {
-        await db
-          .update(promoCesTestsV2)
-          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-          .where(and(eq(promoCesTestsV2.reviewUuid, reviewUuid), eq(promoCesTestsV2.isDeleted, false)));
-      }
-      return [];
-    }
-
-    const results: PromoCesTestV2[] = [];
-    const usedExistingIds: number[] = [];
-
-    for (let i = 0; i < tests.length; i++) {
-      const t = tests[i];
-      const match = t.testId
-        ? existing.find(e => e.testId === t.testId && !usedExistingIds.includes(e.id))
-        : existing[i] && !usedExistingIds.includes(existing[i].id) ? existing[i] : undefined;
-
-      if (match) {
-        usedExistingIds.push(match.id);
-        const updated = await db
-          .update(promoCesTestsV2)
-          .set({ ...t, sortOrder: i, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-          .where(eq(promoCesTestsV2.id, match.id))
-          .returning();
-        results.push(updated[0]);
-      } else {
-        const inserted = await db
-          .insert(promoCesTestsV2)
-          .values({ ...t, ctUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
-          .returning();
-        results.push(inserted[0]);
-      }
-    }
-
-    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
-    if (unusedIds.length > 0) {
-      await db
-        .update(promoCesTestsV2)
-        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-        .where(inArray(promoCesTestsV2.id, unusedIds));
-    }
-
-    return results;
+  // Saves the CES rows of one change set: rows matched by uuid (or test
+  // position), only the sent fields written, only the listed rows deleted.
+  async applyChanges(reviewUuid: string, changes: PromoSectionChanges, auditUserUuid: string | null = null, executor: any = getDb()): Promise<number> {
+    return syncChildRows(executor, CES_TEST_ROWS, reviewUuid, changes, "patch", auditUserUuid);
   }
 }

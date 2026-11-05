@@ -5,13 +5,13 @@ import { PromotionDateInput, type PromotionDateDrafts } from './PromotionDateInp
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Trash2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import type { CesTest, Comment } from './types';
 
 interface PartACesTestsProps {
   dateDrafts: PromotionDateDrafts;
   cesTests: CesTest[];
   onUpdateCesTest: (id: string, field: string, value: string) => void;
-  onDeleteCesTest: (id: string) => void;
   criteriaComments: Record<string, Comment[]>;
   newCriteriaComment: Record<string, string>;
   editingCriteriaComment: string | null;
@@ -33,7 +33,6 @@ export const PartACesTests = memo(function PartACesTests({
   dateDrafts,
   cesTests,
   onUpdateCesTest,
-  onDeleteCesTest,
   criteriaComments,
   newCriteriaComment,
   editingCriteriaComment,
@@ -191,7 +190,7 @@ export const PartACesTests = memo(function PartACesTests({
                         }}
                         onBlur={() => {
                           if (newCriteriaComment[rowKey]?.trim()) {
-                            const commentId = Date.now().toString();
+                            const commentId = uuidv4();
                             onSetCriteriaComments(prev => ({
                               ...prev,
                               [rowKey]: [

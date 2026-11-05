@@ -3,6 +3,25 @@ import { getDb } from "../../db";
 import { promoTrainingNeedsV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoTrainingNeedV2, InsertPromoTrainingNeedV2 } from "../../../../shared/v2/promotions/types";
 import { v4 as uuidv4 } from "uuid";
+import { syncChildRows, textField, type ChildTableConfig } from "../../appraisals/repositories/childRowSync";
+import type { PromoSectionChanges } from "../../../../shared/v2/promotions/promotionChanges";
+
+// A3 training needs: rows the user adds, each with a uuid made by the browser
+// when the row is added (PRD-02).
+export const TRAINING_NEED_ROWS: ChildTableConfig = {
+  table: promoTrainingNeedsV2,
+  uuidKey: "tnUuid",
+  parentKey: "reviewUuid",
+  parentLabel: "promotion review",
+  fields: [
+    textField("training"),
+    { column: "correspondingInDb", from: ["correspondingInDB"], normalize: (row) => row.correspondingInDB || null },
+    textField("identifiedByUuid"),
+    textField("category"),
+    textField("status"),
+    textField("completionDate"),
+  ],
+};
 
 export class TrainingNeedsRepository {
   async findByReviewUuid(reviewUuid: string): Promise<PromoTrainingNeedV2[]> {
@@ -33,67 +52,9 @@ export class TrainingNeedsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, needs: Omit<InsertPromoTrainingNeedV2, "tnUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoTrainingNeedV2[]> {
-    const db = getDb();
-    const existing = await db
-      .select()
-      .from(promoTrainingNeedsV2)
-      .where(and(eq(promoTrainingNeedsV2.reviewUuid, reviewUuid), eq(promoTrainingNeedsV2.isDeleted, false)));
-
-    if (needs.length === 0) {
-      if (existing.length > 0) {
-        await db
-          .update(promoTrainingNeedsV2)
-          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-          .where(and(eq(promoTrainingNeedsV2.reviewUuid, reviewUuid), eq(promoTrainingNeedsV2.isDeleted, false)));
-      }
-      return [];
-    }
-
-    const results: PromoTrainingNeedV2[] = [];
-    const usedExistingIds: number[] = [];
-
-    for (let i = 0; i < needs.length; i++) {
-      const n = needs[i];
-      const match = n.trainingRowId
-        ? existing.find(e => e.trainingRowId === n.trainingRowId && !usedExistingIds.includes(e.id))
-        : existing[i] && !usedExistingIds.includes(existing[i].id) ? existing[i] : undefined;
-
-      if (match) {
-        usedExistingIds.push(match.id);
-        const updated = await db
-          .update(promoTrainingNeedsV2)
-          .set({
-            training: n.training,
-            correspondingInDb: n.correspondingInDb,
-            identifiedByUuid: n.identifiedByUuid,
-            category: n.category,
-            status: n.status,
-            completionDate: n.completionDate,
-            sortOrder: i,
-            updatedAt: new Date(),
-            updatedByUuid: auditUserUuid,
-          })
-          .where(eq(promoTrainingNeedsV2.id, match.id))
-          .returning();
-        results.push(updated[0]);
-      } else {
-        const inserted = await db
-          .insert(promoTrainingNeedsV2)
-          .values({ ...n, tnUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
-          .returning();
-        results.push(inserted[0]);
-      }
-    }
-
-    const unusedIds = existing.filter((e: any) => !usedExistingIds.includes(e.id)).map((e: any) => e.id);
-    if (unusedIds.length > 0) {
-      await db
-        .update(promoTrainingNeedsV2)
-        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-        .where(inArray(promoTrainingNeedsV2.id, unusedIds));
-    }
-
-    return results;
+  // Saves the training rows of one change set: rows matched by uuid, only the
+  // sent fields written, only the listed rows deleted.
+  async applyChanges(reviewUuid: string, changes: PromoSectionChanges, auditUserUuid: string | null = null, executor: any = getDb()): Promise<number> {
+    return syncChildRows(executor, TRAINING_NEED_ROWS, reviewUuid, changes, "patch", auditUserUuid);
   }
 }
