@@ -10,6 +10,7 @@ import { validateProductionConfigAtStartup } from "./config/productionConfig";
 import { erpCommandWorkerSupervisor } from "./v2/crew-app/erp-commands/supervisor";
 import { initializeCrewFileSecurity } from "./v2/crew-app/files/fileSecurityBootstrap";
 import { flushCrewSiem, initializeCrewSiem } from "./v2/crew-app/monitoring/siemSink";
+import assistantServiceRoutes from "./v2/assistant/serviceRoutes";
 
 const app = express();
 validateProductionConfigAtStartup();
@@ -92,6 +93,9 @@ app.use((req, res, next) => {
   await runMigrations();
 
   await tenantConnectionManager.init();
+
+  // Assistant live data (service-to-service, stage 2): see server/v2/assistant/serviceRoutes.ts
+  app.use("/api/v2/assistant", assistantServiceRoutes);
 
   app.use(tenantMiddleware);
   app.use(authMiddleware);

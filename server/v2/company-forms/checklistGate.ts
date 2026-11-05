@@ -94,7 +94,7 @@ export async function verifyChecklistYes(tx: any, planning: {
       (checklistOverrideEligible(blockers) ? " Override checklist with a written reason may apply." :
         " Override checklist cannot replace completion of a mandatory form or an unrun check.") : "",
     trainingBlockerMessage(training.blockers),
-    requestedTraining !== undefined && !canOverrideTraining ? "You do not have Override training compliance permission." : "",
+    requestedTraining !== undefined && !canOverrideTraining ? "You do not have Override deployment block permission." : "",
     requestedTraining !== undefined && !trainingReason.success ? "Write a reason for the training override." : "",
     requested !== undefined && !formReason.success ? "Write a reason for the checklist override." : "",
   ].filter(Boolean).join(" ");

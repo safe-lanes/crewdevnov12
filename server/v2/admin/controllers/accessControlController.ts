@@ -4,8 +4,9 @@ import { z } from "zod";
 import { getDb } from "../../db";
 import { accessControlService } from "../services";
 import { resolveRequestRole } from "../../auth/roleResolutionService";
-import { accessControlAuthority, saveActionDecisions } from "../services/accessControlManagement";
-import { writeCatalogue, writeMenuGrants } from "../services/accessControlWrites";
+import { accessControlAuthority, accessControlDisplayState, saveActionDecisions } from "../services/accessControlManagement";
+import { writeCatalogue, writeMenuGrants, writeCombinedRoleGrants } from "../services/accessControlWrites";
+import { readAccessAuditPage } from "../services/accessAuditRead";
 
 export function accessControlHandler(fn: (req: Request) => Promise<unknown>) {
   return async (req: Request, res: Response) => {
@@ -38,7 +39,8 @@ export const accessControlController = {
   },
   getPermissions: accessControlHandler(req => accessControlService.getPermissionsByRoleUuid(req.params.ruid)),
   savePermissions: accessControlHandler(req => writeMenuGrants(req, req.params.ruid)),
-  state: accessControlHandler(req => accessControlAuthority(req)),
+  saveCombinedPermissions: accessControlHandler(req => writeCombinedRoleGrants(req, req.params.ruid)),
+  state: accessControlHandler(req => accessControlDisplayState(req)),
   getManagement: accessControlHandler(async req => {
     const row = (await getDb().execute(sql`SELECT allowed FROM adm_resource_action_grants
       WHERE role_id=${req.params.ruid} AND resource='access_control' AND action='manage'`)).rows[0];
@@ -51,6 +53,7 @@ export const accessControlController = {
       .then(d => ({ allowed: d.manage }));
   }),
   audit: accessControlHandler(async req => {
+    if (req.query.page !== undefined) return readAccessAuditPage(req);
     const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
     const condition = filter === "management" ? sql`resource='access_control' AND action='manage'` :
       filter === "void_completed" ? sql`resource='company_forms' AND action='void_completed'` :

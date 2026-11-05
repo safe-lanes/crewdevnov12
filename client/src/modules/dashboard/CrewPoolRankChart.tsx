@@ -14,6 +14,7 @@ interface CrewRow {
   status?: string | null;
   notForHire?: boolean | null;
   lastTerminationDate?: string | null;
+  employedAfterReactivation?: boolean | null;
   createdAt?: string | Date | null;
   nationalityUuid?: string | null;
   nationality?: string | null;
@@ -137,8 +138,16 @@ export const CrewPoolRankChart = ({
 
   const snapshotDate = useMemo(() => periodToSnapshotDate(period), [period]);
 
+  const snapshotIso = useMemo(() => {
+    if (!snapshotDate) return null;
+    const y = snapshotDate.getFullYear();
+    const m = String(snapshotDate.getMonth() + 1).padStart(2, "0");
+    const d = String(snapshotDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [snapshotDate]);
+
   const { data: crew = [], isLoading, error } = useQuery<CrewRow[]>({
-    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true, employmentDate: snapshotIso }],
     queryFn: async ({ signal }) => {
       const PAGE_SIZE = 1000;
       const all: CrewRow[] = [];
@@ -148,7 +157,7 @@ export const CrewPoolRankChart = ({
       // Hard ceiling on total iterations to avoid runaway loops.
       for (let i = 0; i < 100; i++) {
         const response = await fetch(
-          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}` + (snapshotIso ? "&employmentDate=" + snapshotIso : ""),
           { signal },
         );
         if (!response.ok) throw new Error("Failed to fetch crew list");
@@ -171,14 +180,6 @@ export const CrewPoolRankChart = ({
       ),
     [crew],
   );
-
-  const snapshotIso = useMemo(() => {
-    if (!snapshotDate) return null;
-    const y = snapshotDate.getFullYear();
-    const m = String(snapshotDate.getMonth() + 1).padStart(2, "0");
-    const d = String(snapshotDate.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, [snapshotDate]);
 
   const { data: rankAsOf = {} } = useQuery<Record<string, string>>({
     queryKey: ["/api/v2/crew-pool/dashboard/ranks-as-of", snapshotIso, empNos],
@@ -214,7 +215,7 @@ export const CrewPoolRankChart = ({
 
       // Excluded only if terminated on/before the snapshot.
       const terminated = parseDate(c.lastTerminationDate);
-      if (terminated && terminated.getTime() <= snapshotDate.getTime()) continue;
+      if (!(c.employedAfterReactivation ?? !(terminated && terminated.getTime() <= snapshotDate.getTime()))) continue;
 
       // Rank held as of the snapshot (promotion-ledger aware), else present rank.
       const rank = (

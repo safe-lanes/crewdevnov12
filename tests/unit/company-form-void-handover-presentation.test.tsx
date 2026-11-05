@@ -27,11 +27,12 @@ function show(fill = true) {
 }
 describe("void-notice handover presentation", () => {
   it("shows the exact reminder, confirms handover, sends only the annotated fingerprint and clears the reminder", async () => {
-    Object.defineProperty(window,"confirm",{configurable:true,writable:true,value:vi.fn(()=>true)});
     show();
     await screen.findByText("A copy was handed to the seafarer on 19-Oct-2026. The void notice has not been handed over.");
     expect(screen.queryByRole("button",{name:"Copy handed to seafarer",exact:true})).toBeNull();
     fireEvent.click(screen.getByRole("button",{name:"Void notice handed to seafarer",exact:true}));
+    expect(await screen.findByText("Record that the void notice was handed to the seafarer?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"Record handover",exact:true}));
     await waitFor(()=>expect(state.post).toHaveBeenCalledWith(
       "/api/v2/company-form-submissions/record/pdf/void-notice-handover",{fileSha256:"a".repeat(64)}));
     await waitFor(()=>expect(screen.queryByText(/The void notice has not been handed over/)).toBeNull());
@@ -44,9 +45,10 @@ describe("void-notice handover presentation", () => {
     expect(screen.queryByRole("button",{name:"Void notice handed to seafarer",exact:true})).toBeNull();
   });
   it("does not record a cancelled confirmation", async () => {
-    Object.defineProperty(window,"confirm",{configurable:true,writable:true,value:vi.fn(()=>false)});
     show();
     fireEvent.click(await screen.findByRole("button",{name:"Void notice handed to seafarer",exact:true}));
+    fireEvent.click(await screen.findByRole("button",{name:"Do not record",exact:true}));
+    await waitFor(()=>expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(state.post).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ export function useSailAssistant(opts: {
   context: SailAssistantContext;
   enabled: boolean;
   title?: string;
+  intro?: string;
 }) {
   const handle = useRef<SailAssistantHandle | null>(null);
   const latest = useRef(opts);
@@ -21,6 +22,7 @@ export function useSailAssistant(opts: {
       assistantUrl: opts.assistantUrl,
       module: opts.module,
       title: opts.title,
+      intro: opts.intro,
       getToken: (r: { forceRefresh: boolean; signal: AbortSignal }) => latest.current.getToken(r),
       context: latest.current.context,
       offset: 24,

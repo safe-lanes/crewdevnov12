@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/formatted-date-input";
 import { VesselDateInput } from "./VesselDateInput";
 import { VesselFutureDateMessage } from "./VesselFutureDateMessage";
+import { formatOnboardDuration } from "../onboardDuration";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -316,6 +317,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 
     const watchedReliefStatus = form.watch('reliefStatus');
     const watchedContractPeriod = form.watch('contractPeriodMonths');
+    const onboardDuration = formatOnboardDuration(
+        form.watch('signOnDate'),
+        form.watch('signOffDate'),
+    );
 
     // Auto-clear stale future Sign Off Date when Relief Status switches to "Signed Off"
     React.useEffect(() => {
@@ -1121,6 +1126,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                         </VesselFutureDateMessage>
                                     </div>
                                     <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
+                                    <p
+                                        className="text-sm text-gray-600 ml-[156px]"
+                                        role="status"
+                                        data-testid="text-onboard-duration"
+                                    >
+                                        {onboardDuration}
+                                    </p>
                                 </FormItem>
                             )}
                         />

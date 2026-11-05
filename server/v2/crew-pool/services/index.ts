@@ -10,5 +10,6 @@ export { crewMedicalService } from "./crewMedicalService";
 export { crewBriefingService } from "./crewBriefingService";
 export { crewTransferService } from "./crewTransferService";
 export { dashboardService } from "./dashboardService";
+export * from "./attachment-converter";
 export * from "./masterDataResolver";
 export { crewCredentialProvisioningService } from "./crewCredentialProvisioningService";

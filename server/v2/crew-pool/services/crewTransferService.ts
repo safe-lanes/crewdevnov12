@@ -3,6 +3,7 @@ import { eq, and, ilike } from "drizzle-orm";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import { getDb } from "../../db";
+import { generateNextCrewEmpNo } from "./crewNumbering";
 import { CrewMembersRepository } from "../repositories";
 import {
   crewMembersV2,
@@ -83,27 +84,7 @@ interface TransferOptions {
 }
 
 async function generateEmpNo(): Promise<string> {
-  const db = getDb();
-  const results = await db
-    .select({ empNo: crewMembersV2.empNo })
-    .from(crewMembersV2)
-    .where(ilike(crewMembersV2.empNo, "A%"));
-
-  let maxNum = 0;
-  for (const row of results) {
-    if (row.empNo) {
-      const match = row.empNo.match(/A(\d+)/i);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) {
-          maxNum = num;
-        }
-      }
-    }
-  }
-
-  const nextNum = maxNum + 1;
-  return `A${nextNum.toString().padStart(6, "0")}`;
+  return generateNextCrewEmpNo();
 }
 
 async function generateLicenseId(): Promise<string> {

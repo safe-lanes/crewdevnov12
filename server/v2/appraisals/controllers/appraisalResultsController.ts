@@ -1,10 +1,15 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppraisalResultsService, FormVersionPinError } from "../services";
+import {
+  AppraisalRatingVersionError,
+  EffectivenessConfigurationError,
+} from "../../../../shared/appraisal-effectiveness";
 
 const service = new AppraisalResultsService();
 
 const stage1SubmissionSchema = z.object({
+  expectedFormVersionId: z.unknown().optional(),
   data: z.object({
     seafarersName: z.string().min(1),
     seafarersRank: z.string().min(1),
@@ -23,7 +28,10 @@ const stage1SubmissionSchema = z.object({
 });
 
 const stage2SubmissionSchema = z.object({
+  expectedFormVersionId: z.unknown().optional(),
   data: z.object({
+    trainings: z.array(z.any()).optional(),
+    targets: z.array(z.any()).optional(),
     competenceAssessments: z.array(z.any()).optional(),
     behaviouralAssessments: z.array(z.any()).optional(),
     trainingNeeds: z.array(z.any()).optional(),
@@ -43,7 +51,9 @@ const stage2SubmissionSchema = z.object({
 });
 
 const stage3SubmissionSchema = z.object({
+  expectedFormVersionId: z.unknown().optional(),
   data: z.object({
+    trainings: z.array(z.any()).optional(),
     officeReviews: z.array(z.any()).optional(),
     trainingFollowups: z.array(z.any()).optional(),
   }),
@@ -106,6 +116,12 @@ export class AppraisalResultsController {
       const appraisal = await service.create({ ...req.body, auditUserUuid });
       res.status(201).json(appraisal);
     } catch (error) {
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("[Appraisals V2] Failed to create appraisal:", error);
       if (error instanceof FormVersionPinError) {
         return res.status(400).json({ error: error.message });
@@ -125,6 +141,12 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to update appraisal:", error);
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error instanceof FormVersionPinError) {
         return res.status(400).json({ error: error.message });
       }
@@ -153,15 +175,21 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy } = validationResult.data;
+      const { data, submittedBy, expectedFormVersionId } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const appraisal = await service.submitStage(id, "stage1", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 1 submission error:", error);
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error instanceof FormVersionPinError) {
         return res.status(400).json({ error: error.message });
       }
@@ -176,11 +204,11 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy, competenceRating, behavioralRating, overallRating } = validationResult.data;
+      const { data, submittedBy, competenceRating, behavioralRating, overallRating, expectedFormVersionId } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
       // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(id, "stage2", { ...data, auditUserUuid }, submittedBy || "Unknown", {
+      const appraisal = await service.submitStage(id, "stage2", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown", {
         competenceRating,
         behavioralRating,
         overallRating,
@@ -191,6 +219,12 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 2 submission error:", error);
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error instanceof FormVersionPinError) {
         return res.status(400).json({ error: error.message });
       }
@@ -205,15 +239,21 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy } = validationResult.data;
+      const { data, submittedBy, expectedFormVersionId } = validationResult.data;
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const appraisal = await service.submitStage(id, "stage3", { ...data, auditUserUuid }, submittedBy || "Unknown");
+      const appraisal = await service.submitStage(id, "stage3", { ...data, auditUserUuid, expectedFormVersionId }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 3 submission error:", error);
+      if (error instanceof AppraisalRatingVersionError) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error instanceof EffectivenessConfigurationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error instanceof FormVersionPinError) {
         return res.status(400).json({ error: error.message });
       }

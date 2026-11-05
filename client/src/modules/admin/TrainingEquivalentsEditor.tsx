@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Command,
@@ -83,6 +84,9 @@ export default function TrainingEquivalentsEditor({
   const historical = Boolean(revisionUuid);
   const canEdit = editable && !historical && activeVesselId === vesselId;
   const dirty = normalizeLinks(links) !== baseline;
+  const { ask, dialog } = useAppDialog();
+  const latestVessel = useRef(vesselId);
+  latestVessel.current = vesselId;
   useEffect(() => {
     onDirtyChange?.(dirty);
     return () => onDirtyChange?.(false);
@@ -92,13 +96,17 @@ export default function TrainingEquivalentsEditor({
     if (previousPropVessel.current === vesselId) return;
     previousPropVessel.current = vesselId;
     if (activeVesselId === vesselId) return;
-    const approved = !dirty || window.confirm("Discard unsaved equivalence changes and switch vessel?");
-    if (approved) {
-      setActiveVesselId(vesselId);
-      setRevisionUuid("");
-      setOpenCourseUuid(null);
-    }
-  }, [vesselId, dirty, activeVesselId]);
+    void (async () => {
+      const approved = !dirty || await ask("Discard unsaved equivalence changes and switch vessel?", {
+        title: "Switch vessel", actionLabel: "Discard and switch", cancelLabel: "Keep editing",
+      });
+      if (approved && latestVessel.current === vesselId) {
+        setActiveVesselId(vesselId);
+        setRevisionUuid("");
+        setOpenCourseUuid(null);
+      }
+    })();
+  }, [vesselId, dirty, activeVesselId, ask]);
 
   useEffect(() => {
     if (!state || (initializedForKey.current === stateKey && dirty)) return;
@@ -174,9 +182,11 @@ export default function TrainingEquivalentsEditor({
     });
   };
 
-  const chooseRevision = (nextUuid: string) => {
+  const chooseRevision = async (nextUuid: string) => {
     if (nextUuid === revisionUuid) return;
-    if (dirty && !window.confirm("Discard unsaved equivalence changes and view another revision?")) return;
+    if (dirty && !await ask("Discard unsaved equivalence changes and view another revision?", {
+      title: "View another revision", actionLabel: "Discard and switch", cancelLabel: "Keep editing",
+    })) return;
     setRevisionUuid(nextUuid);
   };
 
@@ -184,6 +194,7 @@ export default function TrainingEquivalentsEditor({
 
   return (
     <section className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm" data-testid="training-equivalents-editor">
+      {dialog}
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 bg-[#f7fafc] px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold text-[#0f172a]">Training course equivalents</h3>

@@ -3,12 +3,7 @@ import { z } from "zod";
 import { COMPANY_FORM_PERMISSIONS } from "../../../../shared/v2/admin/companyFormPermissions";
 import { readCompanyFormGrants } from "../services/actionPermissionsService";
 import { saveActionDecisions } from "../services/accessControlManagement";
-
-const grantsSchema = z.object({
-  view: z.boolean(), fill_in: z.boolean(), witness: z.boolean(),
-  sign_representative: z.boolean(), void: z.boolean(), void_completed: z.boolean(),
-  override_checklist: z.boolean().default(false),
-}).strict();
+import { companyFormGrantsSchema as grantsSchema } from "../services/companyFormGrantSchema";
 
 export const actionPermissionsController = {
   async get(req: Request, res: Response) {

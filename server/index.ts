@@ -10,6 +10,7 @@ import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
 import { safeRequestLogging } from "./middleware/safeRequestLogging";
 import { validateProductionConfigAtStartup } from "./config/productionConfig";
+import assistantServiceRoutes from "./v2/assistant/serviceRoutes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { crewNotificationScanner } from "./v2/crew-app/notifications";
 import { erpCommandWorkerSupervisor } from "./v2/crew-app/erp-commands/supervisor";
@@ -90,6 +91,10 @@ app.use((req, res, next) => {
 
   // Initialize multi-tenant connection manager (no-op if MASTER_DATABASE_URL not set)
   await tenantConnectionManager.init();
+
+  // Assistant live data (service-to-service, stage 2): authenticated by service secret + signed identity in
+  // its own service; mounted before the browser-token middlewares (see server/v2/assistant/serviceRoutes.ts)
+  app.use("/api/v2/assistant", assistantServiceRoutes);
 
   // Apply tenant middleware before routes
   app.use(tenantMiddleware);

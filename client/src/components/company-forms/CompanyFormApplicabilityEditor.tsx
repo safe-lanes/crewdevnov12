@@ -7,9 +7,12 @@ import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { CompanyFormProblems } from "./CompanyFormProblems";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/hooks/use-app-dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   CompanyFormConditionCard,
   createCondition,
@@ -219,13 +222,22 @@ export function CompanyFormApplicabilityEditor({
     onDirtyRef.current?.(isDirty);
   }, [isDirty]);
 
-  const changeMode = (nextMode: PolicyDraft["mode"]) => {
+  const { ask, dialog } = useAppDialog();
+  const changeMode = async (nextMode: PolicyDraft["mode"]) => {
     if (locked || saving || nextMode === draft.mode) return;
     const discardsConditional = draft.mode === "conditional" && nextMode !== "conditional" && draft.sets.length > 0;
     const discardsAutomaticSettings = nextMode === "manual_only"
       && (draft.obligation !== "mandatory" || draft.effectiveKind !== "on_release" || !!draft.specificDate);
+    const discardedSettings = [
+      discardsConditional ? "configured conditions" : "",
+      discardsAutomaticSettings ? "completion obligation and effective-date settings" : "",
+    ].filter(Boolean);
     if ((discardsConditional || discardsAutomaticSettings)
-      && !window.confirm("Changing this mode will discard some conditional or due-date settings. Continue?")) return;
+      && !await ask(`Changing this mode will discard ${discardedSettings.join(" and ")}. Continue?`, {
+        title: "Change applicability mode",
+        actionLabel: discardsAutomaticSettings ? "Discard settings" : "Discard conditions",
+        cancelLabel: "Keep editing",
+      })) return;
     setDraft((current) => ({
       ...current,
       mode: nextMode,
@@ -331,10 +343,12 @@ export function CompanyFormApplicabilityEditor({
     }));
   };
 
-  const closeSettings = () => {
+  const closeSettings = async () => {
     if (saving) return;
     if (isDirty) {
-      if (!window.confirm("Discard unsaved applicability changes and close this window?")) return;
+      if (!await ask("Discard unsaved applicability changes and close this window?", {
+        title: "Close applicability settings", actionLabel: "Discard changes", cancelLabel: "Keep editing",
+      })) return;
       setDraft(JSON.parse(baseline) as PolicyDraft);
       setSaveError("");
     }
@@ -344,7 +358,9 @@ export function CompanyFormApplicabilityEditor({
   if (!permissionToView) return null;
 
   return (
-    <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) closeSettings(); }}>
+    <>
+    {dialog}
+    <Dialog open={settingsOpen} onOpenChange={(open) => { if (!open) void closeSettings(); }}>
       <DialogContent
         id="company-form-applicability-settings"
         className="z-[310] max-w-4xl max-h-[90dvh]"
@@ -356,13 +372,13 @@ export function CompanyFormApplicabilityEditor({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Applicability settings{isReleased || readOnly ? " — read only" : ""}</DialogTitle>
+          <DialogTitle>When this form applies{isReleased || readOnly ? " — read only" : ""}</DialogTitle>
           <DialogDescription>
             {isReleased
-              ? "This version is released. Its applicability settings cannot be changed."
+              ? "View the completion obligation, effective date and crew scope; these settings cannot be changed on a released version."
               : readOnly
-                ? "You can view these settings, but cannot change them."
-                : "Set who this version applies to. Save applicability before releasing this version."}
+                ? "View the completion obligation, effective date and crew scope; you do not have permission to change these settings."
+                : "Set the completion obligation, effective date and crew scope, then save these settings before releasing this version."}
           </DialogDescription>
         </DialogHeader>
     <section
@@ -400,26 +416,106 @@ export function CompanyFormApplicabilityEditor({
           ) : locked && !isReleased && (
             <p className="mt-3 text-xs text-[#637985]">You can view these settings, but Forms edit permission is needed to change them.</p>
           )}
-          <RadioGroup
-            value={draft.mode}
-            onValueChange={(value) => changeMode(value as PolicyDraft["mode"])}
-            className="mt-4 grid gap-2 md:grid-cols-3"
-            aria-label="Applicability mode"
-          >
-            <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "all" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-all" value="all" aria-label="Applies to all" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-all" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies to all</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Every crew member in scope is included.</span></label>
-            </div>
-            <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "conditional" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-conditional" value="conditional" aria-label="Applies when conditions match" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-conditional" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies when conditions match</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Apply only to crew meeting configured conditions.</span></label>
-            </div>
-            <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "manual_only" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
-              <RadioGroupItem id="applicability-manual" value="manual_only" aria-label="Manual only" disabled={locked || saving} className="mt-0.5" />
-              <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual only</span><span className="mt-1 block text-xs leading-4 text-[#637985]">Crew start it only by choosing it; this policy does not start it automatically.</span></label>
-            </div>
-          </RadioGroup>
+          <TooltipProvider>
+            <RadioGroup
+              value={draft.mode}
+              onValueChange={(value) => changeMode(value as PolicyDraft["mode"])}
+              className="mt-4 grid gap-2 md:grid-cols-3"
+              aria-label="Applicability mode"
+            >
+              <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "all" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
+                <RadioGroupItem id="applicability-all" value="all" aria-label="Applies to all" disabled={locked || saving} className="mt-0.5" />
+                <label htmlFor="applicability-all" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies to all</span></label>
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button type="button" aria-label="About Applies to all" className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#527b8a] hover:bg-[#edf5f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e8193]" aria-haspopup="dialog">
+                          <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Every crew member in scope is included.</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent align="end" side="top" className="z-[400] w-64 border-[#cbdbe1] bg-white text-sm leading-5 text-[#4d6673]">
+                    Every crew member in scope is included.
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "conditional" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
+                <RadioGroupItem id="applicability-conditional" value="conditional" aria-label="Applies when conditions match" disabled={locked || saving} className="mt-0.5" />
+                <label htmlFor="applicability-conditional" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Applies when conditions match</span></label>
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button type="button" aria-label="About Applies when conditions match" className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#527b8a] hover:bg-[#edf5f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e8193]" aria-haspopup="dialog">
+                          <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Apply only to crew meeting configured conditions.</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent align="end" side="top" className="z-[400] w-64 border-[#cbdbe1] bg-white text-sm leading-5 text-[#4d6673]">
+                    Apply only to crew meeting configured conditions.
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className={`flex gap-3 rounded-lg border p-3.5 transition-colors ${draft.mode === "manual_only" ? "border-[#4e8193] bg-white shadow-sm" : "border-[#d9e2e8] bg-white/65"} ${locked || saving ? "opacity-70" : ""}`}>
+                <RadioGroupItem id="applicability-manual" value="manual_only" aria-label="Manual only" disabled={locked || saving} className="mt-0.5" />
+                <label htmlFor="applicability-manual" className={`min-w-0 flex-1 ${locked || saving ? "cursor-not-allowed" : "cursor-pointer"}`}><span className="block text-sm font-semibold text-[#203f50]">Manual only</span></label>
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button type="button" aria-label="About Manual only" className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#527b8a] hover:bg-[#edf5f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e8193]" aria-haspopup="dialog">
+                          <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Crew start it only by choosing it; this policy does not start it automatically.</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent align="end" side="top" className="z-[400] w-64 border-[#cbdbe1] bg-white text-sm leading-5 text-[#4d6673]">
+                    Crew start it only by choosing it; this policy does not start it automatically.
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </RadioGroup>
+          </TooltipProvider>
 
+          {draft.mode === "conditional" && (
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-[#284959]">Conditions</h4>
+                  <p className="mt-0.5 text-xs text-[#637985]">Each group joins conditions with “and”. Groups join with “or”.</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addSet} disabled={locked || saving} className="border-[#cad9df] text-[#315f70]">
+                  <Plus className="mr-1.5 h-4 w-4" />Add crew group
+                </Button>
+              </div>
+              {draft.sets.map((set, index) => (
+                <div key={set.uiKey}>
+                  {index > 0 && <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-[#718892]" aria-label="Or">Or</p>}
+                  <CompanyFormConditionCard
+                    set={set}
+                    index={index}
+                    dimensions={dimensions}
+                    disabled={locked || saving}
+                    onChange={(nextSet) => updateSet(set.uiKey, nextSet)}
+                    onRemove={() => setDraft((current) => ({ ...current, sets: current.sets.filter((item) => item.uiKey !== set.uiKey) }))}
+                    onAddCondition={() => addCondition(set.uiKey)}
+                    onRemoveCondition={(conditionKey) => removeCondition(set.uiKey, conditionKey)}
+                  />
+                </div>
+              ))}
+              {!conditionSetsValid && (
+                <p className="rounded-md bg-[#fff5f2] px-3 py-2 text-sm text-[#9a4e42]" role="alert">
+                  Add a crew group with valid available values before saving. Unavailable or no-longer-listed selections stay visible until removed or replaced.
+                </p>
+              )}
+            </div>
+          )}
           {draft.mode !== "manual_only" ? (
             <div className="mt-4 grid gap-4 rounded-lg border border-[#dce5e9] bg-white p-4 md:grid-cols-[minmax(180px,0.8fr)_minmax(260px,1.2fr)]">
               <fieldset disabled={locked || saving} className="min-w-0">
@@ -472,43 +568,6 @@ export function CompanyFormApplicabilityEditor({
               <p>Manual start only. This does not make the form mandatory, block progress, satisfy another requirement, or skip a requirement.</p>
             </div>
           )}
-
-          {draft.mode === "conditional" && (
-            <div className="mt-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h4 className="text-sm font-semibold text-[#284959]">Who this applies to</h4>
-                  <p className="mt-0.5 text-xs text-[#637985]">Each group joins conditions with “and”. Groups join with “or”.</p>
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={addSet} disabled={locked || saving} className="border-[#cad9df] text-[#315f70]">
-                  <Plus className="mr-1.5 h-4 w-4" />Add crew group
-                </Button>
-              </div>
-              {draft.sets.map((set, index) => (
-                <div key={set.uiKey}>
-                  {index > 0 && <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-[#718892]" aria-label="Or">Or</p>}
-                  <CompanyFormConditionCard
-                    set={set}
-                    index={index}
-                    dimensions={dimensions}
-                    disabled={locked || saving}
-                    onChange={(nextSet) => updateSet(set.uiKey, nextSet)}
-                    onRemove={() => setDraft((current) => ({ ...current, sets: current.sets.filter((item) => item.uiKey !== set.uiKey) }))}
-                    onAddCondition={() => addCondition(set.uiKey)}
-                    onRemoveCondition={(conditionKey) => removeCondition(set.uiKey, conditionKey)}
-                  />
-                </div>
-              ))}
-              {!conditionSetsValid && (
-                <p className="rounded-md bg-[#fff5f2] px-3 py-2 text-sm text-[#9a4e42]" role="alert">
-                  Add a crew group with valid available values before saving. Unavailable or no-longer-listed selections stay visible until removed or replaced.
-                </p>
-              )}
-              <p className="text-xs leading-5 text-[#637985]">
-                {stageKey ? "This policy is evaluated in the context of the selected subject stage." : "No subject stage is selected for this version."}
-              </p>
-            </div>
-          )}
           <div className="mt-4 rounded-lg border border-[#dce5e9] bg-white px-4 py-3" aria-live="polite" data-testid="applicability-summary">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#718892]">Policy summary</p>
             <p className="mt-1 text-sm leading-5 text-[#294655]">{summary}</p>
@@ -525,13 +584,18 @@ export function CompanyFormApplicabilityEditor({
               policy={toPayload(draft)}
             />
           )}
+          {draft.mode === "conditional" && (
+            <p className="mt-4 text-xs leading-5 text-[#637985]">
+              {stageKey ? "The stage is set using the selector in the configuration header." : "No stage is selected; choose one using the stage selector in the configuration header."}
+            </p>
+          )}
           {saveError && <CompanyFormProblems message={saveError} />}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#dce5e9] pt-4">
             <p className="text-xs text-[#6a808b]">
               {isReleased ? "Released applicability is read only." : saving ? <><LoaderCircle className="mr-1 inline h-3 w-3 animate-spin" />Saving policy…</> : isDirty ? "Changes are local until saved." : <><Check className="mr-1 inline h-3 w-3" />Policy saved</>}
             </p>
             {!isReleased && !readOnly && permissionToEdit && <Button type="button" onClick={() => void save()} disabled={locked || saving || !isDirty || !conditionSetsValid || (draft.mode !== "manual_only" && draft.effectiveKind === "specific_date" && !draft.specificDate)} className="bg-[#315f70] text-white hover:bg-[#244b5a]" data-testid="button-save-applicability">
-              <Save className="mr-2 h-4 w-4" />Save applicability
+              <Save className="mr-2 h-4 w-4" />Save settings
             </Button>}
           </div>
         </>
@@ -539,6 +603,7 @@ export function CompanyFormApplicabilityEditor({
     </section>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
