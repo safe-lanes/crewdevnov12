@@ -93,7 +93,7 @@ async function fixture(status = "draft", bill?: string) {
   await seed(a.accTenantConfigV2, { configUuid: "config", preparationMode: "vessel_prepares" });
   await seed(a.accPayElementsV2, { payElementUuid: "ot", code: "OT", name: "Overtime",
     type: "earning", category: "overtime_variable", calcMethod: "rate_times_qty" });
-  await seed(a.accWageScalesV2, { scaleUuid: "old", scaleName: "Old", status: "superseded",
+  await seed(a.accWageScalesV2, { scaleUuid: "old", scaleName: "Old", status: "active",
     effectiveFrom: "2089-01-01", effectiveTo: "2090-10-31", supersededByScaleUuid: "new" });
   await seed(a.accWageScalesV2, { scaleUuid: "new", scaleName: "New",
     status: "draft", effectiveFrom: "2090-12-01" });
@@ -129,6 +129,86 @@ async function values() {
 }
 
 describe("real PostgreSQL activation and applicable wage integration", () => {
+  it("creates a draft without superseding or changing the original dates", async () => {
+    await wageScalesService.delete("new");
+    const before = await wageScalesService.getByUuidOrThrow("old");
+    const revision = await wageScalesService.supersede("old", {
+      effectiveFrom: "2090-12-01",
+    });
+    const original = await wageScalesService.getByUuidOrThrow("old");
+    expect(revision.status).toBe("draft");
+    expect(original).toMatchObject({
+      status: "active",
+      effectiveFrom: before.effectiveFrom,
+      effectiveTo: before.effectiveTo,
+      supersededByScaleUuid: revision.scaleUuid,
+    });
+  });
+  it("rejects a second pending revision without changing anything", async () => {
+    const before = await snapshot();
+    await expect(
+      wageScalesService.supersede("old", {
+        effectiveFrom: "2091-01-01",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await snapshot()).toEqual(before);
+  });
+  it("deleting a revision keeps the original active and permits replacement", async () => {
+    await wageScalesService.delete("new");
+    expect(await wageScalesService.getByUuidOrThrow("old")).toMatchObject({
+      status: "active",
+      effectiveTo: "2090-10-31",
+      supersededByScaleUuid: null,
+    });
+    const revision = await wageScalesService.supersede("old", {
+      effectiveFrom: "2090-12-01",
+    });
+    expect(revision.status).toBe("draft");
+  });
+  it("activates a created revision despite its own open-ended predecessor", async () => {
+    await wageScalesService.delete("new");
+    await context.db.update(a.accWageScalesV2)
+      .set({ effectiveTo: null })
+      .where(eq(a.accWageScalesV2.scaleUuid, "old"));
+    const revision = await wageScalesService.supersede("old", {
+      effectiveFrom: "2090-12-01",
+    });
+    await wageScalesService.activate(revision.scaleUuid, {
+      predecessorAdjustment: {
+        predecessorUuid: "old",
+        previousEffectiveTo: null,
+        revisionEffectiveFrom: "2090-12-01",
+        nextEffectiveTo: "2090-11-30",
+      },
+    });
+    expect(await wageScalesService.getByUuidOrThrow("old")).toMatchObject({
+      status: "superseded",
+      effectiveTo: "2090-11-30",
+    });
+    expect(
+      (await wageScalesService.getByUuidOrThrow(revision.scaleUuid)).status,
+    ).toBe("active");
+  });
+  it("still rejects an unrelated overlapping active scale", async () => {
+    await seed(a.accWageScalesV2, {
+      scaleUuid: "unrelated",
+      scaleName: "Unrelated",
+      status: "active",
+      effectiveFrom: "2090-12-01",
+    });
+    const before = await snapshot();
+    await expect(activate()).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await snapshot()).toEqual(before);
+  });
+  it("still activates revisions created under the previous status behaviour", async () => {
+    await context.db.update(a.accWageScalesV2)
+      .set({ status: "superseded" })
+      .where(eq(a.accWageScalesV2.scaleUuid, "old"));
+    await activate();
+    expect(
+      (await wageScalesService.getByUuidOrThrow("new")).status,
+    ).toBe("active");
+  });
   it("installs the idempotent migration and index", async () => {
     expect((await pool.query("SELECT indexname FROM pg_indexes WHERE tablename='acc_wage_revision_rate_protection_v2'")).rows).toHaveLength(2);
   });
@@ -138,6 +218,8 @@ describe("real PostgreSQL activation and applicable wage integration", () => {
     expect(await snapshot()).toEqual(before);
     await activate();
     const after = await snapshot();
+    expect(before.scales[0].status).toBe("active");
+    expect(after.scales[0].status).toBe("superseded");
     expect(after.scales[0].effectiveTo).toBe("2090-11-30");
     expect(after.scales[1].status).toBe("active");
     expect(after.txns[0]).toMatchObject({ qty: "10.00", rate: "15.0000", amount: "150.00" });

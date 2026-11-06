@@ -392,6 +392,7 @@ export const wageScalesService = {
     const overlapping = activeSameScope.filter(
       (s) =>
         s.scaleUuid !== scaleUuid &&
+        s.scaleUuid !== predecessor?.scaleUuid &&
         windowsOverlap(
           s.effectiveFrom,
           s.effectiveTo,
@@ -449,7 +450,7 @@ export const wageScalesService = {
     }
   },
 
-  /** Clone an active scale into a new draft and mark the original superseded. */
+  /** Clone an active scale into a linked draft; keep the original active. */
   async supersede(
     scaleUuid: string,
     opts: {

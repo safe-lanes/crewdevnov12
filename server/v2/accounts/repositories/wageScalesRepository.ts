@@ -136,12 +136,37 @@ export class WageScalesRepository {
 
   async softDelete(scaleUuid: string): Promise<boolean> {
     const db = getDb();
-    const results = await db
-      .update(accWageScalesV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(accWageScalesV2.scaleUuid, scaleUuid))
-      .returning();
-    return results.length > 0;
+    return db.transaction(async (tx: any) => {
+      const results = await tx
+        .update(accWageScalesV2)
+        .set({
+          isDeleted: true,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(accWageScalesV2.scaleUuid, scaleUuid),
+            eq(accWageScalesV2.status, "draft"),
+            eq(accWageScalesV2.isDeleted, false),
+          ),
+        )
+        .returning();
+      if (results.length === 0) return false;
+      await tx
+        .update(accWageScalesV2)
+        .set({
+          supersededByScaleUuid: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(accWageScalesV2.supersededByScaleUuid, scaleUuid),
+            eq(accWageScalesV2.status, "active"),
+            eq(accWageScalesV2.isDeleted, false),
+          ),
+        );
+      return true;
+    });
   }
 
   async findLinesByScale(scaleUuid: string): Promise<AccWageScaleLineV2[]> {
@@ -269,6 +294,7 @@ export class WageScalesRepository {
         await tx
           .update(accWageScalesV2)
           .set({
+            status: "superseded",
             effectiveTo: shiftIsoDate(
               revision.effectiveFrom,
               -1,
@@ -304,8 +330,8 @@ export class WageScalesRepository {
   }
 
   /**
-   * Supersede an active scale in one transaction: create a new draft revision,
-   * clone the original's live lines into it, and mark the original superseded.
+   * Create a draft revision and clone the original's live lines.
+   * Link the revision while keeping the original active until activation.
    * Returns the freshly-created draft.
    */
   async supersedeInTransaction(
@@ -330,6 +356,28 @@ export class WageScalesRepository {
           new Error("Only active scales can be superseded"),
           { code: "VALIDATION" },
         );
+      }
+      if (original.supersededByScaleUuid) {
+        const [existingRevision] = await tx
+          .select()
+          .from(accWageScalesV2)
+          .where(
+            and(
+              eq(
+                accWageScalesV2.scaleUuid,
+                original.supersededByScaleUuid,
+              ),
+              eq(accWageScalesV2.isDeleted, false),
+            ),
+          );
+        if (existingRevision) {
+          throw Object.assign(
+            new Error(
+              "This wage scale already has a revision. Activate or delete that draft before creating another.",
+            ),
+            { code: "CONFLICT" },
+          );
+        }
       }
       const dateError = getRevisionDateError(
         original,
@@ -390,7 +438,6 @@ export class WageScalesRepository {
       await tx
         .update(accWageScalesV2)
         .set({
-          status: "superseded",
           supersededByScaleUuid: newUuid,
           updatedByUuid: auditUserUuid ?? null,
           updatedAt: new Date(),

@@ -103,12 +103,12 @@ try {
       revisionPosts++;
       revision = { scaleUuid: "ui-revision", scaleName: "UI revision", status: "draft",
         currency: "USD", effectiveFrom: request.postDataJSON().effectiveFrom, effectiveTo: null };
-      original.status = "superseded";
       body = revision;
     } else if (path.endsWith("/floor-check")) {
       body = { ok: true, violations: [] };
     } else if (path.endsWith("/activate")) {
       activation = request.postDataJSON();
+      original.status = "superseded";
       original.effectiveTo = activation.predecessorAdjustment.nextEffectiveTo;
       revision.status = "active";
       body = { scale: revision, violations: [], overtime: { corrected: 1, protected: 1 } };
@@ -130,6 +130,9 @@ try {
   pass("Revision invalid/past month blocks creation (fixture API)");
   await revisionPage.getByTestId("input-supersede-effective-from-manual").fill("Dec-2090");
   await revisionPage.getByTestId("button-confirm-supersede").click();
+  await revisionPage.getByTestId("button-activate-scale").waitFor();
+  assert.equal(original.status, "active");
+  assert.equal(revision.status, "draft");
   await revisionPage.getByTestId("button-activate-scale").click();
   await revisionPage.getByRole("dialog").filter({ hasText: "Confirm predecessor end date" }).waitFor();
   assert.equal(activation, undefined);
