@@ -63,6 +63,7 @@ export const SHIP_ALLOWED_ROUTES: RoutePolicyEntry[] = [
   // Vessel portage — the vessel-side submission package
   // (return-to-vessel is an office action and is NOT allowlisted)
   r("GET", "/vessel-portage/:vesselUuid/:period/status"),
+  r("GET", "/vessel-portage/:vesselUuid/:period/wage-values"),
   r("POST", "/vessel-portage/:vesselUuid/:period/submit"),
 
   // CTM cash account — captain's cash box

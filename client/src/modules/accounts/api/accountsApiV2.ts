@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import type { PredecessorAdjustment } from "@shared/v2/accounts/wageScaleRevisionDates";
 
 export const ACCOUNTS_BASE = "/api/v2/accounts";
 
@@ -72,9 +73,10 @@ export const accountsApiV2 = {
       req("DELETE", `${ACCOUNTS_BASE}/wage-scales/${uuid}`),
     replaceLines: (uuid: string, lines: unknown[]) =>
       req("PUT", `${ACCOUNTS_BASE}/wage-scales/${uuid}/lines`, { lines }),
-    activate: (uuid: string, acknowledge?: boolean) =>
+    activate: (uuid: string, acknowledge?: boolean, predecessorAdjustment?: PredecessorAdjustment) =>
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/activate`, {
         acknowledge,
+        predecessorAdjustment,
       }),
     supersede: (uuid: string, effectiveTo?: string, effectiveFrom?: string) =>
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/supersede`, {

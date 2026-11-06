@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { EngineReads, type PromotionEvent } from "./engineReads";
 import { LedgerRepository } from "./ledgerRepository";
 import { BalanceService } from "./balanceService";
+import { protectedTxnUuids } from "../repositories/wageRevisionProtectionRepository";
 import {
   monthInfo,
   type MonthInfo,
@@ -54,6 +55,7 @@ interface EngineConfig {
 }
 
 interface CalcContext {
+  rateProtectedTxnUuids: Set<string>;
   config: EngineConfig;
 
   month: MonthInfo;
@@ -201,6 +203,43 @@ class EngineError extends Error {
 const reads = new EngineReads();
 const ledgerRepo = new LedgerRepository();
 const balanceService = new BalanceService();
+
+export interface ApplicableWageValues {
+  engagementUuid: string;
+  scaleUuid: string | null;
+  serviceTo: string | null;
+  entries: Record<string, { rate: string | null; amount: string | null }>;
+  errors: string[];
+}
+
+export async function readApplicableWageValues(
+  period: string,
+  engagements: AccEngagementV2[],
+): Promise<Map<string, ApplicableWageValues>> {
+  const ctx = await buildContext(
+    toEngineConfig(await reads.getConfig()), monthInfo(period), engagements,
+  );
+  const values = new Map<string, ApplicableWageValues>();
+  for (const engagement of engagements) {
+    const value: ApplicableWageValues = {
+      engagementUuid: engagement.engagementUuid, scaleUuid: null,
+      serviceTo: null, entries: {}, errors: [],
+    };
+    const result = calcEngagement(ctx, engagement, (state, entries) => {
+      value.scaleUuid = state.scaleUuid;
+      value.serviceTo = state.to;
+      for (const [uuid, entry] of entries) {
+        value.entries[uuid] = {
+          rate: entry.rateE4 == null ? null : formatScaled(entry.rateE4, 4),
+          amount: entry.amountE2 == null ? null : centsToString(entry.amountE2),
+        };
+      }
+    });
+    value.errors = result.errors;
+    values.set(engagement.engagementUuid, value);
+  }
+  return values;
+}
 
 /** Inclusive date-range overlap; a null end date means open-ended. */
 function rangesOverlap(
@@ -1117,6 +1156,7 @@ async function buildContext(
   return {
     config,
     month,
+    rateProtectedTxnUuids: await protectedTxnUuids(txns),
     elements: elementsMap,
     elementsByCategory,
     scaleByUuid,
@@ -1175,6 +1215,7 @@ function buildInputSnapshot(
 function calcEngagement(
   ctx: CalcContext,
   engagement: AccEngagementV2,
+  selectionOnly?: (state: SegmentState, entries: Map<string, ResolvedEntry>) => void,
 ): EngagementResult {
   const errors: string[] = [];
   const warnings: EngagementWarning[] = [];
@@ -1322,6 +1363,11 @@ function calcEngagement(
   // Track non-prorated elements posted once per month.
   const nonProratedPosted = new Set<string>();
   const lastState = states[states.length - 1];
+  if (selectionOnly) {
+    const entries = resolveEntries(ctx, engagement, lastState, crewNat, overrides, errors, warnings);
+    selectionOnly(lastState, entries);
+    return { engagement, lines: [], errors, warnings };
+  }
 
   for (const state of states) {
     if (state.days <= 0) continue; // zero-day segment: no lines
@@ -1474,7 +1520,9 @@ function calcEngagement(
         el.payElementUuid,
       );
       const effectiveRateE4 =
-        rateE4 ?? (txn.rate != null ? parseScaled(txn.rate, 4) : null);
+        ctx.rateProtectedTxnUuids.has(txn.txnUuid)
+          ? (txn.rate != null ? parseScaled(txn.rate, 4) : null)
+          : rateE4 ?? (txn.rate != null ? parseScaled(txn.rate, 4) : null);
       if (effectiveRateE4 == null) {
         errors.push(
           `monthly txn ${txn.txnUuid}: no rate on scale/override/txn for ${el.code}`,

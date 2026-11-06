@@ -361,30 +361,30 @@ export default function VesselPortagePage() {
   const imbalance = !!ctmDetail?.imbalance;
 
   // ---- wage-scale lookups for the Overtime tab ---------------------------
-  const scaleUuids = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of engagedRows) {
-      if (r.engagement?.wageScaleUuid) s.add(r.engagement.wageScaleUuid);
-    }
-    return Array.from(s).sort();
-  }, [engagedRows]);
-  const { data: scaleDetails = {} } = useQuery<Record<string, any>>({
-    queryKey: [`vessel-portage-scales`, scaleUuids.join(",")],
-    enabled: scaleUuids.length > 0,
-    queryFn: async () => {
-      const out: Record<string, any> = {};
-      await Promise.all(
-        scaleUuids.map(async (uuid) => {
-          const res = await apiRequest(
-            "GET",
-            `${ACCOUNTS_BASE}/wage-scales/${uuid}`,
-          );
-          out[uuid] = await res.json();
-        }),
-      );
-      return out;
-    },
+  const wageValuesKey = [
+    `${ACCOUNTS_BASE}/vessel-portage/${vesselUuid}/${period}/wage-values`,
+  ];
+  const {
+    data: wageValues,
+    isError: wageValuesError,
+    isFetching: wageValuesFetching,
+  } = useQuery<{
+    values: Record<string, {
+      entries: Record<string, { rate: string | null; amount: string | null }>;
+      errors: string[];
+    }>;
+    protectedTxnUuids: string[];
+    frozenEngagementUuids: string[];
+  }>({
+    queryKey: wageValuesKey,
+    enabled: hasFilter,
   });
+  const protectedOvertime = useMemo(
+    () => new Set(wageValues?.protectedTxnUuids ?? []), [wageValues?.protectedTxnUuids],
+  );
+  const frozenEngagements = useMemo(
+    () => new Set(wageValues?.frozenEngagementUuids ?? []), [wageValues?.frozenEngagementUuids],
+  );
 
   // ---- entry tab definitions ---------------------------------------------
   const otElement = useMemo(
@@ -630,37 +630,20 @@ export default function VesselPortagePage() {
   // ---- scale helpers (Overtime tab) ---------------------------------------
   const otScaleInfo = useCallback(
     (r: any): { rate: number | null; guaranteedHrs: number | null } => {
-      const scale = scaleDetails[r.engagement?.wageScaleUuid ?? ""];
-      const rankId = r.engagement?.rankIdAtStart;
-      if (!scale || !rankId || !otElement) {
+      if (wageValuesError || wageValuesFetching || !otElement) {
         return { rate: null, guaranteedHrs: null };
       }
-      const lines: any[] = scale.lines ?? [];
-      const rateLine = lines.find(
-        (l) =>
-          l.payElementUuid === otElement.payElementUuid &&
-          l.rankId === rankId &&
-          !l.isDeleted &&
-          l.rate != null,
-      );
-      const rate = rateLine ? parseFloat(rateLine.rate) : null;
-      let guaranteedHrs: number | null = null;
-      if (gotElement && rate) {
-        const gotLine = lines.find(
-          (l) =>
-            l.payElementUuid === gotElement.payElementUuid &&
-            l.rankId === rankId &&
-            !l.isDeleted &&
-            l.amount != null,
-        );
-        if (gotLine) {
-          // Fixed OT monthly amount ÷ OT hourly rate = implied guaranteed hours.
-          guaranteedHrs = Math.round((parseFloat(gotLine.amount) / rate) * 10) / 10;
-        }
-      }
-      return { rate: Number.isNaN(rate as number) ? null : rate, guaranteedHrs };
+      const entries = wageValues?.values[r.engagement?.engagementUuid]?.entries;
+      const rawRate = entries?.[otElement.payElementUuid]?.rate;
+      const parsedRate = rawRate == null ? null : Number(rawRate);
+      const rate = parsedRate != null && Number.isFinite(parsedRate) ? parsedRate : null;
+      const rawGot = gotElement ? entries?.[gotElement.payElementUuid]?.amount : null;
+      const got = rawGot == null ? null : Number(rawGot);
+      const guaranteedHrs = rate != null && rate !== 0 && got != null && Number.isFinite(got)
+        ? Math.round((got / rate) * 10) / 10 : null;
+      return { rate, guaranteedHrs };
     },
-    [scaleDetails, otElement, gotElement],
+    [wageValues, wageValuesError, wageValuesFetching, otElement, gotElement],
   );
 
   /** Standing (office register) allotment display for a crew member. */
@@ -774,18 +757,28 @@ export default function VesselPortagePage() {
         };
         switch (tab.kind) {
           case "overtime": {
-            const { rate, guaranteedHrs } = otScaleInfo(r);
+            const applicable = otScaleInfo(r);
             const excess = parseFloat(mkCell("excessHrs"));
-            if (rate == null) {
-              // No OT rate resolvable from the wage scale — block entry
-              // rather than persisting a zero-amount transaction.
-              row.cells.excessHrs = { ...row.cells.excessHrs, locked: true };
+            const cell = row.cells.excessHrs;
+            const saved = cell.txn;
+            const frozen = frozenEngagements.has(r.engagement.engagementUuid);
+            const preserveSaved = !!saved && (
+              isLocked || frozen ||
+              (saved.status === "draft" && !packageEditable) ||
+              (protectedOvertime.has(saved.txnUuid) && !cell.dirty)
+            );
+            const savedRate = saved?.rate == null ? null : Number(saved.rate);
+            const rate = preserveSaved
+              ? savedRate != null && Number.isFinite(savedRate) ? savedRate : null
+              : applicable.rate;
+            if (rate == null || isLocked || frozen) {
+              row.cells.excessHrs = { ...cell, locked: true };
             }
             row.info.guaranteedHrs =
-              guaranteedHrs != null ? String(guaranteedHrs) : "—";
+              applicable.guaranteedHrs != null ? String(applicable.guaranteedHrs) : "—";
             row.info.rateHr = rate != null ? rate.toFixed(2) : "—";
-            row.info.amount =
-              !Number.isNaN(excess) && rate != null
+            row.info.amount = preserveSaved ? String(saved.amount ?? "") :
+              Number.isFinite(excess) && rate != null
                 ? (excess * rate).toFixed(2)
                 : "";
             break;
@@ -836,6 +829,10 @@ export default function VesselPortagePage() {
       savedCell,
       edits,
       otScaleInfo,
+      protectedOvertime,
+      frozenEngagements,
+      isLocked,
+      packageEditable,
       datedColumns,
       bondRollupByCrew,
       standingAllotment,
@@ -887,7 +884,9 @@ export default function VesselPortagePage() {
         let fields: Record<string, unknown>;
         if (tab.kind === "overtime") {
           const { rate } = otScaleInfo(review);
-          if (rate == null) continue; // no scale rate — cell is locked in UI
+          if (rate == null) {
+            throw new Error("Applicable overtime rate is unavailable. Overtime was not saved.");
+          }
           fields = {
             qty: v,
             rate: String(rate),
@@ -963,7 +962,19 @@ export default function VesselPortagePage() {
       if (tab.miscType && miscSavesInFlight.current.has(miscSaveKey)) {
         return false;
       }
-      const batch = buildBatch(tab);
+      let batch: ReturnType<typeof buildBatch>;
+      try {
+        batch = buildBatch(tab);
+      } catch (error) {
+        toast({
+          title: `Save failed — ${tab.label}`,
+          description:
+            `${error instanceof Error ? error.message : "Unable to prepare entries."} ` +
+            "Your unsaved entries have been kept.",
+          variant: "destructive",
+        });
+        return false;
+      }
       if (
         batch.creates.length === 0 &&
         batch.updates.length === 0 &&
@@ -1708,6 +1719,12 @@ export default function VesselPortagePage() {
 
   const renderEntryTab = (tab: EntryTabDef) => (
     <TabsContent key={tab.id} value={tab.id} className="space-y-2">
+      {tab.kind === "overtime" && wageValuesError && (
+        <p role="alert" className="text-sm text-red-600">
+          Applicable Wage Scale values could not be loaded.
+          Overtime entry is unavailable until the lookup succeeds.
+        </p>
+      )}
       {renderMiscSelectors(tab)}
       {isLocked && (
         <div

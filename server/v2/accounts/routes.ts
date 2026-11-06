@@ -5,7 +5,9 @@ import {
   cashLockedPeriods,
   cashPeriodLock,
 } from "./middleware/cashPeriodLock";
-import {
+import * as rawControllers from "./controllers";
+import { coordinatedControllers } from "./controllers/coordinatedControllers";
+const {
   payElementsController,
   allotmentsController,
   advancesController,
@@ -21,7 +23,7 @@ import {
   ctmController,
   vesselPortageController,
   reportsController,
-} from "./controllers";
+} = coordinatedControllers(rawControllers);
 
 const router = Router();
 
@@ -239,6 +241,10 @@ router.post(
 router.get(
   "/vessel-portage/:vesselUuid/:period/status",
   vesselPortageController.getStatus,
+);
+router.get(
+  "/vessel-portage/:vesselUuid/:period/wage-values",
+  vesselPortageController.getWageValues,
 );
 router.post(
   "/vessel-portage/:vesselUuid/:period/submit",

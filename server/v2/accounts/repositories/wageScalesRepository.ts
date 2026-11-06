@@ -265,7 +265,7 @@ export class WageScalesRepository {
           { code: "VALIDATION" },
         );
       }
-      if (predecessor.effectiveTo == null) {
+      {
         await tx
           .update(accWageScalesV2)
           .set({
