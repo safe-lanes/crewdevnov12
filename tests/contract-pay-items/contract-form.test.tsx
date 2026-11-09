@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 const state = vi.hoisted(() => ({
+  calcMethod: "fixed_amount",
   rows: [] as any[], failure: false, urls: [] as string[],
   create: vi.fn(), update: vi.fn(), toast: vi.fn(),
 }));
@@ -58,6 +59,7 @@ const elements = [
   { payElementUuid: "inactive", code: "Old", name: "Allowance", status: "inactive" },
 ];
 beforeEach(() => {
+  state.calcMethod = "fixed_amount";
   queryClient.clear();
   state.rows = []; state.failure = false; state.urls = [];
   state.create.mockReset().mockResolvedValue({});
@@ -84,7 +86,12 @@ beforeEach(() => {
           status: "active", scaleYearAtStart: 1 },
         crewName: "Test crew", scaleName: "Test scale", overrides: state.rows, frozen: false,
       };
-      if (url.endsWith("/pay-elements")) return elements;
+      if (url.endsWith("/pay-elements")) return elements.map(element => ({
+        ...element,
+        calcMethod: element.payElementUuid === "basic"
+          ? "scale_lookup"
+          : state.calcMethod,
+      }));
       if (url.endsWith("/config")) return { allowManualSeniorityAnchor: false };
       return [];
     },
@@ -103,6 +110,124 @@ async function open(edit = false, chooseMode = true) {
   await waitFor(() => expect(screen.getByRole("option", { name: /Inactive/ })).toBeDisabled());
 }
 describe("Add/Edit pay-item form", () => {
+  it("shows no value inputs before selecting an element", async () => {
+    await open(false, false);
+    expect(screen.queryByTestId("input-pay-item-amount")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("input-pay-item-rate")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "add_element" },
+    });
+    expect(screen.queryByTestId("input-pay-item-amount")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("input-pay-item-rate")).not.toBeInTheDocument();
+  });
+  it.each([
+    ["fixed_amount", "Amount", "amount"],
+    ["rate_times_qty", "Rate", "rate"],
+    ["percentage_of_base", "Percentage", "amount"],
+    ["scale_lookup", "Amount", "amount"],
+  ])("uses the configured %s input and existing payload", async (
+    method, label, field,
+  ) => {
+    state.calcMethod = method;
+    await open();
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "allowance" },
+    });
+    const input = screen.getByLabelText(label);
+    const otherField = field === "amount" ? "rate" : "amount";
+    expect(screen.queryByTestId(`input-pay-item-${otherField}`))
+      .not.toBeInTheDocument();
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+    fireEvent.change(input, { target: { value: "12.50" } });
+    fireEvent.click(screen.getByTestId("button-save-pay-item"));
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith(
+      "eng",
+      expect.objectContaining({
+        payElementUuid: "allowance",
+        overrideMode: "add_element",
+        amount: field === "amount" ? "12.50" : null,
+        rate: field === "rate" ? "12.50" : null,
+      }),
+    ));
+  });
+  it("clears an invalid new selection and uses Amount for scale replacement", async () => {
+    state.calcMethod = "rate_times_qty";
+    await open();
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "allowance" },
+    });
+    fireEvent.change(screen.getByLabelText("Rate"), {
+      target: { value: "15" },
+    });
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "replace_scale_value" },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("select-pay-item-element")).toHaveValue(""),
+    );
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "basic" },
+    });
+    expect(screen.getByLabelText("Amount")).toHaveValue(null);
+    expect(screen.queryByTestId("input-pay-item-rate")).not.toBeInTheDocument();
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Amount"), {
+      target: { value: "3200" },
+    });
+    fireEvent.click(screen.getByTestId("button-save-pay-item"));
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith(
+      "eng",
+      expect.objectContaining({
+        payElementUuid: "basic",
+        overrideMode: "replace_scale_value",
+        amount: "3200",
+        rate: null,
+      }),
+    ));
+  });
+  it("clears a new item's value when its element is changed", async () => {
+    await open();
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "allowance" },
+    });
+    fireEvent.change(screen.getByLabelText("Amount"), {
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "allowance" },
+    });
+    expect(screen.getByLabelText("Amount")).toHaveValue(null);
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+  });
+  it("does not restore a new value after switching through suppression", async () => {
+    await open();
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "replace_scale_value" },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "Basic — Basic" }))
+        .not.toBeDisabled(),
+    );
+    fireEvent.change(screen.getByTestId("select-pay-item-element"), {
+      target: { value: "basic" },
+    });
+    fireEvent.change(screen.getByLabelText("Amount"), {
+      target: { value: "3200" },
+    });
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "suppress_element" },
+    });
+    expect(screen.queryByTestId("input-pay-item-amount")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("input-pay-item-rate")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "replace_scale_value" },
+    });
+    expect(screen.getByLabelText("Amount")).toHaveValue(null);
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+  });
   it("starts with no mode, disables elements, and resets when reopened", async () => {
     await open(false, false);
     expect(screen.getByTestId("select-pay-item-mode")).toHaveValue("");
@@ -171,6 +296,8 @@ describe("Add/Edit pay-item form", () => {
     state.rows = [{ epeUuid: "old", payElementUuid: "basic", overrideMode: "add_element",
       amount: "100.00", rate: null, effectiveFrom: null, effectiveTo: null, remarks: "" }];
     await open(true);
+    expect(screen.getByLabelText("Monthly amount")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rate (per unit)")).toBeInTheDocument();
     expect(screen.getByTestId("select-pay-item-mode")).toHaveValue("add_element");
     expect(screen.getByTestId("select-pay-item-element")).not.toBeDisabled();
     expect(screen.getByTestId("select-pay-item-element")).toHaveValue("basic");

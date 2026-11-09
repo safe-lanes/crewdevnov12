@@ -295,6 +295,28 @@ export default function ContractDetailPage({
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
   const clearInvalidSelection = useRef(false);
+  const isNewPayItem = !!itemForm && !itemForm.epeUuid;
+  const selectedCalcMethod =
+    elementByUuid.get(itemForm?.payElementUuid)?.calcMethod;
+  const newItemValueKind =
+    itemForm?.overrideMode &&
+    itemForm.overrideMode !== "suppress_element" &&
+    itemForm.payElementUuid
+      ? selectedCalcMethod === "rate_times_qty"
+        ? "rate"
+        : selectedCalcMethod === "percentage_of_base"
+          ? "percentage"
+          : ["fixed_amount", "manual_entry", "scale_lookup"].includes(
+              selectedCalcMethod,
+            )
+            ? "amount"
+            : null
+      : null;
+  const showItemAmount =
+    !isNewPayItem ||
+    newItemValueKind === "amount" ||
+    newItemValueKind === "percentage";
+  const showItemRate = !isNewPayItem || newItemValueKind === "rate";
   const itemWindow = {
     effectiveFrom: itemForm?.fromMonth ? monthStart(itemForm.fromMonth) : null,
     effectiveTo: itemForm?.toMonth ? monthEnd(itemForm.toMonth) : null,
@@ -332,7 +354,11 @@ export default function ContractDetailPage({
     clearInvalidSelection.current = false;
     const choice = itemOptions.data?.options[itemForm.payElementUuid];
     if (itemForm.payElementUuid && (!choice || choice.disabled)) {
-      setItemForm(current => current ? { ...current, payElementUuid: "" } : current);
+      setItemForm(current => current ? {
+        ...current,
+        payElementUuid: "",
+        ...(!current.epeUuid ? { amount: "", rate: "" } : {}),
+      } : current);
       toast({
         title: "Choose an eligible pay element",
         description: choice?.reason ?? "This element is unavailable for the selection.",
@@ -1071,7 +1097,13 @@ export default function ContractDetailPage({
                   value={itemForm.overrideMode}
                   onValueChange={(v) => {
                     clearInvalidSelection.current = true;
-                    setItemForm({ ...itemForm, overrideMode: v });
+                    setItemForm({
+                      ...itemForm,
+                      overrideMode: v,
+                      ...(isNewPayItem && v === "suppress_element"
+                        ? { amount: "", rate: "" }
+                        : {}),
+                    });
                   }}
                 >
                   <SelectTrigger data-testid="select-pay-item-mode">
@@ -1095,7 +1127,13 @@ export default function ContractDetailPage({
                   value={itemForm.payElementUuid}
                   disabled={!itemForm.overrideMode}
                   onValueChange={(v) =>
-                    setItemForm({ ...itemForm, payElementUuid: v })
+                    setItemForm({
+                      ...itemForm,
+                      payElementUuid: v,
+                      ...(isNewPayItem && v !== itemForm.payElementUuid
+                        ? { amount: "", rate: "" }
+                        : {}),
+                    })
                   }
                 >
                   <SelectTrigger data-testid="select-pay-item-element">
@@ -1131,36 +1169,49 @@ export default function ContractDetailPage({
               {meaningfulItemEdit && selectedOption?.disabled && (
                 <p role="alert" className="text-sm text-destructive">{selectedOption.reason}</p>
               )}
-              {itemForm.overrideMode !== "suppress_element" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="item-amount">Monthly amount</Label>
-                    <Input
-                      id="item-amount"
-                      type="number"
-                      step="0.01"
-                      value={itemForm.amount}
-                      onChange={(e) =>
-                        setItemForm({ ...itemForm, amount: e.target.value })
-                      }
-                      data-testid="input-pay-item-amount"
-                    />
+              {itemForm.overrideMode !== "suppress_element" &&
+                (showItemAmount || showItemRate) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {showItemAmount && (
+                      <div>
+                        <Label htmlFor="item-amount">
+                          {isNewPayItem
+                            ? newItemValueKind === "percentage"
+                              ? "Percentage"
+                              : "Amount"
+                            : "Monthly amount"}
+                        </Label>
+                        <Input
+                          id="item-amount"
+                          type="number"
+                          step="0.01"
+                          value={itemForm.amount}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, amount: e.target.value })
+                          }
+                          data-testid="input-pay-item-amount"
+                        />
+                      </div>
+                    )}
+                    {showItemRate && (
+                      <div>
+                        <Label htmlFor="item-rate">
+                          {isNewPayItem ? "Rate" : "Rate (per unit)"}
+                        </Label>
+                        <Input
+                          id="item-rate"
+                          type="number"
+                          step="0.0001"
+                          value={itemForm.rate}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, rate: e.target.value })
+                          }
+                          data-testid="input-pay-item-rate"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <Label htmlFor="item-rate">Rate (per unit)</Label>
-                    <Input
-                      id="item-rate"
-                      type="number"
-                      step="0.0001"
-                      value={itemForm.rate}
-                      onChange={(e) =>
-                        setItemForm({ ...itemForm, rate: e.target.value })
-                      }
-                      data-testid="input-pay-item-rate"
-                    />
-                  </div>
-                </div>
-              )}
+                )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="item-from">Effective from (month)</Label>
