@@ -134,6 +134,7 @@ router.delete("/advances/:uuid", cashPeriodLock("advance", "delete"), advancesCo
 // ============================================
 router.get("/engagements", engagementsController.list);
 router.get("/engagements/:uuid/detail", engagementsController.detail);
+router.get("/engagements/:uuid/pay-item-options", engagementsController.payItemOptions);
 router.post("/engagements/:uuid/pay-items", engagementsController.createPayItem);
 router.patch(
   "/engagements/pay-items/:epeUuid",

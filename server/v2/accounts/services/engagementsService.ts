@@ -9,6 +9,10 @@ import type {
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
 import { monthInfo, parseIsoDate, addMonths } from "../engine/periodMath";
+import { hasMeaningfulPayItemChange } from "../../../../shared/v2/accounts/contractPayItemRules";
+import {
+  assertPayItemChangeAllowed, withPayItemWrite,
+} from "./contractPayItemEligibilityService";
 
 const engagementsRepository = new EngagementsRepository();
 const portageRepository = new PortageRepository();
@@ -742,6 +746,7 @@ export const engagementsService = {
     },
     auditUserUuid?: string,
   ): Promise<AccEngagementPayElementV2> {
+    return withPayItemWrite(engagementUuid, async () => {
     const engagement = await engagementsRepository.findByUuid(engagementUuid);
     if (!engagement) throw codedError("NOT_FOUND", "Engagement not found");
     await assertNotFrozen(engagementUuid);
@@ -751,10 +756,18 @@ export const engagementsService = {
       data.effectiveFrom ?? null,
       data.effectiveTo ?? null,
     );
+    const beforeItems = await engagementsRepository.findOverridesByEngagement(engagementUuid);
+    const proposedItem = {
+      ...data, epeUuid: "__new_pay_item__", eligibilityRulesVersion: 1,
+    };
+    await assertPayItemChangeAllowed({
+      engagement, beforeItems, afterItems: [...beforeItems, proposedItem], changedItem: proposedItem,
+    });
     return engagementsRepository.createOverride({
       engagementUuid,
       payElementUuid: data.payElementUuid,
       overrideMode: data.overrideMode,
+      eligibilityRulesVersion: 1,
       amount: data.overrideMode === "suppress_element" ? null : (data.amount ?? null),
       rate: data.overrideMode === "suppress_element" ? null : (data.rate ?? null),
       paymentTimingOverride: data.paymentTimingOverride ?? null,
@@ -762,6 +775,7 @@ export const engagementsService = {
       effectiveTo: data.effectiveTo ?? null,
       remarks: data.remarks ?? null,
       createdByUuid: auditUserUuid ?? null,
+    });
     });
   },
 
@@ -779,6 +793,9 @@ export const engagementsService = {
     }>,
     auditUserUuid?: string,
   ): Promise<AccEngagementPayElementV2> {
+    const target = await engagementsRepository.findOverrideByUuid(epeUuid);
+    if (!target) throw codedError("NOT_FOUND", "Contract pay item not found");
+    return withPayItemWrite(target.engagementUuid, async () => {
     const existing = await engagementsRepository.findOverrideByUuid(epeUuid);
     if (!existing) throw codedError("NOT_FOUND", "Contract pay item not found");
     const engagement = await engagementsRepository.findByUuid(
@@ -787,6 +804,7 @@ export const engagementsService = {
     if (!engagement) throw codedError("NOT_FOUND", "Engagement not found");
     await assertNotFrozen(existing.engagementUuid);
     const merged = {
+      payElementUuid: data.payElementUuid ?? existing.payElementUuid,
       overrideMode: data.overrideMode ?? existing.overrideMode,
       amount: data.amount !== undefined ? data.amount : existing.amount,
       rate: data.rate !== undefined ? data.rate : existing.rate,
@@ -808,14 +826,30 @@ export const engagementsService = {
       merged.overrideMode === "suppress_element"
         ? { ...data, amount: null, rate: null }
         : data;
+    const proposedItem = { ...existing, ...merged, ...normalized };
+    const meaningful = hasMeaningfulPayItemChange(existing, proposedItem);
+    if (meaningful) {
+      proposedItem.eligibilityRulesVersion = 1;
+      const beforeItems = await engagementsRepository.findOverridesByEngagement(existing.engagementUuid);
+      await assertPayItemChangeAllowed({
+        engagement, beforeItems,
+        afterItems: beforeItems.map(row => row.epeUuid === epeUuid ? proposedItem : row),
+        changedItem: proposedItem,
+      });
+    }
     const updated = await engagementsRepository.updateOverride(epeUuid, {
       ...normalized,
+      ...(meaningful ? { eligibilityRulesVersion: 1 } : {}),
       updatedByUuid: auditUserUuid ?? null,
     });
     return updated!;
+    });
   },
 
   async deletePayItem(epeUuid: string, auditUserUuid?: string): Promise<void> {
+    const target = await engagementsRepository.findOverrideByUuid(epeUuid);
+    if (!target) throw codedError("NOT_FOUND", "Contract pay item not found");
+    return withPayItemWrite(target.engagementUuid, async () => {
     const existing = await engagementsRepository.findOverrideByUuid(epeUuid);
     if (!existing) throw codedError("NOT_FOUND", "Contract pay item not found");
     await assertNotFrozen(existing.engagementUuid);
@@ -830,10 +864,15 @@ export const engagementsService = {
         existing.effectiveFrom ?? null,
         existing.effectiveTo ?? null,
       );
+      const beforeItems = await engagementsRepository.findOverridesByEngagement(existing.engagementUuid);
+      await assertPayItemChangeAllowed({
+        engagement, beforeItems, afterItems: beforeItems.filter(row => row.epeUuid !== epeUuid),
+      });
     }
     await engagementsRepository.updateOverride(epeUuid, {
       isDeleted: true,
       updatedByUuid: auditUserUuid ?? null,
+    });
     });
   },
 

@@ -79,6 +79,7 @@ export async function applyRevisionOvertimeEffects(revision: AccWageScaleV2, aud
           fail("Overtime entry does not match its engagement");
           continue;
         }
+        if (value.suppressedElementUuids.includes(txn.payElementUuid)) continue;
         const rate = value.entries[txn.payElementUuid]?.rate;
         if (rate == null || !Number.isFinite(Number(rate))) {
           fail(value.errors.join("; ") || "Applicable overtime rate is missing");
