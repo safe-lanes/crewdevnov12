@@ -24,27 +24,30 @@ vi.mock("@/components/ui/select", async () => {
   const R = await import("react");
   function SelectItem(props: any) { return <option {...props} />; }
   function SelectTrigger(props: any) { return <>{props.children}</>; }
+  function SelectValue() { return null; }
   function Select(props: any) {
     const options: any[] = [];
     let testId: string | undefined;
+    let placeholder = "Choose element";
     function walk(children: any) {
       R.Children.forEach(children, child => {
         if (!R.isValidElement(child)) return;
         const p = child.props as any;
         if (child.type === SelectTrigger) testId = p["data-testid"];
+        if (child.type === SelectValue && p.placeholder) placeholder = p.placeholder;
         if (child.type === SelectItem) options.push(child);
         else walk(p.children);
       });
     }
     walk(props.children);
-    return <select data-testid={testId} value={props.value}
+    return <select data-testid={testId} value={props.value} disabled={props.disabled}
       onChange={event => props.onValueChange(event.target.value)}>
-      <option value="">Choose element</option>{options}
+      <option value="">{placeholder}</option>{options}
     </select>;
   }
   return { Select, SelectTrigger, SelectItem,
     SelectContent: ({ children }: any) => <>{children}</>,
-    SelectValue: () => null };
+    SelectValue };
 });
 
 import { queryClient } from "@/lib/queryClient";
@@ -87,13 +90,55 @@ beforeEach(() => {
     },
   } });
 });
-async function open(edit = false) {
+async function open(edit = false, chooseMode = true) {
   render(<QueryClientProvider client={queryClient}><ContractDetailPage engagementUuid="eng" /></QueryClientProvider>);
   fireEvent.click(await screen.findByTestId(edit ? "button-edit-pay-item-old" : "button-add-pay-item"));
+  if (!edit) {
+    if (!chooseMode) return;
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "add_element" },
+    });
+  }
   await waitFor(() => expect(state.urls.length).toBeGreaterThan(0));
   await waitFor(() => expect(screen.getByRole("option", { name: /Inactive/ })).toBeDisabled());
 }
 describe("Add/Edit pay-item form", () => {
+  it("starts with no mode, disables elements, and resets when reopened", async () => {
+    await open(false, false);
+    expect(screen.getByTestId("select-pay-item-mode")).toHaveValue("");
+    expect(screen.getByRole("option", { name: "select a mode" })).toBeInTheDocument();
+    expect(screen.getByTestId("select-pay-item-element")).toBeDisabled();
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+    expect(state.urls).toHaveLength(0);
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "add_element" },
+    });
+    await waitFor(() => expect(state.urls.length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    const requestCount = state.urls.length;
+    fireEvent.click(screen.getByTestId("button-add-pay-item"));
+    expect(screen.getByTestId("select-pay-item-mode")).toHaveValue("");
+    expect(screen.getByTestId("select-pay-item-element")).toHaveValue("");
+    expect(screen.getByTestId("select-pay-item-element")).toBeDisabled();
+    expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
+    expect(state.urls).toHaveLength(requestCount);
+  });
+  it.each([
+    "add_element",
+    "replace_scale_value",
+    "suppress_element",
+  ])("enables the element dropdown after selecting %s", async (mode) => {
+    await open(false, false);
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: mode },
+    });
+    expect(screen.getByTestId("select-pay-item-element")).not.toBeDisabled();
+    await waitFor(() => {
+      expect(state.urls.some(url =>
+        new URLSearchParams(url.split("?")[1]).get("overrideMode") === mode
+      )).toBe(true);
+    });
+  });
   it("shows Mode first and keeps unavailable choices visible with reasons", async () => {
     await open();
     const mode = screen.getByTestId("select-pay-item-mode");
@@ -126,6 +171,8 @@ describe("Add/Edit pay-item form", () => {
     state.rows = [{ epeUuid: "old", payElementUuid: "basic", overrideMode: "add_element",
       amount: "100.00", rate: null, effectiveFrom: null, effectiveTo: null, remarks: "" }];
     await open(true);
+    expect(screen.getByTestId("select-pay-item-mode")).toHaveValue("add_element");
+    expect(screen.getByTestId("select-pay-item-element")).not.toBeDisabled();
     expect(screen.getByTestId("select-pay-item-element")).toHaveValue("basic");
     expect(screen.getByTestId("button-save-pay-item")).not.toBeDisabled();
     fireEvent.change(screen.getByTestId("input-pay-item-amount"), { target: { value: "101" } });
@@ -138,6 +185,9 @@ describe("Add/Edit pay-item form", () => {
     state.failure = true;
     render(<QueryClientProvider client={queryClient}><ContractDetailPage engagementUuid="eng" /></QueryClientProvider>);
     fireEvent.click(await screen.findByTestId("button-add-pay-item"));
+    fireEvent.change(screen.getByTestId("select-pay-item-mode"), {
+      target: { value: "add_element" },
+    });
     await screen.findByRole("alert");
     expect(screen.getByTestId("button-save-pay-item")).toBeDisabled();
     expect(screen.getByRole("option", { name: "Allowance — Allowance" })).toBeDisabled();

@@ -96,7 +96,7 @@ interface PayItemForm {
 const EMPTY_FORM: PayItemForm = {
   epeUuid: null,
   payElementUuid: "",
-  overrideMode: "add_element",
+  overrideMode: "",
   amount: "",
   rate: "",
   fromMonth: "",
@@ -310,7 +310,7 @@ export default function ContractDetailPage({
     options: Record<string, { disabled: boolean; reason: string | null }>;
   }>({
     queryKey: [optionsUrl],
-    enabled: !!itemForm && itemFromValid && itemToValid,
+    enabled: !!itemForm && !!itemForm.overrideMode && itemFromValid && itemToValid,
     staleTime: 0,
   });
   const originalItem = overrides.find((row) => row.epeUuid === itemForm?.epeUuid);
@@ -322,7 +322,7 @@ export default function ContractDetailPage({
       rate: itemForm.overrideMode === "suppress_element" ? null : itemForm.rate || null,
       ...itemWindow,
     });
-  const checkingEligibility = itemOptions.isFetching || !itemOptions.data ||
+  const checkingEligibility = !itemForm?.overrideMode || itemOptions.isFetching || !itemOptions.data ||
     itemOptions.isError || !itemFromValid || !itemToValid;
   const selectedOption = itemOptions.data?.options[itemForm?.payElementUuid ?? ""];
   const itemEligibilityBlocked = meaningfulItemEdit &&
@@ -1075,7 +1075,7 @@ export default function ContractDetailPage({
                   }}
                 >
                   <SelectTrigger data-testid="select-pay-item-mode">
-                    <SelectValue />
+                    <SelectValue placeholder="select a mode" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(MODE_LABEL).map(([v, l]) => (
@@ -1093,6 +1093,7 @@ export default function ContractDetailPage({
                 <Label>Pay element</Label>
                 <Select
                   value={itemForm.payElementUuid}
+                  disabled={!itemForm.overrideMode}
                   onValueChange={(v) =>
                     setItemForm({ ...itemForm, payElementUuid: v })
                   }
