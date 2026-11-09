@@ -297,7 +297,7 @@ export default function ContractDetailPage({
   const clearInvalidSelection = useRef(false);
   const isNewPayItem = !!itemForm && !itemForm.epeUuid;
   const selectedCalcMethod =
-    elementByUuid.get(itemForm?.payElementUuid)?.calcMethod;
+    elementByUuid.get(itemForm?.payElementUuid ?? "")?.calcMethod;
   const newItemValueKind =
     itemForm?.overrideMode &&
     itemForm.overrideMode !== "suppress_element" &&
