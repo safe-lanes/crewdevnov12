@@ -170,9 +170,11 @@ function statusBadgeClass(status: string): string {
 export function AdvancesTab({
   vesselUuid,
   period,
+  statusFilter = "all",
 }: {
   vesselUuid: string;
   period: string;
+  statusFilter?: string;
 }) {
   const { toast } = useToast();
   const { canCreate, canEdit } = usePermissions();
@@ -195,9 +197,10 @@ export function AdvancesTab({
       (advance) =>
         advance.vesselUuid === vesselUuid &&
         (!advance.validFrom || advance.validFrom <= period) &&
-        (!advance.validTo || advance.validTo >= period),
+        (!advance.validTo || advance.validTo >= period) &&
+        (statusFilter === "all" || advance.displayStatus === statusFilter),
     );
-  }, [advances, hasFilter, vesselUuid, period]);
+  }, [advances, hasFilter, vesselUuid, period, statusFilter]);
 
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
