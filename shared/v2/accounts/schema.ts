@@ -360,6 +360,7 @@ export const accBondItemsV2 = pgTable(
     crewName: text("crew_name"),
     itemName: text("item_name").notNull(),
     category: text("category"),
+    remarks: text("remarks"),
     // widened integer -> numeric(10,2) in migration 0163
     quantity: numeric("quantity", { precision: 10, scale: 2 })
       .notNull()
@@ -416,6 +417,7 @@ export const accAllotmentsV2 = pgTable(
     // payee_relationship -> relationship, bank_account_number -> account_number)
     ibanSwift: text("iban_swift"),
     bankCountry: text("bank_country"),
+    remarks: text("remarks"),
     ...auditColumns,
   },
   (table) => ({

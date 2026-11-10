@@ -930,6 +930,7 @@ interface BondForm {
   deductionAmount: string;
   currency: string;
   saleDate: string;
+  remarks: string;
 }
 
 const emptyBondForm: BondForm = {
@@ -941,6 +942,7 @@ const emptyBondForm: BondForm = {
   deductionAmount: "",
   currency: "USD",
   saleDate: "",
+  remarks: "",
 };
 
 export function BondTab({
@@ -1094,6 +1096,7 @@ export function BondTab({
       deductionAmount: row.deductionAmount ?? "",
       currency: row.currency ?? "USD",
       saleDate: row.saleDate ?? "",
+      remarks: row.remarks ?? "",
     });
     setDialogOpen(true);
   };
@@ -1142,6 +1145,7 @@ export function BondTab({
         deductionAmount: form.deductionAmount || null,
         currency: form.currency,
         saleDate: form.saleDate || null,
+        remarks: form.remarks.trim() || null,
       };
       if (editing) {
         await accountsApiV2.bondItems.update(editing.bondItemUuid, payload);
@@ -1498,6 +1502,15 @@ export function BondTab({
                   saleDateIsValid.current = valid;
                 }}
                 data-testid="input-bond-sale-date"
+              />
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Remarks</Label>
+              <Textarea
+                rows={2}
+                value={form.remarks}
+                onChange={(e) => set("remarks", e.target.value)}
+                data-testid="input-bond-remarks"
               />
             </div>
           </div>

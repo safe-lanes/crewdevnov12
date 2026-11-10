@@ -9,6 +9,7 @@ import AgGridTable from "./AccountsGridTable";
 import EndAllotmentDialog from "./EndAllotmentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CURRENCIES } from "../accountsConstants";
 import {
   FormattedDateInput,
@@ -71,6 +72,7 @@ interface AllotmentForm {
   validFrom: string;
   kycComplete: boolean;
   bankVerified: boolean;
+  remarks: string;
 }
 
 const emptyForm: AllotmentForm = {
@@ -88,6 +90,7 @@ const emptyForm: AllotmentForm = {
   validFrom: "",
   kycComplete: false,
   bankVerified: false,
+  remarks: "",
 };
 
 type AllotmentDateInputProps = Pick<
@@ -258,6 +261,7 @@ export default function AllotmentsPage({
       validFrom: row.validFrom ?? "",
       kycComplete: !!row.kycComplete,
       bankVerified: !!row.bankVerified,
+      remarks: row.remarks ?? "",
     });
     setDialogOpen(true);
   };
@@ -355,6 +359,7 @@ export default function AllotmentsPage({
         validFrom: form.validFrom,
         kycComplete: form.kycComplete,
         bankVerified: form.bankVerified,
+        remarks: form.remarks.trim() || null,
       };
       let res: any;
       if (editing) {
@@ -986,6 +991,15 @@ export default function AllotmentsPage({
                 />
                 Bank verified
               </label>
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Remarks</Label>
+              <Textarea
+                rows={2}
+                value={form.remarks}
+                onChange={(e) => set("remarks", e.target.value)}
+                data-testid="input-allotment-remarks"
+              />
             </div>
           </div>
           <DialogFooter>
