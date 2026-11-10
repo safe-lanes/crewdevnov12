@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
-import type { ColDef } from "ag-grid-community";
+import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
@@ -47,7 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Eye, Ban, Lock, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Ban, Lock, Info, Download } from "lucide-react";
 import {
   accountsApiV2,
   parseApiError,
@@ -374,6 +374,28 @@ export function AdvancesTab({
     }
   };
 
+  const gridApiRef = useRef<GridApi | null>(null);
+  const onGridReady = (e: GridReadyEvent) => {
+    gridApiRef.current = e.api;
+  };
+  const exportCsv = () => {
+    const api = gridApiRef.current;
+    if (
+      !hasFilter ||
+      isLoading ||
+      filteredAdvances.length === 0 ||
+      !api ||
+      api.isDestroyed()
+    ) return;
+    api.exportDataAsCsv({
+      fileName: "advances.csv",
+      processCellCallback: (p) =>
+        p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? ""),
+    });
+  };
+
   const cols: ColDef[] = useMemo(
     () => [
       { headerName: "Crew", field: "crewName", flex: 2, minWidth: 150 },
@@ -514,26 +536,37 @@ export function AdvancesTab({
             <Lock size={12} /> Period locked — read only
           </Badge>
         )}
-        {mayCreate && (
+        <div className="ml-auto flex gap-2">
           <Button
             size="sm"
-            onClick={() => {
-              setValidationAttempted(false);
-              requestDateIsValid.current = true;
-              setDateFormVersion((version) => version + 1);
-              setForm({
-                ...emptyAdvanceForm,
-                requestDate: locks.getDefaultDate(),
-              });
-              setDialogOpen(true);
-            }}
-            className="ml-auto bg-[#16569e] hover:bg-[#1e5fa8]"
-            data-testid="button-add-advance"
-            disabled={!hasFilter || locks.blocked}
+            variant="outline"
+            onClick={exportCsv}
+            disabled={!hasFilter || isLoading || filteredAdvances.length === 0}
+            data-testid="button-export-advances"
           >
-            <Plus size={14} className="mr-1" /> New Advance
+            <Download size={14} className="mr-1" /> Export
           </Button>
-        )}
+          {mayCreate && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setValidationAttempted(false);
+                requestDateIsValid.current = true;
+                setDateFormVersion((version) => version + 1);
+                setForm({
+                  ...emptyAdvanceForm,
+                  requestDate: locks.getDefaultDate(),
+                });
+                setDialogOpen(true);
+              }}
+              className="bg-[#16569e] hover:bg-[#1e5fa8]"
+              data-testid="button-add-advance"
+              disabled={!hasFilter || locks.blocked}
+            >
+              <Plus size={14} className="mr-1" /> New Advance
+            </Button>
+          )}
+        </div>
       </div>
 
       {locks.notice && (
@@ -555,7 +588,12 @@ export function AdvancesTab({
             Loading advances…
           </div>
         ) : (
-          <AgGridTable rowData={filteredAdvances} columnDefs={cols} height="440px" />
+          <AgGridTable
+            rowData={filteredAdvances}
+            columnDefs={cols}
+            onGridReady={onGridReady}
+            height="440px"
+          />
         )}
       </div>
 
@@ -1192,6 +1230,28 @@ export function BondTab({
     }
   };
 
+  const gridApiRef = useRef<GridApi | null>(null);
+  const onGridReady = (e: GridReadyEvent) => {
+    gridApiRef.current = e.api;
+  };
+  const exportCsv = () => {
+    const api = gridApiRef.current;
+    if (
+      !hasFilter ||
+      isLoading ||
+      items.length === 0 ||
+      !api ||
+      api.isDestroyed()
+    ) return;
+    api.exportDataAsCsv({
+      fileName: "bond-items.csv",
+      processCellCallback: (p) =>
+        p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? ""),
+    });
+  };
+
   const cols: ColDef[] = useMemo(
     () => [
       {
@@ -1297,7 +1357,16 @@ export function BondTab({
             <Lock size={12} /> Period locked — read only
           </Badge>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportCsv}
+            disabled={!hasFilter || isLoading || items.length === 0}
+            data-testid="button-export-bond"
+          >
+            <Download size={14} className="mr-1" /> Export
+          </Button>
           {mayCreate && hasFilter && !isLocked && (
             <Button
               size="sm"
@@ -1364,7 +1433,12 @@ export function BondTab({
               Loading bond items…
             </div>
           ) : (
-            <AgGridTable rowData={items} columnDefs={cols} height="400px" />
+            <AgGridTable
+              rowData={items}
+              columnDefs={cols}
+              onGridReady={onGridReady}
+              height="400px"
+            />
           )}
         </div>
       )}
