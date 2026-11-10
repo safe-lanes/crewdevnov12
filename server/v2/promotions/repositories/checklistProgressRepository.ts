@@ -50,9 +50,10 @@ export class ChecklistProgressRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, items: Omit<InsertPromoChecklistProgressV2, "cpUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoChecklistProgressV2[]> {
-    const db = getDb();
-    const existing = await db
+  // `executor` is a transaction (tx) or the default connection.
+  async replaceForReview(reviewUuid: string, items: Omit<InsertPromoChecklistProgressV2, "cpUuid" | "reviewUuid">[], auditUserUuid: string | null = null, executor: any = getDb()): Promise<PromoChecklistProgressV2[]> {
+    const db = executor;
+    const existing: PromoChecklistProgressV2[] = await db
       .select()
       .from(promoChecklistProgressV2)
       .where(and(eq(promoChecklistProgressV2.reviewUuid, reviewUuid), eq(promoChecklistProgressV2.isDeleted, false)));

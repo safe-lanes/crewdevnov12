@@ -24,8 +24,9 @@ export class CriteriaStatusRepository {
       .orderBy(promoCriteriaStatusV2.sortOrder);
   }
 
-  async upsert(reviewUuid: string, criteriaCode: string, data: Partial<InsertPromoCriteriaStatusV2>, auditUserUuid: string | null = null): Promise<PromoCriteriaStatusV2> {
-    const db = getDb();
+  // `executor` is a transaction (tx) or the default connection.
+  async upsert(reviewUuid: string, criteriaCode: string, data: Partial<InsertPromoCriteriaStatusV2>, auditUserUuid: string | null = null, executor: any = getDb()): Promise<PromoCriteriaStatusV2> {
+    const db = executor;
     const existing = await db
       .select()
       .from(promoCriteriaStatusV2)

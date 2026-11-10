@@ -457,6 +457,28 @@ type OnboardPromotionExecutionContext = {
   targetPlanUuid: string;
 };
 
+// What executePromotionInTx applied (ledger row + rank change), handed to the
+// steps that run after the commit (sea-service and rest-hours splits).
+type PromotionExecution = {
+  reviewUuid: string;
+  crewUuid: string;
+  empNo: string;
+  fromRank: string | null;
+  toRank: string;
+  effectiveDate: string | null;
+  actorUuid: string | null;
+};
+
+// The parts of a save that are written next to the review header.
+type ReviewChildData = {
+  criteriaVerifiedStatus?: any;
+  criteriaMeetsStatus?: any;
+  changes?: PromotionChanges;
+  checklistProgressData?: any;
+  b2VesselTypes?: any;
+  b2FleetGroups?: any;
+};
+
 export class PromotionReviewsService {
   async getCriteriaMaster() {
     return criteriaMasterRepo.findAll();
@@ -1079,16 +1101,20 @@ export class PromotionReviewsService {
     };
   }
 
-  private async withOnboardPositionLock<T>(
-    context: OnboardPromotionExecutionContext,
-    task: () => Promise<T>,
+  // One save = one transaction (PRD-04). With an on-board context the
+  // position lock is taken on the same transaction, so the lock and the
+  // writes share one connection and are released by the same commit.
+  private async withSaveTransaction<T>(
+    lockContext: OnboardPromotionExecutionContext | null,
+    work: (tx: any) => Promise<T>,
   ): Promise<T> {
-    const db = getDb();
-    return db.transaction(async (tx: typeof db) => {
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${context.vesselUuid}), hashtext(${context.targetPosition}))`,
-      );
-      return task();
+    return getDb().transaction(async (tx: any) => {
+      if (lockContext) {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${lockContext.vesselUuid}), hashtext(${lockContext.targetPosition}))`,
+        );
+      }
+      return work(tx);
     });
   }
 
@@ -1197,14 +1223,31 @@ export class PromotionReviewsService {
   // if a ledger row already exists for the review the engine is a no-op, so
   // re-saving / replaying a completed review never re-applies the rank change.
 
-  // Flip the crew member's present_rank to the promoted rank and record the
-  // ledger row. Idempotent: a no-op when the promotion was already executed.
-  // Errors propagate to the caller — the rank flip is the core deliverable and
-  // a failure must surface rather than silently leave the rank unchanged.
+  // Flip the crew member's present_rank to the promoted rank, record the
+  // ledger row, then split sea service and rest hours. Idempotent: a no-op
+  // when the promotion was already executed. Used by the historical backfill.
+  // A review save runs the two halves itself: executePromotionInTx inside the
+  // save transaction, runExecutionSplits after the commit (PRD-04).
   async applyPromotedRank(
     review: PromotionReviewV2,
     opts: { effectiveDate?: string | null; actorUuid?: string | null } = {},
   ): Promise<void> {
+    const executed = await getDb().transaction((tx: any) =>
+      this.executePromotionInTx(review, opts, tx),
+    );
+    if (executed) await this.runExecutionSplits(executed);
+  }
+
+  // Ledger row + rank change on the caller's transaction. Errors propagate:
+  // the rank flip is the core deliverable, so a failure rolls back the whole
+  // save instead of leaving a "completed" review with the old rank. Returns
+  // what was applied, or null when nothing was (already executed, or the crew
+  // member / rank is missing).
+  private async executePromotionInTx(
+    review: PromotionReviewV2,
+    opts: { effectiveDate?: string | null; actorUuid?: string | null },
+    tx: any,
+  ): Promise<PromotionExecution | null> {
     const reviewUuid = review.reviewUuid;
     const empNo = (review.crewMemberId ?? "").trim();
     const toRank = (review.promotionToRank ?? "").trim();
@@ -1214,12 +1257,12 @@ export class PromotionReviewsService {
         `[promotion-engine] Skipping rank propagation for review ${reviewUuid}: ` +
         `missing ${!empNo ? "crew member" : "promotion rank"}.`,
       );
-      return;
+      return null;
     }
 
     // Idempotency guard #1 — fast no-op path when already executed.
-    const existingLedger = await executionLedgerRepo.findByReviewUuid(reviewUuid);
-    if (existingLedger) return;
+    const existingLedger = await executionLedgerRepo.findByReviewUuid(reviewUuid, tx);
+    if (existingLedger) return null;
 
     const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
     const crew = await crewMembersService.getByEmpNo(empNo);
@@ -1228,134 +1271,133 @@ export class PromotionReviewsService {
         `[promotion-engine] Skipping rank propagation for review ${reviewUuid}: ` +
         `no crew member found for employee number "${empNo}".`,
       );
-      return;
+      return null;
     }
 
     const fromRank = (crew.presentRank ?? "").trim() || null;
     const effectiveDate = (opts.effectiveDate ?? review.promotionDate ?? null) || null;
     const actorUuid = opts.actorUuid ?? (review as any).updatedByUuid ?? null;
-    const { v4: uuidv4 } = await import("uuid");
 
-    // Exactly-once: the ledger insert and the rank flip commit together in one
-    // transaction. ON CONFLICT DO NOTHING on the unique review_uuid means a
-    // concurrent (or replayed) execution inserts nothing and returns no row, so
-    // we skip the rank flip. A crash mid-transaction rolls back BOTH, so a retry
+    // Exactly-once: the ledger insert and the rank flip commit together with
+    // the rest of the save. ON CONFLICT DO NOTHING on the unique review_uuid
+    // means a concurrent (or replayed) execution inserts nothing and returns no
+    // row, so we skip the rank flip. A failure rolls back both, so a retry
     // re-applies cleanly — the ledger never persists without the rank update.
-    const db = getDb();
-    let applied = false;
-    await db.transaction(async (tx: typeof db) => {
-      const inserted = await tx
-        .insert(promoExecutionLedgerV2)
-        .values({
-          ledgerUuid: uuidv4(),
-          reviewUuid,
-          crewMemberId: empNo,
-          crewUuid: crew.crewUuid,
-          fromRank,
-          toRank,
-          effectiveDate,
-          promotionTiming: review.promotionTiming ?? null,
-          appliedByUuid: actorUuid,
-          createdByUuid: actorUuid,
+    const inserted = await tx
+      .insert(promoExecutionLedgerV2)
+      .values({
+        ledgerUuid: uuidv4(),
+        reviewUuid,
+        crewMemberId: empNo,
+        crewUuid: crew.crewUuid,
+        fromRank,
+        toRank,
+        effectiveDate,
+        promotionTiming: review.promotionTiming ?? null,
+        appliedByUuid: actorUuid,
+        createdByUuid: actorUuid,
+        updatedByUuid: actorUuid,
+      })
+      .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
+      .returning({ id: promoExecutionLedgerV2.id });
+
+    // Another execution already owns this promotion — leave the rank to it.
+    if (inserted.length === 0) return null;
+
+    // Flip the rank only when it actually differs (the present_rank column is
+    // the single source of truth read by Crew Pool, Reports, Promotions, etc.).
+    if (fromRank !== toRank) {
+      await tx
+        .update(crewMembersV2)
+        .set({
+          presentRank: toRank,
+          updatedAt: sql`NOW()`,
           updatedByUuid: actorUuid,
         })
-        .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
-        .returning({ id: promoExecutionLedgerV2.id });
+        .where(eq(crewMembersV2.crewUuid, crew.crewUuid));
+    }
 
-      // Another execution already owns this promotion — leave the rank to it.
-      if (inserted.length === 0) return;
-      applied = true;
+    return { reviewUuid, crewUuid: crew.crewUuid, empNo, fromRank, toRank, effectiveDate, actorUuid };
+  }
 
-      // Flip the rank only when it actually differs (the present_rank column is
-      // the single source of truth read by Crew Pool, Reports, Promotions, etc.).
-      if (fromRank !== toRank) {
-        await tx
-          .update(crewMembersV2)
-          .set({
-            presentRank: toRank,
-            updatedAt: sql`NOW()`,
-            updatedByUuid: actorUuid,
-          })
-          .where(eq(crewMembersV2.crewUuid, crew.crewUuid));
-      }
-    });
-
-    // Phase 3 — split Company sea service so experience is attributed to the old
-    // and new rank (closes the previous-rank line at split-date−1, opens a new
-    // new-rank line on the split date). `splitDate` is the per-timing effective
-    // date resolved by runCompletionHook (Part C date on-board / sign-on date
-    // prior-joining). Runs only on first application (ledger-gated) and is itself
-    // idempotent, so a re-run is a safe no-op.
-    //
-    // Deliberately non-fatal: the ledger row + rank flip already committed and
-    // are the atomic core deliverable; they must NOT be rolled back by a
-    // sea-service hiccup (this mirrors the established best-effort policy for
-    // promotion side-effects). Recovery is deterministic rather than silent — a
-    // ledger row that has no matching new-rank Company line is exactly what the
-    // Phase 5 backfill detects and repairs, reusing this same `splitForPromotion`
-    // path. We log every non-success at error/warn level so the gap is visible
-    // until then.
-    if (applied) {
-      try {
-        const { crewSeaServiceService } = await import(
-          "../../crew-pool/services/crewSeaServiceService"
-        );
-        const split = await crewSeaServiceService.splitForPromotion({
-          crewUuid: crew.crewUuid,
-          newRank: toRank,
-          oldRank: fromRank,
-          splitDate: effectiveDate ?? "",
-          auditUserUuid: actorUuid,
-        });
-        // A missing/invalid Date of Promotion leaves the rank flipped but the
-        // history un-split — flag it loudly for the deterministic backfill.
-        if (split.status === "skipped-invalid-input") {
-          console.warn(
-            `[promotion-engine] Sea-service split SKIPPED for review ${reviewUuid} ` +
-            `(crew ${crew.crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
-            `Rank was flipped; Phase 5 backfill will repair once a valid Date of Promotion is set.`,
-          );
-        }
-      } catch (err) {
-        console.error(
-          `[promotion-engine] Sea-service split FAILED for review ${reviewUuid} ` +
-          `(crew ${crew.crewUuid}, non-fatal): rank is flipped but history is un-split; ` +
-          `Phase 5 backfill will reconcile this ledger row.`,
-          err,
+  // Runs after the ledger row + rank flip have committed, and only when this
+  // call applied them (ledger-gated), so a re-save never splits twice.
+  //
+  // Phase 3 — split Company sea service so experience is attributed to the old
+  // and new rank (closes the previous-rank line at split-date−1, opens a new
+  // new-rank line on the split date). `splitDate` is the per-timing effective
+  // date (Part C date on-board / sign-on date prior-joining). The split is
+  // itself idempotent, so a re-run is a safe no-op.
+  //
+  // Deliberately non-fatal: the ledger row + rank flip already committed and
+  // are the atomic core deliverable; they must NOT be rolled back by a
+  // sea-service hiccup (this mirrors the established best-effort policy for
+  // promotion side-effects; PRD-05/06 will revisit it). Recovery is
+  // deterministic rather than silent — a ledger row that has no matching
+  // new-rank Company line is exactly what the Phase 5 backfill detects and
+  // repairs, reusing this same `splitForPromotion` path. We log every
+  // non-success at error/warn level so the gap is visible until then.
+  private async runExecutionSplits(executed: PromotionExecution): Promise<void> {
+    const { reviewUuid, crewUuid, empNo, fromRank, toRank, effectiveDate, actorUuid } = executed;
+    try {
+      const { crewSeaServiceService } = await import(
+        "../../crew-pool/services/crewSeaServiceService"
+      );
+      const split = await crewSeaServiceService.splitForPromotion({
+        crewUuid,
+        newRank: toRank,
+        oldRank: fromRank,
+        splitDate: effectiveDate ?? "",
+        auditUserUuid: actorUuid,
+      });
+      // A missing/invalid Date of Promotion leaves the rank flipped but the
+      // history un-split — flag it loudly for the deterministic backfill.
+      if (split.status === "skipped-invalid-input") {
+        console.warn(
+          `[promotion-engine] Sea-service split SKIPPED for review ${reviewUuid} ` +
+          `(crew ${crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
+          `Rank was flipped; Phase 5 backfill will repair once a valid Date of Promotion is set.`,
         );
       }
+    } catch (err) {
+      console.error(
+        `[promotion-engine] Sea-service split FAILED for review ${reviewUuid} ` +
+        `(crew ${crewUuid}, non-fatal): rank is flipped but history is un-split; ` +
+        `Phase 5 backfill will reconcile this ledger row.`,
+        err,
+      );
+    }
 
-      // Phase 3b — split Rest Hours the same way: close the promotion month's
-      // existing record at split-date−1 and open a new new-rank record for the
-      // remainder, so RH compliance is attributed per rank. Same non-fatal,
-      // ledger-gated, idempotent policy as the sea-service split above — the rank
-      // flip is the committed core and must not be rolled back by an RH hiccup.
-      try {
-        const { rhPromotionService } = await import(
-          "../../rest-hours/services/rhPromotionService"
-        );
-        const rhSplit = await rhPromotionService.splitForPromotion({
-          crewUuid: crew.crewUuid ?? "",
-          empNo: empNo ?? "",
-          newRank: toRank ?? "",
-          oldRank: fromRank ?? "",
-          splitDate: effectiveDate ?? "",
-          auditUserUuid: actorUuid,
-        });
-        if (rhSplit.status === "skipped-invalid-input") {
-          console.warn(
-            `[promotion-engine] Rest-hours split SKIPPED for review ${reviewUuid} ` +
-            `(crew ${crew.crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
-            `Rank was flipped; RH records will be created under the new rank on next save.`,
-          );
-        }
-      } catch (err) {
-        console.error(
-          `[promotion-engine] Rest-hours split FAILED for review ${reviewUuid} ` +
-          `(crew ${crew.crewUuid}, non-fatal): rank is flipped but the RH month is un-split.`,
-          err,
+    // Phase 3b — split Rest Hours the same way: close the promotion month's
+    // existing record at split-date−1 and open a new new-rank record for the
+    // remainder, so RH compliance is attributed per rank. Same non-fatal,
+    // ledger-gated, idempotent policy as the sea-service split above — the rank
+    // flip is the committed core and must not be rolled back by an RH hiccup.
+    try {
+      const { rhPromotionService } = await import(
+        "../../rest-hours/services/rhPromotionService"
+      );
+      const rhSplit = await rhPromotionService.splitForPromotion({
+        crewUuid: crewUuid ?? "",
+        empNo: empNo ?? "",
+        newRank: toRank ?? "",
+        oldRank: fromRank ?? "",
+        splitDate: effectiveDate ?? "",
+        auditUserUuid: actorUuid,
+      });
+      if (rhSplit.status === "skipped-invalid-input") {
+        console.warn(
+          `[promotion-engine] Rest-hours split SKIPPED for review ${reviewUuid} ` +
+          `(crew ${crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
+          `Rank was flipped; RH records will be created under the new rank on next save.`,
         );
       }
+    } catch (err) {
+      console.error(
+        `[promotion-engine] Rest-hours split FAILED for review ${reviewUuid} ` +
+        `(crew ${crewUuid}, non-fatal): rank is flipped but the RH month is un-split.`,
+        err,
+      );
     }
   }
 
@@ -1442,57 +1484,88 @@ export class PromotionReviewsService {
     }
   }
 
-  // Fired after a review is persisted. When the review has reached "completed"
-  // the rank propagation engine executes the promotion (idempotently). For
-  // on-board promotions the promotee is additionally placed as a Secondary on
-  // their current vessel to drive the takeover flow.
-  private async runCompletionHook(
-    review: PromotionReviewV2 | null,
-    actorUuid?: string | null,
-    onboardContext?: OnboardPromotionExecutionContext | null,
-  ) {
-    if (!review) return;
-    if (statusRank(review.status) < statusRank("completed")) return;
+  // Split/effective date by promotion timing (Phase 3 requirement):
+  //   • on-board      → the Part C Date of Promotion.
+  //   • prior-joining → the Sign-On date. A prior-joining promotion is only
+  //     completed by `vesselPlanningService.signOnReliever`, which writes the
+  //     sign-on date into `promotionDate` on the same `updateReview` call that
+  //     sets status=completed.
+  // Both timings therefore carry the correct split date in `review.promotionDate`.
+  private completionEffectiveDate(review: PromotionReviewV2): string | null {
+    return (review.promotionDate ?? null) || null;
+  }
 
-    // Split/effective date by promotion timing (Phase 3 requirement):
-    //   • on-board      → the Part C Date of Promotion.
-    //   • prior-joining → the Sign-On date. A prior-joining promotion is only
-    //     completed by `vesselPlanningService.signOnReliever`, which writes the
-    //     sign-on date into `promotionDate` on the same `updateReview` call that
-    //     sets status=completed.
-    // Both timings therefore carry the correct split date in `review.promotionDate`
-    // by the time we get here, so we pass it explicitly as the effective date.
-    const effectiveDate = (review.promotionDate ?? null) || null;
-    await this.applyPromotedRank(review, { actorUuid, effectiveDate });
+  // In-transaction half of completion: once the review has reached
+  // "completed", execute the promotion (ledger row + rank change) on the save
+  // transaction, so "completed" never commits without them (PRD-04).
+  // Idempotent: a re-save of a completed review is a no-op.
+  private async executeCompletionInTx(
+    review: PromotionReviewV2,
+    actorUuid: string | null,
+    tx: any,
+  ): Promise<PromotionExecution | null> {
+    if (statusRank(review.status) < statusRank("completed")) return null;
+    return this.executePromotionInTx(
+      review,
+      { actorUuid, effectiveDate: this.completionEffectiveDate(review) },
+      tx,
+    );
+  }
+
+  // After-commit half of completion. Best-effort and logged, as before; making
+  // these steps repeatable is PRD-05/06.
+  //  1. Sea-service and rest-hours splits, only when this save applied the
+  //     ledger row.
+  //  2. On-board only: the promotee's rank position changes on the manning
+  //     matrix. They sign ON at the new rank (as Secondary when an existing
+  //     Primary holds the rank, or directly as Primary when the position is
+  //     vacant) and their OLD rank position is signed OFF (handing it to the
+  //     reliever who was signed on for that rank). The effective date for both
+  //     events is the Date of Promotion. The previous rank is read from the
+  //     execution ledger (reliable + idempotent). It runs under the same
+  //     position lock as the save, so two promotions into one position are
+  //     placed one after the other.
+  private async runAfterCompletionCommit(
+    review: PromotionReviewV2,
+    executed: PromotionExecution | null,
+    actorUuid: string | null,
+    onboardContext: OnboardPromotionExecutionContext | null,
+  ): Promise<void> {
+    if (statusRank(review.status) < statusRank("completed")) return;
+    if (executed) await this.runExecutionSplits(executed);
 
     const timing = (review.promotionTiming ?? "").trim().toLowerCase();
-    if (timing === "on-board") {
-      // On execution the promotee's rank position changes on the manning matrix:
-      // they sign ON at the new rank (as Secondary when an existing Primary holds
-      // the rank, or directly as Primary when the position is vacant) and their
-      // OLD rank position is signed OFF (handing it to the reliever who was signed
-      // on for that rank). The effective date for both events is the Date of
-      // Promotion. The previous rank is read from the execution ledger written by
-      // applyPromotedRank (reliable + idempotent).
-      const ledger = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
-      const fromRank = (ledger?.fromRank ?? "").trim();
-      const toRank = (review.promotionToRank ?? "").trim();
+    if (timing !== "on-board" || !onboardContext) return;
 
-      await this.placePromoteeOnTargetRank(
-        review,
-        actorUuid,
-        effectiveDate,
-        onboardContext,
-      );
+    const effectiveDate = this.completionEffectiveDate(review);
+    try {
+      await this.withSaveTransaction(onboardContext, async () => {
+        const ledger = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
+        const fromRank = (ledger?.fromRank ?? "").trim();
+        const toRank = (review.promotionToRank ?? "").trim();
 
-      if (fromRank && fromRank !== toRank && onboardContext) {
-        await this.signOffPromoteeOldRank(
+        await this.placePromoteeOnTargetRank(
           review,
-          onboardContext,
-          effectiveDate,
           actorUuid,
+          effectiveDate,
+          onboardContext,
         );
-      }
+
+        if (fromRank && fromRank !== toRank) {
+          await this.signOffPromoteeOldRank(
+            review,
+            onboardContext,
+            effectiveDate,
+            actorUuid,
+          );
+        }
+      });
+    } catch (err) {
+      console.error(
+        `[promotion-engine] On-board planning update failed for review ` +
+        `${review.reviewUuid} (non-fatal):`,
+        err,
+      );
     }
   }
 
@@ -1781,58 +1854,43 @@ export class PromotionReviewsService {
       reviewUuid: null,
     });
 
-    const persistReview = async (
-      executionContext: OnboardPromotionExecutionContext | null,
-    ) => {
-      // First submission can happen directly via POST (new review submitted for
-      // approval). Snapshot the lock flag so later admin toggles don't change it.
-      if (coreFields.status === "submitted") {
-        coreFields.isLockForm = await this.resolvePromotionLockFlag();
-      }
-
-      // Pins are server-resolved only. Draft and In Progress reviews remain
-      // unpinned; every submitted-or-later review must get a complete pair.
-      delete coreFields.formVersionId;
-      delete coreFields.formVersionUuid;
-      const pin = await this.resolvePromotionPinForSubmittedStatus({
-        status: coreFields.status,
+    return this.saveReviewInTransaction({
+      onboardContext,
+      resolveLockedContext: () => this.resolveOnboardPromotionContext({
+        crewMemberId: coreFields.crewMemberId,
         promotionToRank: coreFields.promotionToRank,
-        formVersionId: null,
-        formVersionUuid: null,
-      });
-      if (pin) {
-        coreFields.formVersionId = pin.formVersionId;
-        coreFields.formVersionUuid = pin.formVersionUuid;
-      }
+        selectedPosition: coreFields.selectedPosition,
+      }),
+      writeHeader: async (tx) => {
+        // First submission can happen directly via POST (new review submitted for
+        // approval). Snapshot the lock flag so later admin toggles don't change it.
+        if (coreFields.status === "submitted") {
+          coreFields.isLockForm = await this.resolvePromotionLockFlag();
+        }
 
-      const review = await reviewsRepo.create(coreFields);
+        // Pins are server-resolved only. Draft and In Progress reviews remain
+        // unpinned; every submitted-or-later review must get a complete pair.
+        delete coreFields.formVersionId;
+        delete coreFields.formVersionUuid;
+        const pin = await this.resolvePromotionPinForSubmittedStatus({
+          status: coreFields.status,
+          promotionToRank: coreFields.promotionToRank,
+          formVersionId: null,
+          formVersionUuid: null,
+        });
+        if (pin) {
+          coreFields.formVersionId = pin.formVersionId;
+          coreFields.formVersionUuid = pin.formVersionUuid;
+        }
 
-      await this.saveChildData(review.reviewUuid, {
+        return reviewsRepo.create(coreFields, tx);
+      },
+      childData: {
         criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
         b2VesselTypes, b2FleetGroups,
-      }, coreFields.updatedByUuid ?? null);
-
-      await this.runCompletionHook(
-        review,
-        coreFields.updatedByUuid ?? null,
-        executionContext,
-      );
-
-      return this.getReviewByUuid(review.reviewUuid);
-    };
-
-    if (onboardContext) {
-      return this.withOnboardPositionLock(onboardContext, async () => {
-        const lockedContext = await this.resolveOnboardPromotionContext({
-          crewMemberId: coreFields.crewMemberId,
-          promotionToRank: coreFields.promotionToRank,
-          selectedPosition: coreFields.selectedPosition,
-        });
-        return persistReview(lockedContext);
-      });
-    }
-
-    return persistReview(null);
+      },
+      auditUserUuid: coreFields.updatedByUuid ?? null,
+    });
   }
 
   async updateReview(reviewUuid: string, data: any) {
@@ -1924,92 +1982,126 @@ export class PromotionReviewsService {
       reviewUuid,
     });
 
-    const persistReview = async (
-      executionContext: OnboardPromotionExecutionContext | null,
-    ) => {
-      // Task #569: snapshot the promotion form's admin lock-form flag onto this
-      // review at the first submission (Submit for Approval → status "submitted")
-      // so later admin lock/unlock toggles do not retroactively change the lock
-      // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
-      if (coreFields.status === "submitted") {
-        const existingStatus = (existingStatusRaw || "").trim().toLowerCase();
-        const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
-        if (!alreadyLocked) {
-          coreFields.isLockForm = await this.resolvePromotionLockFlag();
+    return this.saveReviewInTransaction({
+      onboardContext,
+      resolveLockedContext: () => this.resolveOnboardPromotionContext({
+        crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? "",
+        promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? "",
+        selectedPosition: effectiveSelectedPosition,
+      }),
+      writeHeader: async (tx) => {
+        // Task #569: snapshot the promotion form's admin lock-form flag onto this
+        // review at the first submission (Submit for Approval → status "submitted")
+        // so later admin lock/unlock toggles do not retroactively change the lock
+        // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
+        if (coreFields.status === "submitted") {
+          const existingStatus = (existingStatusRaw || "").trim().toLowerCase();
+          const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
+          if (!alreadyLocked) {
+            coreFields.isLockForm = await this.resolvePromotionLockFlag();
+          }
         }
-      }
 
-      // Pins are taken at the first submitted-or-later write and are never
-      // trusted from the client. A legacy final-state review with no pin is
-      // resolved now or rejected before the update can persist.
-      delete coreFields.formVersionId;
-      delete coreFields.formVersionUuid;
-      const effectiveStatus = coreFields.status ?? existingStatusRaw;
-      const pin = await this.resolvePromotionPinForSubmittedStatus({
-        status: effectiveStatus,
-        promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
-        formVersionId: existing?.formVersionId,
-        formVersionUuid: existing?.formVersionUuid,
-      });
-      if (pin) {
-        coreFields.formVersionId = pin.formVersionId;
-        coreFields.formVersionUuid = pin.formVersionUuid;
-      }
+        // Pins are taken at the first submitted-or-later write and are never
+        // trusted from the client. A legacy final-state review with no pin is
+        // resolved now or rejected before the update can persist.
+        delete coreFields.formVersionId;
+        delete coreFields.formVersionUuid;
+        const effectiveStatus = coreFields.status ?? existingStatusRaw;
+        const pin = await this.resolvePromotionPinForSubmittedStatus({
+          status: effectiveStatus,
+          promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
+          formVersionId: existing?.formVersionId,
+          formVersionUuid: existing?.formVersionUuid,
+        });
+        if (pin) {
+          coreFields.formVersionId = pin.formVersionId;
+          coreFields.formVersionUuid = pin.formVersionUuid;
+        }
 
-      const review = await reviewsRepo.update(reviewUuid, coreFields);
-      if (!review) return null;
-
-      await this.saveChildData(reviewUuid, {
+        return reviewsRepo.update(reviewUuid, coreFields, tx);
+      },
+      childData: {
         criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
         b2VesselTypes, b2FleetGroups,
-      }, coreFields.updatedByUuid ?? null);
+      },
+      auditUserUuid: coreFields.updatedByUuid ?? null,
+    });
+  }
 
-      await this.runCompletionHook(
-        review,
-        coreFields.updatedByUuid ?? null,
-        executionContext,
-      );
-
-      return this.getReviewByUuid(reviewUuid);
-    };
-
-    if (onboardContext) {
-      return this.withOnboardPositionLock(onboardContext, async () => {
-        const lockedContext = await this.resolveOnboardPromotionContext({
-          crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? "",
-          promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? "",
-          selectedPosition: effectiveSelectedPosition,
-        });
-        return persistReview(lockedContext);
+  // One review save = one transaction (PRD-04). The header, every child list,
+  // criteria status, checklist, suitability and, once the review is
+  // "completed", the ledger row + rank change commit together or not at all.
+  // A refused or failed save writes nothing, so a retry starts clean.
+  // With an on-board context the position lock is held for the whole save and
+  // the context is re-resolved under it. Attachment files written during a
+  // save that then fails are deleted again. Only the best-effort completion
+  // steps run after the commit (runAfterCompletionCommit).
+  private async saveReviewInTransaction(params: {
+    onboardContext: OnboardPromotionExecutionContext | null;
+    resolveLockedContext: () => Promise<OnboardPromotionExecutionContext>;
+    writeHeader: (tx: any) => Promise<PromotionReviewV2 | null | undefined>;
+    childData: ReviewChildData;
+    auditUserUuid: string | null;
+  }) {
+    const { onboardContext, auditUserUuid } = params;
+    const writtenFiles: string[] = [];
+    let saved: {
+      review: PromotionReviewV2;
+      executed: PromotionExecution | null;
+      lockedContext: OnboardPromotionExecutionContext | null;
+    } | null;
+    try {
+      saved = await this.withSaveTransaction(onboardContext, async (tx) => {
+        const lockedContext = onboardContext ? await params.resolveLockedContext() : null;
+        const review = await params.writeHeader(tx);
+        if (!review) return null;
+        await this.saveChildData(review.reviewUuid, params.childData, auditUserUuid, tx, writtenFiles);
+        const executed = await this.executeCompletionInTx(review, auditUserUuid, tx);
+        return { review, executed, lockedContext };
       });
+    } catch (err) {
+      await Promise.all(writtenFiles.map((filePath) => fileStorageService.deleteAttachment(filePath)));
+      throw err;
     }
+    if (!saved) return null;
 
-    return persistReview(null);
+    await this.runAfterCompletionCommit(saved.review, saved.executed, auditUserUuid, saved.lockedContext);
+    return this.getReviewByUuid(saved.review.reviewUuid);
   }
 
   async deleteReview(reviewUuid: string): Promise<boolean> {
     return reviewsRepo.softDelete(reviewUuid);
   }
 
-  private async saveChildData(reviewUuid: string, data: any, auditUserUuid: string | null = null) {
-    // Child lists first, in one transaction: a refused change set (a row of
-    // another review, a key that may not change) writes none of them.
+  // Everything written next to the review header, on the save transaction
+  // (PRD-04), one step after the other. Paths of attachment files written to
+  // disk are added to `writtenFiles`, so the caller can delete them again if
+  // the transaction does not commit.
+  private async saveChildData(
+    reviewUuid: string,
+    data: ReviewChildData,
+    auditUserUuid: string | null,
+    tx: any,
+    writtenFiles: string[],
+  ) {
+    // Child lists first: a refused change set (a row of another review, a key
+    // that may not change) throws before anything else is written, and the
+    // throw rolls back the header too.
     const changes: PromotionChanges | undefined = data.changes;
     if (!isEmptyPromotionChanges(changes)) {
-      await this.applyListChanges(reviewUuid, changes!, auditUserUuid);
+      await this.applyListChanges(reviewUuid, changes!, auditUserUuid, tx);
     }
-
-    const tasks: Promise<any>[] = [];
 
     if (data.criteriaVerifiedStatus !== undefined || data.criteriaMeetsStatus !== undefined) {
       const verified = this.parseJson(data.criteriaVerifiedStatus, {});
       const meets = this.parseJson(data.criteriaMeetsStatus, {});
       const allCodes = new Set([...Object.keys(verified), ...Object.keys(meets)]);
       for (const code of allCodes) {
-        tasks.push(criteriaStatusRepo.upsert(reviewUuid, code, {
+        await criteriaStatusRepo.upsert(reviewUuid, code, {
           verifiedStatus: verified[code] ?? null,
           meetsStatus: meets[code] ?? null,
-        }, auditUserUuid));
+        }, auditUserUuid, tx);
       }
     }
 
@@ -2056,14 +2148,15 @@ export class PromotionReviewsService {
       }
 
       const saveChecklistProgressAndAttachments = async () => {
-        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items, auditUserUuid);
-        
+        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items, auditUserUuid, tx);
+
         if (progressObj.sections && Array.isArray(progressObj.sections)) {
-          const db = getDb();
+          const db = tx;
 
           // Resolve the crew folder (employee number) once for this review so new
           // attachment files are grouped under promotion/{empNo}/. crew_member_id
           // on the review IS the employee number; fall back to the review UUID.
+          // Read on the save transaction, so a review created by this save is seen.
           const reviewRows = await db
             .select({ crewMemberId: promotionReviewsV2.crewMemberId })
             .from(promotionReviewsV2)
@@ -2122,7 +2215,8 @@ export class PromotionReviewsService {
                       cleanName,
                       buffer
                     );
-                    
+                    writtenFiles.push(filePath);
+
                     const attUuid = candidateUuid || uuidv4();
                     
                     await db.insert(promoChecklistAttachmentsV2).values({
@@ -2159,7 +2253,7 @@ export class PromotionReviewsService {
         }
       };
 
-      tasks.push(saveChecklistProgressAndAttachments());
+      await saveChecklistProgressAndAttachments();
     }
 
     if (data.b2VesselTypes !== undefined || data.b2FleetGroups !== undefined) {
@@ -2178,42 +2272,39 @@ export class PromotionReviewsService {
           .filter((n: string) => !!n);
       };
 
-      const existing = await suitabilityRepo.findByReviewUuid(reviewUuid);
+      const existing = await suitabilityRepo.findByReviewUuid(reviewUuid, tx);
       const vesselTypes = toNames(data.b2VesselTypes, ['name', 'vesselType'])
         ?? (existing?.vesselTypes ?? []);
       const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
         ?? (existing?.fleetGroups ?? []);
-      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }, auditUserUuid));
+      await suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }, auditUserUuid, tx);
     }
-
-    if (tasks.length > 0) await Promise.all(tasks);
   }
 
-  // Applies a child-list change set (PRD-02 / PRD-03): rows are matched by
-  // uuid (keyed rows also by key), only the sent fields are written and only
-  // the listed rows are deleted. Rows nobody touched stay as they are.
-  private async applyListChanges(reviewUuid: string, changes: PromotionChanges, auditUserUuid: string | null) {
-    await getDb().transaction(async (tx: any) => {
-      if (changes.cesTests) {
-        await cesTestsRepo.applyChanges(reviewUuid, changes.cesTests, auditUserUuid, tx);
-      }
-      if (changes.criteriaComments) {
-        await criteriaCommentsRepo.applyChanges(reviewUuid, changes.criteriaComments, auditUserUuid, tx);
-      }
-      // Comments before trainings, so a comment sent for a training that this
-      // save deletes is deleted with it.
-      if (changes.trainingComments) {
-        await trainingCommentsRepo.applyChanges(reviewUuid, changes.trainingComments, auditUserUuid, tx);
-      }
-      if (changes.trainingNeeds) {
-        await trainingNeedsRepo.applyChanges(reviewUuid, changes.trainingNeeds, auditUserUuid, tx);
-        await trainingCommentsRepo.softDeleteForTrainings(reviewUuid, changes.trainingNeeds.deleted ?? [], auditUserUuid, tx);
-      }
-      for (const list of ["approvers", "partAApprovers", "selectedApprovers"] as const) {
-        const section = changes[list];
-        if (section) await approvalsRepo.applyChanges(reviewUuid, list, section, auditUserUuid, tx);
-      }
-    });
+  // Applies a child-list change set (PRD-02 / PRD-03) on the save transaction:
+  // rows are matched by uuid (keyed rows also by key), only the sent fields
+  // are written and only the listed rows are deleted. Rows nobody touched
+  // stay as they are.
+  private async applyListChanges(reviewUuid: string, changes: PromotionChanges, auditUserUuid: string | null, tx: any) {
+    if (changes.cesTests) {
+      await cesTestsRepo.applyChanges(reviewUuid, changes.cesTests, auditUserUuid, tx);
+    }
+    if (changes.criteriaComments) {
+      await criteriaCommentsRepo.applyChanges(reviewUuid, changes.criteriaComments, auditUserUuid, tx);
+    }
+    // Comments before trainings, so a comment sent for a training that this
+    // save deletes is deleted with it.
+    if (changes.trainingComments) {
+      await trainingCommentsRepo.applyChanges(reviewUuid, changes.trainingComments, auditUserUuid, tx);
+    }
+    if (changes.trainingNeeds) {
+      await trainingNeedsRepo.applyChanges(reviewUuid, changes.trainingNeeds, auditUserUuid, tx);
+      await trainingCommentsRepo.softDeleteForTrainings(reviewUuid, changes.trainingNeeds.deleted ?? [], auditUserUuid, tx);
+    }
+    for (const list of ["approvers", "partAApprovers", "selectedApprovers"] as const) {
+      const section = changes[list];
+      if (section) await approvalsRepo.applyChanges(reviewUuid, list, section, auditUserUuid, tx);
+    }
   }
 
   private parseJson(value: any, fallback: any): any {

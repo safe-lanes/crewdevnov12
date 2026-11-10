@@ -5,9 +5,9 @@ import type { PromoExecutionLedgerV2, InsertPromoExecutionLedgerV2 } from "../..
 import { v4 as uuidv4 } from "uuid";
 
 export class ExecutionLedgerRepository {
-  async findByReviewUuid(reviewUuid: string): Promise<PromoExecutionLedgerV2 | null> {
-    const db = getDb();
-    const rows = await db
+  // `executor` is a transaction (tx) or the default connection.
+  async findByReviewUuid(reviewUuid: string, executor: any = getDb()): Promise<PromoExecutionLedgerV2 | null> {
+    const rows = await executor
       .select()
       .from(promoExecutionLedgerV2)
       .where(and(

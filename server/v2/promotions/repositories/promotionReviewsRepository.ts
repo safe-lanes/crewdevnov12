@@ -63,18 +63,17 @@ export class PromotionReviewsRepository {
       .where(and(inArray(promotionReviewsV2.reviewUuid, reviewUuids), eq(promotionReviewsV2.isDeleted, false)));
   }
 
-  async create(data: Omit<InsertPromotionReviewV2, "reviewUuid">): Promise<PromotionReviewV2> {
-    const db = getDb();
-    const results = await db
+  // `executor` is a transaction (tx) or the default connection.
+  async create(data: Omit<InsertPromotionReviewV2, "reviewUuid">, executor: any = getDb()): Promise<PromotionReviewV2> {
+    const results = await executor
       .insert(promotionReviewsV2)
       .values({ ...data, reviewUuid: uuidv4() })
       .returning();
     return results[0];
   }
 
-  async update(reviewUuid: string, data: Partial<InsertPromotionReviewV2>): Promise<PromotionReviewV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async update(reviewUuid: string, data: Partial<InsertPromotionReviewV2>, executor: any = getDb()): Promise<PromotionReviewV2 | undefined> {
+    const results = await executor
       .update(promotionReviewsV2)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(promotionReviewsV2.reviewUuid, reviewUuid), eq(promotionReviewsV2.isDeleted, false)))

@@ -12,9 +12,9 @@ function cleanNames(values: unknown): string[] {
 }
 
 export class SuitabilityRepository {
-  async findByReviewUuid(reviewUuid: string): Promise<PromoSuitabilityV2 | null> {
-    const db = getDb();
-    const rows = await db
+  // `executor` is a transaction (tx) or the default connection.
+  async findByReviewUuid(reviewUuid: string, executor: any = getDb()): Promise<PromoSuitabilityV2 | null> {
+    const rows = await executor
       .select()
       .from(promoSuitabilityV2)
       .where(and(
@@ -41,12 +41,12 @@ export class SuitabilityRepository {
     reviewUuid: string,
     data: { vesselTypes?: string[]; fleetGroups?: string[] },
     auditUserUuid: string | null = null,
+    executor: any = getDb(),
   ): Promise<void> {
-    const db = getDb();
     const vesselTypes = cleanNames(data.vesselTypes);
     const fleetGroups = cleanNames(data.fleetGroups);
 
-    await db
+    await executor
       .insert(promoSuitabilityV2)
       .values({
         psUuid: uuidv4(),
