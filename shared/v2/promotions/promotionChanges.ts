@@ -97,6 +97,17 @@ export function promoRowUuid(reviewUuid: string, section: PromoKeyedSection, key
   return uuidv5(`${reviewUuid}:${section}:${String(key).trim()}`, PROMO_ROW_NAMESPACE);
 }
 
+// One row per review and criteria code (promo_criteria_status_v2), and one per
+// review (promo_suitability_v2) (PRD-09). Ship and office derive the same uuid
+// for the same row, so a row made on both sides is one row after sync.
+export function criteriaStatusUuid(reviewUuid: string, criteriaCode: string): string {
+  return uuidv5(`${reviewUuid}:criteriaStatus:${String(criteriaCode).trim()}`, PROMO_ROW_NAMESPACE);
+}
+
+export function suitabilityUuid(reviewUuid: string): string {
+  return uuidv5(`${reviewUuid}:suitability`, PROMO_ROW_NAMESPACE);
+}
+
 function isKeyed(section: PromoSectionKey): section is PromoKeyedSection {
   return Object.prototype.hasOwnProperty.call(PROMO_ROW_KEY, section);
 }

@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoCriteriaStatusV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoCriteriaStatusV2, InsertPromoCriteriaStatusV2 } from "../../../../shared/v2/promotions/types";
-import { v4 as uuidv4 } from "uuid";
+import { criteriaStatusUuid } from "../../../../shared/v2/promotions/promotionChanges";
 import { captureChange } from "../../sync/changeCapture";
 
 export class CriteriaStatusRepository {
@@ -37,17 +37,30 @@ export class CriteriaStatusRepository {
         eq(promoCriteriaStatusV2.criteriaCode, criteriaCode),
         eq(promoCriteriaStatusV2.isDeleted, false)
       ));
-    const old = existing[0] ?? null;
-    const results = old
-      ? await db
+    // A live row is updated in place, whatever its uuid (rows made before
+    // PRD-09 have a random one). With none live, the row gets the uuid derived
+    // from review + code, so both sides make the same row; a soft-deleted row
+    // with that uuid is revived.
+    let old = existing[0] ?? null;
+    let results;
+    if (old) {
+      results = await db
         .update(promoCriteriaStatusV2)
         .set({ ...data, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(eq(promoCriteriaStatusV2.id, old.id))
-        .returning()
-      : await db
-        .insert(promoCriteriaStatusV2)
-        .values({ ...data, csUuid: uuidv4(), reviewUuid, criteriaCode, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
         .returning();
+    } else {
+      const csUuid = criteriaStatusUuid(reviewUuid, criteriaCode);
+      [old = null] = await db.select().from(promoCriteriaStatusV2).where(eq(promoCriteriaStatusV2.csUuid, csUuid)).limit(1);
+      results = await db
+        .insert(promoCriteriaStatusV2)
+        .values({ ...data, csUuid, reviewUuid, criteriaCode, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
+        .onConflictDoUpdate({
+          target: promoCriteriaStatusV2.csUuid,
+          set: { ...data, isDeleted: false, updatedAt: new Date(), updatedByUuid: auditUserUuid },
+        })
+        .returning();
+    }
     const row = results[0];
     await captureChange(db, { table: promoCriteriaStatusV2, rowUuid: row?.csUuid, oldRow: old, newRow: row, actorUuid: auditUserUuid });
     return row;

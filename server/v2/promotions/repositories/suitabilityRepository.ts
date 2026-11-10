@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoSuitabilityV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
-import { v4 as uuidv4 } from "uuid";
+import { suitabilityUuid } from "../../../../shared/v2/promotions/promotionChanges";
 import { captureChange } from "../../sync/changeCapture";
 
 function cleanNames(values: unknown): string[] {
@@ -39,7 +39,8 @@ export class SuitabilityRepository {
   }
 
   // One row per review (unique review_uuid), deleted or not: the insert
-  // updates it when it exists. The row is reported to the sync change capture
+  // updates it when it exists. A new row gets the uuid derived from the review
+  // (PRD-09), so both sides make the same row. The row is reported to the sync change capture
   // on the same executor (PRD-07).
   async upsertForReview(
     reviewUuid: string,
@@ -58,7 +59,7 @@ export class SuitabilityRepository {
     const [row] = await executor
       .insert(promoSuitabilityV2)
       .values({
-        psUuid: uuidv4(),
+        psUuid: suitabilityUuid(reviewUuid),
         reviewUuid,
         vesselTypes,
         fleetGroups,
