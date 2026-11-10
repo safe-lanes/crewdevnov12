@@ -1,8 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoApprovalsV2 } from "../../../../shared/v2/promotions/schema";
-import type { PromoApprovalV2, InsertPromoApprovalV2 } from "../../../../shared/v2/promotions/types";
-import { v4 as uuidv4 } from "uuid";
+import type { PromoApprovalV2 } from "../../../../shared/v2/promotions/types";
 import { keyField, syncChildRows, textField, type ChildFieldConfig, type ChildTableConfig } from "../../appraisals/repositories/childRowSync";
 import { promoRowUuid, type PromoSectionChanges } from "../../../../shared/v2/promotions/promotionChanges";
 
@@ -77,15 +76,6 @@ export class ApprovalsRepository {
       .from(promoApprovalsV2)
       .where(and(inArray(promoApprovalsV2.reviewUuid, reviewUuids), eq(promoApprovalsV2.isDeleted, false)))
       .orderBy(promoApprovalsV2.sortOrder);
-  }
-
-  async create(data: Omit<InsertPromoApprovalV2, "apUuid">): Promise<PromoApprovalV2> {
-    const db = getDb();
-    const results = await db
-      .insert(promoApprovalsV2)
-      .values({ ...data, apUuid: uuidv4() })
-      .returning();
-    return results[0];
   }
 
   // Saves one approver list of a change set: rows matched by uuid (or user),

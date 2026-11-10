@@ -7,5 +7,6 @@ export { TrainingCommentsRepository } from "./trainingCommentsRepository";
 export { TrainingNeedsRepository } from "./trainingNeedsRepository";
 export { ApprovalsRepository } from "./approvalsRepository";
 export { ChecklistProgressRepository } from "./checklistProgressRepository";
+export { ChecklistAttachmentsRepository } from "./checklistAttachmentsRepository";
 export { SuitabilityRepository } from "./suitabilityRepository";
 export { ExecutionLedgerRepository } from "./executionLedgerRepository";

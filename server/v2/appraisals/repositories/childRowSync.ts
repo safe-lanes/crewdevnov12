@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { sameValue } from "../../../../shared/v2/appraisals/appraisalChanges";
+import { captureChange } from "../../sync/changeCapture";
 import {
   apprTrainingsV2,
   apprTargetsV2,
@@ -120,6 +121,9 @@ function pickValues(fields: readonly ChildFieldConfig[], row: Record<string, any
 // then only the changed columns are written. Unchanged rows get no UPDATE at
 // all, so their updated_at and updated_by stay as they were.
 //
+// Every written row is reported to the sync change capture (PRD-07), on the
+// same executor, with the row as it was and as the write returned it.
+//
 // Returns the number of rows inserted, updated or deleted.
 export async function syncChildRows(
   executor: Executor,
@@ -221,7 +225,8 @@ export async function syncChildRows(
         createdByUuid: auditUserUuid || null,
         updatedByUuid: auditUserUuid || null,
       };
-      await executor.insert(table).values(inserted);
+      const [insertedRow] = await executor.insert(table).values(inserted).returning();
+      await captureChange(executor, { table, rowUuid: uuid, oldRow: null, newRow: insertedRow, actorUuid: auditUserUuid });
       if (key !== null) liveByKey.set(key, { ...inserted, isDeleted: false });
       written++;
       continue;
@@ -230,10 +235,12 @@ export async function syncChildRows(
     if (current.isDeleted) {
       // Added again (a keyed row carrying its key): the same row comes back.
       if (cfg.revive && key !== null) {
-        await executor
+        const [revived] = await executor
           .update(table)
           .set({ ...values, ...cfg.fixed, isDeleted: false, updatedByUuid: auditUserUuid || current.updatedByUuid, updatedAt: now })
-          .where(eq(table.id, current.id));
+          .where(eq(table.id, current.id))
+          .returning();
+        await captureChange(executor, { table, rowUuid: uuid, oldRow: current, newRow: revived, actorUuid: auditUserUuid });
         liveByKey.set(key, { ...current, ...values, isDeleted: false });
         written++;
         continue;
@@ -249,10 +256,12 @@ export async function syncChildRows(
     }
     if (Object.keys(changed).length === 0) continue;
 
-    await executor
+    const [updated] = await executor
       .update(table)
       .set({ ...changed, updatedByUuid: auditUserUuid || current.updatedByUuid, updatedAt: now })
-      .where(eq(table.id, current.id));
+      .where(eq(table.id, current.id))
+      .returning();
+    await captureChange(executor, { table, rowUuid: uuid, oldRow: current, newRow: updated, actorUuid: auditUserUuid });
     written++;
   }
 
@@ -260,10 +269,12 @@ export async function syncChildRows(
     ? deleted.map((u) => byUuid.get(u)).filter((r) => r && !r.isDeleted)
     : existing.filter((r) => !r.isDeleted && !seen.has(r[cfg.uuidKey]));
   for (const r of toDelete) {
-    await executor
+    const [deletedRow] = await executor
       .update(table)
       .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || r.updatedByUuid })
-      .where(eq(table.id, r.id));
+      .where(eq(table.id, r.id))
+      .returning();
+    await captureChange(executor, { table, rowUuid: r[cfg.uuidKey], oldRow: r, newRow: deletedRow, actorUuid: auditUserUuid });
     written++;
   }
 

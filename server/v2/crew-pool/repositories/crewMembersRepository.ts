@@ -1,5 +1,6 @@
-import { eq, and, desc, like, or, isNull } from "drizzle-orm";
+import { eq, and, desc, like, or, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../db";
+import { captureChange } from "../../sync/changeCapture";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import type {
   CrewMemberV2,
@@ -109,6 +110,30 @@ export class CrewMembersRepository {
       .where(eq(crewMembersV2.crewUuid, crewUuid))
       .returning();
     return results[0];
+  }
+
+  // A promotion's rank change, on the caller's transaction. Returns the row,
+  // or undefined when the crew member is missing. The written row is reported
+  // to the sync change capture on the same executor (PRD-07).
+  async setPresentRank(
+    crewUuid: string,
+    presentRank: string,
+    auditUserUuid: string | null,
+    executor: any = getDb(),
+  ): Promise<CrewMemberV2 | undefined> {
+    const [old] = await executor
+      .select()
+      .from(crewMembersV2)
+      .where(eq(crewMembersV2.crewUuid, crewUuid))
+      .limit(1);
+    if (!old) return undefined;
+    const [row] = await executor
+      .update(crewMembersV2)
+      .set({ presentRank, updatedAt: sql`NOW()`, updatedByUuid: auditUserUuid })
+      .where(eq(crewMembersV2.id, old.id))
+      .returning();
+    await captureChange(executor, { table: crewMembersV2, rowUuid: crewUuid, oldRow: old, newRow: row, actorUuid: auditUserUuid });
+    return row;
   }
 
   async updateById(

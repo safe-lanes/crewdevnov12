@@ -7,18 +7,20 @@ import {
   TrainingNeedsRepository,
   ApprovalsRepository,
   ChecklistProgressRepository,
+  ChecklistAttachmentsRepository,
   CriteriaMasterRepository,
   SuitabilityRepository,
   ExecutionLedgerRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
+import { CrewMembersRepository } from "../../crew-pool/repositories/crewMembersRepository";
 import { formsService } from "../../admin/services";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2, type VesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
-import { promoExecutionLedgerV2, promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
+import { promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
 import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { fileStorageService } from "../../shared/fileStorageService.js";
@@ -65,10 +67,12 @@ const trainingCommentsRepo = new TrainingCommentsRepository();
 const trainingNeedsRepo = new TrainingNeedsRepository();
 const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
+const checklistAttachmentsRepo = new ChecklistAttachmentsRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
 const suitabilityRepo = new SuitabilityRepository();
 const executionLedgerRepo = new ExecutionLedgerRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
+const crewMembersRepo = new CrewMembersRepository();
 
 // Raised by the promotion workflow guards (future date, next-rank-only, one
 // pending promotion per crew). The controller maps these to HTTP 400 so the
@@ -1283,10 +1287,10 @@ export class PromotionReviewsService {
     // means a concurrent (or replayed) execution inserts nothing and returns no
     // row, so we skip the rank flip. A failure rolls back both, so a retry
     // re-applies cleanly — the ledger never persists without the rank update.
-    const inserted = await tx
-      .insert(promoExecutionLedgerV2)
-      .values({
-        ledgerUuid: uuidv4(),
+    // Both writes go through repositories, which report them to the sync
+    // change capture on this transaction (PRD-07).
+    const ledger = await executionLedgerRepo.insertIfAbsent(
+      {
         reviewUuid,
         crewMemberId: empNo,
         crewUuid: crew.crewUuid,
@@ -1297,24 +1301,17 @@ export class PromotionReviewsService {
         appliedByUuid: actorUuid,
         createdByUuid: actorUuid,
         updatedByUuid: actorUuid,
-      })
-      .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
-      .returning({ id: promoExecutionLedgerV2.id });
+      },
+      tx,
+    );
 
     // Another execution already owns this promotion — leave the rank to it.
-    if (inserted.length === 0) return null;
+    if (!ledger) return null;
 
     // Flip the rank only when it actually differs (the present_rank column is
     // the single source of truth read by Crew Pool, Reports, Promotions, etc.).
     if (fromRank !== toRank) {
-      await tx
-        .update(crewMembersV2)
-        .set({
-          presentRank: toRank,
-          updatedAt: sql`NOW()`,
-          updatedByUuid: actorUuid,
-        })
-        .where(eq(crewMembersV2.crewUuid, crew.crewUuid));
+      await crewMembersRepo.setPresentRank(crew.crewUuid, toRank, actorUuid, tx);
     }
 
     return { reviewUuid, crewUuid: crew.crewUuid, empNo, fromRank, toRank, effectiveDate, actorUuid };
@@ -2177,15 +2174,7 @@ export class PromotionReviewsService {
               const attachments = point.attachments || [];
               
               // Get existing files in DB
-              const dbAttachments = await db
-                .select()
-                .from(promoChecklistAttachmentsV2)
-                .where(
-                  and(
-                    eq(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuid),
-                    eq(promoChecklistAttachmentsV2.isDeleted, false)
-                  )
-                );
+              const dbAttachments = await checklistAttachmentsRepo.findLiveByProgressUuid(cpUuid, tx);
               
               const existingByUuid = new Map<string, any>(
                 dbAttachments.map((da: any) => [da.attUuid, da])
@@ -2219,7 +2208,7 @@ export class PromotionReviewsService {
 
                     const attUuid = candidateUuid || uuidv4();
                     
-                    await db.insert(promoChecklistAttachmentsV2).values({
+                    await checklistAttachmentsRepo.insertIfAbsent({
                       attUuid,
                       checklistProgressUuid: cpUuid,
                       fileName: cleanName,
@@ -2228,7 +2217,7 @@ export class PromotionReviewsService {
                       fileType: att.fileType || att.type || mime,
                       createdByUuid: auditUserUuid,
                       updatedByUuid: auditUserUuid,
-                    }).onConflictDoNothing();
+                    }, tx);
                     
                     keepUuids.push(attUuid);
                   }
@@ -2236,18 +2225,8 @@ export class PromotionReviewsService {
               }
               
               // Soft delete removed attachments
-              const toDelete = dbAttachments.filter((da: any) => !keepUuids.includes(da.attUuid));
-              if (toDelete.length > 0) {
-                await db
-                  .update(promoChecklistAttachmentsV2)
-                  .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
-                  .where(
-                    inArray(
-                      promoChecklistAttachmentsV2.attUuid,
-                      toDelete.map((da: any) => da.attUuid)
-                    )
-                  );
-              }
+              const toDelete = dbAttachments.filter((da) => !keepUuids.includes(da.attUuid));
+              await checklistAttachmentsRepo.softDeleteRows(toDelete, auditUserUuid, tx);
             }
           }
         }

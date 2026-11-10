@@ -3,6 +3,7 @@ import { getDb } from "../../db";
 import { promoSuitabilityV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { v4 as uuidv4 } from "uuid";
+import { captureChange } from "../../sync/changeCapture";
 
 function cleanNames(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
@@ -37,6 +38,9 @@ export class SuitabilityRepository {
       ));
   }
 
+  // One row per review (unique review_uuid), deleted or not: the insert
+  // updates it when it exists. The row is reported to the sync change capture
+  // on the same executor (PRD-07).
   async upsertForReview(
     reviewUuid: string,
     data: { vesselTypes?: string[]; fleetGroups?: string[] },
@@ -46,7 +50,12 @@ export class SuitabilityRepository {
     const vesselTypes = cleanNames(data.vesselTypes);
     const fleetGroups = cleanNames(data.fleetGroups);
 
-    await executor
+    const [old] = await executor
+      .select()
+      .from(promoSuitabilityV2)
+      .where(eq(promoSuitabilityV2.reviewUuid, reviewUuid))
+      .limit(1);
+    const [row] = await executor
       .insert(promoSuitabilityV2)
       .values({
         psUuid: uuidv4(),
@@ -65,6 +74,8 @@ export class SuitabilityRepository {
           updatedAt: new Date(),
           updatedByUuid: auditUserUuid,
         },
-      });
+      })
+      .returning();
+    await captureChange(executor, { table: promoSuitabilityV2, rowUuid: row?.psUuid, oldRow: old ?? null, newRow: row, actorUuid: auditUserUuid });
   }
 }

@@ -7,6 +7,9 @@ import { screeningB7TrainingItems } from "../../../shared/v2/recruitment/schema"
 import { apprTrainingFollowupsV2 } from "../../../shared/v2/appraisals/schema";
 import { promoTrainingNeedsV2 } from "../../../shared/v2/promotions/schema";
 import { masterUsers } from "../../../shared/schema";
+import { TrainingNeedsRepository as PromotionTrainingNeedsRepository } from "../promotions/repositories/trainingNeedsRepository";
+
+const promotionTrainingNeeds = new PromotionTrainingNeedsRepository();
 
 type SourceType = "recruitment" | "appraisal" | "promotion";
 
@@ -289,9 +292,10 @@ export class TrainingNeedsRepository {
     sourceRefUuid: string,
     fields: { status?: string | null; comments?: string | null; correspondingInDb?: string | null },
     auditUserUuid?: string | null,
+    executor: any = getDb(),
   ): Promise<void> {
     if (Object.keys(fields).length === 0) return;
-    const db = getDb();
+    const db = executor;
     const existing = await db
       .select()
       .from(trainingNeedsSourceOverlayV2)
@@ -374,29 +378,27 @@ export class TrainingNeedsRepository {
     return r.length > 0;
   }
 
+  // A promotion A3 row is a promotion table, so the write goes through the
+  // promotions repository, which reports it to the sync change capture
+  // (PRD-07). The row and the comments overlay are saved in one transaction.
   async patchPromotion(
     tnUuid: string,
     data: SourcePatchInput,
     auditUserUuid?: string | null,
   ): Promise<boolean> {
-    const db = getDb();
-    const sets: Partial<typeof promoTrainingNeedsV2.$inferInsert> & { updatedAt: Date } = {
-      updatedAt: new Date(),
-    };
+    const sets: Pick<Partial<typeof promoTrainingNeedsV2.$inferInsert>, "status" | "completionDate" | "correspondingInDb"> = {};
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.completionDate = data.targetDate;
     if (data.correspondingInDb !== undefined) sets.correspondingInDb = data.correspondingInDb;
-    const r = await db
-      .update(promoTrainingNeedsV2)
-      .set(sets)
-      .where(and(eq(promoTrainingNeedsV2.tnUuid, tnUuid), eq(promoTrainingNeedsV2.isDeleted, false)))
-      .returning();
-    if (r.length === 0) return false;
-    // Comments has no column on the source — overlay it.
-    if (data.comments !== undefined) {
-      await this.upsertOverlay("promotion", tnUuid, { comments: data.comments }, auditUserUuid);
-    }
-    return true;
+    return getDb().transaction(async (tx: any) => {
+      const row = await promotionTrainingNeeds.patchLive(tnUuid, sets, auditUserUuid ?? null, tx);
+      if (!row) return false;
+      // Comments has no column on the source — overlay it.
+      if (data.comments !== undefined) {
+        await this.upsertOverlay("promotion", tnUuid, { comments: data.comments }, auditUserUuid, tx);
+      }
+      return true;
+    });
   }
 
   // ---- Others CRUD ----

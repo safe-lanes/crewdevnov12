@@ -1,8 +1,8 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoTrainingCommentsV2 } from "../../../../shared/v2/promotions/schema";
-import type { PromoTrainingCommentV2, InsertPromoTrainingCommentV2 } from "../../../../shared/v2/promotions/types";
-import { v4 as uuidv4 } from "uuid";
+import type { PromoTrainingCommentV2 } from "../../../../shared/v2/promotions/types";
+import { captureChange } from "../../sync/changeCapture";
 import { syncChildRows, textField, type ChildTableConfig } from "../../appraisals/repositories/childRowSync";
 import type { PromoSectionChanges } from "../../../../shared/v2/promotions/promotionChanges";
 
@@ -41,15 +41,6 @@ export class TrainingCommentsRepository {
       .orderBy(promoTrainingCommentsV2.sortOrder);
   }
 
-  async create(data: Omit<InsertPromoTrainingCommentV2, "tcUuid">): Promise<PromoTrainingCommentV2> {
-    const db = getDb();
-    const results = await db
-      .insert(promoTrainingCommentsV2)
-      .values({ ...data, tcUuid: uuidv4() })
-      .returning();
-    return results[0];
-  }
-
   // Saves the training comments of one change set: rows matched by uuid, only
   // the sent fields written, only the listed rows deleted.
   async applyChanges(reviewUuid: string, changes: PromoSectionChanges, auditUserUuid: string | null = null, executor: any = getDb()): Promise<number> {
@@ -58,17 +49,26 @@ export class TrainingCommentsRepository {
 
   // Soft-deletes the live comments of training rows that were deleted, so no
   // comment is left without its training (also ones another session added).
+  // Each deleted row is reported to the sync change capture (PRD-07).
   async softDeleteForTrainings(reviewUuid: string, trainingUuids: string[], auditUserUuid: string | null = null, executor: any = getDb()): Promise<number> {
     if (trainingUuids.length === 0) return 0;
-    const rows = await executor
-      .update(promoTrainingCommentsV2)
-      .set({ isDeleted: true, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
+    const live: PromoTrainingCommentV2[] = await executor
+      .select()
+      .from(promoTrainingCommentsV2)
       .where(and(
         eq(promoTrainingCommentsV2.reviewUuid, reviewUuid),
         inArray(promoTrainingCommentsV2.trainingRowId, trainingUuids),
         eq(promoTrainingCommentsV2.isDeleted, false),
-      ))
-      .returning({ id: promoTrainingCommentsV2.id });
-    return rows.length;
+      ));
+    const now = new Date();
+    for (const old of live) {
+      const [row] = await executor
+        .update(promoTrainingCommentsV2)
+        .set({ isDeleted: true, updatedAt: now, ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) })
+        .where(eq(promoTrainingCommentsV2.id, old.id))
+        .returning();
+      await captureChange(executor, { table: promoTrainingCommentsV2, rowUuid: old.tcUuid, oldRow: old, newRow: row, actorUuid: auditUserUuid });
+    }
+    return live.length;
   }
 }
