@@ -14,6 +14,7 @@ import { isAuthRequired, redirectToLogin, getAuthToken } from "@/lib/authToken";
 import { clearTenantData } from "@/lib/tenantStorage";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
+const MyFilesPage = lazy(() => import("./modules/my-files/MyFilesPage"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
 const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentWrapper").then(m => ({ default: m.RecruitmentWrapper })));
 const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
@@ -99,6 +100,10 @@ function AuthenticatedApp() {
                 <Switch>
                   <Route path="/">
                     <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
+                  </Route>
+                  {/* My Files: the shared file module. Its own server decides what each role may see. */}
+                  <Route path="/my-files">
+                    <ProtectedRoute menuName="My Files"><MyFilesPage /></ProtectedRoute>
                   </Route>
                   <Route path="/dashboard">
                     <ProtectedRoute menuName="Dashboard" fallbackRoute="/recruitment"><DashboardPage /></ProtectedRoute>
