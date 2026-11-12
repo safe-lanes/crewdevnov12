@@ -67,11 +67,15 @@ router.patch("/source/appraisal/:uuid", async (req: AuthedRequest, res: Response
   }
 });
 
+// The actor comes from the login, never from the body (PRD-15), so
+// updated_by_uuid and the captured change always name who edited the row.
 router.patch("/source/promotion/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
+    const actor = await resolveAppraisalActor(req);
+    if (!actor) return res.status(401).json({ error: "Your sign-in could not be verified. Reload the page and try again." });
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchPromotion(req.params.uuid, parsed.data, req.body?.auditUserUuid ?? null);
+    const ok = await repo.patchPromotion(req.params.uuid, parsed.data, actor.userUuid);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
