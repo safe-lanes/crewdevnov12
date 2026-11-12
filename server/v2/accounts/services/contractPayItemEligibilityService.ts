@@ -12,6 +12,11 @@ import {
 import { EngagementsRepository, PayElementsRepository } from "../repositories";
 import { readContractPayItemSetup } from "../engine/wageEngineService";
 import { addDays, parseIsoDate } from "../engine/periodMath";
+import {
+  contractWindow,
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "../../../../shared/v2/accounts/payElementEffectivePeriod";
 
 const engagements = new EngagementsRepository();
 const elements = new PayElementsRepository();
@@ -141,6 +146,20 @@ export async function assertPayItemChangeAllowed(input: {
     const reason = eligibilityReason(element, changedItem.overrideMode as PayItemMode,
       slices, changedItem.epeUuid);
     if (reason) throw error("VALIDATION", `${element.code}: ${reason}`);
+    const previousItem = beforeItems.find(
+      (row) => row.epeUuid === changedItem.epeUuid,
+    );
+
+    if (selectionChanged(previousItem, changedItem)) {
+      const periodReason = getEffectivePeriodReason(
+        element,
+        contractWindow(engagement, changedItem),
+      );
+
+      if (periodReason) {
+        throw error("VALIDATION", `${element.code}: ${periodReason}`);
+      }
+    }
   }
   for (const dependent of beforeItems.filter(row => isValuePayItem(row) &&
     row.overrideMode !== "add_element" && row.epeUuid !== changedItem?.epeUuid)) {

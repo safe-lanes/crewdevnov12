@@ -1,6 +1,8 @@
 import { SettlementsRepository, EngagementsRepository } from "../repositories";
 import { EngineReads } from "../engine/engineReads";
 import { BalanceService } from "../engine/balanceService";
+import { monthWindow } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "./payElementEffectivePeriod";
 import {
   monthInfo,
   addMonths,
@@ -539,6 +541,10 @@ export const settlementsService = {
         `Adjustments can only be edited while draft (status '${settlement.status}')`,
       );
     }
+    await assertEffectivePayElement(
+      data.payElementUuid,
+      monthWindow(settlement.period),
+    );
     await repo.createAdjustment({
       settlementUuid,
       payElementUuid: data.payElementUuid,
@@ -568,6 +574,15 @@ export const settlementsService = {
       throw coded(
         "CONFLICT",
         `Adjustments can only be edited while draft (status '${settlement.status}')`,
+      );
+    }
+    if (
+      data.payElementUuid !== undefined &&
+      data.payElementUuid !== adjustment.payElementUuid
+    ) {
+      await assertEffectivePayElement(
+        data.payElementUuid,
+        monthWindow(settlement.period),
       );
     }
     await repo.updateAdjustment(adjustmentUuid, {

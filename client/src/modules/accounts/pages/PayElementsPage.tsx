@@ -35,6 +35,10 @@ import { Plus, Pencil, Trash2, Download } from "lucide-react";
 import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatDate } from "../accountsFormat";
 import {
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
+import {
   PAY_ELEMENT_TYPES,
   PAY_ELEMENT_CATEGORIES,
   CALC_METHODS,
@@ -271,6 +275,39 @@ export default function PayElementsPage() {
   ) {
     requiredErrors.applicableNationalityUuids =
       "Select at least one applicable nationality.";
+  }
+  const originalElement = editingUuid
+    ? allElements.find((element) => element.payElementUuid === editingUuid)
+    : undefined;
+
+  const previousBaseSelection =
+    originalElement?.calcMethod === "percentage_of_base"
+      ? {
+          payElementUuid: originalElement.percentageBaseElementUuid,
+          effectiveFrom: originalElement.effectiveFrom,
+          effectiveTo: originalElement.effectiveTo,
+        }
+      : undefined;
+
+  const nextBaseSelection = {
+    payElementUuid: form.percentageBaseElementUuid,
+    effectiveFrom: form.effectiveFrom,
+    effectiveTo: form.effectiveTo,
+  };
+
+  if (
+    form.calcMethod === "percentage_of_base" &&
+    selectionChanged(previousBaseSelection, nextBaseSelection)
+  ) {
+    const reason = getEffectivePeriodReason(
+      allElements.find(
+        (element) =>
+          element.payElementUuid === form.percentageBaseElementUuid,
+      ),
+      form,
+    );
+
+    if (reason) requiredErrors.percentageBaseElementUuid = reason;
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -675,9 +712,15 @@ export default function PayElementsPage() {
                       <SelectItem
                         key={e.payElementUuid}
                         value={e.payElementUuid}
-                        disabled={e.status === "inactive"}
+                        disabled={
+                          e.status === "inactive" ||
+                          !!getEffectivePeriodReason(e, form)
+                        }
                       >
                         {e.code} — {e.name}
+                        {getEffectivePeriodReason(e, form)
+                          ? " (Not effective for the selected period)"
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

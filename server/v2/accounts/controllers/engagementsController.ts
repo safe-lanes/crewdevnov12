@@ -78,6 +78,7 @@ const signOffSchema = z.object({
 });
 
 const timingOverrideSchema = z.object({
+  explicitPayElementSelection: z.boolean().optional(),
   payElementUuid: z.string().min(1),
   paymentTimingOverride: z
     .enum(["paid_on_board", "payable_at_settlement", "remitted_to_fund"])
@@ -305,6 +306,7 @@ export const engagementsController = {
         parsed.data.payElementUuid,
         parsed.data.paymentTimingOverride,
         getAuditUserUuid(req),
+        parsed.data.explicitPayElementSelection === true,
       );
       res.json({ override: row ?? null });
     } catch (error: any) {

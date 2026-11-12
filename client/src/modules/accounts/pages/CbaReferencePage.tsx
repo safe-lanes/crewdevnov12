@@ -31,6 +31,10 @@ import { Info, Plus, Pencil, Trash2 } from "lucide-react";
 import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
 import {
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
+import {
   PAY_ELEMENT_CATEGORIES,
   CURRENCIES,
   labelOf,
@@ -175,6 +179,21 @@ export default function CbaReferencePage() {
   }
   if (!String(form.minimumAmount ?? "").trim()) {
     requiredErrors.minimumAmount = "Amount is required.";
+  }
+  const originalCba = editingUuid
+    ? rows.find((row) => row.cbaRefUuid === editingUuid)
+    : undefined;
+
+  if (
+    form.payElementUuid !== NONE &&
+    selectionChanged(originalCba, form)
+  ) {
+    const reason = getEffectivePeriodReason(
+      elements.find((element) => element.payElementUuid === form.payElementUuid),
+      form,
+    );
+
+    if (reason) requiredErrors.payElementUuid = reason;
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -446,9 +465,15 @@ export default function CbaReferencePage() {
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={e.status === "inactive"}
+                      disabled={
+                        e.status === "inactive" ||
+                        !!getEffectivePeriodReason(e, form)
+                      }
                     >
                       {e.code} — {e.name}
+                      {getEffectivePeriodReason(e, form)
+                        ? " (Not effective for the selected period)"
+                        : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

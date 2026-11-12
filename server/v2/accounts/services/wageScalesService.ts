@@ -15,6 +15,8 @@ import type {
   InsertAccWageScaleV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import { scaleCellKey } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "./payElementEffectivePeriod";
 import {
   getRevisionDateError,
   getWageScaleDateError,
@@ -189,6 +191,20 @@ export const wageScalesService = {
       const error = getRevisionDateError(predecessor, from);
       if (error) throw validationError(error);
     }
+    if (
+      (from || null) !== (scale.effectiveFrom || null) ||
+      (to || null) !== (scale.effectiveTo || null)
+    ) {
+      const lines = await wageScalesRepository.findLinesByScale(scaleUuid);
+
+      for (const uuid of new Set(lines.map((line) => line.payElementUuid))) {
+        await assertEffectivePayElement(
+          uuid,
+          { effectiveFrom: from, effectiveTo: to },
+          ["scale_lookup", "rate_times_qty"],
+        );
+      }
+    }
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await wageScalesRepository.update(scaleUuid, dataWithAudit);
     if (!updated) throw new Error(`Failed to update wage scale: ${scaleUuid}`);
@@ -242,6 +258,22 @@ export const wageScalesService = {
         );
       }
       seen.add(key);
+    }
+    const existingLines =
+      await wageScalesRepository.findLinesByScale(scaleUuid);
+    const existingKeys = new Set(existingLines.map(scaleCellKey));
+    const addedElementUuids = new Set(
+      lines
+        .filter((line) => !existingKeys.has(scaleCellKey(line)))
+        .map((line) => line.payElementUuid),
+    );
+
+    for (const uuid of addedElementUuids) {
+      await assertEffectivePayElement(
+        uuid,
+        scale,
+        ["scale_lookup", "rate_times_qty"],
+      );
     }
     return wageScalesRepository.replaceLines(scaleUuid, lines, auditUserUuid);
   },

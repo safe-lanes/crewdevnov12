@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { hasMeaningfulPayItemChange } from "@shared/v2/accounts/contractPayItemRules";
+import {
+  contractWindow,
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -251,13 +256,34 @@ export default function ContractDetailPage({
   const setTiming = async (
     payElementUuid: string,
     value: string | null,
+    explicitPayElementSelection = false,
   ) => {
+    if (
+      explicitPayElementSelection &&
+      value !== null &&
+      !timingRows.some((row) => row.payElementUuid === payElementUuid)
+    ) {
+      const reason = getEffectivePeriodReason(
+        elementByUuid.get(payElementUuid),
+        contractWindow(engagement ?? {}),
+      );
+
+      if (reason) {
+        toast({
+          title: "Cannot select element",
+          description: reason,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setSavingTiming(true);
     try {
       await accountsApiV2.engagements.setTimingOverride(
         engagementUuid,
         payElementUuid,
         value,
+        explicitPayElementSelection,
       );
       invalidate();
       toast({ title: "Payment timing updated" });
@@ -336,6 +362,20 @@ export default function ContractDetailPage({
     staleTime: 0,
   });
   const originalItem = overrides.find((row) => row.epeUuid === itemForm?.epeUuid);
+  const itemPeriodReason = itemForm
+    ? getEffectivePeriodReason(
+        elementByUuid.get(itemForm.payElementUuid),
+        contractWindow(engagement ?? {}, itemWindow),
+      )
+    : null;
+
+  const itemPeriodBlocked =
+    !!itemForm &&
+    !!itemPeriodReason &&
+    selectionChanged(originalItem, {
+      payElementUuid: itemForm.payElementUuid,
+      ...itemWindow,
+    });
   const meaningfulItemEdit = !originalItem || !itemForm ||
     hasMeaningfulPayItemChange(originalItem, {
       payElementUuid: itemForm.payElementUuid,
@@ -347,13 +387,20 @@ export default function ContractDetailPage({
   const checkingEligibility = !itemForm?.overrideMode || itemOptions.isFetching || !itemOptions.data ||
     itemOptions.isError || !itemFromValid || !itemToValid;
   const selectedOption = itemOptions.data?.options[itemForm?.payElementUuid ?? ""];
-  const itemEligibilityBlocked = meaningfulItemEdit &&
-    (checkingEligibility || !selectedOption || selectedOption.disabled);
+  const itemEligibilityBlocked =
+    (
+      meaningfulItemEdit &&
+      (checkingEligibility || !selectedOption || selectedOption.disabled)
+    ) ||
+    itemPeriodBlocked;
   useEffect(() => {
     if (!clearInvalidSelection.current || checkingEligibility || !itemForm) return;
     clearInvalidSelection.current = false;
     const choice = itemOptions.data?.options[itemForm.payElementUuid];
-    if (itemForm.payElementUuid && (!choice || choice.disabled)) {
+    if (
+      itemForm.payElementUuid &&
+      (!choice || choice.disabled || itemPeriodBlocked)
+    ) {
       setItemForm(current => current ? {
         ...current,
         payElementUuid: "",
@@ -361,10 +408,13 @@ export default function ContractDetailPage({
       } : current);
       toast({
         title: "Choose an eligible pay element",
-        description: choice?.reason ?? "This element is unavailable for the selection.",
+        description:
+          choice?.reason ??
+          itemPeriodReason ??
+          "This element is unavailable for the selection.",
       });
     }
-  }, [optionsUrl, checkingEligibility, itemOptions.data, itemForm, toast]);
+  }, [optionsUrl, checkingEligibility, itemOptions.data, itemForm, toast, itemPeriodBlocked, itemPeriodReason]);
   const invalidateItemOptions = () => queryClient.invalidateQueries({
     predicate: query => String(query.queryKey[0]).startsWith(
       `${ACCOUNTS_BASE}/engagements/${engagementUuid}/pay-item-options?`,
@@ -719,15 +769,23 @@ export default function ContractDetailPage({
                         (e) =>
                           e.status === "active" || e.status === "inactive",
                       )
-                      .map((e) => (
-                        <SelectItem
-                          key={e.payElementUuid}
-                          value={e.payElementUuid}
-                          disabled={e.status === "inactive"}
-                        >
-                          {e.code} — {e.name}
-                        </SelectItem>
-                      ))}
+                      .map((e) => {
+                        const periodReason = getEffectivePeriodReason(
+                          e,
+                          contractWindow(engagement ?? {}),
+                        );
+
+                        return (
+                          <SelectItem
+                            key={e.payElementUuid}
+                            value={e.payElementUuid}
+                            disabled={e.status === "inactive" || !!periodReason}
+                          >
+                            {e.code} — {e.name}
+                            {periodReason ? ` (${periodReason})` : ""}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
@@ -751,7 +809,7 @@ export default function ContractDetailPage({
                 variant="outline"
                 disabled={!timingElementUuid || savingTiming}
                 onClick={() => {
-                  setTiming(timingElementUuid, timingValue);
+                  setTiming(timingElementUuid, timingValue, true);
                   setTimingElementUuid("");
                 }}
                 data-testid="button-add-timing"
@@ -1145,19 +1203,32 @@ export default function ContractDetailPage({
                         (e) =>
                           e.status === "active" || e.status === "inactive",
                       )
-                      .map((e) => (
-                        <SelectItem
-                          key={e.payElementUuid}
-                          value={e.payElementUuid}
-                          disabled={checkingEligibility ||
-                            itemOptions.data?.options[e.payElementUuid]?.disabled !== false}
-                        >
-                          {e.code} — {e.name}
-                          {itemOptions.data?.options[e.payElementUuid]?.reason
-                            ? ` (${itemOptions.data.options[e.payElementUuid].reason})`
-                            : e.status === "inactive" ? " (Inactive)" : ""}
-                        </SelectItem>
-                      ))}
+                      .map((e) => {
+                        const option = itemOptions.data?.options[e.payElementUuid];
+                        const periodReason = getEffectivePeriodReason(
+                          e,
+                          contractWindow(engagement ?? {}, itemWindow),
+                        );
+                        const reason =
+                          option?.reason ??
+                          periodReason ??
+                          (e.status === "inactive" ? "Inactive" : null);
+
+                        return (
+                          <SelectItem
+                            key={e.payElementUuid}
+                            value={e.payElementUuid}
+                            disabled={
+                              checkingEligibility ||
+                              option?.disabled !== false ||
+                              !!periodReason
+                            }
+                          >
+                            {e.code} — {e.name}
+                            {reason ? ` (${reason})` : ""}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
@@ -1168,6 +1239,11 @@ export default function ContractDetailPage({
               )}
               {meaningfulItemEdit && selectedOption?.disabled && (
                 <p role="alert" className="text-sm text-destructive">{selectedOption.reason}</p>
+              )}
+              {itemPeriodBlocked && (
+                <p role="alert" className="text-sm text-destructive">
+                  {itemPeriodReason}
+                </p>
               )}
               {itemForm.overrideMode !== "suppress_element" &&
                 (showItemAmount || showItemRate) && (

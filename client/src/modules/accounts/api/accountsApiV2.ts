@@ -117,10 +117,14 @@ export const accountsApiV2 = {
       uuid: string,
       payElementUuid: string,
       paymentTimingOverride: string | null,
+      explicitPayElementSelection = false,
     ) =>
       req("POST", `${ACCOUNTS_BASE}/engagements/${uuid}/timing-override`, {
         payElementUuid,
         paymentTimingOverride,
+        ...(explicitPayElementSelection
+          ? { explicitPayElementSelection: true }
+          : {}),
       }),
     confirmSeniorityAnchors: (engagementUuids: string[]) =>
       req("PATCH", `${ACCOUNTS_BASE}/engagements/confirm-seniority-anchors`, {
@@ -201,6 +205,7 @@ export const accountsApiV2 = {
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`),
     batchSave: (data: {
+      explicitPayElementSelection?: boolean;
       creates?: Record<string, unknown>[];
       updates?: Record<string, unknown>[];
       deletes?: string[];

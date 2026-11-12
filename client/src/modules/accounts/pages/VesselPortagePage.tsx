@@ -18,6 +18,10 @@ import { Input } from "@/components/ui/input";
 import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  getEffectivePeriodReason,
+  monthWindow,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -975,6 +979,21 @@ export default function VesselPortagePage() {
         });
         return false;
       }
+      if (tab.miscType && batch.creates.length > 0) {
+        const periodReason = getEffectivePeriodReason(
+          tab.element,
+          monthWindow(period),
+        );
+
+        if (periodReason) {
+          toast({
+            title: `Save failed — ${tab.label}`,
+            description: `${periodReason}. Your unsaved entries have been kept.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
       if (
         batch.creates.length === 0 &&
         batch.updates.length === 0 &&
@@ -996,7 +1015,10 @@ export default function VesselPortagePage() {
       setSaving(true);
       try {
         const result =
-          await accountsApiV2.monthlyTransactions.batchSave(batch);
+          await accountsApiV2.monthlyTransactions.batchSave({
+            ...batch,
+            ...(tab.miscType ? { explicitPayElementSelection: true } : {}),
+          });
 
         if (tab.miscType) {
           await queryClient.cancelQueries({ queryKey: txnsKey });
@@ -1520,6 +1542,18 @@ export default function VesselPortagePage() {
       return;
     }
 
+    const periodReason = element
+      ? getEffectivePeriodReason(element, monthWindow(period))
+      : null;
+
+    if (periodReason) {
+      toast({
+        title: "Cannot select element",
+        description: periodReason,
+        variant: "destructive",
+      });
+      return;
+    }
     // Remove unchanged edit markers before rebinding this tab.
     setEdits((current) =>
       Object.fromEntries(
@@ -1683,11 +1717,17 @@ export default function VesselPortagePage() {
                   <SelectItem
                     key={element.payElementUuid}
                     value={element.payElementUuid}
-                    disabled={element.calcMethod === "rate_times_qty"}
+                    disabled={
+                      element.calcMethod === "rate_times_qty" ||
+                      !!getEffectivePeriodReason(element, monthWindow(period))
+                    }
                   >
                     {element.code} — {element.name}
                     {element.calcMethod === "rate_times_qty"
                       ? " — Requires quantity/rate entry"
+                      : ""}
+                    {getEffectivePeriodReason(element, monthWindow(period))
+                      ? " (Not effective for the selected period)"
                       : ""}
                   </SelectItem>
                 ))}

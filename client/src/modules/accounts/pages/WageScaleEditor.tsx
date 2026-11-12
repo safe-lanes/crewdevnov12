@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  getEffectivePeriodReason,
+  scaleCellKey,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -180,6 +184,32 @@ export default function WageScaleEditor({
         variant: "destructive",
       });
       return;
+    }
+    const periodChanged =
+      (effFrom || null) !== (scale.effectiveFrom || null) ||
+      (effTo || null) !== (scale.effectiveTo || null);
+
+    if (periodChanged) {
+      const invalidLine = (detail?.lines ?? []).find((line: any) => {
+        const element = elementByUuid.get(line.payElementUuid);
+        return element &&
+          COLUMN_METHODS.includes(element.calcMethod) &&
+          getEffectivePeriodReason(element, {
+            effectiveFrom: effFrom,
+            effectiveTo: effTo,
+          });
+      });
+
+      if (invalidLine) {
+        toast({
+          title: "Cannot save effective dates",
+          description:
+            "An existing element is not effective for the selected period. " +
+            "Remove it and save the scale before changing these dates.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setDatesSaving(true);
     try {
@@ -393,6 +423,21 @@ export default function WageScaleEditor({
   const addColumn = (uuid: string) => {
     const el = elementByUuid.get(uuid);
     if (!el || columns.some((c) => c.uuid === uuid)) return;
+    const periodReason = COLUMN_METHODS.includes(el.calcMethod)
+      ? getEffectivePeriodReason(el, {
+          effectiveFrom: effFrom,
+          effectiveTo: effTo,
+        })
+      : null;
+
+    if (periodReason) {
+      toast({
+        title: "Cannot add element",
+        description: periodReason,
+        variant: "destructive",
+      });
+      return;
+    }
     setColumns((c) => [
       ...c,
       {
@@ -498,9 +543,42 @@ export default function WageScaleEditor({
 
   const handleSave = async () => {
     if (!validateRevisionDates()) return;
+    const lines = buildLines();
+    const savedKeys = new Set(
+      (detail?.lines ?? []).map((line: any) => scaleCellKey(line)),
+    );
+    const addedLines = lines.filter(
+      (line) => !savedKeys.has(scaleCellKey(line)),
+    );
+
+    if (addedLines.length > 0 && datesDirty) {
+      toast({
+        title: "Save effective dates first",
+        description:
+          "Save the selected effective dates before saving newly added elements.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const invalidLine = addedLines.find((line) => {
+      const element = elementByUuid.get(line.payElementUuid);
+      return element &&
+        COLUMN_METHODS.includes(element.calcMethod) &&
+        getEffectivePeriodReason(element, scale);
+    });
+
+    if (invalidLine) {
+      toast({
+        title: "Cannot save element",
+        description: "Not effective for the selected period",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
-      await accountsApiV2.wageScales.replaceLines(scaleUuid, buildLines());
+      await accountsApiV2.wageScales.replaceLines(scaleUuid, lines);
       await queryClient.invalidateQueries({ queryKey: detailKey });
       builtForRef.current = "";
       setDirty(false);
@@ -798,18 +876,29 @@ export default function WageScaleEditor({
               <SelectContent>
                 {columnCandidates.map((e: any) => {
                   const eligible = COLUMN_METHODS.includes(e.calcMethod);
+                  const periodReason = eligible
+                    ? getEffectivePeriodReason(e, {
+                        effectiveFrom: effFrom,
+                        effectiveTo: effTo,
+                      })
+                    : null;
                   return (
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={!eligible || e.status === "inactive"}
-                      className={eligible ? "" : "opacity-50"}
+                      disabled={!eligible || e.status === "inactive" || !!periodReason}
+                      className={eligible && !periodReason ? "" : "opacity-50"}
                       data-testid={`option-add-column-${e.code}`}
                     >
                       {e.code} — {e.name}
                       {!eligible && (
                         <span className="ml-1 text-muted-foreground">
                           ({INELIGIBLE_HINTS[e.calcMethod] ?? "Not a scale column"})
+                        </span>
+                      )}
+                      {eligible && periodReason && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({periodReason})
                         </span>
                       )}
                     </SelectItem>

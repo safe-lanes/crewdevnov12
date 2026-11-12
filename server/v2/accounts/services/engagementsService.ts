@@ -8,6 +8,8 @@ import type {
   AccEngagementPayElementV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import { contractWindow } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "./payElementEffectivePeriod";
 import { monthInfo, parseIsoDate, addMonths } from "../engine/periodMath";
 import { hasMeaningfulPayItemChange } from "../../../../shared/v2/accounts/contractPayItemRules";
 import {
@@ -1324,6 +1326,7 @@ export const engagementsService = {
     payElementUuid: string,
     paymentTimingOverride: string | null,
     auditUserUuid?: string,
+    explicitPayElementSelection = false,
   ) {
     const engagement = await engagementsRepository.findByUuid(engagementUuid);
     if (!engagement) {
@@ -1351,6 +1354,12 @@ export const engagementsService = {
         paymentTimingOverride,
         updatedByUuid: auditUserUuid ?? null,
       });
+    }
+    if (explicitPayElementSelection) {
+      await assertEffectivePayElement(
+        payElementUuid,
+        contractWindow(engagement),
+      );
     }
     return engagementsRepository.createTimingOverride({
       engagementUuid,
