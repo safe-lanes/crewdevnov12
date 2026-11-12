@@ -10,12 +10,15 @@ import {
   promoExecutionLedgerV2,
   promoChecklistProgressV2,
   promoChecklistAttachmentsV2,
+  promoChecklistVerificationsV2,
+  promoChecklistCommentsV2,
 } from "../../../../shared/v2/promotions/schema";
 import { captureChange } from "../../sync/changeCapture";
 
 // Every table that holds a promotion review's child rows (PRD-12), with the
 // column that holds the row's own uuid. Each has `review_uuid`, except the
-// attachments, which hang off the review's checklist rows.
+// attachments, which hang off the review's checklist rows
+// (attachments, verifications and comments, PRD-14).
 export const PROMOTION_REVIEW_CHILD_TABLES = [
   { table: promoCriteriaStatusV2, uuid: promoCriteriaStatusV2.csUuid },
   { table: promoCesTestsV2, uuid: promoCesTestsV2.ctUuid },
@@ -76,11 +79,26 @@ export async function softDeletePromotionReviewChildRows(
     .from(promoChecklistProgressV2)
     .where(eq(promoChecklistProgressV2.reviewUuid, reviewUuid));
   if (progress.length > 0) {
+    const cpUuids = progress.map((p) => p.cpUuid);
     deleted += await softDeleteLive(
       executor,
       promoChecklistAttachmentsV2,
       promoChecklistAttachmentsV2.attUuid,
-      inArray(promoChecklistAttachmentsV2.checklistProgressUuid, progress.map((p) => p.cpUuid)),
+      inArray(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuids),
+      auditUserUuid,
+    );
+    deleted += await softDeleteLive(
+      executor,
+      promoChecklistVerificationsV2,
+      promoChecklistVerificationsV2.cvUuid,
+      inArray(promoChecklistVerificationsV2.checklistProgressUuid, cpUuids),
+      auditUserUuid,
+    );
+    deleted += await softDeleteLive(
+      executor,
+      promoChecklistCommentsV2,
+      promoChecklistCommentsV2.cmUuid,
+      inArray(promoChecklistCommentsV2.checklistProgressUuid, cpUuids),
       auditUserUuid,
     );
   }

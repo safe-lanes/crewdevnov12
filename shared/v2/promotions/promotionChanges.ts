@@ -217,6 +217,122 @@ export function buildPromotionChanges(
   return { changes, saved };
 }
 
+// ---- Checklist (PRD-14) ----------------------------------------------------
+// A checklist point is one row per review, section and point. Its uuid is
+// derived, so ship and office make the same row and a verification added on
+// either side hangs off the same parent. Never change the format: stored rows
+// depend on it.
+export function checklistPointUuid(reviewUuid: string, sectionId: string, pointId: string): string {
+  return uuidv5(`${reviewUuid}:checklist:${String(sectionId).trim()}:${String(pointId).trim()}`, PROMO_ROW_NAMESPACE);
+}
+
+// The verifications and comments of one point, as the checklist saves them.
+// Verification rows: verifierName, rank, date. Comment rows: userName, rank,
+// text, date and verificationId (the verification an empty comment belongs to).
+export const CHECKLIST_VERIFICATION_FIELDS = ["verifierName", "rank", "date"] as const;
+export const CHECKLIST_COMMENT_FIELDS = ["userName", "rank", "text", "date", "verificationId"] as const;
+
+export interface ChecklistPointChanges {
+  sectionId: string;
+  pointId: string;
+  // Used only when the point's row has to be created.
+  sectionTitle?: string;
+  text?: string;
+  completed?: boolean;
+  verifications?: PromoSectionChanges;
+  comments?: PromoSectionChanges;
+}
+export interface ChecklistChanges {
+  points: ChecklistPointChanges[];
+}
+
+const checklistListSchema = z.object({
+  rows: z.array(z.object({ uuid: rowUuidSchema }).passthrough()),
+  deleted: z.array(rowUuidSchema).optional(),
+});
+export const checklistChangesSchema = z.object({
+  points: z.array(z.object({
+    sectionId: z.string().min(1).max(200),
+    pointId: z.string().min(1).max(200),
+    sectionTitle: z.string().optional(),
+    text: z.string().optional(),
+    completed: z.boolean().optional(),
+    verifications: checklistListSchema.optional(),
+    comments: checklistListSchema.optional(),
+  }).strict()),
+}).strict();
+
+type ChecklistPointLike = {
+  id: string;
+  text?: string;
+  completed?: boolean;
+  verifications?: PromoChangeRow[];
+  comments?: PromoChangeRow[];
+};
+type ChecklistSectionLike = { id: string; title?: string; assessmentPoints?: ChecklistPointLike[] };
+
+// Change set of one list of rows (matched by `id`) from `base` to `current`.
+function diffChecklistRows(
+  fields: readonly string[],
+  base: readonly PromoChangeRow[] | undefined,
+  current: readonly PromoChangeRow[] | undefined,
+): PromoSectionChanges | undefined {
+  const baseRows = base ?? [];
+  const baseById = new Map<string, PromoChangeRow>();
+  for (const row of baseRows) if (row.id) baseById.set(String(row.id), row);
+  const rows: PromoChangeRow[] = [];
+  const seen = new Set<string>();
+  for (const row of current ?? []) {
+    const id = row.id ? String(row.id) : "";
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const prior = baseById.get(id);
+    const out: PromoChangeRow = { uuid: id };
+    let sent = 0;
+    for (const field of fields) {
+      const value = row[field];
+      if (value === undefined) continue;
+      if (prior ? !sameValue(value, prior[field]) : true) {
+        out[field] = value;
+        sent++;
+      }
+    }
+    // A new row is sent even when every field is empty: it exists for its id.
+    if (sent > 0 || !prior) rows.push(out);
+  }
+  const deleted = [...baseById.keys()].filter((id) => !seen.has(id));
+  if (rows.length === 0 && deleted.length === 0) return undefined;
+  return deleted.length > 0 ? { rows, deleted } : { rows };
+}
+
+// The checklist change set from the sections as last loaded (`base`) to the
+// sections now. Only points with a change are listed.
+export function buildChecklistChanges(
+  base: readonly ChecklistSectionLike[] | null | undefined,
+  current: readonly ChecklistSectionLike[],
+): ChecklistChanges {
+  const basePoints = new Map<string, ChecklistPointLike>();
+  for (const s of base ?? []) {
+    for (const p of s.assessmentPoints ?? []) basePoints.set(`${s.id}\u0000${p.id}`, p);
+  }
+  const points: ChecklistPointChanges[] = [];
+  for (const s of current) {
+    for (const p of s.assessmentPoints ?? []) {
+      const prior = basePoints.get(`${s.id}\u0000${p.id}`);
+      const verifications = diffChecklistRows(CHECKLIST_VERIFICATION_FIELDS, prior?.verifications, p.verifications);
+      const comments = diffChecklistRows(CHECKLIST_COMMENT_FIELDS, prior?.comments, p.comments);
+      const completedChanged = !!p.completed !== !!prior?.completed;
+      if (!verifications && !comments && !completedChanged) continue;
+      const out: ChecklistPointChanges = { sectionId: s.id, pointId: p.id, sectionTitle: s.title ?? "", text: p.text ?? "" };
+      if (completedChanged) out.completed = !!p.completed;
+      if (verifications) out.verifications = verifications;
+      if (comments) out.comments = comments;
+      points.push(out);
+    }
+  }
+  return { points };
+}
+
 export function isEmptyPromotionChanges(changes: PromotionChanges | undefined): boolean {
   return !changes || Object.keys(changes).length === 0;
 }

@@ -168,6 +168,35 @@ export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   ...auditColumns,
 });
 
+// One verification of a checklist point (PRD-14). Replaces the JSON list in
+// promo_checklist_progress_v2.verifications_data, so two sessions adding one
+// each both keep theirs.
+export const promoChecklistVerificationsV2 = pgTable("promo_checklist_verifications_v2", {
+  id: serial("id").primaryKey(),
+  cvUuid: text("cv_uuid").notNull().unique(),
+  checklistProgressUuid: text("checklist_progress_uuid").notNull(),
+  verifierName: text("verifier_name"),
+  verifierRank: text("verifier_rank"),
+  date: text("date"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+// One comment of a checklist point (PRD-14). A verification also leaves an
+// empty-text comment linked to it by verification_uuid.
+export const promoChecklistCommentsV2 = pgTable("promo_checklist_comments_v2", {
+  id: serial("id").primaryKey(),
+  cmUuid: text("cm_uuid").notNull().unique(),
+  checklistProgressUuid: text("checklist_progress_uuid").notNull(),
+  verificationUuid: text("verification_uuid"),
+  commentUser: text("comment_user"),
+  commentRank: text("comment_rank"),
+  commentText: text("comment_text"),
+  date: text("date"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
 export const promoChecklistAttachmentsV2 = pgTable("promo_checklist_attachments_v2", {
   id: serial("id").primaryKey(),
   attUuid: text("att_uuid").notNull().unique(),

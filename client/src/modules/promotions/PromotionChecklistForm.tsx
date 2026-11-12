@@ -16,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import type { PromotionA2Config } from '@shared/schema';
 import { calculateChecklistProgress } from './checklistProgressUtils';
+import { buildChecklistChanges } from '@shared/v2/promotions/promotionChanges';
+import { v4 as uuidv4 } from 'uuid';
 
 interface PromotionData {
   crewMemberId: string;
@@ -301,7 +303,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         }
       });
       
-      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData, auditUserUuid: getCrewUserId() });
+      // Only what changed since the checklist was loaded: new, edited and
+      // removed verifications and comments, and points ticked or unticked
+      // (PRD-14). Rows other sessions added are not touched.
+      const checklistChanges = buildChecklistChanges(parsedExistingData as any, checklistSections as any);
+
+      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData, checklistChanges, auditUserUuid: getCrewUserId() });
       
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
@@ -441,7 +448,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     if (!commentText.trim()) return;
 
     const newComment: ChecklistComment = {
-      id: `comment-${Date.now()}`,
+      id: uuidv4(),
       userName: currentUser.name,
       rank: currentUser.rank,
       text: commentText,
@@ -490,7 +497,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, ' ');
 
-    const verificationId = `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const verificationId = uuidv4();
     const newVerification: ChecklistVerification = {
       id: verificationId,
       verifierName: currentUser.name,
@@ -499,7 +506,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     };
 
     const verificationComment: ChecklistComment = {
-      id: `vcomment-${verificationId}`,
+      id: uuidv4(),
       userName: currentUser.name,
       rank: currentUser.rank,
       text: '',

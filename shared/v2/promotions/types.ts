@@ -10,6 +10,8 @@ import {
   promoTrainingNeedsV2,
   promoApprovalsV2,
   promoChecklistProgressV2,
+  promoChecklistVerificationsV2,
+  promoChecklistCommentsV2,
   promoSuitabilityV2,
   promoExecutionLedgerV2,
   promoChecklistAttachmentsV2,
@@ -50,6 +52,8 @@ export type PromoApprovalV2 = typeof promoApprovalsV2.$inferSelect;
 export const insertPromoChecklistProgressV2Schema = createInsertSchema(promoChecklistProgressV2).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertPromoChecklistProgressV2 = z.infer<typeof insertPromoChecklistProgressV2Schema>;
 export type PromoChecklistProgressV2 = typeof promoChecklistProgressV2.$inferSelect;
+export type PromoChecklistVerificationV2 = typeof promoChecklistVerificationsV2.$inferSelect;
+export type PromoChecklistCommentV2 = typeof promoChecklistCommentsV2.$inferSelect;
 
 export const insertPromoSuitabilityV2Schema = createInsertSchema(promoSuitabilityV2).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertPromoSuitabilityV2 = z.infer<typeof insertPromoSuitabilityV2Schema>;

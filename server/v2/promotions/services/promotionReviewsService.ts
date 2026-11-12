@@ -8,6 +8,8 @@ import {
   ApprovalsRepository,
   ChecklistProgressRepository,
   ChecklistAttachmentsRepository,
+  ChecklistVerificationsRepository,
+  ChecklistCommentsRepository,
   CriteriaMasterRepository,
   SuitabilityRepository,
   ExecutionLedgerRepository,
@@ -16,7 +18,12 @@ import { PromotionHierarchiesRepository } from "../../admin/repositories/promoti
 import { CrewMembersRepository } from "../../crew-pool/repositories/crewMembersRepository";
 import { formsService } from "../../admin/services";
 import { applyAuditUser } from "../../admin/utils/auditUser";
-import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
+import type {
+  PromotionReviewV2,
+  PromoSuitabilityV2,
+  PromoChecklistVerificationV2,
+  PromoChecklistCommentV2,
+} from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { softDeletePromotionReviewChildRows } from "../repositories/reviewChildRows";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
@@ -32,7 +39,9 @@ import {
   LEGACY_LIST_FIELDS,
   isEmptyPromotionChanges,
   promotionChangesSchema,
+  checklistChangesSchema,
   type PromotionChanges,
+  type ChecklistChanges,
 } from "../../../../shared/v2/promotions/promotionChanges";
 
 export const promotionReviewWritableSchema = z.object({
@@ -45,6 +54,7 @@ export const promotionReviewWritableSchema = z.object({
   criteriaMeetsStatus: z.string().optional(),
   changes: promotionChangesSchema.optional(),
   checklistProgressData: z.string().optional(),
+  checklistChanges: checklistChangesSchema.optional(),
   promotionConfirmed: z.string().nullable().optional(),
   vesselAssigned: z.string().nullable().optional(),
   promotionDate: z.string().nullable().optional(),
@@ -69,6 +79,8 @@ const trainingNeedsRepo = new TrainingNeedsRepository();
 const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
 const checklistAttachmentsRepo = new ChecklistAttachmentsRepository();
+const checklistVerificationsRepo = new ChecklistVerificationsRepository();
+const checklistCommentsRepo = new ChecklistCommentsRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
 const suitabilityRepo = new SuitabilityRepository();
 const executionLedgerRepo = new ExecutionLedgerRepository();
@@ -98,6 +110,11 @@ export class PromotionReviewLockedError extends Error {
 // other sessions added. Refuse it before anything is written.
 function assertNoLegacyLists(data: Record<string, unknown>): void {
   if (LEGACY_LIST_FIELDS.some((field) => data?.[field] !== undefined)) {
+    throw new PromotionGuardError("This page is out of date. Reload it and try again.");
+  }
+  // The checklist form of before PRD-14 sends every verification and comment
+  // of every point as JSON, which would replace the rows other sessions added.
+  if (data?.checklistProgressData !== undefined && data?.checklistChanges === undefined) {
     throw new PromotionGuardError("This page is out of date. Reload it and try again.");
   }
 }
@@ -238,6 +255,17 @@ function groupBy<T>(items: T[], key: (item: T) => string): Record<string, T[]> {
   return result;
 }
 
+type ChecklistRows = { verifications: PromoChecklistVerificationV2[]; comments: PromoChecklistCommentV2[] };
+
+// The verification and comment rows of the given checklist points (PRD-14).
+async function loadChecklistRows(cpUuids: string[]): Promise<ChecklistRows> {
+  const [verifications, comments] = await Promise.all([
+    checklistVerificationsRepo.findByProgressUuids(cpUuids),
+    checklistCommentsRepo.findByProgressUuids(cpUuids),
+  ]);
+  return { verifications, comments };
+}
+
 function assembleV1Response(
   review: PromotionReviewV2,
   criteriaStatuses: any[],
@@ -249,6 +277,7 @@ function assembleV1Response(
   checklistProgress: any[],
   suitability: PromoSuitabilityV2 | null = null,
   attachmentsList: any[] = [],
+  checklistRows: ChecklistRows = { verifications: [], comments: [] },
 ) {
   const criteriaVerifiedStatus: Record<string, string> = {};
   const criteriaMeetsStatus: Record<string, string> = {};
@@ -345,11 +374,27 @@ function assembleV1Response(
       });
     }
     const section = sectionsMap.get(cp.sectionId)!;
-    let verifications: any[] = [];
-    let comments: any[] = [];
+    // Verifications and comments are rows of their own (PRD-14); the JSON
+    // columns are no longer read.
+    const verifications = checklistRows.verifications
+      .filter((v) => v.checklistProgressUuid === cp.cpUuid)
+      .map((v) => ({
+        id: v.cvUuid,
+        verifierName: v.verifierName || '',
+        rank: v.verifierRank || '',
+        date: v.date || '',
+      }));
+    const comments = checklistRows.comments
+      .filter((c) => c.checklistProgressUuid === cp.cpUuid)
+      .map((c) => ({
+        id: c.cmUuid,
+        userName: c.commentUser || '',
+        rank: c.commentRank || '',
+        text: c.commentText || '',
+        date: c.date || '',
+        ...(c.verificationUuid ? { verificationId: c.verificationUuid } : {}),
+      }));
     let legacyAttachments: any[] = [];
-    try { verifications = (cp as any).verificationsData ? JSON.parse((cp as any).verificationsData) : []; } catch {}
-    try { comments = (cp as any).commentsData ? JSON.parse((cp as any).commentsData) : []; } catch {}
     try { legacyAttachments = (cp as any).deprecatedAttachmentsData ? JSON.parse((cp as any).deprecatedAttachmentsData) : []; } catch {}
     if (!Array.isArray(legacyAttachments)) legacyAttachments = [];
 
@@ -489,6 +534,7 @@ type ReviewChildData = {
   criteriaMeetsStatus?: any;
   changes?: PromotionChanges;
   checklistProgressData?: any;
+  checklistChanges?: ChecklistChanges;
   b2VesselTypes?: any;
   b2FleetGroups?: any;
 };
@@ -730,6 +776,7 @@ export class PromotionReviewsService {
     const suitByReview = new Map(allSuitability.map(s => [s.reviewUuid, s]));
 
     const cpUuids = allChecklistProgress.map(item => item.cpUuid);
+    const checklistRows = await loadChecklistRows(cpUuids);
     let attachmentsList: any[] = [];
     if (cpUuids.length > 0) {
       const db = getDb();
@@ -755,6 +802,7 @@ export class PromotionReviewsService {
       cpMap[review.reviewUuid] || [],
       suitByReview.get(review.reviewUuid) ?? null,
       attachmentsList,
+      checklistRows,
     ));
   }
 
@@ -774,6 +822,7 @@ export class PromotionReviewsService {
     ]);
 
     const cpUuids = cp.map(item => item.cpUuid);
+    const checklistRows = await loadChecklistRows(cpUuids);
     let attachmentsList: any[] = [];
     if (cpUuids.length > 0) {
       const db = getDb();
@@ -788,7 +837,7 @@ export class PromotionReviewsService {
         );
     }
 
-    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit, attachmentsList);
+    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit, attachmentsList, checklistRows);
   }
 
   async getReviewById(id: number) {
@@ -823,6 +872,7 @@ export class PromotionReviewsService {
     const suitByReview = new Map(suit.map(s => [s.reviewUuid, s]));
 
     const cpUuids = cp.map(item => item.cpUuid);
+    const checklistRows = await loadChecklistRows(cpUuids);
     let attachmentsList: any[] = [];
     if (cpUuids.length > 0) {
       const db = getDb();
@@ -848,6 +898,7 @@ export class PromotionReviewsService {
       cpMap[review.reviewUuid] || [],
       suitByReview.get(review.reviewUuid) ?? null,
       attachmentsList,
+      checklistRows,
     ));
   }
 
@@ -1837,7 +1888,7 @@ export class PromotionReviewsService {
   async createReview(data: any) {
     assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data, true);
-    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
+    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,
       selectedVesselTypeForA2_3b: _svt,
       b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
@@ -1895,7 +1946,7 @@ export class PromotionReviewsService {
         return reviewsRepo.create(coreFields, tx);
       },
       childData: {
-        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
+        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,
         b2VesselTypes, b2FleetGroups,
       },
       auditUserUuid: coreFields.updatedByUuid ?? null,
@@ -1905,7 +1956,7 @@ export class PromotionReviewsService {
   async updateReview(reviewUuid: string, data: any) {
     assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data);
-    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
+    const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,
       id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
       selectedVesselTypeForA2_3b: _svt2,
       b2VesselTypes, b2FleetGroups,
@@ -2031,7 +2082,7 @@ export class PromotionReviewsService {
         return reviewsRepo.update(reviewUuid, coreFields, tx);
       },
       childData: {
-        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData,
+        criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,
         b2VesselTypes, b2FleetGroups,
       },
       auditUserUuid: coreFields.updatedByUuid ?? null,
@@ -2133,51 +2184,17 @@ export class PromotionReviewsService {
       }
     }
 
+    // Verifications, comments and the completed flag, as a change set (PRD-14).
+    if (data.checklistChanges && data.checklistChanges.points.length > 0) {
+      await this.applyChecklistChanges(reviewUuid, data.checklistChanges, auditUserUuid, tx);
+    }
+
+    // Attachments of the checklist points. The checklist rows themselves are
+    // written by the change set above; the JSON columns are no longer written.
     if (data.checklistProgressData !== undefined) {
       const progressObj = this.parseJson(data.checklistProgressData, {});
-      const items: any[] = [];
-
-      if (progressObj.sections && Array.isArray(progressObj.sections)) {
-        let sortIdx = 0;
-        for (const section of progressObj.sections) {
-          if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
-          for (const point of section.assessmentPoints) {
-            const latestVerification = point.verifications?.length > 0
-              ? point.verifications[point.verifications.length - 1]
-              : null;
-            items.push({
-              sectionId: section.id,
-              assessmentPointId: point.id,
-              completed: point.completed ?? false,
-              sectionTitle: section.title || null,
-              assessmentPointText: point.text || null,
-              verifierName: latestVerification?.verifierName || null,
-              verifierRank: latestVerification?.rank || null,
-              date: latestVerification?.date || null,
-              verificationsData: point.verifications?.length > 0 ? JSON.stringify(point.verifications) : null,
-              commentsData: point.comments?.length > 0 ? JSON.stringify(point.comments) : null,
-              deprecatedAttachmentsData: null, // attachments persist in promo_checklist_attachments_v2; never re-serialize into the deprecated JSON column
-              sortOrder: sortIdx++,
-            });
-          }
-        }
-      } else {
-        for (const [sectionId, assessments] of Object.entries(progressObj)) {
-          if (typeof assessments !== 'object' || assessments === null) continue;
-          for (const [apId, val] of Object.entries(assessments as Record<string, any>)) {
-            items.push({
-              sectionId,
-              assessmentPointId: apId,
-              verifierName: val?.verifierName || null,
-              date: val?.date || null,
-            });
-          }
-        }
-      }
 
       const saveChecklistProgressAndAttachments = async () => {
-        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items, auditUserUuid, tx);
-
         if (progressObj.sections && Array.isArray(progressObj.sections)) {
           const db = tx;
 
@@ -2196,13 +2213,18 @@ export class PromotionReviewsService {
           for (const section of progressObj.sections) {
             if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
             for (const point of section.assessmentPoints) {
-              const matchedProgress = savedProgress.find(
-                (p) => p.sectionId === section.id && p.assessmentPointId === point.id
-              );
-              if (!matchedProgress) continue;
-              
-              const cpUuid = matchedProgress.cpUuid;
               const attachments = point.attachments || [];
+              let matchedProgress = await checklistProgressRepo.findLiveByPoint(reviewUuid, section.id, point.id, tx);
+              if (!matchedProgress && attachments.length === 0) continue;
+              if (!matchedProgress) {
+                matchedProgress = await checklistProgressRepo.findOrCreateByPoint(
+                  reviewUuid,
+                  { sectionId: section.id, pointId: point.id, sectionTitle: section.title, text: point.text },
+                  auditUserUuid,
+                  tx,
+                );
+              }
+              const cpUuid = matchedProgress.cpUuid;
               
               // Get existing files in DB
               const dbAttachments = await checklistAttachmentsRepo.findLiveByProgressUuid(cpUuid, tx);
@@ -2288,6 +2310,32 @@ export class PromotionReviewsService {
       const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
         ?? (existing?.fleetGroups ?? []);
       await suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }, auditUserUuid, tx);
+    }
+  }
+
+  // Applies the checklist change set (PRD-14) on the save transaction: per
+  // point, the completed flag and the verification and comment rows matched by
+  // uuid. Points and rows nobody touched stay as they are.
+  private async applyChecklistChanges(reviewUuid: string, changes: ChecklistChanges, auditUserUuid: string | null, tx: any) {
+    for (const point of changes.points) {
+      let row = await checklistProgressRepo.findOrCreateByPoint(reviewUuid, point, auditUserUuid, tx);
+      if (point.completed !== undefined) {
+        row = await checklistProgressRepo.updateState(row, { completed: point.completed }, auditUserUuid, tx);
+      }
+      if (point.verifications) {
+        await checklistVerificationsRepo.applyChanges(row.cpUuid, point.verifications, auditUserUuid, tx);
+        // The point row shows its latest verification.
+        const live = await checklistVerificationsRepo.findByProgressUuids([row.cpUuid], tx);
+        const latest = live[live.length - 1];
+        row = await checklistProgressRepo.updateState(row, {
+          verifierName: latest?.verifierName ?? null,
+          verifierRank: latest?.verifierRank ?? null,
+          date: latest?.date ?? null,
+        }, auditUserUuid, tx);
+      }
+      if (point.comments) {
+        await checklistCommentsRepo.applyChanges(row.cpUuid, point.comments, auditUserUuid, tx);
+      }
     }
   }
 
