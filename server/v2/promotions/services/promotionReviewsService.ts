@@ -18,6 +18,7 @@ import { formsService } from "../../admin/services";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
+import { softDeletePromotionReviewChildRows } from "../repositories/reviewChildRows";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2, type VesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
@@ -81,6 +82,15 @@ export class PromotionGuardError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PromotionGuardError";
+  }
+}
+
+// Raised when a review is too far along to delete (PRD-12). The controller
+// maps it to HTTP 409.
+export class PromotionReviewLockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PromotionReviewLockedError";
   }
 }
 
@@ -606,7 +616,7 @@ export class PromotionReviewsService {
 
     try {
       const db = getDb();
-      const [v2CrewMembers, hierarchies, existingReviews] = await Promise.all([
+      const [v2CrewMembers, hierarchies, existingReviews, deletedReviews] = await Promise.all([
         db.select({
           empNo: crewMembersV2.empNo,
           presentRank: crewMembersV2.presentRank,
@@ -620,10 +630,12 @@ export class PromotionReviewsService {
         ),
         hierarchiesRepo.findAll(),
         reviewsRepo.findAll(),
+        reviewsRepo.findDeletedKeys(),
       ]);
 
+      // A deleted review counts too, so it is not made again with a new uuid (PRD-12).
       const existingKeys = new Set(
-        existingReviews.map(r => `${r.crewMemberId}__${r.promotionToRank}`)
+        [...existingReviews, ...deletedReviews].map(r => `${r.crewMemberId}__${r.promotionToRank}`)
       );
 
       const ranksInHierarchies = new Set<string>();
@@ -2067,8 +2079,27 @@ export class PromotionReviewsService {
     return this.getReviewByUuid(saved.review.reviewUuid);
   }
 
-  async deleteReview(reviewUuid: string): Promise<boolean> {
-    return reviewsRepo.softDelete(reviewUuid);
+  // Soft-deletes the review and all its live child rows in one transaction
+  // (PRD-12), so the sync never sees live rows of a deleted review. Returns
+  // false when the review is not found or already deleted; its child rows are
+  // then left alone. An approved or completed review cannot be deleted.
+  async deleteReview(reviewUuid: string, auditUserUuid: string | null = null): Promise<boolean> {
+    return getDb().transaction(async (tx: any) => {
+      const [review] = await tx
+        .select()
+        .from(promotionReviewsV2)
+        .where(and(eq(promotionReviewsV2.reviewUuid, reviewUuid), eq(promotionReviewsV2.isDeleted, false)));
+      if (!review) return false;
+      if (statusRank(review.status) >= statusRank("approved")) {
+        throw new PromotionReviewLockedError(
+          "An approved or completed promotion review cannot be deleted.",
+        );
+      }
+      const deleted = await reviewsRepo.softDelete(reviewUuid, auditUserUuid, tx);
+      if (!deleted) return false;
+      await softDeletePromotionReviewChildRows(tx, reviewUuid, auditUserUuid);
+      return true;
+    });
   }
 
   // Everything written next to the review header, on the save transaction

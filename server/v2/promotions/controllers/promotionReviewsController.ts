@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { PromotionReviewsService } from "../services";
-import { promotionReviewWritableSchema, PromotionGuardError } from "../services/promotionReviewsService";
+import { promotionReviewWritableSchema, PromotionGuardError, PromotionReviewLockedError } from "../services/promotionReviewsService";
+import { resolveAppraisalActor } from "../../appraisals/utils/requestActor";
+
+const SIGN_IN_ERROR = "Your sign-in could not be verified. Reload the page and try again.";
 import { getDb } from "../../db.js";
 import { promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema.js";
 import { eq, and } from "drizzle-orm";
@@ -143,11 +146,16 @@ export class PromotionReviewsController {
   async deleteReview(req: Request, res: Response) {
     try {
       const { reviewUuid } = req.params;
-      const deleted = await service.deleteReview(reviewUuid);
+      const actor = await resolveAppraisalActor(req);
+      if (!actor) return res.status(401).json({ error: SIGN_IN_ERROR });
+      const deleted = await service.deleteReview(reviewUuid, actor.userUuid);
       if (!deleted) return res.status(404).json({ error: "Promotion review not found" });
       console.log(`[Promotions V2] Deleted review ${reviewUuid}`);
       res.json({ success: true });
     } catch (error) {
+      if (error instanceof PromotionReviewLockedError) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("[Promotions V2] Failed to delete review:", error);
       res.status(500).json({ error: "Failed to delete promotion review" });
     }

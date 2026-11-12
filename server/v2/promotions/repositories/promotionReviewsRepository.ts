@@ -95,7 +95,17 @@ export class PromotionReviewsRepository {
     return results[0];
   }
 
-  // Parent row only; the child rows stay (PRD-12).
+  // Crew and target rank of every deleted review. Auto-create skips these
+  // pairs, so a deleted review is not made again with a new uuid (PRD-12).
+  async findDeletedKeys(executor: any = getDb()): Promise<Array<{ crewMemberId: string; promotionToRank: string }>> {
+    return executor
+      .select({ crewMemberId: promotionReviewsV2.crewMemberId, promotionToRank: promotionReviewsV2.promotionToRank })
+      .from(promotionReviewsV2)
+      .where(eq(promotionReviewsV2.isDeleted, true));
+  }
+
+  // The review row only; the service deletes the child rows in the same
+  // transaction (PRD-12).
   async softDelete(reviewUuid: string, auditUserUuid: string | null = null, executor: any = getDb()): Promise<boolean> {
     const old = await this.findLive(reviewUuid, executor);
     if (!old) return false;
