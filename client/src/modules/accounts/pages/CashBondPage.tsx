@@ -1,4 +1,3 @@
-import { monthStart, monthEnd } from "@shared/v2/accounts/wageScaleRevisionDates";
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
@@ -69,10 +68,10 @@ const MENU = "Account Allotments";
 
 type CashBondDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "calendarDisabledPeriods" | "className" | "min" | "max" | "calendarMonth"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "calendarDisabledPeriods" | "className"
 >;
 
-function CashBondDateInput({ onDraftValidityChange, calendarMonth, ...props }: CashBondDateInputProps) {
+function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInputProps) {
   // Keep an unsupported saved value on its original input for this dialog session.
   const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
   const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
@@ -102,7 +101,6 @@ function CashBondDateInput({ onDraftValidityChange, calendarMonth, ...props }: C
       <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
         <FormattedDateInput
           {...props}
-          calendarMonth={calendarMonth}
           mode="date"
           className={`min-w-0 ${props.className || "border-input"} text-base md:text-sm`}
           acceptCalendarInputEvents
@@ -185,8 +183,6 @@ export function AdvancesTab({
   const hasFilter = !!vesselUuid && !!period;
   const locks = useCashPeriodLock(vesselUuid, period);
   const lockContext = { vesselUuid, period };
-  const periodStart = period ? monthStart(period) : undefined;
-  const periodEnd = period ? monthEnd(period) : undefined;
 
   const listKey = [`${ACCOUNTS_BASE}/advances`];
   const { data: advances = [], isLoading } = useQuery<any[]>({
@@ -256,12 +252,6 @@ export function AdvancesTab({
   }
   if (!form.recoveryAmount) {
     requiredErrors.recoveryAmount = "Monthly Deduction is required.";
-  }
-  if (
-    form.requestDate && periodStart && periodEnd &&
-    (form.requestDate < periodStart || form.requestDate > periodEnd)
-  ) {
-    requiredErrors.requestDate = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -563,12 +553,9 @@ export function AdvancesTab({
                 setValidationAttempted(false);
                 requestDateIsValid.current = true;
                 setDateFormVersion((version) => version + 1);
-                const defaultDate = locks.getDefaultDate();
                 setForm({
                   ...emptyAdvanceForm,
-                  requestDate: periodStart && defaultDate.slice(0, 7) !== period
-                    ? periodStart
-                    : defaultDate,
+                  requestDate: locks.getDefaultDate(),
                 });
                 setDialogOpen(true);
               }}
@@ -691,9 +678,6 @@ export function AdvancesTab({
               <CashBondDateInput
                 key={dateFormVersion}
                 value={form.requestDate}
-                min={periodStart}
-                max={periodEnd}
-                calendarMonth={period || undefined}
                 onChange={(e) => set("requestDate", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   requestDateIsValid.current = valid;
@@ -701,15 +685,11 @@ export function AdvancesTab({
                 data-testid="input-advance-date"
                 calendarDisabledPeriods={locks.calendarDisabledPeriods}
                 className={
-                  errors.requestDate ||
-                  (validationAttempted && locks.isDateBlocked(form.requestDate))
+                  validationAttempted && locks.isDateBlocked(form.requestDate)
                     ? "border-red-500"
                     : undefined
                 }
               />
-              {errors.requestDate && (
-                <p className="text-xs text-red-500" role="alert">{errors.requestDate}</p>
-              )}
               {validationAttempted && locks.isDateBlocked(form.requestDate) && (
                 <p role="alert" className="text-xs text-red-500">
                   {LOCKED_DATE_INLINE}
@@ -1016,8 +996,6 @@ export function BondTab({
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
   const hasFilter = !!vesselUuid && !!period;
-  const periodStart = period ? monthStart(period) : undefined;
-  const periodEnd = period ? monthEnd(period) : undefined;
 
   const listKey = [
     `${ACCOUNTS_BASE}/bond-items?vesselUuid=${vesselUuid}&period=${period}`,
@@ -1136,12 +1114,9 @@ export function BondTab({
     setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
-    const defaultDate = new Date().toISOString().slice(0, 10);
     setForm({
       ...emptyBondForm,
-      saleDate: periodStart && defaultDate.slice(0, 7) !== period
-        ? periodStart
-        : defaultDate,
+      saleDate: new Date().toISOString().slice(0, 10),
     });
     setDialogOpen(true);
   };
@@ -1176,12 +1151,6 @@ export function BondTab({
   }
   if (!String(form.unitPrice ?? "").trim()) {
     requiredErrors.unitPrice = "Unit Price is required.";
-  }
-  if (
-    !editing && form.saleDate && periodStart && periodEnd &&
-    (form.saleDate < periodStart || form.saleDate > periodEnd)
-  ) {
-    requiredErrors.saleDate = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -1602,18 +1571,12 @@ export function BondTab({
               <CashBondDateInput
                 key={dateFormVersion}
                 value={form.saleDate}
-                min={!editing ? periodStart : undefined}
-                max={!editing ? periodEnd : undefined}
-                calendarMonth={!editing ? period || undefined : undefined}
                 onChange={(e) => set("saleDate", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   saleDateIsValid.current = valid;
                 }}
                 data-testid="input-bond-sale-date"
               />
-              {errors.saleDate && (
-                <p className="text-xs text-red-500" role="alert">{errors.saleDate}</p>
-              )}
             </div>
             <div className="space-y-1 col-span-2">
               <Label>Remarks</Label>

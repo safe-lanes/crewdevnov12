@@ -21,7 +21,6 @@ interface FormattedDateInputProps {
   placeholder?: string;
   disabled?: boolean;
   calendarDisabledPeriods?: readonly string[];
-  calendarMonth?: string;
   /** Accept native calendar input before a later blur/change event. */
   acceptCalendarInputEvents?: boolean;
   retainInvalidDraftOnBlur?: boolean;
@@ -88,7 +87,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, calendarDisabledPeriods, calendarMonth, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, calendarDisabledPeriods, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const manualInputRef = React.useRef<HTMLInputElement>(null);
     const [calendarOpen, setCalendarOpen] = React.useState(false);
@@ -104,17 +103,6 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       const [year, month, day] = value.split("-").map(Number);
       const date = new Date(0);
       date.setFullYear(year, month - 1, day);
-      date.setHours(12, 0, 0, 0);
-      return date;
-    })();
-
-    const useCustomCalendar =
-      calendarDisabledPeriods !== undefined || calendarMonth !== undefined;
-    const calendarMonthDate = (() => {
-      if (!calendarMonth || !formatIsoDate(calendarMonth + "-01")) return undefined;
-      const [year, month] = calendarMonth.split("-").map(Number);
-      const date = new Date(0);
-      date.setFullYear(year, month - 1, 1);
       date.setHours(12, 0, 0, 0);
       return date;
     })();
@@ -279,7 +267,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
 
     const openCalendar = () => {
       if (disabled) return;
-      if (useCustomCalendar) {
+      if (calendarDisabledPeriods !== undefined) {
         openingCalendarRef.current = true;
         setCalendarOpen(true);
         return;
@@ -371,7 +359,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
           data-testid={dataTestId ? `${dataTestId}-manual` : undefined}
           className="h-full min-w-0 flex-1 bg-transparent px-3 py-1 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
-        {!useCustomCalendar ? (
+        {calendarDisabledPeriods === undefined ? (
           calendarButton
         ) : (
           <Popover
@@ -391,10 +379,9 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
               }}
             >
               <Calendar
-                key={calendarMonth}
                 mode="single"
                 selected={selectedCalendarDate}
-                defaultMonth={calendarMonthDate ?? selectedCalendarDate}
+                defaultMonth={selectedCalendarDate}
                 disabled={calendarDayDisabled}
                 initialFocus
                 onSelect={(date) => {
