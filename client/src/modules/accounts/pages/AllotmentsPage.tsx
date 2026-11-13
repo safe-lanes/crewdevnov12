@@ -1,3 +1,4 @@
+import { monthStart, monthEnd } from "@shared/v2/accounts/wageScaleRevisionDates";
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
@@ -95,7 +96,7 @@ const emptyForm: AllotmentForm = {
 
 type AllotmentDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className" | "calendarDisabledPeriods"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className" | "calendarDisabledPeriods" | "min" | "max" | "calendarMonth"
 >;
 
 function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateInputProps) {
@@ -146,6 +147,8 @@ export default function AllotmentsPage({
   const hasFilter = !!vesselUuid && !!period;
   const locks = useCashPeriodLock(vesselUuid, period);
   const lockContext = { vesselUuid, period };
+  const periodStart = period ? monthStart(period) : undefined;
+  const periodEnd = period ? monthEnd(period) : undefined;
   const [statusFilter, setStatusFilter] = useState("all");
   const [crewSearch, setCrewSearch] = useState("");
 
@@ -238,7 +241,13 @@ export default function AllotmentsPage({
     setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
-    setForm({ ...emptyForm, validFrom: locks.getDefaultDate() });
+    const defaultDate = locks.getDefaultDate();
+    setForm({
+      ...emptyForm,
+      validFrom: periodStart && defaultDate.slice(0, 7) !== period
+        ? periodStart
+        : defaultDate,
+    });
     setDialogOpen(true);
   };
 
@@ -300,6 +309,11 @@ export default function AllotmentsPage({
   }
   if (!form.validFrom) {
     requiredErrors.validFrom = "Valid From is required.";
+  } else if (
+    !editing && periodStart && periodEnd &&
+    (form.validFrom < periodStart || form.validFrom > periodEnd)
+  ) {
+    requiredErrors.validFrom = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -945,6 +959,9 @@ export default function AllotmentsPage({
               <AllotmentDateInput
                 key={dateFormVersion}
                 value={form.validFrom}
+                min={!editing ? periodStart : undefined}
+                max={!editing ? periodEnd : undefined}
+                calendarMonth={!editing ? period || undefined : undefined}
                 onChange={(e) => set("validFrom", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   validFromIsValid.current = valid;
