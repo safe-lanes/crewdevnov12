@@ -768,6 +768,86 @@ export const dailyRecordsService = {
     return { processed, violationsFound };
   },
 
+  // Scoped recompute for one vessel and month (RH-03). Summary tables are
+  // derived, so after daily/task/NC/dateline rows change, the sync engine calls
+  // this instead of copying summary rows. Uses only the existing calculators
+  // (postSaveSyncTx, updateVesselRecordSync); it adds cleanup of stale rows.
+  // Never touches is_locked or the review fields.
+  async resyncVesselMonth(
+    vesselId: string,
+    monthYear: string,
+    auditUserUuid: string | null = null
+  ): Promise<{ crewRecomputed: number; staleCrewRowsRemoved: number }> {
+    if (!vesselId || !monthYear) {
+      throw new Error("Vessel ID and month year are required");
+    }
+    return getDb().transaction(async (tx: any) => {
+      await lockVesselMonth(tx, vesselId, monthYear);
+
+      const dailyRows = await dailyRecordsRepository.findAll({ vesselId, monthYear }, tx);
+      const summaryRows = await crewRecordsRepository.findAll({ vesselId, monthValue: monthYear }, tx);
+
+      const ranksByCrew = new Map<string, Set<string>>();
+      for (const d of dailyRows) {
+        const set = ranksByCrew.get(d.crewMemberId) ?? new Set<string>();
+        set.add((d.rank || '').trim().toLowerCase());
+        ranksByCrew.set(d.crewMemberId, set);
+      }
+
+      let staleCrewRowsRemoved = 0;
+
+      // Removed crew / deleted daily rows: postSaveSyncTx returns early for
+      // them, so drop their summary rows here.
+      for (const row of summaryRows) {
+        if (!ranksByCrew.has(row.crewMemberId)) {
+          if (await crewRecordsRepository.softDelete(row.rhCrewRecordUuid, tx)) staleCrewRowsRemoved++;
+        }
+      }
+
+      for (const crewMemberId of ranksByCrew.keys()) {
+        await postSaveSyncTx(tx, crewMemberId, vesselId, monthYear, auditUserUuid);
+      }
+
+      // Vanished rank periods: a row whose rank no longer has a daily record.
+      if (ranksByCrew.size > 0) {
+        const after = await crewRecordsRepository.findAll({ vesselId, monthValue: monthYear }, tx);
+        for (const row of after) {
+          const ranks = ranksByCrew.get(row.crewMemberId);
+          if (ranks && !ranks.has((row.rank || '').trim().toLowerCase())) {
+            if (await crewRecordsRepository.softDelete(row.rhCrewRecordUuid, tx)) staleCrewRowsRemoved++;
+          }
+        }
+      }
+
+      // updateVesselRecordSync returns early when no crew rows remain, which
+      // would leave old counters. Zero them; lock and review fields stay.
+      const remaining = await crewRecordsRepository.findAll({ vesselId, monthValue: monthYear }, tx);
+      if (remaining.length === 0) {
+        const vesselRows = await vesselRecordsRepository.findAll({ vesselId, monthValue: monthYear }, tx);
+        if (vesselRows[0]) {
+          await vesselRecordsRepository.update(vesselRows[0].rhVesselUuid, {
+            totalCrew: 0,
+            recordingStatusPercent: 0,
+            activityConflicting: false,
+            crewWithActivityConflicts: 0,
+            crewWithActivityConflictsDetails: null,
+            totalViolations: 0,
+            crewWithViolations: 0,
+            totalNCs: 0,
+            crewWithNCs: 0,
+            predictedViolations: 0,
+            crewWithPredictedViolations: 0,
+            predictedNCs: 0,
+            crewWithPredictedNCs: 0,
+            updatedByUuid: auditUserUuid,
+          }, tx);
+        }
+      }
+
+      return { crewRecomputed: ranksByCrew.size, staleCrewRowsRemoved };
+    });
+  },
+
   async resyncAllRecords(): Promise<{ processed: number; failed: number }> {
     const allDailyRecords = await dailyRecordsRepository.findAll({});
     let processed = 0;
