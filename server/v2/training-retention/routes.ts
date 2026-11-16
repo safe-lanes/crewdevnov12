@@ -141,6 +141,10 @@ router.get("/retention", async (req: Request, res: Response) => {
     ]);
     const AE = (startCount + endCount) / 2;
 
+    // Rank bands deliberately overlap: TMSA 2.4 measures senior officer
+    // retention; TMSA 3.4 measures ALL officers, including senior officers.
+    // A rank flagged Senior Officer and Officer belongs in both cohorts.
+    // Do not make those flags mutually exclusive or subtract senior officers.
     // ---- Retention rate ---------------------------------------------------
     let retentionRate: number | null = null;
     if (AE > 0) {
