@@ -142,6 +142,7 @@ const EXPECTED_TRAINING_MATRIX_GUARDS: GuardedRoute[] = [
 // KPI writes additionally enforce kpi_targets/set inside their transaction;
 // ordinary menu Edit is intentionally not a substitute for that capability.
 const EXPECTED_KPI_GUARDS: GuardedRoute[] = [
+  { key: "GET /dashboard-kpis/:year", menuName: "Dashboard", action: "view" },
   { key: "GET /kpis", menuName: "KPIs", action: "view" },
   { key: "GET /kpis/:code/targets/:year", menuName: "KPIs", action: "view" },
   { key: "PUT /kpis/:code/targets/:year", menuName: "KPIs", action: "view" },

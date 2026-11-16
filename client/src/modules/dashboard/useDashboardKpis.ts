@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { DashboardKpis } from "@shared/v2/admin/dashboardKpis";
+import { getTenantId } from "@/lib/tenantStorage";
 
 export const dashboardKpisQueryKey = (year: number) => [
   "/api/v2/admin/dashboard-kpis",
+  getTenantId(),
   year,
 ] as const;
 

@@ -11,6 +11,7 @@ import { writeCombinedRoleGrants } from "@server/v2/admin/services/accessControl
 import { emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
 import { presentAccessAudit } from "../../shared/v2/admin/accessAuditPresentation";
 import { requirePermission } from "../../server/middleware/requirePermission";
+import { readDashboardKpis } from "../../server/v2/admin/services/dashboardKpis";
 
 const schema = `test_kpi_${randomUUID().replaceAll("-", "")}`;
 const admin = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL, max: 1 });
@@ -49,6 +50,32 @@ beforeEach(async () => {
       VALUES('editor','kpi_targets','set',true),('manager','access_control','manage',true);`);
 });
 describe("Annual KPI targets — isolated database with real constraints", () => {
+  it("Dashboard-only viewers read the minimal company projection without settings or action grants", async () => {
+    await saveKpiTargets(targetRequest({ [retention]: "90.000001", [officers]: "85" }));
+    await saveKpiTargets(targetRequest({ [alcohol]: "0" }, 0, "alcohol_violations"));
+    await pool.query(`INSERT INTO adm_menumaster_ac(muid,name,route) VALUES('dashboard','Dashboard','/dashboard');
+      DELETE FROM adm_roleaccess_ac WHERE role_id='viewer';
+      INSERT INTO adm_roleaccess_ac(rauid,role_id,menu_id,canview) VALUES('dashboard-view','viewer','dashboard',true)`);
+    const response = { status: vi.fn().mockReturnThis(), json: vi.fn() }, next = vi.fn();
+    await requirePermission("Dashboard", "view")(req(3), response as any, next);
+    expect(next).toHaveBeenCalledOnce();
+    expect(await kpiTargetAuthority(req(3))).toBe(false);
+    const result = await readDashboardKpis(2026);
+    expect(Object.keys(result).sort()).toEqual(["kpis", "scope", "year"]);
+    expect(result).toMatchObject({ year: 2026, scope: "company" });
+    expect(result.kpis[0]).toEqual({ code: "retention", direction: "minimum", unit: "percentage",
+      components: [{ code: "senior_officers", value: "90.000001" }, { code: "officers", value: "85" }, { code: "ratings", value: null }] });
+    expect(result.kpis[1].components[0].value).toBe("0");
+    expect((await readDashboardKpis(2027)).kpis.every(k => k.components.every(c => c.value === null))).toBe(true);
+    for (const kpi of result.kpis) expect(Object.keys(kpi).sort()).toEqual(["code", "components", "direction", "unit"]);
+    await pool.query("UPDATE adm_roleaccess_ac SET canview=false WHERE role_id='viewer'");
+    next.mockClear();
+    await requirePermission("Dashboard", "view")(req(3), response as any, next);
+    expect(response.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+    await requirePermission("Dashboard", "view")(req(999999), response as any, next);
+    expect(next).not.toHaveBeenCalled();
+  });
   it("has exactly three KPIs and five components with explicit definitions, no target or event", async () => {
     const catalogue = await readKpiCatalogue();
     expect(catalogue.map(k => [k.code, k.direction, k.unit, k.components.length])).toEqual([
@@ -206,11 +233,13 @@ describe("Annual KPI targets — isolated database with real constraints", () =>
           await admin.query(`INSERT INTO ${other}.${table} SELECT * FROM ${schema}.${table}`);
       }
       holder.db = drizzle(otherPool);
+      expect((await readDashboardKpis(2026)).kpis[0].components[0].value).toBeNull();
       expect((await read()).values[retention]).toBeNull();
       expect((await read()).lastChanged).toBeNull();
       await saveKpiTargets(targetRequest({ [retention]: "81" }));
       expect((await read()).values[retention]).toBe("81");
       holder.db = drizzle(pool);
+      expect((await readDashboardKpis(2026)).kpis[0].components[0].value).toBe("95");
       expect((await read()).values[retention]).toBe("95");
       expect(await audit()).toHaveLength(1);
     } finally {
