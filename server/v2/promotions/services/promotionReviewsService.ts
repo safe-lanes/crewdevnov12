@@ -1885,7 +1885,29 @@ export class PromotionReviewsService {
     return result;
   }
 
+  // Creating is safe to repeat (PRD-18): a review for this crew + rank is one
+  // row with a fixed uuid, so a second POST (retry after a timeout, double
+  // click, queued offline request) is applied as an update of that row.
   async createReview(data: any) {
+    const crewMemberId = data?.crewMemberId;
+    const promotionToRank = data?.promotionToRank;
+    if (crewMemberId && promotionToRank) {
+      const existing = await reviewsRepo.findByCrewAndRank(crewMemberId, promotionToRank);
+      if (existing) return this.updateReview(existing.reviewUuid, data);
+    }
+    try {
+      return await this.createNewReview(data);
+    } catch (error: any) {
+      // Two creates at the same moment: the other one won, so update its row.
+      if (error?.code === "23505" && crewMemberId && promotionToRank) {
+        const existing = await reviewsRepo.findByCrewAndRank(crewMemberId, promotionToRank);
+        if (existing) return this.updateReview(existing.reviewUuid, data);
+      }
+      throw error;
+    }
+  }
+
+  private async createNewReview(data: any) {
     assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data, true);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,

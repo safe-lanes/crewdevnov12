@@ -34,6 +34,7 @@ import {
 } from './promotionListChanges';
 
 type PromotionReviewResponse = PromotionReview & {
+  reviewUuid?: string;
   selectedApproversForSubmission?: string | null;
   b2VesselTypes?: string[];
   b2FleetGroups?: string[];
@@ -293,7 +294,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         : '/api/v2/promotions/reviews';
       const method = effectiveReviewUuid ? 'PATCH' : 'POST';
       const response = await apiRequest(method, endpoint, { ...save.body, auditUserUuid: getCrewUserId() });
-      return response;
+      // apiRequest gives the raw Response; read the saved review from it so the
+      // next save knows the review's uuid and sends PATCH, not another POST.
+      return await response.json().catch(() => null);
     },
     onSuccess: (data: any, variables: SaveMutationVariables) => {
       markListsSaved(variables.save.saved);
@@ -1780,6 +1783,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const method = submitReviewUuid ? 'PATCH' : 'POST';
     
     apiRequest(method, endpoint, { ...save.body, auditUserUuid: getCrewUserId() })
+      .then((response) => response.json().catch(() => null))
       .then((data: any) => {
         markListsSaved(save.saved);
         if (data?.reviewUuid) {
