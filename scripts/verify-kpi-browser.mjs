@@ -20,7 +20,7 @@ closeSync(fd);
 const db = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
 const roleId = randomUUID(), roleName = `TEST ONLY KPI Editor ${roleId.slice(0, 8)}`;
 let browser, actorId;
-const year = 2096;
+let year;
 const report = { database: identity.database, isolated: true, personas: [], screenshots: [], errors: [], passed: false };
 try {
   let ready = false;
@@ -37,8 +37,12 @@ try {
   }
   if (!ready) throw Error("Test backend startup timed out.");
   await db.connect();
-  const existing = await db.query("SELECT * FROM kpi_target_years WHERE year=$1", [year]);
-  if (existing.rowCount) throw Error("Evidence year is occupied; refuse to overwrite.");
+  year = (await db.query(`SELECT y AS year FROM generate_series(2096,2199) y
+    WHERE NOT EXISTS(SELECT 1 FROM kpi_target_years WHERE year=y)
+      AND NOT EXISTS(SELECT 1 FROM adm_access_control_audit WHERE event='kpi_target_changed' AND details->>'year'=y::text)
+    ORDER BY y LIMIT 1`)).rows[0]?.year;
+  if (!year) throw Error("No unused isolated evidence year; refuse to overwrite.");
+  report.year = year;
   await db.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES($1,$2,'Office',true)", [roleId, roleName]);
   actorId = (await db.query(`INSERT INTO master_users(user_uuid,role,user_type,fullname,display_name)
     VALUES($1,$2,'Office','Synthetic KPI Editor','Synthetic KPI Editor') RETURNING id`, [randomUUID(), roleName])).rows[0].id;
@@ -136,6 +140,7 @@ try {
   await grantPage.getByTestId("sidebar-item-access-control").click();
   await grantPage.getByText(roleName, { exact: true }).first().click();
   await expect(grantPage.getByTestId("checkbox-kpi-targets-set")).toBeChecked();
+  await grantPage.getByTestId("checkbox-kpi-targets-set").scrollIntoViewIfNeeded();
   await shot("permission-grid", grantPage);
   await grantPage.getByRole("button", { name: "Access audit history", exact: true }).click();
   await expect(grantPage.getByRole("dialog")).toBeVisible();

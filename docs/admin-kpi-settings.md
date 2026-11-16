@@ -97,8 +97,9 @@ lock wait. Existing audit event types retain their prior timestamp semantics.
 - `node scripts/verify-kpi-browser.mjs` starts its own identity-verified test
   backend (never port 5000) and clicks the actual editor, discard dialog,
   permission grid and audit popup. It uses a disposable synthetic KPI-only
-  editor, year 2096 and the existing synthetic test administrator. It refuses
-  to overwrite an occupied evidence year. Disposable targets, users and grants
+  editor, an unused future year starting at 2096 and the existing synthetic test
+  administrator. Both existing targets and retained audit history make a year
+  occupied, so repeated runs never overwrite earlier evidence. Disposable targets, users and grants
   are cleaned up; append-only synthetic audit evidence remains in the isolated
   test database. Screenshots and its report go under
   `generated-artifacts/kpi-settings/browser/`.
@@ -153,3 +154,25 @@ isolated test database and its own backend, never development. The read-only
 development evidence script compares every existing table's contents and lists
 the required migration/catalogue/menu/ledger writes separately. No development
 target values, years or grants are created for evidence.
+
+### Closing results — 16-Nov-2026
+- Complete repository run: 2,573 tests; 2,344 passed, 162 failed, 67 pending.
+  This meets the agreed regression ceiling; it is not a green full suite.
+- Company Forms discovered from that same full run: 103 suites, 740 tests,
+  740 passed, zero failed/skipped, no missing suites.
+- Focused KPI service/editor tests: 29 passed; affected Access Control and exact
+  route-inventory tests: 28 passed, including the added failed-read recovery case.
+- TypeScript: 222 diagnostics, within the agreed ceiling.
+- Browser runs used the isolated test database and actual screens, including
+  retention save, count zero, clearing, discard, a frozen-name summary without
+  Access Control access, permission row, audit popup and narrow layout.
+- Initial full-run growth to 167 failures was traced to four Access Control
+  tests missing the new permission-query fixture and the exact route inventory
+  lacking the three newly approved KPI guards. Fixtures and exact expectations
+  were updated and strengthened for all four save groups; assertions were not
+  weakened. The corrected complete run returned to 162 failures.
+- Approval Workflow files, Dashboard calculations and Reports handlers were not
+  changed. Existing development rows and columns matched pre-upgrade content
+  fingerprints; required new catalogue/menu/action/ledger rows were separated
+  from that comparison. Development KPI target/year rows remained empty and
+  existing grants were unchanged.

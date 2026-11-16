@@ -35,6 +35,7 @@ Append one row whenever a numbered task fully completes. Record its task number,
 | #355 | Complete and sign Company Forms | `4684b96a3bbf32bafa85769644c1fdc1d063f340` | 2026-10-02 |
 | #356 | Open joining forms from Planning | `0cf92fceef8117be2d7bafe75710e0507b2f764f` | 2026-10-02 |
 | #358 | Open sign-off forms from Planning; separate stage-scoped operational popups, G3 full history and UUID-free headings | `5817fd94fad9938bc0586502990e76c4a3e2db4f` | 2026-10-05 |
+| #436 | Build Admin KPI target settings with independent permission and frozen audit-derived last change | `7fba53cf1d317dcca97fd8b7b2164c1f44c6ed8a` | 2026-11-16 |
 
 ## Inventory audit — 2026-10-01
 
