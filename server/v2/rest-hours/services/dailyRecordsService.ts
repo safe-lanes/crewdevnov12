@@ -203,49 +203,45 @@ async function getCrewAssignmentsForMonth(
   vesselId: string,
   monthValue: string
 ): Promise<{ signOnDate: string | null; signOffDate: string | null; isCurrent: boolean | null }[]> {
-  try {
-    const { firstDay, lastDay } = getMonthBounds(monthValue);
-    const db = getDb();
+  // RH-05: no catch-and-return-[]; a failed lookup must fail the sync.
+  const { firstDay, lastDay } = getMonthBounds(monthValue);
+  const db = getDb();
 
-    const rows = await db
-      .select({
-        crewUuid: crewAssignments.crewUuid,
-        empNo: crewMembersV2.empNo,
-        signOnDate: crewAssignments.signOnDate,
-        signOffDate: crewAssignments.signOffDate,
-        isCurrent: crewAssignments.isCurrent,
-      })
-      .from(crewAssignments)
-      .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
-      .where(
+  const rows = await db
+    .select({
+      crewUuid: crewAssignments.crewUuid,
+      empNo: crewMembersV2.empNo,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
+      isCurrent: crewAssignments.isCurrent,
+    })
+    .from(crewAssignments)
+    .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
+    .where(
+      and(
+        eq(crewAssignments.vesselUuid, vesselId),
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
         and(
-          eq(crewAssignments.vesselUuid, vesselId),
-          or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
-          and(
-            lte(crewAssignments.signOnDate, lastDay),
-            or(
-              isNull(crewAssignments.signOffDate),
-              eq(crewAssignments.signOffDate, ''),
-              gte(crewAssignments.signOffDate, firstDay)
-            )
+          lte(crewAssignments.signOnDate, lastDay),
+          or(
+            isNull(crewAssignments.signOffDate),
+            eq(crewAssignments.signOffDate, ''),
+            gte(crewAssignments.signOffDate, firstDay)
           )
         )
-      );
+      )
+    );
 
-    const matches = rows.filter(r => {
-      const id = r.empNo || r.crewUuid;
-      return id === crewMemberId;
-    });
+  const matches = rows.filter(r => {
+    const id = r.empNo || r.crewUuid;
+    return id === crewMemberId;
+  });
 
-    return matches.map(m => ({
-      signOnDate: m.signOnDate || null,
-      signOffDate: (m.signOffDate && m.signOffDate !== '') ? m.signOffDate : null,
-      isCurrent: m.isCurrent ?? null,
-    }));
-  } catch (error) {
-    console.error('Failed to get crew assignments for month:', error);
-    return [];
-  }
+  return matches.map(m => ({
+    signOnDate: m.signOnDate || null,
+    signOffDate: (m.signOffDate && m.signOffDate !== '') ? m.signOffDate : null,
+    isCurrent: m.isCurrent ?? null,
+  }));
 }
 
 // Serialise writers for one vessel/month so concurrent saves cannot create
@@ -277,12 +273,9 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
     const assignments = await getCrewAssignmentsForMonth(crewMemberId, vesselId, monthYear);
     const { firstDay, lastDay } = getMonthBounds(monthYear);
 
-    let variableTasks: Awaited<ReturnType<typeof variableTasksRepository.findAll>> = [];
-    try {
-      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear, isDraft: false });
-    } catch (e) {
-      console.error('Failed to fetch variable tasks during postSaveSync:', e);
-    }
+    // RH-05: errors propagate (outer catch logs and rethrows) so the daily write
+    // and the summaries roll back together.
+    const variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear, isDraft: false });
 
     const existingCrewRecords = await crewRecordsRepository.findAll({
       vesselId,
@@ -357,20 +350,14 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
 
     let datelineAdjustments: { day: number; type: 'advanced' | 'retarded' }[] = [];
 
-    try {
-      const adjRows = await datelineRepository.findAll({
-        vesselId,
-        monthValue: monthYear,
-      });
-
-      if (adjRows.length > 0) {
-        datelineAdjustments = JSON.parse(adjRows[0].adjustments) || [];
-      }
-    } catch (e) {
-      console.error(
-        'Failed to load date line adjustments during postSaveSync:',
-        e
-      );
+    // RH-05: a failed load or bad JSON must fail the save, not silently drop
+    // the adjustments and skew the recording percentage.
+    const adjRows = await datelineRepository.findAll({
+      vesselId,
+      monthValue: monthYear,
+    });
+    if (adjRows.length > 0) {
+      datelineAdjustments = JSON.parse(adjRows[0].adjustments) || [];
     }
 
     // Outer loop: each rank period (daily record). Inner loop: each assignment.
@@ -419,14 +406,11 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
           ? buildSignOnOffInfo(assignment.signOnDate, effectiveSignOff, firstDay, lastDay)
           : null;
 
-        let activityConflicting = false;
-        if (variableTasks.length > 0) {
-          try {
-            activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
-          } catch (e) {
-            console.error('Failed to detect activity conflict during postSaveSync:', e);
-          }
-        }
+        // RH-05: errors propagate so the save rolls back instead of writing a
+        // summary with the conflict flag silently false.
+        const activityConflicting = variableTasks.length > 0
+          ? detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear)
+          : false;
 
         // Match the crew summary row preferring same rank + sign-on/off, then
         // sign-on/off alone (legacy behaviour), then any unused row.
