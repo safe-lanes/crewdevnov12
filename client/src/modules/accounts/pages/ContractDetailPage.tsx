@@ -1,4 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { hasMeaningfulPayItemChange } from "@shared/v2/accounts/contractPayItemRules";
+import {
+  contractWindow,
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -95,7 +101,7 @@ interface PayItemForm {
 const EMPTY_FORM: PayItemForm = {
   epeUuid: null,
   payElementUuid: "",
-  overrideMode: "add_element",
+  overrideMode: "",
   amount: "",
   rate: "",
   fromMonth: "",
@@ -250,13 +256,34 @@ export default function ContractDetailPage({
   const setTiming = async (
     payElementUuid: string,
     value: string | null,
+    explicitPayElementSelection = false,
   ) => {
+    if (
+      explicitPayElementSelection &&
+      value !== null &&
+      !timingRows.some((row) => row.payElementUuid === payElementUuid)
+    ) {
+      const reason = getEffectivePeriodReason(
+        elementByUuid.get(payElementUuid),
+        contractWindow(engagement ?? {}),
+      );
+
+      if (reason) {
+        toast({
+          title: "Cannot select element",
+          description: reason,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setSavingTiming(true);
     try {
       await accountsApiV2.engagements.setTimingOverride(
         engagementUuid,
         payElementUuid,
         value,
+        explicitPayElementSelection,
       );
       invalidate();
       toast({ title: "Payment timing updated" });
@@ -293,14 +320,116 @@ export default function ContractDetailPage({
   const [savingItem, setSavingItem] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const clearInvalidSelection = useRef(false);
+  const isNewPayItem = !!itemForm && !itemForm.epeUuid;
+  const selectedCalcMethod =
+    elementByUuid.get(itemForm?.payElementUuid ?? "")?.calcMethod;
+  const newItemValueKind =
+    itemForm?.overrideMode &&
+    itemForm.overrideMode !== "suppress_element" &&
+    itemForm.payElementUuid
+      ? selectedCalcMethod === "rate_times_qty"
+        ? "rate"
+        : selectedCalcMethod === "percentage_of_base"
+          ? "percentage"
+          : ["fixed_amount", "manual_entry", "scale_lookup"].includes(
+              selectedCalcMethod,
+            )
+            ? "amount"
+            : null
+      : null;
+  const showItemAmount =
+    !isNewPayItem ||
+    newItemValueKind === "amount" ||
+    newItemValueKind === "percentage";
+  const showItemRate = !isNewPayItem || newItemValueKind === "rate";
+  const itemWindow = {
+    effectiveFrom: itemForm?.fromMonth ? monthStart(itemForm.fromMonth) : null,
+    effectiveTo: itemForm?.toMonth ? monthEnd(itemForm.toMonth) : null,
+  };
+  const optionsParams = new URLSearchParams({
+    overrideMode: itemForm?.overrideMode ?? "add_element",
+  });
+  if (itemWindow.effectiveFrom) optionsParams.set("effectiveFrom", itemWindow.effectiveFrom);
+  if (itemWindow.effectiveTo) optionsParams.set("effectiveTo", itemWindow.effectiveTo);
+  if (itemForm?.epeUuid) optionsParams.set("editingItemUuid", itemForm.epeUuid);
+  const optionsUrl = `${ACCOUNTS_BASE}/engagements/${engagementUuid}/pay-item-options?${optionsParams}`;
+  const itemOptions = useQuery<{
+    options: Record<string, { disabled: boolean; reason: string | null }>;
+  }>({
+    queryKey: [optionsUrl],
+    enabled: !!itemForm && !!itemForm.overrideMode && itemFromValid && itemToValid,
+    staleTime: 0,
+  });
+  const originalItem = overrides.find((row) => row.epeUuid === itemForm?.epeUuid);
+  const itemPeriodReason = itemForm
+    ? getEffectivePeriodReason(
+        elementByUuid.get(itemForm.payElementUuid),
+        contractWindow(engagement ?? {}, itemWindow),
+      )
+    : null;
+
+  const itemPeriodBlocked =
+    !!itemForm &&
+    !!itemPeriodReason &&
+    selectionChanged(originalItem, {
+      payElementUuid: itemForm.payElementUuid,
+      ...itemWindow,
+    });
+  const meaningfulItemEdit = !originalItem || !itemForm ||
+    hasMeaningfulPayItemChange(originalItem, {
+      payElementUuid: itemForm.payElementUuid,
+      overrideMode: itemForm.overrideMode,
+      amount: itemForm.overrideMode === "suppress_element" ? null : itemForm.amount || null,
+      rate: itemForm.overrideMode === "suppress_element" ? null : itemForm.rate || null,
+      ...itemWindow,
+    });
+  const checkingEligibility = !itemForm?.overrideMode || itemOptions.isFetching || !itemOptions.data ||
+    itemOptions.isError || !itemFromValid || !itemToValid;
+  const selectedOption = itemOptions.data?.options[itemForm?.payElementUuid ?? ""];
+  const itemEligibilityBlocked =
+    (
+      meaningfulItemEdit &&
+      (checkingEligibility || !selectedOption || selectedOption.disabled)
+    ) ||
+    itemPeriodBlocked;
+  useEffect(() => {
+    if (!clearInvalidSelection.current || checkingEligibility || !itemForm) return;
+    clearInvalidSelection.current = false;
+    const choice = itemOptions.data?.options[itemForm.payElementUuid];
+    if (
+      itemForm.payElementUuid &&
+      (!choice || choice.disabled || itemPeriodBlocked)
+    ) {
+      setItemForm(current => current ? {
+        ...current,
+        payElementUuid: "",
+        ...(!current.epeUuid ? { amount: "", rate: "" } : {}),
+      } : current);
+      toast({
+        title: "Choose an eligible pay element",
+        description:
+          choice?.reason ??
+          itemPeriodReason ??
+          "This element is unavailable for the selection.",
+      });
+    }
+  }, [optionsUrl, checkingEligibility, itemOptions.data, itemForm, toast, itemPeriodBlocked, itemPeriodReason]);
+  const invalidateItemOptions = () => queryClient.invalidateQueries({
+    predicate: query => String(query.queryKey[0]).startsWith(
+      `${ACCOUNTS_BASE}/engagements/${engagementUuid}/pay-item-options?`,
+    ),
+  });
 
   const openNewItem = () => {
+    clearInvalidSelection.current = false;
     setItemFromValid(true);
     setItemToValid(true);
     setItemMonthSession((session) => session + 1);
     setItemForm({ ...EMPTY_FORM });
   };
   const openEditItem = (o: any) => {
+    clearInvalidSelection.current = false;
     setItemFromValid(true);
     setItemToValid(true);
     setItemMonthSession((session) => session + 1);
@@ -321,7 +450,8 @@ export default function ContractDetailPage({
       !itemForm ||
       !itemForm.payElementUuid ||
       !itemFromValid ||
-      !itemToValid
+      !itemToValid ||
+      itemEligibilityBlocked
     ) return;
     setSavingItem(true);
     try {
@@ -346,6 +476,7 @@ export default function ContractDetailPage({
         await accountsApiV2.engagements.createPayItem(engagementUuid, payload);
       }
       invalidate();
+      invalidateItemOptions();
       setItemForm(null);
       toast({ title: "Contract pay item saved" });
     } catch (err) {
@@ -361,6 +492,7 @@ export default function ContractDetailPage({
     try {
       await accountsApiV2.engagements.deletePayItem(deleteTarget.epeUuid);
       invalidate();
+      invalidateItemOptions();
       setDeleteTarget(null);
       toast({ title: "Contract pay item removed" });
     } catch (err) {
@@ -637,15 +769,23 @@ export default function ContractDetailPage({
                         (e) =>
                           e.status === "active" || e.status === "inactive",
                       )
-                      .map((e) => (
-                        <SelectItem
-                          key={e.payElementUuid}
-                          value={e.payElementUuid}
-                          disabled={e.status === "inactive"}
-                        >
-                          {e.code} — {e.name}
-                        </SelectItem>
-                      ))}
+                      .map((e) => {
+                        const periodReason = getEffectivePeriodReason(
+                          e,
+                          contractWindow(engagement ?? {}),
+                        );
+
+                        return (
+                          <SelectItem
+                            key={e.payElementUuid}
+                            value={e.payElementUuid}
+                            disabled={e.status === "inactive" || !!periodReason}
+                          >
+                            {e.code} — {e.name}
+                            {periodReason ? ` (${periodReason})` : ""}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>
@@ -669,7 +809,7 @@ export default function ContractDetailPage({
                 variant="outline"
                 disabled={!timingElementUuid || savingTiming}
                 onClick={() => {
-                  setTiming(timingElementUuid, timingValue);
+                  setTiming(timingElementUuid, timingValue, true);
                   setTimingElementUuid("");
                 }}
                 data-testid="button-add-timing"
@@ -1010,44 +1150,22 @@ export default function ContractDetailPage({
           {itemForm && (
             <div className="space-y-3">
               <div>
-                <Label>Pay element</Label>
-                <Select
-                  value={itemForm.payElementUuid}
-                  onValueChange={(v) =>
-                    setItemForm({ ...itemForm, payElementUuid: v })
-                  }
-                >
-                  <SelectTrigger data-testid="select-pay-item-element">
-                    <SelectValue placeholder="Choose element" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {payElements
-                      .filter(
-                        (e) =>
-                          e.status === "active" || e.status === "inactive",
-                      )
-                      .map((e) => (
-                        <SelectItem
-                          key={e.payElementUuid}
-                          value={e.payElementUuid}
-                          disabled={e.status === "inactive"}
-                        >
-                          {e.code} — {e.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label>Mode</Label>
                 <Select
                   value={itemForm.overrideMode}
-                  onValueChange={(v) =>
-                    setItemForm({ ...itemForm, overrideMode: v })
-                  }
+                  onValueChange={(v) => {
+                    clearInvalidSelection.current = true;
+                    setItemForm({
+                      ...itemForm,
+                      overrideMode: v,
+                      ...(isNewPayItem && v === "suppress_element"
+                        ? { amount: "", rate: "" }
+                        : {}),
+                    });
+                  }}
                 >
                   <SelectTrigger data-testid="select-pay-item-mode">
-                    <SelectValue />
+                    <SelectValue placeholder="select a mode" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(MODE_LABEL).map(([v, l]) => (
@@ -1061,36 +1179,115 @@ export default function ContractDetailPage({
                   {MODE_EXPLANATION[itemForm.overrideMode]}
                 </p>
               </div>
-              {itemForm.overrideMode !== "suppress_element" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="item-amount">Monthly amount</Label>
-                    <Input
-                      id="item-amount"
-                      type="number"
-                      step="0.01"
-                      value={itemForm.amount}
-                      onChange={(e) =>
-                        setItemForm({ ...itemForm, amount: e.target.value })
-                      }
-                      data-testid="input-pay-item-amount"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="item-rate">Rate (per unit)</Label>
-                    <Input
-                      id="item-rate"
-                      type="number"
-                      step="0.0001"
-                      value={itemForm.rate}
-                      onChange={(e) =>
-                        setItemForm({ ...itemForm, rate: e.target.value })
-                      }
-                      data-testid="input-pay-item-rate"
-                    />
-                  </div>
-                </div>
+              <div>
+                <Label>Pay element</Label>
+                <Select
+                  value={itemForm.payElementUuid}
+                  disabled={!itemForm.overrideMode}
+                  onValueChange={(v) =>
+                    setItemForm({
+                      ...itemForm,
+                      payElementUuid: v,
+                      ...(isNewPayItem && v !== itemForm.payElementUuid
+                        ? { amount: "", rate: "" }
+                        : {}),
+                    })
+                  }
+                >
+                  <SelectTrigger data-testid="select-pay-item-element">
+                    <SelectValue placeholder="Choose element" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {payElements
+                      .filter(
+                        (e) =>
+                          e.status === "active" || e.status === "inactive",
+                      )
+                      .map((e) => {
+                        const option = itemOptions.data?.options[e.payElementUuid];
+                        const periodReason = getEffectivePeriodReason(
+                          e,
+                          contractWindow(engagement ?? {}, itemWindow),
+                        );
+                        const reason =
+                          option?.reason ??
+                          periodReason ??
+                          (e.status === "inactive" ? "Inactive" : null);
+
+                        return (
+                          <SelectItem
+                            key={e.payElementUuid}
+                            value={e.payElementUuid}
+                            disabled={
+                              checkingEligibility ||
+                              option?.disabled !== false ||
+                              !!periodReason
+                            }
+                          >
+                            {e.code} — {e.name}
+                            {reason ? ` (${reason})` : ""}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+              </div>
+              {itemOptions.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  Unable to check pay elements. Close and reopen this form to retry.
+                </p>
               )}
+              {meaningfulItemEdit && selectedOption?.disabled && (
+                <p role="alert" className="text-sm text-destructive">{selectedOption.reason}</p>
+              )}
+              {itemPeriodBlocked && (
+                <p role="alert" className="text-sm text-destructive">
+                  {itemPeriodReason}
+                </p>
+              )}
+              {itemForm.overrideMode !== "suppress_element" &&
+                (showItemAmount || showItemRate) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {showItemAmount && (
+                      <div>
+                        <Label htmlFor="item-amount">
+                          {isNewPayItem
+                            ? newItemValueKind === "percentage"
+                              ? "Percentage"
+                              : "Amount"
+                            : "Monthly amount"}
+                        </Label>
+                        <Input
+                          id="item-amount"
+                          type="number"
+                          step="0.01"
+                          value={itemForm.amount}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, amount: e.target.value })
+                          }
+                          data-testid="input-pay-item-amount"
+                        />
+                      </div>
+                    )}
+                    {showItemRate && (
+                      <div>
+                        <Label htmlFor="item-rate">
+                          {isNewPayItem ? "Rate" : "Rate (per unit)"}
+                        </Label>
+                        <Input
+                          id="item-rate"
+                          type="number"
+                          step="0.0001"
+                          value={itemForm.rate}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, rate: e.target.value })
+                          }
+                          data-testid="input-pay-item-rate"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="item-from">Effective from (month)</Label>
@@ -1109,9 +1306,10 @@ export default function ContractDetailPage({
                       }
                     }}
                     value={itemForm.fromMonth}
-                    onChange={(e) =>
-                      setItemForm({ ...itemForm, fromMonth: e.target.value })
-                    }
+                    onChange={(e) => {
+                      clearInvalidSelection.current = true;
+                      setItemForm({ ...itemForm, fromMonth: e.target.value });
+                    }}
                     onMonthDraftChange={() => {
                       setItemFromValid(
                         itemFromInputRef.current?.dataset.monthValid === "true",
@@ -1137,9 +1335,10 @@ export default function ContractDetailPage({
                       }
                     }}
                     value={itemForm.toMonth}
-                    onChange={(e) =>
-                      setItemForm({ ...itemForm, toMonth: e.target.value })
-                    }
+                    onChange={(e) => {
+                      clearInvalidSelection.current = true;
+                      setItemForm({ ...itemForm, toMonth: e.target.value });
+                    }}
                     onMonthDraftChange={() => {
                       setItemToValid(
                         itemToInputRef.current?.dataset.monthValid === "true",
@@ -1177,6 +1376,7 @@ export default function ContractDetailPage({
                 !itemFromValid ||
                 !itemToValid ||
                 !itemForm?.payElementUuid ||
+                itemEligibilityBlocked ||
                 (itemForm?.overrideMode !== "suppress_element" &&
                   !itemForm?.amount &&
                   !itemForm?.rate)

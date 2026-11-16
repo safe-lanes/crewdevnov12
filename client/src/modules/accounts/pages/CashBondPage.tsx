@@ -1,7 +1,8 @@
+import { monthStart, monthEnd } from "@shared/v2/accounts/wageScaleRevisionDates";
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
-import type { ColDef } from "ag-grid-community";
+import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
@@ -47,7 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Eye, Ban, Lock, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Ban, Lock, Info, Download } from "lucide-react";
 import {
   accountsApiV2,
   parseApiError,
@@ -68,10 +69,10 @@ const MENU = "Account Allotments";
 
 type CashBondDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "calendarDisabledPeriods" | "className"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "calendarDisabledPeriods" | "className" | "min" | "max" | "calendarMonth"
 >;
 
-function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInputProps) {
+function CashBondDateInput({ onDraftValidityChange, calendarMonth, ...props }: CashBondDateInputProps) {
   // Keep an unsupported saved value on its original input for this dialog session.
   const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
   const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
@@ -101,6 +102,7 @@ function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInpu
       <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
         <FormattedDateInput
           {...props}
+          calendarMonth={calendarMonth}
           mode="date"
           className={`min-w-0 ${props.className || "border-input"} text-base md:text-sm`}
           acceptCalendarInputEvents
@@ -170,9 +172,11 @@ function statusBadgeClass(status: string): string {
 export function AdvancesTab({
   vesselUuid,
   period,
+  statusFilter = "all",
 }: {
   vesselUuid: string;
   period: string;
+  statusFilter?: string;
 }) {
   const { toast } = useToast();
   const { canCreate, canEdit } = usePermissions();
@@ -181,6 +185,8 @@ export function AdvancesTab({
   const hasFilter = !!vesselUuid && !!period;
   const locks = useCashPeriodLock(vesselUuid, period);
   const lockContext = { vesselUuid, period };
+  const periodStart = period ? monthStart(period) : undefined;
+  const periodEnd = period ? monthEnd(period) : undefined;
 
   const listKey = [`${ACCOUNTS_BASE}/advances`];
   const { data: advances = [], isLoading } = useQuery<any[]>({
@@ -195,9 +201,10 @@ export function AdvancesTab({
       (advance) =>
         advance.vesselUuid === vesselUuid &&
         (!advance.validFrom || advance.validFrom <= period) &&
-        (!advance.validTo || advance.validTo >= period),
+        (!advance.validTo || advance.validTo >= period) &&
+        (statusFilter === "all" || advance.displayStatus === statusFilter),
     );
-  }, [advances, hasFilter, vesselUuid, period]);
+  }, [advances, hasFilter, vesselUuid, period, statusFilter]);
 
   const { data: reviewRows = [] } = useQuery<any[]>({
     queryKey: [
@@ -249,6 +256,12 @@ export function AdvancesTab({
   }
   if (!form.recoveryAmount) {
     requiredErrors.recoveryAmount = "Monthly Deduction is required.";
+  }
+  if (
+    form.requestDate && periodStart && periodEnd &&
+    (form.requestDate < periodStart || form.requestDate > periodEnd)
+  ) {
+    requiredErrors.requestDate = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -369,6 +382,28 @@ export function AdvancesTab({
       setCloseTarget(null);
       setCloseRemark("");
     }
+  };
+
+  const gridApiRef = useRef<GridApi | null>(null);
+  const onGridReady = (e: GridReadyEvent) => {
+    gridApiRef.current = e.api;
+  };
+  const exportCsv = () => {
+    const api = gridApiRef.current;
+    if (
+      !hasFilter ||
+      isLoading ||
+      filteredAdvances.length === 0 ||
+      !api ||
+      api.isDestroyed()
+    ) return;
+    api.exportDataAsCsv({
+      fileName: "advances.csv",
+      processCellCallback: (p) =>
+        p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? ""),
+    });
   };
 
   const cols: ColDef[] = useMemo(
@@ -511,26 +546,40 @@ export function AdvancesTab({
             <Lock size={12} /> Period locked — read only
           </Badge>
         )}
-        {mayCreate && (
+        <div className="ml-auto flex gap-2">
           <Button
             size="sm"
-            onClick={() => {
-              setValidationAttempted(false);
-              requestDateIsValid.current = true;
-              setDateFormVersion((version) => version + 1);
-              setForm({
-                ...emptyAdvanceForm,
-                requestDate: locks.getDefaultDate(),
-              });
-              setDialogOpen(true);
-            }}
-            className="ml-auto bg-[#16569e] hover:bg-[#1e5fa8]"
-            data-testid="button-add-advance"
-            disabled={!hasFilter || locks.blocked}
+            variant="outline"
+            onClick={exportCsv}
+            disabled={!hasFilter || isLoading || filteredAdvances.length === 0}
+            data-testid="button-export-advances"
           >
-            <Plus size={14} className="mr-1" /> New Advance
+            <Download size={14} className="mr-1" /> Export
           </Button>
-        )}
+          {mayCreate && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setValidationAttempted(false);
+                requestDateIsValid.current = true;
+                setDateFormVersion((version) => version + 1);
+                const defaultDate = locks.getDefaultDate();
+                setForm({
+                  ...emptyAdvanceForm,
+                  requestDate: periodStart && defaultDate.slice(0, 7) !== period
+                    ? periodStart
+                    : defaultDate,
+                });
+                setDialogOpen(true);
+              }}
+              className="bg-[#16569e] hover:bg-[#1e5fa8]"
+              data-testid="button-add-advance"
+              disabled={!hasFilter || locks.blocked}
+            >
+              <Plus size={14} className="mr-1" /> New Advance
+            </Button>
+          )}
+        </div>
       </div>
 
       {locks.notice && (
@@ -552,7 +601,12 @@ export function AdvancesTab({
             Loading advances…
           </div>
         ) : (
-          <AgGridTable rowData={filteredAdvances} columnDefs={cols} height="440px" />
+          <AgGridTable
+            rowData={filteredAdvances}
+            columnDefs={cols}
+            onGridReady={onGridReady}
+            height="440px"
+          />
         )}
       </div>
 
@@ -637,6 +691,9 @@ export function AdvancesTab({
               <CashBondDateInput
                 key={dateFormVersion}
                 value={form.requestDate}
+                min={periodStart}
+                max={periodEnd}
+                calendarMonth={period || undefined}
                 onChange={(e) => set("requestDate", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   requestDateIsValid.current = valid;
@@ -644,11 +701,15 @@ export function AdvancesTab({
                 data-testid="input-advance-date"
                 calendarDisabledPeriods={locks.calendarDisabledPeriods}
                 className={
-                  validationAttempted && locks.isDateBlocked(form.requestDate)
+                  errors.requestDate ||
+                  (validationAttempted && locks.isDateBlocked(form.requestDate))
                     ? "border-red-500"
                     : undefined
                 }
               />
+              {errors.requestDate && (
+                <p className="text-xs text-red-500" role="alert">{errors.requestDate}</p>
+              )}
               {validationAttempted && locks.isDateBlocked(form.requestDate) && (
                 <p role="alert" className="text-xs text-red-500">
                   {LOCKED_DATE_INLINE}
@@ -927,6 +988,7 @@ interface BondForm {
   deductionAmount: string;
   currency: string;
   saleDate: string;
+  remarks: string;
 }
 
 const emptyBondForm: BondForm = {
@@ -938,6 +1000,7 @@ const emptyBondForm: BondForm = {
   deductionAmount: "",
   currency: "USD",
   saleDate: "",
+  remarks: "",
 };
 
 export function BondTab({
@@ -953,6 +1016,8 @@ export function BondTab({
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
   const hasFilter = !!vesselUuid && !!period;
+  const periodStart = period ? monthStart(period) : undefined;
+  const periodEnd = period ? monthEnd(period) : undefined;
 
   const listKey = [
     `${ACCOUNTS_BASE}/bond-items?vesselUuid=${vesselUuid}&period=${period}`,
@@ -1071,9 +1136,12 @@ export function BondTab({
     setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
+    const defaultDate = new Date().toISOString().slice(0, 10);
     setForm({
       ...emptyBondForm,
-      saleDate: new Date().toISOString().slice(0, 10),
+      saleDate: periodStart && defaultDate.slice(0, 7) !== period
+        ? periodStart
+        : defaultDate,
     });
     setDialogOpen(true);
   };
@@ -1091,6 +1159,7 @@ export function BondTab({
       deductionAmount: row.deductionAmount ?? "",
       currency: row.currency ?? "USD",
       saleDate: row.saleDate ?? "",
+      remarks: row.remarks ?? "",
     });
     setDialogOpen(true);
   };
@@ -1107,6 +1176,12 @@ export function BondTab({
   }
   if (!String(form.unitPrice ?? "").trim()) {
     requiredErrors.unitPrice = "Unit Price is required.";
+  }
+  if (
+    !editing && form.saleDate && periodStart && periodEnd &&
+    (form.saleDate < periodStart || form.saleDate > periodEnd)
+  ) {
+    requiredErrors.saleDate = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -1139,6 +1214,7 @@ export function BondTab({
         deductionAmount: form.deductionAmount || null,
         currency: form.currency,
         saleDate: form.saleDate || null,
+        remarks: form.remarks.trim() || null,
       };
       if (editing) {
         await accountsApiV2.bondItems.update(editing.bondItemUuid, payload);
@@ -1183,6 +1259,28 @@ export function BondTab({
     } finally {
       setDeleting(false);
     }
+  };
+
+  const gridApiRef = useRef<GridApi | null>(null);
+  const onGridReady = (e: GridReadyEvent) => {
+    gridApiRef.current = e.api;
+  };
+  const exportCsv = () => {
+    const api = gridApiRef.current;
+    if (
+      !hasFilter ||
+      isLoading ||
+      items.length === 0 ||
+      !api ||
+      api.isDestroyed()
+    ) return;
+    api.exportDataAsCsv({
+      fileName: "bond-items.csv",
+      processCellCallback: (p) =>
+        p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? ""),
+    });
   };
 
   const cols: ColDef[] = useMemo(
@@ -1290,7 +1388,16 @@ export function BondTab({
             <Lock size={12} /> Period locked — read only
           </Badge>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportCsv}
+            disabled={!hasFilter || isLoading || items.length === 0}
+            data-testid="button-export-bond"
+          >
+            <Download size={14} className="mr-1" /> Export
+          </Button>
           {mayCreate && hasFilter && !isLocked && (
             <Button
               size="sm"
@@ -1357,7 +1464,12 @@ export function BondTab({
               Loading bond items…
             </div>
           ) : (
-            <AgGridTable rowData={items} columnDefs={cols} height="400px" />
+            <AgGridTable
+              rowData={items}
+              columnDefs={cols}
+              onGridReady={onGridReady}
+              height="400px"
+            />
           )}
         </div>
       )}
@@ -1490,11 +1602,26 @@ export function BondTab({
               <CashBondDateInput
                 key={dateFormVersion}
                 value={form.saleDate}
+                min={!editing ? periodStart : undefined}
+                max={!editing ? periodEnd : undefined}
+                calendarMonth={!editing ? period || undefined : undefined}
                 onChange={(e) => set("saleDate", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   saleDateIsValid.current = valid;
                 }}
                 data-testid="input-bond-sale-date"
+              />
+              {errors.saleDate && (
+                <p className="text-xs text-red-500" role="alert">{errors.saleDate}</p>
+              )}
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Remarks</Label>
+              <Textarea
+                rows={2}
+                value={form.remarks}
+                onChange={(e) => set("remarks", e.target.value)}
+                data-testid="input-bond-remarks"
               />
             </div>
           </div>

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
-import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
+import type {
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  ProcessCellForExportParams,
+} from "ag-grid-community";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -413,10 +418,34 @@ export default function PayslipsPage() {
     const api = gridApiRef.current;
     if (!api) return;
     const fileName = `payslips-${getVesselName(vesselUuid) ?? vesselUuid.slice(0, 8)}-${period}`;
+    const processCellCallback = (p: ProcessCellForExportParams): string => {
+      if (p.column.getColId() === "isDraft") {
+        return p.value ? "Draft" : "Final";
+      }
+      // Preserve Excel's existing numeric-cell handling.
+      const isNumeric =
+        typeof p.value === "bigint" ||
+        (isFinite(p.value) &&
+          p.value !== "" &&
+          !isNaN(parseFloat(p.value)));
+      if (p.type === "excel" && isNumeric) {
+        return String(p.value);
+      }
+      // Preserve existing export formatting for every other column.
+      return p.column.getColDef().useValueFormatterForExport === false
+        ? String(p.value ?? "")
+        : (p.formatValue(p.value) ?? "");
+    };
     if (typeof (api as any).exportDataAsExcel === "function") {
-      (api as any).exportDataAsExcel({ fileName: `${fileName}.xlsx` });
+      (api as any).exportDataAsExcel({
+        fileName: `${fileName}.xlsx`,
+        processCellCallback,
+      });
     } else {
-      api.exportDataAsCsv({ fileName: `${fileName}.csv` });
+      api.exportDataAsCsv({
+        fileName: `${fileName}.csv`,
+        processCellCallback,
+      });
     }
   };
 

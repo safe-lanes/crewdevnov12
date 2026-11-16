@@ -4,6 +4,9 @@ import { getActor, getAuditUserUuid } from "./_auth";
 import { monthlyTransactionsService } from "../services";
 import { assertVesselScope } from "../services/vesselScope";
 import { insertAccMonthlyTransactionV2Schema } from "../../../../shared/v2/accounts/types";
+import type { InsertAccMonthlyTransactionV2 } from "../../../../shared/v2/accounts/types";
+import { monthWindow } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "../services/payElementEffectivePeriod";
 
 const createSchema = insertAccMonthlyTransactionV2Schema.omit({ txnUuid: true });
 const updateSchema = insertAccMonthlyTransactionV2Schema
@@ -11,6 +14,7 @@ const updateSchema = insertAccMonthlyTransactionV2Schema
   .omit({ txnUuid: true });
 
 const batchSchema = z.object({
+  explicitPayElementSelection: z.boolean().optional(),
   creates: z.array(createSchema).optional(),
   updates: z
     .array(updateSchema.extend({ txnUuid: z.string().min(1) }))
@@ -35,6 +39,41 @@ function handleError(res: Response, error: any, fallback: string) {
   }
   console.error(fallback, error);
   res.status(500).json({ error: fallback });
+}
+
+async function validateExplicitSelection(
+  data: Partial<InsertAccMonthlyTransactionV2>,
+  actor: ReturnType<typeof getActor>,
+  txnUuid?: string,
+): Promise<void> {
+  const existing = txnUuid
+    ? await monthlyTransactionsService.getByUuid(txnUuid)
+    : undefined;
+
+  if (actor.vesselUser && existing) {
+    assertVesselScope(actor, existing.vesselUuid);
+  }
+
+  const next = { ...existing, ...data };
+
+  if (actor.vesselUser) {
+    assertVesselScope(actor, next.vesselUuid);
+  }
+
+  if (
+    existing &&
+    next.payElementUuid === existing.payElementUuid &&
+    next.period === existing.period
+  ) return;
+
+  let window: ReturnType<typeof monthWindow>;
+  try {
+    window = monthWindow(next.period);
+  } catch (error) {
+    throw Object.assign(error as Error, { code: "VALIDATION" });
+  }
+
+  await assertEffectivePayElement(next.payElementUuid, window);
 }
 
 export const monthlyTransactionsController = {
@@ -83,6 +122,7 @@ export const monthlyTransactionsController = {
           details: parsed.error.issues,
         });
       }
+      await validateExplicitSelection(parsed.data, getActor(req));
       const record = await monthlyTransactionsService.create(
         {
           ...parsed.data,
@@ -106,9 +146,22 @@ export const monthlyTransactionsController = {
           details: parsed.error.issues,
         });
       }
+      const { explicitPayElementSelection, ...batch } = parsed.data;
+
+      if (explicitPayElementSelection) {
+        const actor = getActor(req);
+
+        for (const update of batch.updates ?? []) {
+          await validateExplicitSelection(update, actor, update.txnUuid);
+        }
+
+        for (const create of batch.creates ?? []) {
+          await validateExplicitSelection(create, actor);
+        }
+      }
       const result = await monthlyTransactionsService.batchSave(
         {
-          ...parsed.data,
+          ...batch,
           auditUserUuid: getAuditUserUuid(req),
         },
         getActor(req),
@@ -146,6 +199,11 @@ export const monthlyTransactionsController = {
           details: parsed.error.issues,
         });
       }
+      await validateExplicitSelection(
+        parsed.data,
+        getActor(req),
+        req.params.uuid,
+      );
       const record = await monthlyTransactionsService.update(
         req.params.uuid,
         {

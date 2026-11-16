@@ -4,6 +4,8 @@ import type {
   InsertAccCbaReferenceV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import { selectionChanged } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "./payElementEffectivePeriod";
 
 const cbaReferenceRepository = new CbaReferenceRepository();
 
@@ -26,6 +28,7 @@ export const cbaReferenceService = {
     },
   ): Promise<AccCbaReferenceV2> {
     if (!data.cbaName) throw new Error("CBA name is required");
+    await assertEffectivePayElement(data.payElementUuid, data);
     const dataWithAudit = applyAuditUser(data, true);
     return cbaReferenceRepository.create(dataWithAudit);
   },
@@ -34,7 +37,12 @@ export const cbaReferenceService = {
     cbaRefUuid: string,
     data: Partial<InsertAccCbaReferenceV2> & { auditUserUuid?: string },
   ): Promise<AccCbaReferenceV2> {
-    await this.getByUuid(cbaRefUuid);
+    const existing = await this.getByUuid(cbaRefUuid);
+    const merged = { ...existing, ...data };
+
+    if (selectionChanged(existing, merged)) {
+      await assertEffectivePayElement(merged.payElementUuid, merged);
+    }
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await cbaReferenceRepository.update(
       cbaRefUuid,

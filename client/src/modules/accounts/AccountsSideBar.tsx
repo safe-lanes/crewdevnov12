@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import {
   Coins,
   Grid3x3,
@@ -143,6 +144,38 @@ export default function AccountsSideBar({
   const sidebarWidth = layoutConfig.sidebarWidth;
   const itemHeight = isCompact ? "56px" : "79px";
 
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const payElementsRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (selected !== "pay-elements") return;
+
+    const sidebar = sidebarRef.current;
+    const item = payElementsRef.current;
+    if (!sidebar || !item) return;
+
+    const revealPayElements = () => {
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+      const top = sidebarRect.top + sidebar.clientTop;
+      const bottom = top + sidebar.clientHeight;
+
+      if (itemRect.top < top) {
+        sidebar.scrollTop += itemRect.top - top;
+      } else if (itemRect.bottom > bottom) {
+        sidebar.scrollTop += itemRect.bottom - bottom;
+      }
+    };
+
+    revealPayElements();
+
+    const observer = new ResizeObserver(revealPayElements);
+    observer.observe(sidebar);
+    observer.observe(item);
+
+    return () => observer.disconnect();
+  }, [selected, allowedPages]);
+
   const sections = ACTIVE_SECTIONS.map((s) => ({
     ...s,
     items: s.items.filter((i) => allowedPages.includes(i.page)),
@@ -151,6 +184,7 @@ export default function AccountsSideBar({
   return (
     <TooltipProvider>
       <aside
+        ref={sidebarRef}
         className="fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50 flex flex-col overflow-y-auto bg-[#16569e] transition-all duration-200"
         style={{ width: `${sidebarWidth}px` }}
         data-testid="accounts-sidebar"
@@ -180,6 +214,7 @@ export default function AccountsSideBar({
               <Tooltip key={item.page} delayDuration={0}>
                 <TooltipTrigger asChild>
                   <div
+                    ref={item.page === "pay-elements" ? payElementsRef : undefined}
                     className={`w-full flex flex-col items-center justify-center cursor-pointer flex-shrink-0 transition-all duration-200 ${
                       selected === item.page
                         ? "bg-[#52baf3]"

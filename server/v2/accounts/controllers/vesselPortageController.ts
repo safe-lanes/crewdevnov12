@@ -3,6 +3,13 @@ import { z } from "zod";
 import { getActor } from "./_auth";
 import { vesselPortageService } from "../services";
 import { assertVesselScope } from "../services/vesselScope";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { accMonthlyTransactionsV2 } from "../../../../shared/v2/accounts/schema";
+import { EngineReads } from "../engine/engineReads";
+import { monthInfo } from "../engine/periodMath";
+import { readApplicableWageValues } from "../engine/wageEngineService";
+import { protectedTxnUuids } from "../repositories/wageRevisionProtectionRepository";
 
 const returnSchema = z.object({
   comment: z.string().trim().min(1, "A comment is required to return a month"),
@@ -21,6 +28,36 @@ function handleError(res: Response, error: any, fallback: string) {
 }
 
 export const vesselPortageController = {
+  async getWageValues(req: Request, res: Response) {
+    try {
+      const { vesselUuid, period } = req.params;
+      const actor = getActor(req);
+      assertVesselScope(actor, vesselUuid);
+      if (!/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
+        return res.status(400).json({ error: "Enter a valid period" });
+      }
+      const reads = new EngineReads();
+      const month = monthInfo(period);
+      const engagements = await reads.findEngagementsForVesselPeriod(
+        vesselUuid, month.monthStart, month.monthEnd,
+      );
+      const values = await readApplicableWageValues(period, engagements);
+      const txns = await getDb().select().from(accMonthlyTransactionsV2).where(and(
+        eq(accMonthlyTransactionsV2.vesselUuid, vesselUuid),
+        eq(accMonthlyTransactionsV2.period, period),
+        eq(accMonthlyTransactionsV2.isDeleted, false),
+      ));
+      const protectedIds = await protectedTxnUuids(txns);
+      const frozen = await reads.findFrozenSettlements(engagements.map(item => item.engagementUuid));
+      res.json({
+        values: Object.fromEntries(values),
+        protectedTxnUuids: [...protectedIds],
+        frozenEngagementUuids: frozen.map(item => item.engagementUuid),
+      });
+    } catch (error: any) {
+      handleError(res, error, "Failed to load applicable wage values");
+    }
+  },
   async submit(req: Request, res: Response) {
     try {
       const { vesselUuid, period } = req.params;

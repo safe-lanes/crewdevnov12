@@ -4,6 +4,10 @@ import type {
   InsertAccPayElementV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import {
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "../../../../shared/v2/accounts/payElementEffectivePeriod";
 
 const payElementsRepository = new PayElementsRepository();
 
@@ -24,7 +28,10 @@ function isUniqueViolation(e: any): boolean {
 }
 
 /** Enforce the conditional business rules on a fully-merged element state. */
-async function validateBusinessRules(merged: Partial<AccPayElementV2>) {
+async function validateBusinessRules(
+  merged: Partial<AccPayElementV2>,
+  previous?: Partial<AccPayElementV2>,
+) {
   if (merged.calcMethod === "percentage_of_base") {
     if (!merged.percentageBaseElementUuid) {
       throw validationError(
@@ -44,6 +51,25 @@ async function validateBusinessRules(merged: Partial<AccPayElementV2>) {
     );
     if (!base) {
       throw validationError("The selected base pay element does not exist");
+    }
+    const previousSelection =
+      previous?.calcMethod === "percentage_of_base"
+        ? {
+            payElementUuid: previous.percentageBaseElementUuid,
+            effectiveFrom: previous.effectiveFrom,
+            effectiveTo: previous.effectiveTo,
+          }
+        : undefined;
+
+    const nextSelection = {
+      payElementUuid: merged.percentageBaseElementUuid,
+      effectiveFrom: merged.effectiveFrom,
+      effectiveTo: merged.effectiveTo,
+    };
+
+    if (selectionChanged(previousSelection, nextSelection)) {
+      const reason = getEffectivePeriodReason(base, merged);
+      if (reason) throw validationError(reason);
     }
   }
   if (merged.nationalityConditional === true) {
@@ -143,7 +169,7 @@ export const payElementsService = {
   ): Promise<AccPayElementV2> {
     const existing = await this.getByUuid(payElementUuid);
     const merged = { ...existing, ...data } as Partial<AccPayElementV2>;
-    await validateBusinessRules(merged);
+    await validateBusinessRules(merged, existing);
     if (data.status === "inactive" && existing.status !== "inactive") {
       await assertNotReferencedByLiveScales(payElementUuid);
     }

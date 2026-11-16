@@ -44,6 +44,10 @@ import { formatDate, formatMoney, unknownVesselLabel } from "../accountsFormat";
 import { formatPeriod } from "./VesselPeriodBar";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselPeriod } from "../vesselPeriodStore";
+import {
+  getEffectivePeriodReason,
+  monthWindow,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 
 const MENU = "Account Settlements";
 
@@ -436,6 +440,24 @@ export default function SettlementsPage() {
 
   const adjSaveMut = useMutation({
     mutationFn: () => {
+      const originalAdjustment = detail?.adjustments?.find(
+        (row: any) => row.adjustmentUuid === adjForm.adjustmentUuid,
+      );
+
+      if (
+        !originalAdjustment ||
+        originalAdjustment.payElementUuid !== adjForm.payElementUuid
+      ) {
+        const reason = getEffectivePeriodReason(
+          payElements.find(
+            (element: any) =>
+              element.payElementUuid === adjForm.payElementUuid,
+          ),
+          monthWindow(detail?.settlement?.period),
+        );
+
+        if (reason) throw new Error(reason);
+      }
       const data = {
         payElementUuid: adjForm.payElementUuid,
         type: adjForm.type,
@@ -1324,9 +1346,21 @@ export default function SettlementsPage() {
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={e.status === "inactive"}
+                      disabled={
+                        e.status === "inactive" ||
+                        !!getEffectivePeriodReason(
+                          e,
+                          monthWindow(detail?.settlement?.period),
+                        )
+                      }
                     >
                       {e.code} — {e.name}
+                      {getEffectivePeriodReason(
+                        e,
+                        monthWindow(detail?.settlement?.period),
+                      )
+                        ? " (Not effective for the selected period)"
+                        : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

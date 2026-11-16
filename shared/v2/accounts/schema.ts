@@ -254,6 +254,7 @@ export const accEngagementPayElementsV2 = pgTable(
     engagementUuid: text("engagement_uuid").notNull(),
     payElementUuid: text("pay_element_uuid").notNull(),
     overrideMode: text("override_mode").notNull(), // replace_scale_value | add_element | suppress_element
+    eligibilityRulesVersion: integer("eligibility_rules_version").notNull().default(0),
     amount: numeric("amount", { precision: 14, scale: 2 }),
     rate: numeric("rate", { precision: 10, scale: 4 }),
     paymentTimingOverride: text("payment_timing_override"), // paid_on_board | payable_at_settlement | remitted_to_fund (per-engagement timing override, e.g. "Pay Leave On Board Y/N")
@@ -359,6 +360,7 @@ export const accBondItemsV2 = pgTable(
     crewName: text("crew_name"),
     itemName: text("item_name").notNull(),
     category: text("category"),
+    remarks: text("remarks"),
     // widened integer -> numeric(10,2) in migration 0163
     quantity: numeric("quantity", { precision: 10, scale: 2 })
       .notNull()
@@ -415,6 +417,7 @@ export const accAllotmentsV2 = pgTable(
     // payee_relationship -> relationship, bank_account_number -> account_number)
     ibanSwift: text("iban_swift"),
     bankCountry: text("bank_country"),
+    remarks: text("remarks"),
     ...auditColumns,
   },
   (table) => ({

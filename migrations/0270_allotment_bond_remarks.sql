@@ -1,0 +1,5 @@
+ALTER TABLE acc_allotments_v2
+ADD COLUMN IF NOT EXISTS remarks TEXT;
+
+ALTER TABLE acc_bond_items_v2
+ADD COLUMN IF NOT EXISTS remarks TEXT;

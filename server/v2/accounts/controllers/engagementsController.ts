@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getActor, getAuditUserUuid } from "./_auth";
 import { assertOfficeUser, assertVesselScope } from "../services/vesselScope";
 import { engagementsService } from "../services";
+import { payItemOptions } from "../services/contractPayItemEligibilityService";
 
 const syncSchema = z.object({
   vesselUuid: z.string().min(1),
@@ -47,6 +48,9 @@ const payItemCreateSchema = z.object({
 });
 
 const payItemUpdateSchema = payItemCreateSchema.partial();
+const payItemOptionsSchema = payItemCreateSchema.pick({
+  overrideMode: true, effectiveFrom: true, effectiveTo: true,
+}).extend({ editingItemUuid: z.string().min(1).optional() });
 
 function sendCoded(res: Response, error: any): boolean {
   if (error?.code === "FORBIDDEN") {
@@ -74,6 +78,7 @@ const signOffSchema = z.object({
 });
 
 const timingOverrideSchema = z.object({
+  explicitPayElementSelection: z.boolean().optional(),
   payElementUuid: z.string().min(1),
   paymentTimingOverride: z
     .enum(["paid_on_board", "payable_at_settlement", "remitted_to_fund"])
@@ -81,6 +86,20 @@ const timingOverrideSchema = z.object({
 });
 
 export const engagementsController = {
+  async payItemOptions(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Contract pay-item options");
+      const parsed = payItemOptionsSchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid pay-item selection", details: parsed.error.issues });
+      }
+      res.json(await payItemOptions(req.params.uuid, parsed.data));
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error checking contract pay items:", error);
+      res.status(500).json({ error: "Unable to check pay-item eligibility" });
+    }
+  },
   async list(req: Request, res: Response) {
     try {
       // Contracts are an office-only screen (menu grants exclude Ship
@@ -287,6 +306,7 @@ export const engagementsController = {
         parsed.data.payElementUuid,
         parsed.data.paymentTimingOverride,
         getAuditUserUuid(req),
+        parsed.data.explicitPayElementSelection === true,
       );
       res.json({ override: row ?? null });
     } catch (error: any) {

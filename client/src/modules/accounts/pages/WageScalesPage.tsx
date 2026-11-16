@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -12,10 +12,6 @@ import {
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  FormattedDateInput,
-  formatIsoDate,
-} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -39,61 +35,14 @@ import { CURRENCIES } from "../accountsConstants";
 import WageScaleEditor from "./WageScaleEditor";
 import WageScaleDateInput from "./WageScaleDateInput";
 import {
-  MISSING_SUPERSEDED_FROM,
   getRevisionDateError,
-  shiftIsoDate,
+  getWageScaleDateError,
+  minimumWageStart,
+  revisionMinimum,
 } from "@shared/v2/accounts/wageScaleRevisionDates";
 
 const LIST_KEY = [`${ACCOUNTS_BASE}/wage-scales`];
 const NONE = "__none__";
-
-type NewScaleDateInputProps = Pick<
-  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "min" | "onDraftValidityChange" | "data-testid"
->;
-
-function NewScaleDateInput({ min, ...props }: NewScaleDateInputProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    // Preserve the native calendar minimum; Create keeps the existing date-order check.
-    const calendar = containerRef.current?.querySelector<HTMLInputElement>('input[type="date"]');
-    if (calendar) calendar.min = min || "0001-01-01";
-  }, [min]);
-  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
-    if (input.matches(":disabled") || !input.validity.valid) return;
-    if (input.value === props.value) return;
-    if (input.value !== "" && !formatIsoDate(input.value)) return;
-    // Accept a pending calendar selection before the shared blur handler resets it.
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}
-      onBlurCapture={handleBlurCapture}
-    >
-      {/* Reserve the shared error's natural height, including narrow-screen wrapping. */}
-      <div
-        aria-hidden="true"
-        style={{ gridArea: "1 / 1", paddingTop: 36, visibility: "hidden", pointerEvents: "none" }}
-      >
-        <p className="mt-1 text-xs leading-4">Incorrect date/date format</p>
-      </div>
-      <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
-        <FormattedDateInput
-          {...props}
-          mode="date"
-          className="min-w-0 border-input text-base md:text-sm"
-          acceptCalendarInputEvents
-          retainInvalidDraftOnBlur
-        />
-      </div>
-    </div>
-  );
-}
 
 interface ScaleForm {
   scaleName: string;
@@ -184,22 +133,11 @@ export default function WageScalesPage() {
       });
       return;
     }
-    if (
-      form.effectiveFrom &&
-      form.effectiveTo &&
-      form.effectiveTo < form.effectiveFrom
-    ) {
+    const dateError = getWageScaleDateError(form.effectiveFrom, form.effectiveTo);
+    if (dateError || !dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
       toast({
-        title: "Invalid effective dates",
-        description: "Effective to must be on or after effective from.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
-      toast({
-        title: "Invalid date",
-        description: "Enter valid Effective from and Effective to dates, or clear the invalid field before creating.",
+        title: "Invalid effective months",
+        description: dateError || "Correct or clear the invalid month.",
         variant: "destructive",
       });
       return;
@@ -238,30 +176,23 @@ export default function WageScalesPage() {
   const [revisionFormVersion, setRevisionFormVersion] = useState(0);
   const revisionDateValid = useRef(true);
 
-  const supersedeMin = supersedeRow?.effectiveFrom
-    ? shiftIsoDate(
-        supersedeRow.effectiveTo || supersedeRow.effectiveFrom,
-        1,
-      )
+  const supersedeMin = supersedeRow
+    ? revisionMinimum(supersedeRow)
     : undefined;
   const handleSupersede = (row: any) => {
-    if (!row.effectiveFrom) {
+    try {
+      const minimum = revisionMinimum(row);
+      revisionDateValid.current = true;
+      setRevisionFormVersion((version) => version + 1);
+      setSupersedeRow(row);
+      setSupersedeFrom(minimum);
+    } catch (error) {
       toast({
         title: "Cannot create revision",
-        description: MISSING_SUPERSEDED_FROM,
+        description: error instanceof Error ? error.message : "Invalid predecessor date.",
         variant: "destructive",
       });
-      return;
     }
-    const minimum = shiftIsoDate(
-      row.effectiveTo || row.effectiveFrom,
-      1,
-    );
-    const today = new Date().toISOString().slice(0, 10);
-    revisionDateValid.current = true;
-    setRevisionFormVersion((version) => version + 1);
-    setSupersedeRow(row);
-    setSupersedeFrom(today < minimum ? minimum : today);
   };
 
   const confirmSupersede = async () => {
@@ -550,8 +481,11 @@ export default function WageScalesPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective from</Label>
-              <NewScaleDateInput
-                key={`from-${dateFormVersion}`}
+              <WageScaleDateInput
+                resetKey={`from-${dateFormVersion}`}
+                height={36}
+                edge="start"
+                min={minimumWageStart()}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
                 onDraftValidityChange={(valid) => {
@@ -562,8 +496,10 @@ export default function WageScalesPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective to</Label>
-              <NewScaleDateInput
-                key={`to-${dateFormVersion}`}
+              <WageScaleDateInput
+                resetKey={`to-${dateFormVersion}`}
+                height={36}
+                edge="end"
                 value={form.effectiveTo}
                 onChange={(e) => set("effectiveTo", e.target.value)}
                 min={form.effectiveFrom || undefined}
@@ -614,6 +550,7 @@ export default function WageScalesPage() {
               resetKey={String(revisionFormVersion)}
               height={36}
               min={supersedeMin}
+              edge="start"
               value={supersedeFrom}
               onChange={(e) => setSupersedeFrom(e.target.value)}
               onDraftValidityChange={(valid) => { revisionDateValid.current = valid; }}
