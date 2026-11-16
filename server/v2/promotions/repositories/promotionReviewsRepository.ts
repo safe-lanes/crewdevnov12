@@ -2,7 +2,7 @@ import { eq, and, inArray, desc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promotionReviewsV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromotionReviewV2, InsertPromotionReviewV2 } from "../../../../shared/v2/promotions/types";
-import { v4 as uuidv4 } from "uuid";
+import { promotionReviewUuid } from "../utils/reviewUuid";
 import { captureChange } from "../../sync/changeCapture";
 
 export class PromotionReviewsRepository {
@@ -68,11 +68,19 @@ export class PromotionReviewsRepository {
   // written row is reported to the sync change capture on the same executor
   // (PRD-07); the actor is the row's created_by / updated_by.
   async create(data: Omit<InsertPromotionReviewV2, "reviewUuid">, executor: any = getDb()): Promise<PromotionReviewV2> {
+    // The uuid comes from crew + target rank (PRD-01), so the office and a
+    // vessel that each create this review make the same row. If it already
+    // exists (live or soft-deleted) nothing is inserted; report it as the
+    // same unique violation the crew+rank index gives.
     const results = await executor
       .insert(promotionReviewsV2)
-      .values({ ...data, reviewUuid: uuidv4() })
+      .values({ ...data, reviewUuid: promotionReviewUuid(data.crewMemberId, data.promotionToRank) })
+      .onConflictDoNothing({ target: promotionReviewsV2.reviewUuid })
       .returning();
     const row = results[0];
+    if (!row) {
+      throw Object.assign(new Error("Promotion review already exists for this crew member and rank"), { code: "23505" });
+    }
     await captureChange(executor, {
       table: promotionReviewsV2, rowUuid: row?.reviewUuid, oldRow: null, newRow: row,
       actorUuid: (data as any).createdByUuid ?? null,

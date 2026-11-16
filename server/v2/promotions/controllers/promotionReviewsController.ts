@@ -99,6 +99,9 @@ export class PromotionReviewsController {
       if (error instanceof PromotionGuardError || isChildRowError(error)) {
         return res.status(400).json({ error: error.message });
       }
+      if ((error as any)?.code === "23505") {
+        return res.status(409).json({ error: "A promotion review already exists for this crew member and rank" });
+      }
       console.error("[Promotions V2] Failed to create review:", error);
       res.status(500).json({ error: "Failed to create promotion review" });
     }
