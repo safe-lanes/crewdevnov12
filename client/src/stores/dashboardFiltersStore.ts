@@ -12,6 +12,7 @@ const DEFAULT_PERIOD: PeriodFilterValue = { mode: 'year', year: new Date().getFu
 
 interface DashboardFiltersState {
   period: PeriodFilterValue;
+  periodExplicitlySelected: boolean;
   filters: ManagementFilters;
   setPeriod: (period: PeriodFilterValue) => void;
   setFilters: (filters: ManagementFilters) => void;
@@ -21,9 +22,10 @@ interface DashboardFiltersState {
 export const useDashboardFiltersStore = create<DashboardFiltersState>()(
   (set) => ({
     period: DEFAULT_PERIOD,
+    periodExplicitlySelected: false,
     filters: EMPTY_MANAGEMENT_FILTERS,
-    setPeriod: (period) => set({ period }),
+    setPeriod: (period) => set({ period, periodExplicitlySelected: true }),
     setFilters: (filters) => set({ filters }),
-    clearFilters: () => set({ period: DEFAULT_PERIOD, filters: EMPTY_MANAGEMENT_FILTERS }),
+    clearFilters: () => set({ period: DEFAULT_PERIOD, periodExplicitlySelected: false, filters: EMPTY_MANAGEMENT_FILTERS }),
   })
 );

@@ -26,9 +26,14 @@ import { formPartController } from "./controllers/formPartController";
 import { actionPermissionsController } from "./controllers/actionPermissionsController";
 import { applicabilityController } from "./controllers/applicabilityController";
 import { kpiTargetsController } from "./controllers/kpiTargetsController";
+import { readDashboardKpis } from "./services/dashboardKpis";
+import { kpiYear } from "./services/kpiTargets";
+import { accessControlHandler } from "./controllers/accessControlController";
 
 const router = Router();
 
+router.get("/dashboard-kpis/:year", requirePermission("Dashboard", "view"),
+  accessControlHandler(req => readDashboardKpis(kpiYear(req.params.year))));
 router.get("/kpis", requirePermission("KPIs", "view"), kpiTargetsController.catalogue);
 router.get("/kpis/:code/targets/:year", requirePermission("KPIs", "view"), kpiTargetsController.read);
 router.put("/kpis/:code/targets/:year", requirePermission("KPIs", "view"), kpiTargetsController.save);
