@@ -5,7 +5,8 @@ import type {
   RhCrewRecordV2,
   InsertRhCrewRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
-import { v4 as uuidv4 } from "uuid";
+import { rhCrewMonthRankUuid } from "../utils/rhUuid";
+import { insertOnNaturalKey } from "../utils/naturalKeyInsert";
 
 export class CrewRecordsRepository {
   async findAll(filters?: {
@@ -60,14 +61,13 @@ export class CrewRecordsRepository {
   async create(
     data: Omit<InsertRhCrewRecordV2, "rhCrewRecordUuid">, tx?: any): Promise<RhCrewRecordV2> {
     const db = tx ?? getDb();
-    const results = await db
-      .insert(rhCrewRecordsV2)
-      .values({
-        ...data,
-        rhCrewRecordUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    // Atomic create-or-update on (vessel_id, crew_member_id, month_value, rank); id derived from the key (RH-02).
+    return insertOnNaturalKey(db, rhCrewRecordsV2, {
+      uuidColumn: "rhCrewRecordUuid",
+      uuid: rhCrewMonthRankUuid(data.vesselId, data.crewMemberId, data.monthValue, data.rank),
+      keyColumns: ["vesselId", "crewMemberId", "monthValue", "rank"],
+      values: data,
+    });
   }
 
   async update(

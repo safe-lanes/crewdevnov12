@@ -351,6 +351,9 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
       : [{ signOnDate: null, signOffDate: null, isCurrent: null }];
 
     const matchedRecordUuids = new Set<string>();
+    // RH-02: a crew member has one live summary row per vessel, month and rank
+    // (unique index). The first period handled at a rank owns that row.
+    const handledRankKeys = new Set<string>();
 
     let datelineAdjustments: { day: number; type: 'advanced' | 'retarded' }[] = [];
 
@@ -401,6 +404,12 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
           continue;
         }
 
+        const rankKey = (dailyRecord.rank || '').trim().toLowerCase();
+        if (handledRankKeys.has(rankKey)) {
+          continue;
+        }
+        handledRankKeys.add(rankKey);
+
         const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange, datelineAdjustments);
         const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
         const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
@@ -426,6 +435,13 @@ async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, m
             && r.rank === dailyRecord.rank
             && r.signOnOffInfo === signOnOffInfo
         );
+        if (!matchedRecord) {
+          // Same rank, any sign-on/off: that row owns the unique rank key.
+          matchedRecord = existingCrewRecords.find(
+            r => !matchedRecordUuids.has(r.rhCrewRecordUuid)
+              && (r.rank || '').trim().toLowerCase() === rankKey
+          );
+        }
         if (!matchedRecord) {
           matchedRecord = existingCrewRecords.find(
             r => !matchedRecordUuids.has(r.rhCrewRecordUuid) && r.signOnOffInfo === signOnOffInfo

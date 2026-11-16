@@ -5,7 +5,8 @@ import type {
   RhVesselViolationCommentV2,
   InsertRhVesselViolationCommentV2,
 } from "../../../../shared/v2/rest-hours/types";
-import { v4 as uuidv4 } from "uuid";
+import { rhVesselCommentUuid } from "../utils/rhUuid";
+import { insertOnNaturalKey } from "../utils/naturalKeyInsert";
 
 export class VesselCommentsRepository {
   async findAll(filters?: {
@@ -49,14 +50,13 @@ export class VesselCommentsRepository {
     data: Omit<InsertRhVesselViolationCommentV2, "vesselCommentUuid">
   ): Promise<RhVesselViolationCommentV2> {
     const db = getDb();
-    const results = await db
-      .insert(rhVesselViolationCommentsV2)
-      .values({
-        ...data,
-        vesselCommentUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    // Atomic create-or-update on (vessel_id, month_value); id derived from the key (RH-02).
+    return insertOnNaturalKey(db, rhVesselViolationCommentsV2, {
+      uuidColumn: "vesselCommentUuid",
+      uuid: rhVesselCommentUuid(data.vesselId, data.monthValue),
+      keyColumns: ["vesselId", "monthValue"],
+      values: data,
+    });
   }
 
   async update(

@@ -5,7 +5,8 @@ import type {
   RhVesselRecordV2,
   InsertRhVesselRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
-import { v4 as uuidv4 } from "uuid";
+import { rhVesselMonthUuid } from "../utils/rhUuid";
+import { insertOnNaturalKey } from "../utils/naturalKeyInsert";
 
 export class VesselRecordsRepository {
   async findAll(filters?: {
@@ -64,14 +65,13 @@ export class VesselRecordsRepository {
   async create(
     data: Omit<InsertRhVesselRecordV2, "rhVesselUuid">, tx?: any): Promise<RhVesselRecordV2> {
     const db = tx ?? getDb();
-    const results = await db
-      .insert(rhVesselRecordsV2)
-      .values({
-        ...data,
-        rhVesselUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    // Atomic create-or-update on (vessel_id, month_value); id derived from the key (RH-02).
+    return insertOnNaturalKey(db, rhVesselRecordsV2, {
+      uuidColumn: "rhVesselUuid",
+      uuid: rhVesselMonthUuid(data.vesselId, data.monthValue),
+      keyColumns: ["vesselId", "monthValue"],
+      values: data,
+    });
   }
 
   async update(

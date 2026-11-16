@@ -5,7 +5,8 @@ import type {
   RhOfficeViolationCommentV2,
   InsertRhOfficeViolationCommentV2,
 } from "../../../../shared/v2/rest-hours/types";
-import { v4 as uuidv4 } from "uuid";
+import { rhOfficeCommentUuid } from "../utils/rhUuid";
+import { insertOnNaturalKey } from "../utils/naturalKeyInsert";
 
 export class OfficeCommentsRepository {
   async findAll(filters?: {
@@ -49,14 +50,13 @@ export class OfficeCommentsRepository {
     data: Omit<InsertRhOfficeViolationCommentV2, "officeCommentUuid">
   ): Promise<RhOfficeViolationCommentV2> {
     const db = getDb();
-    const results = await db
-      .insert(rhOfficeViolationCommentsV2)
-      .values({
-        ...data,
-        officeCommentUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    // Atomic create-or-update on (vessel_id, month_value); id derived from the key (RH-02).
+    return insertOnNaturalKey(db, rhOfficeViolationCommentsV2, {
+      uuidColumn: "officeCommentUuid",
+      uuid: rhOfficeCommentUuid(data.vesselId, data.monthValue),
+      keyColumns: ["vesselId", "monthValue"],
+      values: data,
+    });
   }
 
   async update(
