@@ -122,6 +122,7 @@ import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionConte
 import AccessControlPage from "./AccessControlPage";
 import { CompanyDocumentBranding } from "@/components/admin/CompanyDocumentBranding";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
+import KpiSettingsPage from "./KpiSettingsPage";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
 import LicenseDceMasterPage from "./LicenseDceMasterPage";
@@ -591,11 +592,11 @@ const AdminModuleInner = (): JSX.Element => {
   const { ask, dialog } = useAppDialog();
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions, userType, accessControlManagement } = usePermissions();
-  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow", "kpis": "KPIs" };
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow", "kpis"];
     const standardPages = permissions.length === 0
-      ? (accessControlManagement ? [] : all.filter(page => page !== "access-control"))
+      ? (accessControlManagement ? [] : all.filter(page => page !== "access-control" && page !== "kpis"))
       : all.filter(page => page !== "access-control" && (accessControlManagement
         ? permissions.some(permission => permission.menuName.toLowerCase() === (adminPageToMenu[page] || page).toLowerCase() && permission.canview)
         : canView(adminPageToMenu[page] || page)));
@@ -8854,6 +8855,7 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
+            {selectedAdminPage === "kpis" && <KpiSettingsPage />}
           </>
         )}
       </MainLayout>

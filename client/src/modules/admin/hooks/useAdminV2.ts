@@ -858,6 +858,10 @@ export function useSaveCombinedAccessControlPermissionsV2() {
       queryClient.invalidateQueries({
         queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/training-compliance`],
       });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v2/admin/access-control/roles/${encodeURIComponent(variables.ruid)}/kpi-targets`],
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/kpis'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/state'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/audit'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/access-control/my-permissions'] });
