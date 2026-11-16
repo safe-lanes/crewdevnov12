@@ -20,7 +20,15 @@ const lineInputSchema = z.object({
 });
 
 const linesBodySchema = z.object({ lines: z.array(lineInputSchema) });
-const activateBodySchema = z.object({ acknowledge: z.boolean().optional() });
+const activateBodySchema = z.object({
+  acknowledge: z.boolean().optional(),
+  predecessorAdjustment: z.object({
+    predecessorUuid: z.string(),
+    previousEffectiveTo: z.string().nullable(),
+    revisionEffectiveFrom: z.string(),
+    nextEffectiveTo: z.string(),
+  }).optional(),
+});
 const supersedeBodySchema = z.object({
   effectiveTo: z.string().nullish(),
   effectiveFrom: z.string().nullish(),
@@ -28,6 +36,9 @@ const supersedeBodySchema = z.object({
 
 /** Map a service error to the correct HTTP response. */
 function handleError(error: any, res: Response, fallback: string) {
+  if (error?.code === "OVERTIME_RATE_BLOCKERS") {
+    return res.status(409).json({ error: error.message, blockers: error.blockers });
+  }
   if (error?.code === "VALIDATION") {
     return res.status(400).json({ error: error.message });
   }
@@ -167,6 +178,7 @@ export const wageScalesController = {
       }
       const result = await wageScalesService.activate(req.params.uuid, {
         acknowledge: parsed.data.acknowledge,
+        predecessorAdjustment: parsed.data.predecessorAdjustment,
         auditUserUuid: getAuditUserUuid(req),
       });
       res.json(result);

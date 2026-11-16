@@ -32,6 +32,10 @@ import { Info, Plus, Pencil, Trash2 } from "lucide-react";
 import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
 import {
+  getEffectivePeriodReason,
+  selectionChanged,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
+import {
   PAY_ELEMENT_CATEGORIES,
   CURRENCIES,
   labelOf,
@@ -68,7 +72,7 @@ const emptyForm: CbaForm = {
 
 type CbaDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+  "value" | "min" | "onChange" | "onDraftValidityChange" | "data-testid"
 >;
 
 function CbaDateInput({ onDraftValidityChange, ...props }: CbaDateInputProps) {
@@ -177,6 +181,29 @@ export default function CbaReferencePage() {
   }
   if (!String(form.minimumAmount ?? "").trim()) {
     requiredErrors.minimumAmount = "Amount is required.";
+  }
+  if (
+    form.effectiveFrom &&
+    form.effectiveTo &&
+    form.effectiveTo < form.effectiveFrom
+  ) {
+    requiredErrors.effectiveTo =
+      "Effective to must be on or after effective from.";
+  }
+  const originalCba = editingUuid
+    ? rows.find((row) => row.cbaRefUuid === editingUuid)
+    : undefined;
+
+  if (
+    form.payElementUuid !== NONE &&
+    selectionChanged(originalCba, form)
+  ) {
+    const reason = getEffectivePeriodReason(
+      elements.find((element) => element.payElementUuid === form.payElementUuid),
+      form,
+    );
+
+    if (reason) requiredErrors.payElementUuid = reason;
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -455,9 +482,15 @@ export default function CbaReferencePage() {
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={e.status === "inactive"}
+                      disabled={
+                        e.status === "inactive" ||
+                        !!getEffectivePeriodReason(e, form)
+                      }
                     >
                       {e.code} — {e.name}
+                      {getEffectivePeriodReason(e, form)
+                        ? " (Not effective for the selected period)"
+                        : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -520,12 +553,18 @@ export default function CbaReferencePage() {
               <CbaDateInput
                 key={dateFormVersion}
                 value={form.effectiveTo}
+                min={form.effectiveFrom || undefined}
                 onChange={(e) => set("effectiveTo", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   dateValidity.current.effectiveTo = valid;
                 }}
                 data-testid="input-cba-effective-to"
               />
+              {errors.effectiveTo && (
+                <p className="text-xs text-red-500" role="alert">
+                  {errors.effectiveTo}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -44,11 +44,79 @@ export function getRevisionDateError(
   if (!isIsoDate(revisionFrom)) {
     return "Enter a valid Effective From date for the revision.";
   }
-  const boundary = source.effectiveTo || source.effectiveFrom;
-  if (revisionFrom <= boundary) {
-    return source.effectiveTo
-      ? "The revision's Effective From date must be after the superseded scale's Effective To date."
-      : "The revision's Effective From date must be after the superseded scale's Effective From date.";
+  const error = getWageScaleDateError(revisionFrom, null, { revision: true });
+  if (error) return error;
+  try {
+    if (revisionFrom < revisionMinimum(source)) {
+      return "The revision must start after the superseded scale's start month.";
+    }
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid revision month.";
   }
   return null;
+}
+
+export function monthStart(month: string): string {
+  const value = `${month}-01`;
+  if (!isIsoDate(value)) throw new Error("Enter a valid month.");
+  return value;
+}
+
+export function monthEnd(month: string): string {
+  const date = new Date(monthStart(month) + "T00:00:00.000Z");
+  date.setUTCMonth(date.getUTCMonth() + 1, 0);
+  const value = date.toISOString().slice(0, 10);
+  if (!isIsoDate(value)) throw new Error("Month is outside the supported calendar range.");
+  return value;
+}
+
+function nextMonthStart(value: string): string {
+  return shiftIsoDate(monthEnd(value.slice(0, 7)), 1);
+}
+
+export function minimumWageStart(revision = false, now = new Date()): string {
+  const current = monthStart(now.toISOString().slice(0, 7));
+  return revision ? nextMonthStart(current) : current;
+}
+
+export function revisionMinimum(source: SourceDates, now = new Date()): string {
+  if (!source.effectiveFrom) throw new Error(MISSING_SUPERSEDED_FROM);
+  if (!isIsoDate(source.effectiveFrom)) {
+    throw new Error("The superseded scale's Effective From date is invalid.");
+  }
+  const afterSource = nextMonthStart(source.effectiveFrom);
+  const nextUtcMonth = minimumWageStart(true, now);
+  return afterSource > nextUtcMonth ? afterSource : nextUtcMonth;
+}
+
+export function getWageScaleDateError(
+  from: string | null | undefined,
+  to: string | null | undefined,
+  options: { revision?: boolean; activation?: boolean; now?: Date } = {},
+): string | null {
+  if (options.activation && !from) return "Effective From is required before activation.";
+  if (from) {
+    if (!isIsoDate(from) || !from.endsWith("-01")) {
+      return "Effective From must be the first day of a valid month.";
+    }
+    if (from < minimumWageStart(options.revision ?? false, options.now ?? new Date())) {
+      return options.revision
+        ? "A revision must start next month or later."
+        : "Effective From must be the current month or later.";
+    }
+  }
+  if (to) {
+    if (!isIsoDate(to) || to !== monthEnd(to.slice(0, 7))) {
+      return "Effective To must be the last day of a valid month.";
+    }
+    if (from && to < from) return "Effective To must be on or after Effective From.";
+  }
+  return null;
+}
+
+export interface PredecessorAdjustment {
+  predecessorUuid: string;
+  previousEffectiveTo: string | null;
+  revisionEffectiveFrom: string;
+  nextEffectiveTo: string;
 }

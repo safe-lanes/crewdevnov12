@@ -480,6 +480,7 @@ export class EngagementsRepository {
     engagementUuid: string;
     payElementUuid: string;
     overrideMode: string;
+    eligibilityRulesVersion?: number;
     amount?: string | null;
     rate?: string | null;
     paymentTimingOverride?: string | null;
@@ -496,6 +497,7 @@ export class EngagementsRepository {
         engagementUuid: data.engagementUuid,
         payElementUuid: data.payElementUuid,
         overrideMode: data.overrideMode,
+        eligibilityRulesVersion: data.eligibilityRulesVersion ?? 0,
         amount: data.amount ?? null,
         rate: data.rate ?? null,
         paymentTimingOverride: data.paymentTimingOverride ?? null,
@@ -513,6 +515,7 @@ export class EngagementsRepository {
     data: Partial<{
       payElementUuid: string;
       overrideMode: string;
+      eligibilityRulesVersion: number;
       amount: string | null;
       rate: string | null;
       paymentTimingOverride: string | null;

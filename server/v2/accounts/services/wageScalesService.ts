@@ -4,14 +4,24 @@ import {
   PayElementsRepository,
   type WageScaleLineInput,
 } from "../repositories";
+import { sql } from "drizzle-orm";
+import { getDb } from "../../db";
+import { withAccountDb } from "../accountDbScope";
+import { coordinateAccounts } from "../accountCoordination";
+import { applyRevisionOvertimeEffects } from "./revisionOvertimeService";
 import type {
   AccWageScaleV2,
   AccWageScaleLineV2,
   InsertAccWageScaleV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import { scaleCellKey } from "../../../../shared/v2/accounts/payElementEffectivePeriod";
+import { assertEffectivePayElement } from "./payElementEffectivePeriod";
 import {
   getRevisionDateError,
+  getWageScaleDateError,
+  shiftIsoDate,
+  type PredecessorAdjustment,
 } from "../../../../shared/v2/accounts/wageScaleRevisionDates";
 
 const wageScalesRepository = new WageScalesRepository();
@@ -33,10 +43,11 @@ function conflictError(message: string): Error {
 function validateEffectiveDates(
   effectiveFrom: string | null | undefined,
   effectiveTo: string | null | undefined,
+  revision = false,
+  activation = false,
 ): void {
-  if (effectiveFrom && effectiveTo && effectiveTo < effectiveFrom) {
-    throw validationError("Effective to must be on or after effective from");
-  }
+  const error = getWageScaleDateError(effectiveFrom, effectiveTo, { revision, activation });
+  if (error) throw validationError(error);
 }
 
 /** A CBA floor violation for a single scale line. */
@@ -167,52 +178,31 @@ export const wageScalesService = {
   ): Promise<AccWageScaleV2> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
     if (scale.status !== "draft") {
-      // Preserve the existing non-date field restrictions for non-draft scales.
-      const DATE_ONLY = new Set(["effectiveFrom", "effectiveTo", "auditUserUuid"]);
-      const otherKeys = Object.keys(data).filter(
-        (k) => !DATE_ONLY.has(k) && (data as Record<string, unknown>)[k] !== undefined,
-      );
-      if (otherKeys.length > 0) {
-        throw validationError(
-          "Only the effective dates can be edited once a scale is no longer a draft",
-        );
-      }
+      throw validationError("Only draft wage scales can be edited.");
+    }
+    if (data.status !== undefined && data.status !== "draft") {
+      throw validationError("Use the activation action to change a draft's status.");
+    }
+    const predecessor = await wageScalesRepository.findPredecessor(scaleUuid);
+    const from = data.effectiveFrom === undefined ? scale.effectiveFrom : data.effectiveFrom;
+    const to = data.effectiveTo === undefined ? scale.effectiveTo : data.effectiveTo;
+    validateEffectiveDates(from, to, !!predecessor);
+    if (predecessor && from) {
+      const error = getRevisionDateError(predecessor, from);
+      if (error) throw validationError(error);
     }
     if (
-      scale.status === "active" &&
-      (data.effectiveFrom !== undefined ||
-        data.effectiveTo !== undefined)
+      (from || null) !== (scale.effectiveFrom || null) ||
+      (to || null) !== (scale.effectiveTo || null)
     ) {
-      throw validationError(
-        "Effective dates cannot be changed once a wage scale is active.",
-      );
-    }
-    if (scale.status === "draft") {
-      validateEffectiveDates(
-        data.effectiveFrom === undefined
-          ? scale.effectiveFrom
-          : data.effectiveFrom,
-        data.effectiveTo === undefined ? scale.effectiveTo : data.effectiveTo,
-      );
-    }
-    if (
-      data.effectiveFrom !== undefined ||
-      data.effectiveTo !== undefined
-    ) {
-      const predecessor =
-        await wageScalesRepository.findPredecessor(scaleUuid);
-      if (predecessor) {
-        const revisionFrom =
-          data.effectiveFrom === undefined
-            ? scale.effectiveFrom
-            : data.effectiveFrom;
-        const dateError = getRevisionDateError(
-          predecessor,
-          revisionFrom,
+      const lines = await wageScalesRepository.findLinesByScale(scaleUuid);
+
+      for (const uuid of new Set(lines.map((line) => line.payElementUuid))) {
+        await assertEffectivePayElement(
+          uuid,
+          { effectiveFrom: from, effectiveTo: to },
+          ["scale_lookup", "rate_times_qty"],
         );
-        if (dateError) {
-          throw validationError(dateError);
-        }
       }
     }
     const dataWithAudit = applyAuditUser(data, false);
@@ -239,6 +229,12 @@ export const wageScalesService = {
     if (scale.status !== "draft") {
       throw validationError("Scale lines are immutable once the scale is active");
     }
+    const predecessor = await wageScalesRepository.findPredecessor(scaleUuid);
+    validateEffectiveDates(scale.effectiveFrom, scale.effectiveTo, !!predecessor);
+    if (predecessor && scale.effectiveFrom) {
+      const error = getRevisionDateError(predecessor, scale.effectiveFrom);
+      if (error) throw validationError(error);
+    }
     // Reject references to non-existent pay elements up front.
     const elements = await payElementsRepository.findAll();
     const validUuids = new Set(elements.map((e) => e.payElementUuid));
@@ -262,6 +258,22 @@ export const wageScalesService = {
         );
       }
       seen.add(key);
+    }
+    const existingLines =
+      await wageScalesRepository.findLinesByScale(scaleUuid);
+    const existingKeys = new Set(existingLines.map(scaleCellKey));
+    const addedElementUuids = new Set(
+      lines
+        .filter((line) => !existingKeys.has(scaleCellKey(line)))
+        .map((line) => line.payElementUuid),
+    );
+
+    for (const uuid of addedElementUuids) {
+      await assertEffectivePayElement(
+        uuid,
+        scale,
+        ["scale_lookup", "rate_times_qty"],
+      );
     }
     return wageScalesRepository.replaceLines(scaleUuid, lines, auditUserUuid);
   },
@@ -324,6 +336,52 @@ export const wageScalesService = {
 
   async activate(
     scaleUuid: string,
+    opts: {
+      acknowledge?: boolean;
+      auditUserUuid?: string;
+      predecessorAdjustment?: PredecessorAdjustment;
+    },
+  ) {
+    return coordinateAccounts("exclusive", () =>
+      getDb().transaction(async (tx: any) => withAccountDb(tx, async () => {
+        await tx.execute(sql`LOCK TABLE acc_wage_scales_v2, acc_wage_scale_lines_v2,
+          acc_pay_elements_v2, acc_tenant_config_v2, acc_engagements_v2,
+          acc_engagement_phases_v2, acc_engagement_pay_elements_v2,
+          acc_monthly_transactions_v2, acc_portage_bills_v2, acc_settlements_v2,
+          acc_cba_reference_v2, crew_members_v2, promo_execution_ledger_v2
+          IN SHARE ROW EXCLUSIVE MODE NOWAIT`);
+        const predecessor = await wageScalesRepository.findPredecessor(scaleUuid);
+        const scale = await this.getByUuidOrThrow(scaleUuid);
+        validateEffectiveDates(scale.effectiveFrom, scale.effectiveTo, !!predecessor, true);
+        const from = scale.effectiveFrom!;
+        if (predecessor) {
+          const error = getRevisionDateError(predecessor, from);
+          if (error) throw validationError(error);
+          const confirmation = opts.predecessorAdjustment;
+          if (!confirmation ||
+              confirmation.predecessorUuid !== predecessor.scaleUuid ||
+              confirmation.previousEffectiveTo !== predecessor.effectiveTo ||
+              confirmation.revisionEffectiveFrom !== from ||
+              confirmation.nextEffectiveTo !== shiftIsoDate(from, -1)) {
+            throw conflictError("Review and confirm the current predecessor-date adjustment.");
+          }
+        }
+        const result = await this.activateCore(scaleUuid, opts);
+        const overtime = predecessor
+          ? await applyRevisionOvertimeEffects(result.scale, opts.auditUserUuid)
+          : { corrected: 0, protected: 0 };
+        return { ...result, overtime };
+      })),
+    ).catch((error: any) => {
+      if (error?.code === "55P03") {
+        throw conflictError("Wage inputs are being changed. Please retry activation.");
+      }
+      throw error;
+    });
+  },
+
+  async activateCore(
+    scaleUuid: string,
     opts: { acknowledge?: boolean; auditUserUuid?: string },
   ): Promise<{ scale: AccWageScaleV2; violations: FloorViolation[] }> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
@@ -341,7 +399,7 @@ export const wageScalesService = {
     const predecessor = await wageScalesRepository.findPredecessor(scaleUuid);
     if (predecessor && !scale.effectiveFrom) {
       throw validationError(
-        `This scale supersedes "${predecessor.scaleName}" and must have an Effective From date before it can be activated — without one, wage calculation can never switch to it. Set Effective From (typically the day after the superseded scale's Effective To, or matching its Effective From to replace it for all periods).`,
+        `This scale supersedes "${predecessor.scaleName}" and needs a valid effective start month before activation.`,
       );
     }
 
@@ -366,6 +424,7 @@ export const wageScalesService = {
     const overlapping = activeSameScope.filter(
       (s) =>
         s.scaleUuid !== scaleUuid &&
+        s.scaleUuid !== predecessor?.scaleUuid &&
         windowsOverlap(
           s.effectiveFrom,
           s.effectiveTo,
@@ -423,7 +482,7 @@ export const wageScalesService = {
     }
   },
 
-  /** Clone an active scale into a new draft and mark the original superseded. */
+  /** Clone an active scale into a linked draft; keep the original active. */
   async supersede(
     scaleUuid: string,
     opts: {

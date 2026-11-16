@@ -44,6 +44,10 @@ import { formatMoney } from "../accountsFormat";
 import { CURRENCIES } from "../accountsConstants";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
+import {
+  getEffectivePeriodReason,
+  monthWindow,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 
 const MENU = "Account Monthly Transactions";
 
@@ -238,6 +242,14 @@ export default function MonthlyTransactionsPage() {
   }
   if (!form.amount) {
     requiredErrors.amount = "Amount is required.";
+  }
+  if (!editingUuid && form.payElementUuid) {
+    const reason = getEffectivePeriodReason(
+      elementByUuid.get(form.payElementUuid),
+      monthWindow(period),
+    );
+
+    if (reason) requiredErrors.payElementUuid = reason;
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
@@ -715,15 +727,20 @@ export default function MonthlyTransactionsPage() {
                   <SelectValue placeholder="Select pay element" />
                 </SelectTrigger>
                 <SelectContent>
-                  {manualElements.map((e) => (
-                    <SelectItem
-                      key={e.payElementUuid}
-                      value={e.payElementUuid}
-                      disabled={e.status === "inactive"}
-                    >
-                      {e.code} — {e.name} ({e.type})
-                    </SelectItem>
-                  ))}
+                  {manualElements.map((e) => {
+                    const periodReason = getEffectivePeriodReason(e, monthWindow(period));
+
+                    return (
+                      <SelectItem
+                        key={e.payElementUuid}
+                        value={e.payElementUuid}
+                        disabled={e.status === "inactive" || !!periodReason}
+                      >
+                        {e.code} — {e.name} ({e.type})
+                        {periodReason ? ` (${periodReason})` : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {errors.payElementUuid && (

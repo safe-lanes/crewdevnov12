@@ -11,6 +11,30 @@ import { applyAuditUser } from "./auditUtils";
 import { ctmService } from "./ctmService";
 import { assertVesselScope } from "./vesselScope";
 import type { RequestActor } from "../controllers/_auth";
+import { EngineReads } from "../engine/engineReads";
+import { readApplicableWageValues } from "../engine/wageEngineService";
+
+async function normalizeDraftOvertime(data: any, element: AccPayElementV2, actor?: RequestActor) {
+  if ((data.status ?? "draft") !== "draft" ||
+      element.category !== "overtime_variable" || element.calcMethod !== "rate_times_qty") return data;
+  const engagement = await new EngineReads().findEngagementByUuid(data.engagementUuid);
+  if (!engagement) throw coded("VALIDATION", "Overtime engagement not found");
+  assertVesselScope(actor, engagement.vesselUuid);
+  if (engagement.crewUuid !== data.crewUuid ||
+      (data.vesselUuid != null && engagement.vesselUuid !== data.vesselUuid) ||
+      !["active", "completed"].includes(engagement.status)) {
+    throw coded("VALIDATION", "Overtime entry does not match an applicable engagement");
+  }
+  const value = (await readApplicableWageValues(data.period, [engagement])).get(data.engagementUuid)!;
+  const rate = value.entries[data.payElementUuid]?.rate;
+  if (rate == null || !Number.isFinite(Number(rate))) {
+    throw coded("VALIDATION", value.errors.join("; ") || "Applicable overtime rate is missing");
+  }
+  if (data.qty == null || !Number.isFinite(Number(data.qty))) {
+    throw coded("VALIDATION", "Overtime hours are missing or invalid");
+  }
+  return { ...data, rate, amount: (Number(data.qty) * Number(rate)).toFixed(2) };
+}
 
 const repo = new MonthlyTransactionsRepository();
 const payElementsRepo = new PayElementsRepository();
@@ -209,6 +233,7 @@ export const monthlyTransactionsService = {
       await assertVesselWindow(data.vesselUuid!, data.period);
     }
     await assertUnlocked(data.vesselUuid, data.period);
+    data = await normalizeDraftOvertime(data, element, actor);
     const created = await repo.create(applyAuditUser(data, true));
     return syncCtmLine(created, element, data.auditUserUuid);
   },
@@ -252,6 +277,13 @@ export const monthlyTransactionsService = {
     const nextPeriod = data.period ?? existing.period;
     if (nextVessel !== existing.vesselUuid || nextPeriod !== existing.period) {
       await assertUnlocked(nextVessel, nextPeriod);
+    }
+    const mergedElement = await payElementsRepo.findByUuid(data.payElementUuid ?? existing.payElementUuid);
+    if (mergedElement?.category === "overtime_variable" &&
+        mergedElement.calcMethod === "rate_times_qty" &&
+        (data.status ?? existing.status) === "draft") {
+      const normalized = await normalizeDraftOvertime({ ...existing, ...data }, mergedElement, actor);
+      data = { ...data, rate: normalized.rate, amount: normalized.amount };
     }
     const updated = await repo.update(txnUuid, applyAuditUser(data, false));
     if (!updated) {

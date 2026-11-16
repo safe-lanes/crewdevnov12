@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import type { PredecessorAdjustment } from "@shared/v2/accounts/wageScaleRevisionDates";
 
 export const ACCOUNTS_BASE = "/api/v2/accounts";
 
@@ -72,9 +73,10 @@ export const accountsApiV2 = {
       req("DELETE", `${ACCOUNTS_BASE}/wage-scales/${uuid}`),
     replaceLines: (uuid: string, lines: unknown[]) =>
       req("PUT", `${ACCOUNTS_BASE}/wage-scales/${uuid}/lines`, { lines }),
-    activate: (uuid: string, acknowledge?: boolean) =>
+    activate: (uuid: string, acknowledge?: boolean, predecessorAdjustment?: PredecessorAdjustment) =>
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/activate`, {
         acknowledge,
+        predecessorAdjustment,
       }),
     supersede: (uuid: string, effectiveTo?: string, effectiveFrom?: string) =>
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/supersede`, {
@@ -115,10 +117,14 @@ export const accountsApiV2 = {
       uuid: string,
       payElementUuid: string,
       paymentTimingOverride: string | null,
+      explicitPayElementSelection = false,
     ) =>
       req("POST", `${ACCOUNTS_BASE}/engagements/${uuid}/timing-override`, {
         payElementUuid,
         paymentTimingOverride,
+        ...(explicitPayElementSelection
+          ? { explicitPayElementSelection: true }
+          : {}),
       }),
     confirmSeniorityAnchors: (engagementUuids: string[]) =>
       req("PATCH", `${ACCOUNTS_BASE}/engagements/confirm-seniority-anchors`, {
@@ -199,6 +205,7 @@ export const accountsApiV2 = {
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`),
     batchSave: (data: {
+      explicitPayElementSelection?: boolean;
       creates?: Record<string, unknown>[];
       updates?: Record<string, unknown>[];
       deletes?: string[];

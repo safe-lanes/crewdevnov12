@@ -1,8 +1,9 @@
 import { storage } from "../storage";
 import { getCurrentTenantDb } from "../utils/tenantConnectionManager";
 import { tenantConnectionManager } from "../utils/tenantConnectionManager";
+import { scopedAccountDb } from "./accounts/accountDbScope";
 
-export function getDb() {
+export function getBaseDb() {
   const tenantDb = getCurrentTenantDb();
   if (tenantDb) {
     return tenantDb;
@@ -18,4 +19,8 @@ export function getDb() {
     return (storage as any).getDb();
   }
   throw new Error("Database not available. Storage must be DatabaseStorage.");
+}
+
+export function getDb() {
+  return scopedAccountDb(getBaseDb());
 }
