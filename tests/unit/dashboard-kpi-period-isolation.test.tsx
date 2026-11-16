@@ -9,7 +9,9 @@ vi.mock("@/modules/dashboard/CrewPoolRankChart", () => ({ CrewPoolRankChart: (p:
 vi.mock("@/modules/dashboard/DAAnalysisMetrics", () => ({ DAAnalysisMetrics: (p: any) => { seen.set("da", p); return null; } }));
 vi.mock("@/modules/dashboard/CrewRetentionMetrics", () => ({ CrewRetentionMetrics: (p: any) => { seen.set("retention", p); return null; } }));
 vi.mock("@/modules/dashboard/DashboardCard", () => ({ DashboardCard: (p: any) => <div>{p.renderContent?.("rank", null)}</div> }));
-vi.mock("@/modules/dashboard/ManagementFilterBar", () => ({ ManagementFilterBar: (p: any) => <div>
+vi.mock("@/modules/dashboard/ManagementFilterBar", () => ({
+  EMPTY_MANAGEMENT_FILTERS: { ranks: [], vessels: [], crewPools: [], manningAgents: [], nationalities: [] },
+  ManagementFilterBar: (p: any) => <div>
   <button onClick={() => p.onPeriodChange({ mode: "year", year: new Date().getFullYear() })}>Apply same year</button>
   <button onClick={() => p.onPeriodChange({ mode: "date-range", dateFrom: new Date(2025, 0, 1), dateTo: new Date(2026, 11, 31) })}>Select official</button>
   <button onClick={() => p.onFiltersChange({ ...p.filters, ranks: ["Master"] })}>Select rank</button>

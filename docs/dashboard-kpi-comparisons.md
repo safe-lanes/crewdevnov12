@@ -52,3 +52,31 @@ ignored `generated-artifacts/dashboard-kpis/`. Development preservation is
 separately measured with read-only before/after fingerprints of all public
 tables, columns and constraints. The before command refuses to overwrite its
 baseline.
+
+## Closing evidence — 16-Nov-2026
+
+- Full repository run: 230 files, 2,615 tests; 2,386 passed, 162 failed,
+  67 pending. The failed-test identities exactly match the prior Admin KPI
+  closing baseline: no new or removed failures. This is not a green suite.
+- Company Forms: all 103 discovered suites present, 740 passed, zero failed,
+  skipped, pending or missing tests. These results were validated from the
+  same full-suite JSON, not a selected subset of passing files.
+- TypeScript: 222 diagnostics, within the approved ceiling.
+- New comparison/card/period-isolation tests passed in the full run, as did
+  the expanded KPI integration and explicit permission-route inventory.
+- Real isolated-backend browser verification: 20 screenshots, no page errors.
+  Successful actual/KPI responses were not mocked. Transport failure screenshots
+  deliberately force an error, and Retry restores the real KPI response.
+- All 275 development public-table content/count fingerprints, columns and
+  constraints matched before and after browser verification and the full suite.
+- Source differences include no Reports, Approval Workflow, migrations, schema
+  definitions or actual-calculation endpoint handlers. Retention's effective
+  default range intentionally changes; no formula or other card period changes.
+- Browser evidence is from the isolated test app using a synthetic development
+  persona with Dashboard View only, not real parent authentication or a signed-in
+  main-preview session. Those latter signed-in paths are **NOT VERIFIED**.
+
+Generated evidence is in ignored `generated-artifacts/dashboard-kpis/`:
+`closing-gates.json`, `full-suite.json`, `typescript-final.log`,
+`development-before.json`, `development-after.json`, `browser/report.json` and
+the self-contained `dashboard-kpi-evidence.html` screenshot gallery.
