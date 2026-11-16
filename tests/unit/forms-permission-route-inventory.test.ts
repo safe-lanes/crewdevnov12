@@ -139,6 +139,13 @@ const EXPECTED_TRAINING_MATRIX_GUARDS: GuardedRoute[] = [
   { key: "POST /training-matrix-vessel-revisions/submit", menuName: "Admin Training Matrix", action: "edit" },
   { key: "POST /training-matrix-vessel-revisions", menuName: "Admin Training Matrix", action: "edit" },
 ];
+// KPI writes additionally enforce kpi_targets/set inside their transaction;
+// ordinary menu Edit is intentionally not a substitute for that capability.
+const EXPECTED_KPI_GUARDS: GuardedRoute[] = [
+  { key: "GET /kpis", menuName: "KPIs", action: "view" },
+  { key: "GET /kpis/:code/targets/:year", menuName: "KPIs", action: "view" },
+  { key: "PUT /kpis/:code/targets/:year", menuName: "KPIs", action: "view" },
+];
 
 function getPermissionRequirement(handler: unknown) {
   return (handler as PermissionMiddleware).permissionRequirement;
@@ -180,7 +187,7 @@ function sortRoutes(routes: GuardedRoute[]): GuardedRoute[] {
 describe("Forms Configuration permission route inventory", () => {
   it("applies exactly the approved explicit route-to-action table", () => {
     expect(sortRoutes(guardedRoutes())).toEqual(sortRoutes([
-      ...EXPECTED_FORMS_GUARDS, ...EXPECTED_TRAINING_MATRIX_GUARDS,
+      ...EXPECTED_FORMS_GUARDS, ...EXPECTED_TRAINING_MATRIX_GUARDS, ...EXPECTED_KPI_GUARDS,
     ]));
   });
 

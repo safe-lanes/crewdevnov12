@@ -506,7 +506,7 @@ export default function AccessControlPage() {
 
   const isLoading = menusLoading || rolesLoading;
   const combinedSavePending = saveCombinedMutation.isPending;
-  // No group can become dirty before all three role-bound drafts are loaded.
+  // No group can become dirty before all role-bound drafts are loaded.
   // Otherwise a late response could never initialize the remaining draft.
   const grantControlsDisabled = combinedSavePending || !selectedRoleUuid ||
     kpiTargetsRoleUuid !== selectedRoleUuid || kpiTargetsQuery.isFetching || kpiTargetsQuery.isError ||

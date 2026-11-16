@@ -112,13 +112,16 @@ export async function appendAudit(tx: any, actor: AuditActor, event: string, rol
     (await tx.execute(sql`SELECT assigned_role FROM adm_rolemaster_ac WHERE ruid=${roleId}`)).rows[0]?.assigned_role :
     affectedRoleName : null;
   await tx.execute(sql`INSERT INTO adm_access_control_audit
-    (event,actor,actor_display_name,role_id,affected_role_name,permission_display_label,resource,action,before_value,after_value,details)
+    (event,actor,actor_display_name,role_id,affected_role_name,permission_display_label,resource,action,before_value,after_value,details,recorded_at)
     VALUES (${event},${JSON.stringify(identifiers)}::jsonb,
       ${frozenName?.trim() || "A user whose name was not recorded"},${roleId},
       ${roleId ? roleName?.trim() || "a role whose name was not recorded" : null},
       ${liveAuditActionLabel({ id: "", event, resource, action })},${resource},${action},
       ${before === null ? null : JSON.stringify(before)}::jsonb,
-      ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb)`);
+      ${after === null ? null : JSON.stringify(after)}::jsonb,${JSON.stringify(details)}::jsonb,
+      ${/* KPI last-change must reflect insertion after lock waits, not transaction start.
+          Other events keep their existing now() timestamp semantics. */
+        event === "kpi_target_changed" ? sql`clock_timestamp()` : sql`now()`})`);
 }
 export function protectLastManager(before: number, after: number) {
   if (before > 0 && after === 0)

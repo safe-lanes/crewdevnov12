@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   formsData: { grants: { view: false, fill_in: false, witness: false, sign_representative: false, void: false, void_completed: false, override_checklist: false } },
   formsError: false, formsFetching: false, refetchForms: vi.fn(), refetchMenus: vi.fn(),
   trainingAllowed: false, trainingError: false,
+  kpiAllowed: false, kpiError: false,
 }));
 vi.mock("@/contexts/PermissionsContext", () => ({ usePermissions: () => ({ accessControlManagement: true }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast, dismiss: mocks.dismiss }) }));
@@ -68,6 +69,12 @@ beforeEach(() => {
     currentRoleId: "reviewer", explicitManagers: [] });
   Object.assign(mocks.policy, { blockExpiringDuringContract: false, blockMissingExpiry: false });
   mocks.trainingAllowed = false; mocks.trainingError = false;
+  mocks.kpiAllowed = false; mocks.kpiError = false;
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (!/^\/api\/v2\/admin\/access-control\/roles\/[^/]+\/kpi-targets$/.test(url))
+      throw Error(`Unexpected unmocked request: ${url}`);
+    return { ok: !mocks.kpiError, json: async () => ({ allowed: mocks.kpiAllowed }) };
+  }));
   mocks.saveManagement.mockImplementation(async (role: string, allowed: boolean) => {
     mocks.grants[role] = allowed;
     return { allowed };
@@ -82,7 +89,7 @@ beforeEach(() => {
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 });
-afterEach(() => { cleanup(); client.clear(); });
+afterEach(() => { cleanup(); client.clear(); vi.unstubAllGlobals(); });
 async function boot(role = "reviewer", management = false) {
   render(<QueryClientProvider client={client}><AccessControlPage /></QueryClientProvider>);
   await screen.findByTestId("button-training-compliance-policy");
@@ -91,6 +98,8 @@ async function boot(role = "reviewer", management = false) {
   } else if (mocks.state.allowed && mocks.trainingError) {
     await screen.findByText("Unable to load deployment override permission.");
   }
+  if (mocks.state.allowed && !mocks.kpiError)
+    await screen.findByRole("checkbox", { name: "Set KPI targets" });
   if (!management) return;
   fireEvent.click(screen.getByTestId("button-management-grants"));
   await screen.findByRole("checkbox", { name: "Management access granted" });
@@ -132,26 +141,28 @@ describe("Access Control configure-once panels", () => {
     expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
     expect(mocks.saveManagement).not.toHaveBeenCalled();
   });
-  it("saves menu, Company Forms, and deployment override edits through one combined mutation", async () => {
+  it("saves menu, Company Forms, deployment override and KPI target edits through one combined mutation", async () => {
     await boot();
     fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
     fireEvent.click(await screen.findByRole("checkbox", { name: "Witness", exact: true }));
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
     fireEvent.click(screen.getByRole("checkbox", { name: "Override deployment block" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Set KPI targets" }));
     fireEvent.click(screen.getByTestId("button-save-access-control"));
     await waitFor(() => expect(mocks.saveMenu).toHaveBeenCalledExactlyOnceWith({
       ruid: "reviewer",
       permissions: [{ menuId: "crew", canview: true, cancreate: false, canedit: false, candelete: false }],
       companyFormGrants: { ...emptyCompanyFormGrants(), witness: true },
       trainingComplianceAllowed: true,
+      kpiTargetsAllowed: true,
     }));
     expect(mocks.refetchForms).toHaveBeenCalled();
     expect(mocks.refetchMenus).toHaveBeenCalled();
     expect(screen.queryByTestId("save-company-form-permissions")).not.toBeInTheDocument();
     expect(screen.queryByTestId("save-training-compliance-permission")).not.toBeInTheDocument();
   });
-  it("keeps all three drafts on combined failure and refuses a silent role switch", async () => {
+  it("keeps all four drafts on combined failure and refuses a silent role switch", async () => {
     mocks.saveMenu.mockRejectedValue(Error("500: Deliberate failure"));
     await boot();
     fireEvent.click(await screen.findByTestId("company-form-permissions-trigger"));
@@ -159,14 +170,16 @@ describe("Access Control configure-once panels", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(screen.getByTestId("checkbox-crew-canview"));
     fireEvent.click(screen.getByRole("checkbox", { name: "Override deployment block" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Set KPI targets" }));
     fireEvent.click(screen.getByTestId("button-save-access-control"));
     expect(await screen.findByText("None of the permission changes were saved. Please retry.")).toBeVisible();
     expect(screen.getByTestId("checkbox-crew-canview")).toBeChecked();
     expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
     expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Set KPI targets" })).toBeChecked();
     expect(screen.getByTestId("button-save-access-control")).toBeEnabled();
     fireEvent.click(screen.getByTestId("role-item-manager"));
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("all three sets of edits");
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("all four sets of edits");
     fireEvent.click(screen.getByTestId("button-cancel-role-change"));
     expect(screen.getByTestId("company-form-permissions-trigger")).toHaveTextContent("Witness");
     expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toBeChecked();
@@ -209,6 +222,18 @@ describe("Access Control configure-once panels", () => {
     fireEvent.click(help);
     expect(await screen.findByRole("dialog")).toHaveTextContent(explanation);
     expect(screen.queryByTestId("save-training-compliance-permission")).not.toBeInTheDocument();
+  });
+  it("keeps all grant controls disabled on a failed KPI permission read and recovers with Retry", async () => {
+    mocks.kpiError = true;
+    await boot();
+    const row = await screen.findByTestId("kpi-targets-permissions");
+    await within(row).findByText("Unable to load KPI permission.");
+    expect(screen.getByTestId("checkbox-crew-canview")).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Override deployment block" })).toBeDisabled();
+    mocks.kpiError = false;
+    fireEvent.click(within(row).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Set KPI targets" })).toBeEnabled());
+    expect(screen.getByTestId("checkbox-crew-canview")).toBeEnabled();
   });
   it("shows explanations in tooltips rather than inline while preserving accessible descriptions", async () => {
     await boot();

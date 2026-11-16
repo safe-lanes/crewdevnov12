@@ -86,6 +86,29 @@ targets, the panel shows “Last changed by [name] on [date]”. No event means 
 line. A real clearing event still appears after all values are removed.
 The summary is available to KPI editors without Access Control rights; it
 does not expose raw actors, other years/KPIs, grants or unrelated audit history.
+KPI change timestamps use the server clock at audit insertion, after any target
+lock wait. Existing audit event types retain their prior timestamp semantics.
+
+## Repeatable verification
+- `npm test -- tests/integration/kpi-targets.test.ts tests/unit/kpi-settings-page.test.tsx`
+  exercises real migration constraints, permissions, partial values, zero,
+  clearing, no-op suppression, audit rollback, concurrency, independent tenant
+  contexts, frozen last-change metadata and the editor's save/failure states.
+- `node scripts/verify-kpi-browser.mjs` starts its own identity-verified test
+  backend (never port 5000) and clicks the actual editor, discard dialog,
+  permission grid and audit popup. It uses a disposable synthetic KPI-only
+  editor, year 2096 and the existing synthetic test administrator. It refuses
+  to overwrite an occupied evidence year. Disposable targets, users and grants
+  are cleaned up; append-only synthetic audit evidence remains in the isolated
+  test database. Screenshots and its report go under
+  `generated-artifacts/kpi-settings/browser/`.
+- `npm test` is the complete repository gate. Company Forms coverage is
+  discovered with `discoverCompanyFormTests` and checked against those same
+  full-run results, including zero failures/skips and no missing suites.
+- `node scripts/kpi-development-evidence.mjs` compares the pre-upgrade
+  fingerprints, including old rows in the menu/action/migration tables and
+  existing view columns. Required new catalogue/ledger rows are reported
+  separately. No development target or grant is created by verification.
 
 ## Deliberate retention overlap
 Senior Officers and Officers are **not mutually exclusive**. A rank marked as

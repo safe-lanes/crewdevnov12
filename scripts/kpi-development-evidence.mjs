@@ -34,5 +34,24 @@ try {
     console.log(JSON.stringify({ changes, removed }, null, 2));
     const allowed = new Set(["kpi_definitions", "kpi_components", "kpi_target_years", "kpi_target_values", "adm_menumaster_ac", "adm_permission_actions", "schema_migrations"]);
     if (removed.length || changes.some(c => !allowed.has(c.table))) throw Error("Unexpected development changes; inspect fingerprints.");
+    // Prove old rows in the three changed existing tables are unchanged too.
+    const exclusions = {
+      adm_menumaster_ac: "name='KPIs' AND route='/admin/kpis'",
+      adm_permission_actions: "resource='kpi_targets' AND action='set'",
+      schema_migrations: "filename IN ('0270_kpi_targets.sql','0271_kpi_permission.sql')",
+    };
+    for (const [table, exclusion] of Object.entries(exclusions)) {
+      const kept = (await db.query(`SELECT count(*)::text AS count,
+        md5(coalesce(string_agg(h,'' ORDER BY h),'')) AS fingerprint
+        FROM (SELECT md5(to_jsonb(t)::text) AS h FROM public.${table} t WHERE NOT (${exclusion})) q`)).rows[0];
+      if (JSON.stringify(kept) !== JSON.stringify(before.tables[table])) throw Error(`Existing ${table} rows changed.`);
+    }
+    const addedTables = new Set(["kpi_definitions", "kpi_components", "kpi_target_years", "kpi_target_values"]);
+    // information_schema.columns also includes views; preserve their evidence.
+    const oldColumns = columns.filter(c => !addedTables.has(c.table_name));
+    if (JSON.stringify(oldColumns) !== JSON.stringify(before.columns)) throw Error("Existing columns changed.");
+    if (tables.kpi_target_years.count !== "0" || tables.kpi_target_values.count !== "0")
+      throw Error("Development target data was written.");
+    console.log("All kept rows/columns unchanged; development targets/years/grants untouched.");
   }
 } finally { await db.end(); }
