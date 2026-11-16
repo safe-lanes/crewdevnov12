@@ -540,8 +540,8 @@ export const adminApiV2 = {
 
   async saveCombinedAccessControlPermissions(
     ruid: string,
-    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean },
-  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean }> {
+    payload: { permissions: any[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean; kpiTargetsAllowed?: boolean },
+  ): Promise<{ permissions: unknown[]; companyFormGrants: CompanyFormGrants; trainingComplianceAllowed: boolean; kpiTargetsAllowed?: boolean }> {
     const res = await apiRequest(
       'PUT',
       `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/combined-permissions`,

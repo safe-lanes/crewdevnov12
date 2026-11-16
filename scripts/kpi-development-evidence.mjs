@@ -32,7 +32,7 @@ try {
     const removed = Object.keys(before.tables).filter(t => !tables[t]);
     await fs.writeFile(`${out}/after.json`, JSON.stringify({ ...snapshot, changes, removed }, null, 2));
     console.log(JSON.stringify({ changes, removed }, null, 2));
-    const allowed = new Set(["kpi_definitions", "kpi_components", "kpi_target_years", "kpi_target_values", "adm_menumaster_ac", "schema_migrations"]);
+    const allowed = new Set(["kpi_definitions", "kpi_components", "kpi_target_years", "kpi_target_values", "adm_menumaster_ac", "adm_permission_actions", "schema_migrations"]);
     if (removed.length || changes.some(c => !allowed.has(c.table))) throw Error("Unexpected development changes; inspect fingerprints.");
   }
 } finally { await db.end(); }

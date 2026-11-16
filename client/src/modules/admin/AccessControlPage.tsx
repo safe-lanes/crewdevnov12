@@ -113,7 +113,7 @@ const VIEW_ONLY_SECTION_MENUS = new Set([
   // Phase 1 RBAC additions (view-only until Phase 2 wires Create/Edit/Delete)
   "dashboard",
   "terminated",
-  "training & ret.", "training", "retention"
+  "training & ret.", "training", "retention", "kpis"
 ]);
 const VIEW_ONLY_DISABLED_KEYS = new Set<keyof Permission>(["cancreate", "canedit", "candelete"]);
 
@@ -164,6 +164,8 @@ export default function AccessControlPage() {
   const [companyFormGrantsRoleUuid, setCompanyFormGrantsRoleUuid] = useState<string | null>(null);
   const [trainingComplianceAllowed, setTrainingComplianceAllowed] = useState(false);
   const [trainingComplianceRoleUuid, setTrainingComplianceRoleUuid] = useState<string | null>(null);
+  const [kpiTargetsAllowed, setKpiTargetsAllowed] = useState(false);
+  const [kpiTargetsRoleUuid, setKpiTargetsRoleUuid] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [roleChangeRequest, setRoleChangeRequest] = useState<string | null>(null);
@@ -181,6 +183,15 @@ export default function AccessControlPage() {
   });
   const trainingComplianceQuery = useRoleTrainingComplianceGrantV2(selectedRoleUuid, {
     enabled: !!stateQuery.data?.allowed,
+  });
+  const kpiTargetsQuery = useQuery<{ allowed: boolean }>({
+    queryKey: [`/api/v2/admin/access-control/roles/${selectedRoleUuid}/kpi-targets`],
+    queryFn: async () => {
+      const response = await fetch(`/api/v2/admin/access-control/roles/${encodeURIComponent(selectedRoleUuid!)}/kpi-targets`);
+      if (!response.ok) throw new Error("Unable to load KPI permission.");
+      return response.json();
+    },
+    enabled: !!selectedRoleUuid && !!stateQuery.data?.allowed,
   });
   const roleManagementUrl = managementRoleUuid
     ? `/api/v2/admin/access-control/roles/${encodeURIComponent(managementRoleUuid)}/management`
@@ -260,6 +271,12 @@ export default function AccessControlPage() {
   useEffect(() => {
     if (managementQuery.data) setManagementDraft(managementQuery.data.allowed);
   }, [managementQuery.data]);
+  useEffect(() => {
+    if (!isDirty && kpiTargetsQuery.data && selectedRoleUuid) {
+      setKpiTargetsAllowed(kpiTargetsQuery.data.allowed);
+      setKpiTargetsRoleUuid(selectedRoleUuid);
+    }
+  }, [kpiTargetsQuery.data, isDirty, selectedRoleUuid]);
 
   const menuTree = useMemo(() => buildMenuTree(menusData as MenuItemApi[]), [menusData]);
   const allMenuMuids = useMemo(() => (menusData as MenuItemApi[]).map(m => m.muid), [menusData]);
@@ -292,6 +309,8 @@ export default function AccessControlPage() {
     setCompanyFormGrantsRoleUuid(null);
     setTrainingComplianceAllowed(false);
     setTrainingComplianceRoleUuid(null);
+    setKpiTargetsAllowed(false);
+    setKpiTargetsRoleUuid(null);
     setCombinedSaveError("");
     setRoleChangeRequest(null);
   }, []);
@@ -350,6 +369,7 @@ export default function AccessControlPage() {
   );
 
   const handleSave = useCallback(async () => {
+    if (kpiTargetsRoleUuid !== selectedRoleUuid || !kpiTargetsQuery.data || kpiTargetsQuery.isFetching || kpiTargetsQuery.isError) return;
     if (!selectedRoleUuid || menuPermissionsRoleUuid !== selectedRoleUuid || !companyFormGrants || companyFormGrantsRoleUuid !== selectedRoleUuid ||
       trainingComplianceRoleUuid !== selectedRoleUuid || !trainingComplianceQuery.data ||
       permissionsLoading || permissionsQuery.isFetching || permissionsQuery.isError ||
@@ -373,23 +393,25 @@ export default function AccessControlPage() {
         permissions,
         companyFormGrants,
         trainingComplianceAllowed,
+        kpiTargetsAllowed,
       });
     } catch (error) {
       // A transport failure can lose a successful response after commit.
       setCombinedSaveError(error instanceof Error && /^[45]\d\d:/.test(error.message)
         ? "None of the permission changes were saved. Please retry."
-        : "Unable to confirm the save. Your edits are kept; retry. All three permission groups are saved together, never partly.");
+        : "Unable to confirm the save. Your edits are kept; retry. All permission groups are saved together, never partly.");
       return;
     }
     setIsDirty(false);
-    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch(), trainingComplianceQuery.refetch()]);
+    await Promise.all([permissionsQuery.refetch(), companyFormsQuery.refetch(), trainingComplianceQuery.refetch(), kpiTargetsQuery.refetch()]);
     toast({
       title: "Changes Saved",
       description: `Permissions for "${selectedRole?.assignedRole}" have been saved successfully.`,
     });
   }, [selectedRoleUuid, menuPermissionsRoleUuid, companyFormGrants, companyFormGrantsRoleUuid, trainingComplianceRoleUuid,
     trainingComplianceAllowed, trainingComplianceQuery, permissionsLoading, permissionsQuery,
-    companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole]);
+    companyFormsQuery, saveCombinedMutation, allMenuMuids, localPermissions, toast, dismiss, selectedRole,
+    kpiTargetsRoleUuid, kpiTargetsQuery, kpiTargetsAllowed]);
 
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
@@ -487,6 +509,7 @@ export default function AccessControlPage() {
   // No group can become dirty before all three role-bound drafts are loaded.
   // Otherwise a late response could never initialize the remaining draft.
   const grantControlsDisabled = combinedSavePending || !selectedRoleUuid ||
+    kpiTargetsRoleUuid !== selectedRoleUuid || kpiTargetsQuery.isFetching || kpiTargetsQuery.isError ||
     menuPermissionsRoleUuid !== selectedRoleUuid || companyFormGrantsRoleUuid !== selectedRoleUuid ||
     trainingComplianceRoleUuid !== selectedRoleUuid || permissionsLoading ||
     permissionsQuery.isFetching || permissionsQuery.isError ||
@@ -633,6 +656,26 @@ export default function AccessControlPage() {
               />
             )}
           </div>}
+          {selectedRoleUuid && stateQuery.data?.allowed && <div
+            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_repeat(5,minmax(32px,80px))] items-center border-b border-gray-200 bg-sky-50/70"
+            data-testid="kpi-targets-permissions"
+          >
+            <div className="px-4 py-2.5 text-sm font-semibold text-gray-800">Set KPI targets</div>
+            <div aria-hidden="true" />
+            <div className="col-span-4 px-3 py-2.5">
+              {kpiTargetsQuery.isError ? <div role="alert" className="text-sm text-red-700">
+                Unable to load KPI permission. <button className="underline" onClick={() => kpiTargetsQuery.refetch()}>Retry</button>
+              </div> : kpiTargetsRoleUuid !== selectedRoleUuid ? <span className="text-sm">Loading permission…</span> :
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={kpiTargetsAllowed} disabled={grantControlsDisabled}
+                    data-testid="checkbox-kpi-targets-set"
+                    onCheckedChange={checked => {
+                      setKpiTargetsAllowed(checked === true); setIsDirty(true); setCombinedSaveError("");
+                    }} />
+                  Set KPI targets
+                </label>}
+            </div>
+          </div>}
           </div>
         </ScrollArea>
         </div>
@@ -664,7 +707,7 @@ export default function AccessControlPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved permission changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Menu, Company Forms, and Override deployment block permission edits are unsaved. Changing roles will discard all three sets of edits.
+              Menu, Company Forms, Override deployment block, and Set KPI targets permission edits are unsaved. Changing roles will discard all four sets of edits.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

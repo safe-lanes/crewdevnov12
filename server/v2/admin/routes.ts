@@ -195,6 +195,7 @@ router.get("/training-compliance/my-permission", trainingComplianceSettingsContr
 router.get("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.get);
 router.put("/training-compliance/settings", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.save);
 router.get("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.grant);
+router.get("/access-control/roles/:ruid/kpi-targets", requireTrustedAccessControlAdmin(), kpiTargetsController.grant);
 router.put("/access-control/roles/:ruid/training-compliance", requireTrustedAccessControlAdmin(), trainingComplianceSettingsController.saveGrant);
 router.get("/access-control/state", requireTrustedAccessControlAdmin(), accessControlController.state);
 router.get("/access-control/audit", requireTrustedAccessControlAdmin(), accessControlController.audit);

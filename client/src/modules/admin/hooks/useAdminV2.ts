@@ -842,12 +842,14 @@ export function useSaveCombinedAccessControlPermissionsV2() {
       permissions,
       companyFormGrants,
       trainingComplianceAllowed,
+      kpiTargetsAllowed,
     }: {
       ruid: string;
       permissions: any[];
       companyFormGrants: CompanyFormGrants;
       trainingComplianceAllowed: boolean;
-    }) => adminApiV2.saveCombinedAccessControlPermissions(ruid, { permissions, companyFormGrants, trainingComplianceAllowed }),
+      kpiTargetsAllowed?: boolean;
+    }) => adminApiV2.saveCombinedAccessControlPermissions(ruid, { permissions, companyFormGrants, trainingComplianceAllowed, kpiTargetsAllowed }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'permissions', variables.ruid] });
       queryClient.invalidateQueries({
