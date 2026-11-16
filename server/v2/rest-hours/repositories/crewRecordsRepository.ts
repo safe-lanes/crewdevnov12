@@ -14,8 +14,8 @@ export class CrewRecordsRepository {
     crewMemberId?: string;
     monthValue?: string;
     monthValues?: string[];
-  }): Promise<RhCrewRecordV2[]> {
-    const db = getDb();
+  }, tx?: any): Promise<RhCrewRecordV2[]> {
+    const db = tx ?? getDb();
     let conditions = [eq(rhCrewRecordsV2.isDeleted, false)];
 
     if (filters?.vesselId) {
@@ -58,9 +58,8 @@ export class CrewRecordsRepository {
   }
 
   async create(
-    data: Omit<InsertRhCrewRecordV2, "rhCrewRecordUuid">
-  ): Promise<RhCrewRecordV2> {
-    const db = getDb();
+    data: Omit<InsertRhCrewRecordV2, "rhCrewRecordUuid">, tx?: any): Promise<RhCrewRecordV2> {
+    const db = tx ?? getDb();
     const results = await db
       .insert(rhCrewRecordsV2)
       .values({
@@ -73,9 +72,8 @@ export class CrewRecordsRepository {
 
   async update(
     rhCrewRecordUuid: string,
-    data: Partial<InsertRhCrewRecordV2>
-  ): Promise<RhCrewRecordV2 | undefined> {
-    const db = getDb();
+    data: Partial<InsertRhCrewRecordV2>, tx?: any): Promise<RhCrewRecordV2 | undefined> {
+    const db = tx ?? getDb();
     const results = await db
       .update(rhCrewRecordsV2)
       .set({ ...data, updatedAt: new Date() })
@@ -84,8 +82,8 @@ export class CrewRecordsRepository {
     return results[0];
   }
 
-  async softDelete(rhCrewRecordUuid: string): Promise<boolean> {
-    const db = getDb();
+  async softDelete(rhCrewRecordUuid: string, tx?: any): Promise<boolean> {
+    const db = tx ?? getDb();
     const results = await db
       .update(rhCrewRecordsV2)
       .set({

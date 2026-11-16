@@ -4,6 +4,7 @@ import type {
   InsertRhVariableTaskV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { detectActivityConflict } from "../utils/activityConflictHelpers";
+import { getDb } from "../../db";
 import { rankResolutionService, toIsoDate } from "./rankResolutionService";
 
 const variableTasksRepository = new VariableTasksRepository();
@@ -186,42 +187,45 @@ export const variableTasksService = {
         dailyRecordsMap.set(dr.crewMemberId, dr.dailyRecords);
       }
 
-      for (const crewRecord of crewRecords) {
-        const dailyRecordsJson = dailyRecordsMap.get(crewRecord.crewMemberId);
-        let conflicting = false;
+      // Crew + vessel conflict flags change together in one transaction.
+      await getDb().transaction(async (tx: any) => {
+        for (const crewRecord of crewRecords) {
+          const dailyRecordsJson = dailyRecordsMap.get(crewRecord.crewMemberId);
+          let conflicting = false;
 
-        if (dailyRecordsJson && variableTasks.length > 0) {
-          conflicting = detectActivityConflict(
-            crewRecord.crewMemberId,
-            variableTasks,
-            dailyRecordsJson,
-            monthValue
-          );
+          if (dailyRecordsJson && variableTasks.length > 0) {
+            conflicting = detectActivityConflict(
+              crewRecord.crewMemberId,
+              variableTasks,
+              dailyRecordsJson,
+              monthValue
+            );
+          }
+
+          if (crewRecord.activityConflicting !== conflicting) {
+            await crewRecordsRepository.update(crewRecord.rhCrewRecordUuid, {
+              activityConflicting: conflicting,
+            }, tx);
+          }
         }
 
-        if (crewRecord.activityConflicting !== conflicting) {
-          await crewRecordsRepository.update(crewRecord.rhCrewRecordUuid, {
-            activityConflicting: conflicting,
-          });
+        const updatedCrewRecords = await crewRecordsRepository.findAll({ vesselId, monthValue }, tx);
+        const crewWithConflicts = updatedCrewRecords.filter(r => r.activityConflicting === true);
+        const hasConflicts = crewWithConflicts.length > 0;
+        const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
+          ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
+          : null;
+
+        const vesselRecords = await vesselRecordsRepository.findAll({ vesselId, monthValue }, tx);
+        const vesselRecord = vesselRecords[0];
+        if (vesselRecord) {
+          await vesselRecordsRepository.update(vesselRecord.rhVesselUuid, {
+            activityConflicting: hasConflicts,
+            crewWithActivityConflicts: crewWithConflicts.length,
+            crewWithActivityConflictsDetails,
+          }, tx);
         }
-      }
-
-      const updatedCrewRecords = await crewRecordsRepository.findAll({ vesselId, monthValue });
-      const crewWithConflicts = updatedCrewRecords.filter(r => r.activityConflicting === true);
-      const hasConflicts = crewWithConflicts.length > 0;
-      const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
-        ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
-        : null;
-
-      const vesselRecords = await vesselRecordsRepository.findAll({ vesselId, monthValue });
-      const vesselRecord = vesselRecords[0];
-      if (vesselRecord) {
-        await vesselRecordsRepository.update(vesselRecord.rhVesselUuid, {
-          activityConflicting: hasConflicts,
-          crewWithActivityConflicts: crewWithConflicts.length,
-          crewWithActivityConflictsDetails,
-        });
-      }
+      });
     } catch (error) {
       console.error('Failed to recalculate conflicts for vessel:', error);
     }

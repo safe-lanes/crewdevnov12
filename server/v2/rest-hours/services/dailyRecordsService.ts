@@ -11,7 +11,7 @@ import {
 import { detectActivityConflict } from "../utils/activityConflictHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
+import { eq, and, or, isNull, lte, gte, sql } from "drizzle-orm";
 import { rankResolutionService } from "./rankResolutionService";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
@@ -248,12 +248,28 @@ async function getCrewAssignmentsForMonth(
   }
 }
 
+// Serialise writers for one vessel/month so concurrent saves cannot create
+// duplicate crew/vessel summary rows (those tables have no unique index).
+async function lockVesselMonth(tx: any, vesselId: string, monthYear: string) {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${'rh-sync:' + vesselId + ':' + monthYear}))`);
+}
+
+// Standalone entry point: runs the summary sync in its own transaction.
 async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string, auditUserUuid: string | null = null) {
+  await getDb().transaction(async (tx: any) => {
+    await lockVesselMonth(tx, vesselId, monthYear);
+    await postSaveSyncTx(tx, crewMemberId, vesselId, monthYear, auditUserUuid);
+  });
+}
+
+// Must run inside a transaction (tx). Errors propagate so the caller's
+// transaction rolls back the daily write together with the summaries.
+async function postSaveSyncTx(tx: any, crewMemberId: string, vesselId: string, monthYear: string, auditUserUuid: string | null = null) {
   try {
     // All rank-period records for the month. Non-promotion months have exactly
     // one record with a NULL window, so the loop below collapses to the original
     // single-record behaviour.
-    const dailyRecords = await dailyRecordsRepository.findAllByKey(crewMemberId, vesselId, monthYear);
+    const dailyRecords = await dailyRecordsRepository.findAllByKey(crewMemberId, vesselId, monthYear, tx);
     if (dailyRecords.length === 0) {
       return;
     }
@@ -272,7 +288,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       vesselId,
       crewMemberId,
       monthValue: monthYear,
-    });
+    }, tx);
 
     let crewName = dailyRecords.find(r => r.name && r.name !== 'undefined undefined')?.name || '';
     if (!crewName || crewName === 'undefined undefined') {
@@ -431,7 +447,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
             activityConflicting,
             signOnOffInfo,
             updatedByUuid: auditUserUuid,
-          });
+          }, tx);
         } else {
           await crewRecordsRepository.create({
             crewMemberId,
@@ -449,23 +465,24 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
             predictedNCs,
             createdByUuid: auditUserUuid,
             updatedByUuid: auditUserUuid,
-          });
+          }, tx);
         }
       }
     }
 
-    await updateVesselRecordSync(vesselId, monthYear, auditUserUuid);
+    await updateVesselRecordSync(vesselId, monthYear, auditUserUuid, tx);
   } catch (error) {
     console.error('Failed to sync crew/vessel records after daily record save:', error);
+    throw error;
   }
 }
 
-async function updateVesselRecordSync(vesselId: string, monthValue: string, auditUserUuid: string | null = null) {
+async function updateVesselRecordSync(vesselId: string, monthValue: string, auditUserUuid: string | null = null, tx?: any) {
   try {
     const crewRecords = await crewRecordsRepository.findAll({
       vesselId,
       monthValue,
-    });
+    }, tx);
 
     if (crewRecords.length === 0) {
       return;
@@ -519,7 +536,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string, audi
     const existingVesselRecords = await vesselRecordsRepository.findAll({
       vesselId,
       monthValue,
-    });
+    }, tx);
     const existingVesselRecord = existingVesselRecords[0];
 
     if (existingVesselRecord) {
@@ -538,7 +555,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string, audi
         predictedNCs,
         crewWithPredictedNCs,
         updatedByUuid: auditUserUuid,
-      });
+      }, tx);
     } else {
       await vesselRecordsRepository.create({
         vesselId,
@@ -560,10 +577,11 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string, audi
         officeReviewStatus: '',
         createdByUuid: auditUserUuid,
         updatedByUuid: auditUserUuid,
-      });
+      }, tx);
     }
   } catch (error) {
     console.error('Failed to sync vessel record:', error);
+    throw error;
   }
 }
 
@@ -653,19 +671,18 @@ export const dailyRecordsService = {
       console.error('Failed to resolve as-of rank during daily record create:', e);
     }
 
-    const record = await dailyRecordsRepository.create(dataWithAudit);
-
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, data.auditUserUuid ?? null);
-
-    return record;
+    return getDb().transaction(async (tx: any) => {
+      await lockVesselMonth(tx, data.vesselId, data.monthYear);
+      const record = await dailyRecordsRepository.create(dataWithAudit, tx);
+      await postSaveSyncTx(tx, record.crewMemberId, record.vesselId, record.monthYear, data.auditUserUuid ?? null);
+      return record;
+    });
   },
 
   async update(
     rhDailyUuid: string,
     data: Partial<InsertRhDailyRecordV2> & { auditUserUuid?: string }
   ): Promise<RhDailyRecordV2> {
-    await this.getByUuid(rhDailyUuid);
-
     // The identity/unique-key columns (crewMemberId, vesselId, monthYear, rank)
     // must never change on an update — they define the row's identity and the
     // unique index (crew_member_id, vessel_id, month_year, rank). After a
@@ -675,24 +692,28 @@ export const dailyRecordsService = {
     // record. Strip these columns so an update only ever modifies the data.
     const { crewMemberId, vesselId, monthYear, rank, ...mutableData } = data;
     const dataWithAudit = applyAuditUser(mutableData, false);
-    const updated = await dailyRecordsRepository.update(rhDailyUuid, dataWithAudit);
-    if (!updated) {
-      throw new Error(`Failed to update daily record: ${rhDailyUuid}`);
-    }
-
-    await postSaveSync(updated.crewMemberId, updated.vesselId, updated.monthYear, data.auditUserUuid ?? null);
-
-    return updated;
+    const existing = await this.getByUuid(rhDailyUuid);
+    return getDb().transaction(async (tx: any) => {
+      await lockVesselMonth(tx, existing.vesselId, existing.monthYear);
+      const updated = await dailyRecordsRepository.update(rhDailyUuid, dataWithAudit, tx);
+      if (!updated) {
+        throw new Error(`Failed to update daily record: ${rhDailyUuid}`);
+      }
+      await postSaveSyncTx(tx, updated.crewMemberId, updated.vesselId, updated.monthYear, data.auditUserUuid ?? null);
+      return updated;
+    });
   },
 
   async delete(rhDailyUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const record = await this.getByUuid(rhDailyUuid);
-    const success = await dailyRecordsRepository.softDelete(rhDailyUuid);
-    if (!success) {
-      throw new Error(`Failed to delete daily record: ${rhDailyUuid}`);
-    }
-
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, auditUserUuid);
+    await getDb().transaction(async (tx: any) => {
+      await lockVesselMonth(tx, record.vesselId, record.monthYear);
+      const success = await dailyRecordsRepository.softDelete(rhDailyUuid, tx);
+      if (!success) {
+        throw new Error(`Failed to delete daily record: ${rhDailyUuid}`);
+      }
+      await postSaveSyncTx(tx, record.crewMemberId, record.vesselId, record.monthYear, auditUserUuid);
+    });
   },
 
   async backfillViolations(params: {
@@ -731,19 +752,23 @@ export const dailyRecordsService = {
     return { processed, violationsFound };
   },
 
-  async resyncAllRecords(): Promise<{ processed: number }> {
+  async resyncAllRecords(): Promise<{ processed: number; failed: number }> {
     const allDailyRecords = await dailyRecordsRepository.findAll({});
     let processed = 0;
+    let failed = 0;
 
+    // Each record syncs in its own transaction (postSaveSync) so one failure
+    // rolls back only that record's summaries and does not abort the batch.
     for (const record of allDailyRecords) {
       try {
         await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
         processed++;
       } catch (e) {
+        failed++;
         console.error(`Failed to resync record ${record.rhDailyUuid}:`, e);
       }
     }
 
-    return { processed };
+    return { processed, failed };
   },
 };

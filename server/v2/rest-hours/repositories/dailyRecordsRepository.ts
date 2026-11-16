@@ -12,8 +12,8 @@ export class DailyRecordsRepository {
     vesselId?: string;
     crewMemberId?: string;
     monthYear?: string;
-  }): Promise<RhDailyRecordV2[]> {
-    const db = getDb();
+  }, tx?: any): Promise<RhDailyRecordV2[]> {
+    const db = tx ?? getDb();
     let conditions = [eq(rhDailyRecordsV2.isDeleted, false)];
 
     if (filters?.vesselId) {
@@ -55,9 +55,8 @@ export class DailyRecordsRepository {
   async findAllByKey(
     crewMemberId: string,
     vesselId: string,
-    monthYear: string
-  ): Promise<RhDailyRecordV2[]> {
-    const db = getDb();
+    monthYear: string, tx?: any): Promise<RhDailyRecordV2[]> {
+    const db = tx ?? getDb();
     const results = await db
       .select()
       .from(rhDailyRecordsV2)
@@ -99,9 +98,8 @@ export class DailyRecordsRepository {
   }
 
   async create(
-    data: Omit<InsertRhDailyRecordV2, "rhDailyUuid">
-  ): Promise<RhDailyRecordV2> {
-    const db = getDb();
+    data: Omit<InsertRhDailyRecordV2, "rhDailyUuid">, tx?: any): Promise<RhDailyRecordV2> {
+    const db = tx ?? getDb();
     const results = await db
       .insert(rhDailyRecordsV2)
       .values({
@@ -114,9 +112,8 @@ export class DailyRecordsRepository {
 
   async update(
     rhDailyUuid: string,
-    data: Partial<InsertRhDailyRecordV2>
-  ): Promise<RhDailyRecordV2 | undefined> {
-    const db = getDb();
+    data: Partial<InsertRhDailyRecordV2>, tx?: any): Promise<RhDailyRecordV2 | undefined> {
+    const db = tx ?? getDb();
     const results = await db
       .update(rhDailyRecordsV2)
       .set({ ...data, updatedAt: new Date() })
@@ -125,8 +122,8 @@ export class DailyRecordsRepository {
     return results[0];
   }
 
-  async softDelete(rhDailyUuid: string): Promise<boolean> {
-    const db = getDb();
+  async softDelete(rhDailyUuid: string, tx?: any): Promise<boolean> {
+    const db = tx ?? getDb();
     const results = await db
       .update(rhDailyRecordsV2)
       .set({

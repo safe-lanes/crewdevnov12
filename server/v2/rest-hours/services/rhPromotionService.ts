@@ -1,5 +1,6 @@
 import { DailyRecordsRepository, FixedTasksRepository } from "../repositories";
 import { dailyRecordsService } from "./dailyRecordsService";
+import { getDb } from "../../db";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const fixedTasksRepository = new FixedTasksRepository();
@@ -127,29 +128,32 @@ export const rhPromotionService = {
     const prevTo = previous.applicableTo || monthEnd;
     const prevFrom = previous.applicableFrom || monthStart;
 
-    // 1. Close the previous record's window at split-date−1.
-    await dailyRecordsRepository.update(previous.rhDailyUuid, {
-      applicableFrom: prevFrom,
-      applicableTo: dayBeforeSplit,
-      updatedByUuid: auditUserUuid ?? null,
-    });
+    // 1+2. Close the previous record's window at split-date−1 and open a new
+    //      new-rank record from the split date to the previous end (copying the
+    //      recorded data; out-of-window days render as N/A) in ONE transaction so
+    //      a failure cannot leave the old window closed with no new-rank record.
+    const created = await getDb().transaction(async (tx: any) => {
+      await dailyRecordsRepository.update(previous.rhDailyUuid, {
+        applicableFrom: prevFrom,
+        applicableTo: dayBeforeSplit,
+        updatedByUuid: auditUserUuid ?? null,
+      }, tx);
 
-    // 2. Open a new new-rank record from the split date to the previous end,
-    //    copying the recorded data (out-of-window days render as N/A).
-    const created = await dailyRecordsRepository.create({
-      crewMemberId: empNo,
-      vesselId,
-      rank: newRank,
-      name: previous.name,
-      monthYear,
-      dailyRecords: previous.dailyRecords,
-      showPlanning: previous.showPlanning ?? false,
-      opaMode: previous.opaMode ?? false,
-      watchkeeper: previous.watchkeeper ?? false,
-      applicableFrom: splitDate,
-      applicableTo: prevTo,
-      createdByUuid: auditUserUuid ?? null,
-      updatedByUuid: auditUserUuid ?? null,
+      return dailyRecordsRepository.create({
+        crewMemberId: empNo,
+        vesselId,
+        rank: newRank,
+        name: previous.name,
+        monthYear,
+        dailyRecords: previous.dailyRecords,
+        showPlanning: previous.showPlanning ?? false,
+        opaMode: previous.opaMode ?? false,
+        watchkeeper: previous.watchkeeper ?? false,
+        applicableFrom: splitDate,
+        applicableTo: prevTo,
+        createdByUuid: auditUserUuid ?? null,
+        updatedByUuid: auditUserUuid ?? null,
+      }, tx);
     });
 
     // 3. Split fixed tasks too: lock the old-rank row at split-date−1 and open a
