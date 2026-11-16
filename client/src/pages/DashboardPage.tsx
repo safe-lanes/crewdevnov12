@@ -21,7 +21,7 @@ export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
   const [showFilters, setShowFilters] = useState(true);
 
-  const { period, filters, setPeriod, setFilters, clearFilters } = useDashboardFiltersStore();
+  const { period, periodExplicitlySelected, filters, setPeriod, setFilters, clearFilters } = useDashboardFiltersStore();
 
   useEffect(() => {
     const cameFromDrilldown = new URLSearchParams(window.location.search).has("drilldown");
@@ -165,6 +165,7 @@ export const DashboardPage = () => {
               renderContent={() => (
                 <CrewRetentionMetrics
                   period={period}
+                  periodExplicitlySelected={periodExplicitlySelected}
                   ranks={filters.ranks}
                   crewPools={filters.crewPools}
                   manningAgents={filters.manningAgents}

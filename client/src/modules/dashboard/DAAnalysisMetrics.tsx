@@ -4,6 +4,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { useDrilldownParam } from "./useDrilldownParam";
+import { COMPANY_KPI_REFERENCE, daComparisonPeriod, dashboardRange, kpiStatus, kpiYearForRange, rangeLabel } from "./kpiComparison";
+import { KpiDisplay } from "./KpiDisplay";
+import { useDashboardKpis, useDashboardToday } from "./useDashboardKpis";
 import {
   DAViolationsDrilldownDialog,
   type DAViolationType,
@@ -27,37 +30,6 @@ const TILES: { key: DAViolationType; label: string; field: keyof ViolationCounts
   { key: "alcohol", label: "Alcohol Violations", field: "alcoholViolations" },
   { key: "drug", label: "Drug Violations", field: "drugViolations" },
 ];
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function fmt(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function periodToRange(p: PeriodFilterValue): { from: string; to: string } | null {
-  if (p.mode === "year" && p.year) {
-    return { from: `${p.year}-01-01`, to: `${p.year}-12-31` };
-  }
-  if (p.mode === "year-quarter" && p.year && p.quarter) {
-    const startMonth = (p.quarter - 1) * 3;
-    return {
-      from: fmt(new Date(p.year, startMonth, 1)),
-      to: fmt(new Date(p.year, startMonth + 3, 0)),
-    };
-  }
-  if (p.mode === "year-month" && p.year && p.month) {
-    return {
-      from: fmt(new Date(p.year, p.month - 1, 1)),
-      to: fmt(new Date(p.year, p.month, 0)),
-    };
-  }
-  if (p.mode === "date-range" && p.dateFrom && p.dateTo) {
-    return { from: fmt(p.dateFrom), to: fmt(p.dateTo) };
-  }
-  return null;
-}
 
 async function fetchViolationCounts(params: {
   from: string;
@@ -89,7 +61,15 @@ export const DAAnalysisMetrics = ({
   manningAgents = [],
   nationalities = [],
 }: DAAnalysisMetricsProps) => {
-  const range = useMemo(() => periodToRange(period), [period]);
+  const today = useDashboardToday();
+  const range = useMemo(() => dashboardRange(period), [period]);
+  const kpiYear = kpiYearForRange(range);
+  const kpisQuery = useDashboardKpis(kpiYear);
+  const alcoholKpi = kpisQuery.isError ? undefined : kpisQuery.data?.kpis.find((kpi) => kpi.code === "alcohol_violations");
+  const drugKpi = kpisQuery.isError ? undefined : kpisQuery.data?.kpis.find((kpi) => kpi.code === "drug_violations");
+  const comparisonPeriod = daComparisonPeriod(range, today);
+  const filtered = ranks.length > 0 || crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0;
+  const hasAnyTarget = [alcoholKpi, drugKpi].some((kpi) => kpi?.components.some((component) => component.value != null));
 
   const { data: nationalityList = [] } = useNationalitiesV2();
   const nationalityIds = useMemo(() => {
@@ -186,8 +166,12 @@ export const DAAnalysisMetrics = ({
         </span>
       );
     }
+    const kpi = key === "alcohol" ? alcoholKpi : drugKpi;
+    const target = kpi?.components.find(c => c.code === "overall")?.value;
+    const status = kpiStatus(query.data[field], target, kpi?.direction, comparisonPeriod, filtered);
+    const tone = status.tone === "met" ? "text-emerald-600" : status.tone === "missed" ? "text-red-600" : "text-gray-900 dark:text-white";
     return (
-      <span className={valueClass} data-testid={testId}>
+      <span className={`text-4xl sm:text-5xl font-bold tabular-nums ${tone}`} data-testid={testId}>
         {query.data[field]}
       </span>
     );
@@ -196,31 +180,62 @@ export const DAAnalysisMetrics = ({
   return (
     <>
       <div
-        className="w-full h-full grid grid-cols-2 gap-4 px-4 pt-6"
+        className="w-full h-full flex flex-col gap-2 px-4 pt-3"
         data-testid="metrics-da-analysis"
       >
-        {TILES.map(({ key, label, field }) => {
-          const interactive = tileIsInteractive(field);
-          return (
-            <button
-              type="button"
-              key={key}
-              onClick={() => handleTileClick(key, field)}
-              disabled={!interactive}
-              className={`flex flex-col items-center gap-2 rounded-md p-2 text-center transition-colors ${
-                interactive
-                  ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#52baf3]"
-                  : "cursor-default"
-              }`}
-              data-testid={`tile-da-${key}-violations`}
-            >
-              <div className={labelClass} data-testid={`label-da-${key}-violations`}>
-                {label}
-              </div>
-              {renderValue(field, key)}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-200 pb-2 text-xs">
+          <span className="font-medium text-slate-600">{rangeLabel(range)}</span>
+          {hasAnyTarget && (
+            <span className="text-slate-500">
+              {comparisonPeriod === "reference" ? `Annual KPI reference (${kpiYear})` : `KPI (${kpiYear})`}
+            </span>
+          )}
+        </div>
+        {filtered && <div className="text-[11px] leading-4 text-slate-500">{COMPANY_KPI_REFERENCE}</div>}
+        {kpisQuery.isError && (
+          <div className="flex items-center gap-2 text-xs text-red-700" role="alert" data-testid="error-dashboard-kpis-da">
+            <span>Failed to load KPI comparison.</span>
+            <button type="button" className="font-semibold underline underline-offset-2" onClick={() => kpisQuery.refetch()}>
+              Retry
             </button>
-          );
-        })}
+          </div>
+        )}
+        <div className="grid flex-1 grid-cols-2 gap-4">
+          {TILES.map(({ key, label, field }) => {
+            const interactive = tileIsInteractive(field);
+            const actual = range && !query.isLoading && !query.isFetching && !query.isError && query.data
+              ? query.data[field]
+              : null;
+            return (
+              <button
+                type="button"
+                key={key}
+                onClick={() => handleTileClick(key, field)}
+                disabled={!interactive}
+                className={`flex flex-col items-center justify-center gap-2 rounded-md p-2 text-center transition-colors ${
+                  interactive
+                    ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#52baf3]"
+                    : "cursor-default"
+                }`}
+                data-testid={`tile-da-${key}-violations`}
+              >
+                <div className={labelClass} data-testid={`label-da-${key}-violations`}>
+                  {label}
+                </div>
+                {renderValue(field, key)}
+                <KpiDisplay
+                  kpi={key === "alcohol" ? alcoholKpi : drugKpi}
+                  componentCode="overall"
+                  actual={actual}
+                  comparisonPeriod={comparisonPeriod}
+                  filtered={filtered}
+                  unavailable={!range || query.isLoading || query.isFetching || query.isError}
+                  testId={`da-${key}`}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
       <DAViolationsDrilldownDialog
         open={showDrilldown}
