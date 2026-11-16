@@ -25,8 +25,13 @@ import { trainingComplianceSettingsController } from "./controllers/trainingComp
 import { formPartController } from "./controllers/formPartController";
 import { actionPermissionsController } from "./controllers/actionPermissionsController";
 import { applicabilityController } from "./controllers/applicabilityController";
+import { kpiTargetsController } from "./controllers/kpiTargetsController";
 
 const router = Router();
+
+router.get("/kpis", requirePermission("KPIs", "view"), kpiTargetsController.catalogue);
+router.get("/kpis/:code/targets/:year", requirePermission("KPIs", "view"), kpiTargetsController.read);
+router.put("/kpis/:code/targets/:year", requirePermission("KPIs", "view"), kpiTargetsController.save);
 
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
 router.get("/forms/:id/rule-dimensions", requirePermission("Forms", "view"), formsController.getRuleDimensions);

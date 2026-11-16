@@ -14,6 +14,7 @@ export const AUDIT_SETTING_LABELS: Record<string, string> = {
   block_missing_expiry: "Block seafarer deployment when a mandatory certificate's expiry is not recorded",
 };
 export const AUDIT_EVENT_LABELS: Record<string, string> = {
+  kpi_target_changed: "KPI target change",
   grant_change: "Permission change", training_setting_changed: "Deployment blocking policy change",
   training_override: "Deployment block override", checklist_override: "Checklist override",
   role_eligibility_change: "Role availability change", company_document_branding: "Company logo change",
@@ -21,6 +22,7 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   parent_sync_category_readiness: "Parent support category update", parent_sync_rejected: "Parent update refused",
 };
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  set: "Set KPI targets",
   ...Object.fromEntries(COMPANY_FORM_PERMISSIONS.map(p => [p.action, p.label])),
   manage: "Access Control management", override: "Override deployment block",
   view: "View", create: "Create", edit: "Edit", delete: "Delete",
@@ -33,6 +35,7 @@ const object = (value: unknown): Record<string, unknown> =>
 const safeLabel = (value: unknown) => typeof value === "string" && value.trim() &&
   !/[0-9a-f]{8}-[0-9a-f-]{27,}|[{}]/i.test(value) ? value.trim() : undefined;
 export function liveAuditActionLabel(row: AccessAuditEntry): string {
+  if (row.resource === "kpi_targets" && row.action === "set") return "Set KPI targets";
   return AUDIT_ACTION_LABELS[row.action ?? ""] ?? "Access setting";
 }
 export function auditActionLabel(row: AccessAuditEntry): string {
@@ -69,6 +72,15 @@ export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; u
   ];
   let change: string;
   switch (row.event) {
+    case "kpi_target_changed": {
+      const kpi = safeLabel(details.kpiLabel) ?? "a KPI";
+      const component = safeLabel(details.componentLabel);
+      const suffix = details.unit === "percentage" ? "%" : "";
+      const value = (v: unknown) => v == null ? "not set" : `${String(v)}${suffix}`;
+      const direction = details.direction === "minimum" ? "minimum" : details.direction === "maximum" ? "maximum" : "direction not recorded";
+      change = `changed the ${details.year} ${kpi}${component && component !== "Overall" ? ` — ${component}` : ""} target from ${value(row.before_value)} to ${value(row.after_value)} (${direction})`;
+      break;
+    }
     case "training_setting_changed":
       change = row.after_value === true ? row.before_value === true ? `kept “${label}” turned on` : `turned on “${label}”`
         : row.after_value === false ? row.before_value === false ? `kept “${label}” turned off` : `turned off “${label}”`
