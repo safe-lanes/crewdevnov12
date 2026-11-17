@@ -1,3 +1,9 @@
+# Part H — Internal Comments and Actions
+
+- The user master has no active or left-company flag, so assignees may include people who have left; the parent application must supply one before they can be filtered.
+- Part H never hard-deletes. Some data-protection laws grant a right to erasure; a controlled, administrator-only purge procedure may eventually be needed. Not to be built now.
+- No company/tenant time zone exists in the current application. Part H Overdue uses today's UTC calendar date: an Open action is overdue only after its due date has ended in UTC. Confirm this convention before production use; no new time-zone setting is added.
+
 # Access audit permission-label snapshot
 
 Migration `0269_access_audit_permission_label.sql` follows the read-only
