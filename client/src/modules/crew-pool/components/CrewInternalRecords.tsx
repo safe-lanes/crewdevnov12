@@ -100,6 +100,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const historyRequest = useRef(0);
   const [historyRows, setHistoryRows] = useState<HistoryItem[]>([]);
   const [draftBody, setDraftBody] = useState("");
   const [draftAssignee, setDraftAssignee] = useState("");
@@ -126,6 +127,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
       previousIdentity.current = { crewUuid, userId };
     }
   }, [crewUuid, userId, queryClient]);
+  useEffect(() => () => { historyRequest.current++; }, [crewUuid, userId]);
 
   const commentsQuery = useQuery<ListResponse>({
     queryKey: commentsKey,
@@ -226,7 +228,9 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
     setFormError("");
     setModal({ kind: "edit", resource, entry });
   };
-  const closeModal = () => { if (!mutationBusy) { setModal(null); setFormError(""); } };
+  const closeModal = () => { if (!mutationBusy) {
+    historyRequest.current++; setHistoryOpen(false); setHistoryRows([]); setModal(null); setFormError("");
+  } };
   const saveEntry = async () => {
     if (!modal || modal.kind !== "edit") return;
     const body = draftBody.trim();
@@ -291,25 +295,36 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
   };
 
   const openView = (resource: Resource, entry: Entry) => {
+    historyRequest.current++;
     setModal({ kind: "view", resource, entry });
     setHistoryRows([]);
     setHistoryError("");
     setHistoryOpen(false);
   };
   const loadHistory = async (resource: Resource, entry: Entry) => {
+    const request = ++historyRequest.current;
     setHistoryError("");
     setHistoryRows([]);
     setHistoryLoading(true);
     setHistoryOpen(true);
     try {
       const response = await apiRequest("GET", `${basePath(crewUuid, resource)}/${encodeURIComponent(entry.entry_uuid)}/history`);
-      setHistoryRows(await response.json() as HistoryItem[]);
+      const rows = await response.json() as HistoryItem[];
+      if (historyRequest.current === request) setHistoryRows(rows);
     } catch {
-      setHistoryError("History is unavailable right now. Please try again.");
+      if (historyRequest.current === request) setHistoryError("History is unavailable right now. Please try again.");
     } finally {
-      setHistoryLoading(false);
+      if (historyRequest.current === request) setHistoryLoading(false);
     }
   };
+  useEffect(() => {
+    if (!modal?.entry) return;
+    const result = modal.resource === "comments" ? commentsQuery.data : actionsQuery.data;
+    const latest = result?.rows.find(row => row.entry_uuid === modal.entry!.entry_uuid);
+    if (latest?.removed_at && !result?.permissions.candelete) {
+      historyRequest.current++; setHistoryOpen(false); setHistoryRows([]); setModal(null);
+    }
+  }, [modal, commentsQuery.data, actionsQuery.data]);
 
   const identityChanged = previousIdentity.current.crewUuid !== crewUuid || previousIdentity.current.userId !== userId;
   if (!isOffice || permissionsLoading || identityChanged || (!viewComments && !viewActions)) return null;
@@ -480,7 +495,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
         </DialogContent>
       </Dialog>
 
-      <Dialog open={historyOpen} onOpenChange={(open) => { setHistoryOpen(open); if (!open) setHistoryRows([]); }}>
+      <Dialog open={historyOpen} onOpenChange={(open) => { setHistoryOpen(open); if (!open) { historyRequest.current++; setHistoryRows([]); } }}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto border-[#d8e2e0] bg-[#fffefd] sm:max-w-2xl">
           <DialogHeader><DialogTitle className="text-[#28424a]">Record history</DialogTitle><DialogDescription>Earlier revisions and lifecycle events for this confidential record.</DialogDescription></DialogHeader>
           {historyError ? <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-800">{historyError}</p>
@@ -493,7 +508,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
               {item.snapshot?.closing_note && <p className="mt-2 text-xs text-slate-600">Closing note: {item.snapshot.closing_note}</p>}
             </li>)}</ol>
               : <p className="py-6 text-center text-sm text-slate-500">No history is available.</p>}
-          <DialogFooter><Button type="button" variant="outline" onClick={() => { setHistoryOpen(false); setHistoryRows([]); }}>Close history</Button></DialogFooter>
+          <DialogFooter><Button type="button" variant="outline" onClick={() => { historyRequest.current++; setHistoryOpen(false); setHistoryRows([]); }}>Close history</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

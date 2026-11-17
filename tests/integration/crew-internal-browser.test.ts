@@ -90,6 +90,33 @@ it("uses the real Part H screens for create, edit, view, history, action transit
   await page.screenshot({path:`${out}/comment-history.png`});
   await page.getByRole("button",{name:"Close history",exact:true}).click();
   await dialog.getByRole("button",{name:"Close",exact:true}).first().click();
+  // Hold a real history response across closing its window and a later edit.
+  // Releasing it must not overwrite the newly opened, current history.
+  let release!:()=>void,received!:()=>void;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  const ready=new Promise<void>(resolve=>{received=resolve;});
+  await page.route("**/crew-internal/**/comments/*/history",async route=>{
+    const response=await route.fetch();received();await held;await route.fulfill({response});
+  },{times:1});
+  await page.getByTestId("internal-comments").getByRole("button",{name:"View record",exact:true}).click();
+  await dialog.getByRole("button",{name:"View history",exact:true}).click();
+  await ready;
+  await page.getByRole("button",{name:"Close history",exact:true}).click();
+  await dialog.getByRole("button",{name:"Close",exact:true}).first().click();
+  await page.getByTestId("internal-comments").getByRole("button",{name:"Edit comment",exact:true}).click();
+  await dialog.getByLabel("Comment",{exact:true}).fill(`${marker}. Second approved revision.`);
+  await dialog.getByRole("button",{name:"Save record",exact:true}).click();
+  await browserExpect(dialog).not.toBeVisible();
+  await page.getByTestId("internal-comments").getByRole("button",{name:"View record",exact:true}).click();
+  await dialog.getByRole("button",{name:"View history",exact:true}).click();
+  const historyDialog=page.getByRole("dialog").last();
+  await browserExpect(historyDialog).toContainText("Second approved revision.");
+  const oldFinished=page.waitForResponse(r=>r.url().includes("/comments/")&&r.url().endsWith("/history"));
+  release();await (await oldFinished).finished();
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  await browserExpect(historyDialog).toContainText("Second approved revision.");
+  await page.getByRole("button",{name:"Close history",exact:true}).click();
+  await dialog.getByRole("button",{name:"Close",exact:true}).first().click();
   await page.getByTestId("internal-actions").getByRole("button",{name:"Add",exact:true}).click();
   await dialog.getByLabel("Action description",{exact:true}).fill("Arrange refresher training with the office.");
   await dialog.getByLabel("Assigned to",{exact:true}).selectOption(actor);
@@ -148,6 +175,21 @@ it("refuses vessel access through every route even with grants; keeps general cr
       method,data:data||undefined,headers:{Authorization:`Bearer ${token(shipUserId,"Ship")}`}});
     expect(response.status(),path).toBe(403);
     expect((await response.json()).message).toBe("Internal records are available only to authorised office users.");
+  }
+  for(const [method,path,data] of routes){
+    const response=await context.request.fetch(`${process.env.TEST_API_URL}${path.replace(crew,randomUUID())}`,{
+      method,data:data||undefined,headers:{Authorization:`Bearer ${token(userId,"Office")}`}});
+    expect(response.status(),`wrong crew ${path}`).toBe(404);
+  }
+  await pool.query("UPDATE adm_roleaccess_ac SET canview=false WHERE role_id=$1 AND menu_id IN ('cp-internal-comments','cp-internal-actions')",[role]);
+  try{
+    for(const [method,path,data] of routes){
+      const response=await context.request.fetch(`${process.env.TEST_API_URL}${path}`,{
+        method,data:data||undefined,headers:{Authorization:`Bearer ${token(userId,"Office")}`}});
+      expect(response.status(),`missing grant ${path}`).toBe(403);
+    }
+  }finally{
+    await pool.query("UPDATE adm_roleaccess_ac SET canview=true WHERE role_id=$1 AND menu_id IN ('cp-internal-comments','cp-internal-actions')",[role]);
   }
   const p=await ctx.newPage();
   await p.setExtraHTTPHeaders({Authorization:`Bearer ${token(shipUserId,"Ship")}`});

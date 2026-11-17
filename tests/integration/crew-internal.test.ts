@@ -59,6 +59,17 @@ describe("Part H action lifecycle",()=>{
     expect(events[1].snapshot.closing_note).toBe("Finished");
     expect(events[2].snapshot.completed_at).toBeNull();
   });
+  it("allows only one concurrent completion and one concurrent reopening at each revision",async()=>{
+    const row=await createAction(req(1,{body:"Concurrent transition",assigneeUuid:"viewer",dueDate:"2026-11-17"}));
+    for(const [revision,complete] of [[1,true],[2,false]] as const){
+      const attempts=await Promise.allSettled([1,2].map(id=>transitionAction(req(id,{revision},row.entry_uuid),complete)));
+      expect(attempts.filter(a=>a.status==="fulfilled")).toHaveLength(1);
+      const rejected=attempts.find(a=>a.status==="rejected") as PromiseRejectedResult;
+      expect(rejected.reason).toMatchObject({status:409});
+    }
+    expect((await history(holder.db,"actions",crew,row.entry_uuid,false)).map((e:any)=>e.event))
+      .toEqual(["created","completed","reopened"]);
+  });
   it("derives overdue on UTC day boundaries without storing that status",async()=>{
     const today=(await pool.query("SELECT (now() AT TIME ZONE 'UTC')::date::text AS d")).rows[0].d;
     const yesterday=(await pool.query("SELECT ((now() AT TIME ZONE 'UTC')::date-1)::text AS d")).rows[0].d;
