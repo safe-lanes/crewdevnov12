@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { authorize, eligibleAssignees, InternalError, type Resource } from "./access";
 import { history, listEntries, present, readEntry } from "./read";
+import { createComment, editComment, removeEntry } from "./write";
 
 export const internalRouter = Router();
 // Never cache confidential material in shared/browser HTTP caches.
@@ -35,4 +36,11 @@ internalRouter.get("/:crewUuid/assignees",endpoint(async(req,res)=>{
   const {db}=await authorize(req,"actions");
   res.json(await eligibleAssignees(db));
 }));
+internalRouter.post("/:crewUuid/comments",endpoint(async(req,res)=>{res.status(201).json(await createComment(req));}));
+internalRouter.patch("/:crewUuid/comments/:entryUuid",endpoint(async(req,res)=>{res.json(await editComment(req));}));
+for (const resource of ["comments","actions"] as Resource[]) {
+  internalRouter.post(`/:crewUuid/${resource}/:entryUuid/remove`,endpoint(async(req,res)=>{
+    res.json(await removeEntry(req,resource));
+  }));
+}
 export default internalRouter;
