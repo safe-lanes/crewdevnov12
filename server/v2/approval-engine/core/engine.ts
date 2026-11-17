@@ -1,0 +1,414 @@
+/**
+ * Approval Engine core (design v3 §B4). Service-shaped: plain JSON DTOs in and out,
+ * card callbacks through the in-process adapter (the ApprovalCard object itself in v1),
+ * persistence through ApprovalRepository, tenancy through the provider. No Express here.
+ */
+import { randomUUID } from 'node:crypto';
+import type {
+  ApprovalCard, DecideInput, DecideResult, EngineCtx, EngineEvent, PendingItem,
+  RequestRow, RequestSlotRow, Scope, SlotUpdate, StoredWorkflow, StoredWorkflowSummary,
+  SubmitInput, SubmitOutcome, WorkflowDefInput,
+} from './types';
+import { CardRegistry } from './registry';
+import type { TenantRepositoryProvider } from './repository';
+import { entryNodeKey, nextNodeKey, validateWorkflowV1 } from './validateWorkflow';
+
+export class EngineError extends Error {
+  constructor(public statusCode: number, message: string, public code?: string) { super(message); }
+}
+const err = (statusCode: number, code: string, message: string): never => { throw new EngineError(statusCode, message, code); };
+
+export interface EngineDeps {
+  registry: CardRegistry;
+  provider: TenantRepositoryProvider;
+  /** v3 §A8 — the engine emits; whoever wires it decides transport. Errors are swallowed. */
+  onEvent?: (evt: EngineEvent) => void;
+  now?: () => Date;
+}
+
+/** Quorum size for an approval node ('all' = every slot, 'any' = 1, 'nOfM' = n). */
+function quorumNeeded(rule: { rule: string; n?: number } | undefined, slotCount: number): number {
+  if (!rule || rule.rule === 'all') return slotCount;
+  if (rule.rule === 'any') return 1;
+  return rule.n as number;
+}
+
+/**
+ * Jeevan #14(a), 22-Oct-2026: the active step is STUCK when the slots that have approvers cannot reach the
+ * quorum on their own (e.g. an 'all' step where one role has nobody on that vessel). Returns the first
+ * EMPTY active slot of a stuck step (the only slot an admin may decide), else null. Shared by decide(),
+ * the screens' can-decide mirror and the stalled-approval warning.
+ */
+export function stuckEmptySlot<S extends { nodeKey: string; status: string; resolvedApproverIds: string[] | null; decidedBy?: string | null }>(
+  nodes: ReadonlyArray<{ key: string; quorum?: { rule: string; n?: number } }>,
+  slots: readonly S[],
+): S | null {
+  const active = slots.filter((s) => s.status === 'active');
+  if (active.length === 0) return null;
+  const stepSlots = slots.filter((s) => s.nodeKey === active[0].nodeKey);
+  const approvedSoFar = stepSlots.filter((s) => s.status === 'approved').length;
+  // D3: someone who already approved in this step cannot fill another of its slots.
+  const approvedBy = stepApprovers(stepSlots);
+  const canAct = (s: S) => (s.resolvedApproverIds ?? []).some((id) => !approvedBy.has(id));
+  const reachable = active.filter(canAct).length;
+  const node = nodes.find((n) => n.key === active[0].nodeKey);
+  if (approvedSoFar + reachable >= quorumNeeded(node?.quorum, stepSlots.length)) return null;
+  return active.find((s) => !canAct(s)) ?? null;
+}
+
+/** Users who already approved a slot of this step (D3: one person, one slot per step). */
+export function stepApprovers(stepSlots: ReadonlyArray<{ status: string; decidedBy?: string | null }>): Set<string> {
+  return new Set(stepSlots.filter((s) => s.status === 'approved' && s.decidedBy).map((s) => s.decidedBy as string));
+}
+
+export class ApprovalEngine {
+  constructor(private deps: EngineDeps) {}
+
+  // Jeevan #14(c), 22-Oct-2026: decisions on ONE request run one at a time. Two approvers of an 'all'
+  // step deciding together each counted "1 of 2" → neither advanced the step → stuck. In-process is
+  // enough: the host runs one Node process (PM2 fork mode, single instance).
+  private requestLocks = new Map<string, Promise<unknown>>();
+  private async serialized<T>(ctx: EngineCtx, requuid: string, fn: () => Promise<T>): Promise<T> {
+    const key = `${ctx.tenantId}:${requuid}`;
+    const prior = this.requestLocks.get(key) ?? Promise.resolve();
+    const run = prior.catch(() => undefined).then(fn);
+    const tail = run.catch(() => undefined);
+    this.requestLocks.set(key, tail);
+    try { return await run; } finally { if (this.requestLocks.get(key) === tail) this.requestLocks.delete(key); }
+  }
+
+  private emit(evt: EngineEvent) {
+    try { this.deps.onEvent?.(evt); } catch (e) { console.error('[approval-engine] onEvent listener failed:', e); }
+  }
+  private nowIso() { return (this.deps.now?.() ?? new Date()).toISOString(); }
+  private repo(ctx: EngineCtx) { return this.deps.provider.forTenant(ctx.tenantId); }
+  private cardFor(scope: Scope) {
+    const hit = this.deps.registry.findScope(scope);
+    if (!hit) err(404, 'UNKNOWN_SCOPE', `no registered card scope ${scope.moduleId}/${scope.screenId}/${scope.actionId}`);
+    return hit!;
+  }
+
+  registryTree() { return this.deps.registry.tree(); }
+
+  async listRoles(ctx: EngineCtx, scope: Scope) {
+    const { card } = this.cardFor(scope);
+    return card.listRoles({ tenantId: ctx.tenantId }, scope);
+  }
+
+  // ── workflows ──────────────────────────────────────────────────────────────
+  async saveWorkflow(ctx: EngineCtx, def: WorkflowDefInput): Promise<StoredWorkflow> {
+    const { scope: cardScope } = this.cardFor(def.scope);
+    if (!cardScope.classifications.some((c) => c.id === def.classification)) {
+      err(400, 'UNKNOWN_CLASSIFICATION', `classification '${def.classification}' is not declared by the card`);
+    }
+    validateWorkflowV1(def); // throws WorkflowValidationError (400 at the HTTP layer)
+    return this.repo(ctx).saveWorkflowVersion(def, ctx.actor.userId);
+  }
+  async listWorkflows(ctx: EngineCtx, scope?: Scope): Promise<StoredWorkflowSummary[]> {
+    return this.repo(ctx).listWorkflows(scope);
+  }
+  async getWorkflow(ctx: EngineCtx, wfuuid: string): Promise<StoredWorkflow> {
+    const wf = await this.repo(ctx).getWorkflow(wfuuid);
+    if (!wf) err(404, 'NOT_FOUND', `workflow ${wfuuid} not found`);
+    return wf!;
+  }
+  async getScopeEnabled(ctx: EngineCtx, scope: Scope): Promise<boolean> {
+    this.cardFor(scope);
+    return this.repo(ctx).getScopeEnabled(scope);
+  }
+  async setScopeEnabled(ctx: EngineCtx, scope: Scope, enabled: boolean): Promise<void> {
+    this.cardFor(scope);
+    return this.repo(ctx).setScopeEnabled(scope, enabled, ctx.actor.userId);
+  }
+
+  // ── submit ─────────────────────────────────────────────────────────────────
+  async submit(ctx: EngineCtx, input: SubmitInput): Promise<SubmitOutcome> {
+    const { card, scope: cardScope } = this.cardFor(input.scope);
+    const repo = this.repo(ctx);
+
+    if (!(await repo.getScopeEnabled(input.scope))) return { outcome: 'DISABLED' };
+
+    const classification = await card.classify({ tenantId: ctx.tenantId }, input.scope, input.subject);
+    if (!cardScope.classifications.some((c) => c.id === classification)) {
+      err(500, 'BAD_CLASSIFY', `card classified to '${classification}', which it did not declare`);
+    }
+
+    const wf = await repo.getActiveWorkflow(input.scope, classification);
+    if (!wf) return { outcome: 'NO_WORKFLOW' };
+
+    const already = await repo.findPendingBySubject(input.scope, input.subjectRef);
+    if (already) return { outcome: 'ALREADY_PENDING', requuid: already.requuid };
+
+    const requuid = randomUUID();
+    const now = this.nowIso();
+    const request: RequestRow = {
+      requuid,
+      scope: input.scope,
+      classification,
+      subjectRef: input.subjectRef,
+      vesselId: input.vesselId ?? null,
+      snapshot: { scope: wf.scope, classification: wf.classification, mode: wf.mode, label: wf.label, nodes: wf.nodes, edges: wf.edges, wfuuid: wf.wfuuid, version: wf.version },
+      status: 'pending',
+      currentNodeKey: null,
+      submittedBy: ctx.actor.userId,
+      submittedAt: now,
+      finalizedAt: null,
+    };
+    const slots: RequestSlotRow[] = [];
+    for (const n of wf.nodes) {
+      if (n.type !== 'approval-step') continue;
+      (n.slots ?? []).forEach((s, i) => slots.push({
+        requuid, nodeKey: n.key, slotOrdinal: i, roleId: s.roleId, roleLabel: s.roleLabel,
+        status: 'pending', resolvedApproverIds: null, decidedBy: null, decidedAt: null, remarks: null,
+      }));
+    }
+    await repo.createRequest(request, slots);
+    const entry = entryNodeKey(wf);
+    await this.activateNode(ctx, card, request, entry);
+    return { outcome: 'STARTED', requuid, activeNodeKey: entry };
+  }
+
+  /** Resolve approvers per slot of the node, mark them active, move the pointer, emit. */
+  private async activateNode(ctx: EngineCtx, card: ApprovalCard, request: RequestRow, nodeKey: string): Promise<void> {
+    const repo = this.repo(ctx);
+    const node = request.snapshot.nodes.find((n) => n.key === nodeKey)!;
+    const updates: SlotUpdate[] = [];
+    const approverUnion = new Set<string>();
+    for (let i = 0; i < (node.slots ?? []).length; i++) {
+      const slot = (node.slots ?? [])[i];
+      const ids = await card.resolveApprovers({ tenantId: ctx.tenantId }, request.scope, slot.roleId, request.subjectRef);
+      // F3 safety-net: a slot that resolves to zero approvers activates with no one able to
+      // decide — the request would sit stuck with no button and no notification. Never let that
+      // be silent: warn loudly (support/logs) here; the UI surfaces it via the empty
+      // resolvedApproverIds (ApprovalChainProgress "no approver resolved" marker).
+      if (ids.length === 0) {
+        console.warn(
+          `[approval-engine] ZERO APPROVERS RESOLVED — request ${request.requuid} node "${nodeKey}" slot ${i} role "${slot.roleLabel ?? slot.roleId}" scope ${JSON.stringify(request.scope)} subject ${request.subjectRef}. The step will stall until an approver resolves for this role/vessel.`,
+        );
+      }
+      ids.forEach((id) => approverUnion.add(id));
+      updates.push({ nodeKey, slotOrdinal: i, status: 'active', resolvedApproverIds: ids });
+    }
+    await repo.applySlotUpdates(request.requuid, updates, nodeKey);
+    const evt = { requuid: request.requuid, scope: request.scope, subjectRef: request.subjectRef, nodeKey, approverUserIds: Array.from(approverUnion) };
+    this.emit({ type: 'step-activated', tenantId: ctx.tenantId, ...evt });
+    if (card.onPending) {
+      try { await card.onPending({ tenantId: ctx.tenantId }, evt); }
+      catch (e) { console.error('[approval-engine] card.onPending failed (ignored):', e); }
+    }
+  }
+
+  /**
+   * Re-deliver a FINISHED request's decision to its card (25/28-Sep-2026, Sahil C5: "apply again").
+   * The engine commits the terminal state BEFORE card.onDecision; if onDecision failed, the request
+   * says approved/returned while the module record still waits — nothing retries it. This re-runs
+   * onDecision with the stored outcome and the deciding slot's identity. Cards are idempotent
+   * (already-applied answers are a no-op), so a replay of an applied decision changes nothing.
+   * Does not change the engine's own state.
+   */
+  async replayDecision(ctx: EngineCtx, requuid: string): Promise<{ requuid: string; outcome: 'approved' | 'returned' }> {
+    const repo = this.repo(ctx);
+    const request = await repo.getRequest(requuid);
+    if (!request) err(404, 'NOT_FOUND', `request ${requuid} not found`);
+    if (request!.status !== 'approved' && request!.status !== 'returned') {
+      err(409, 'NOT_FINISHED', `request ${requuid} is ${request!.status}; only a finished request can be applied again`);
+    }
+    const { card } = this.cardFor(request!.scope);
+    const slots = await repo.getSlots(requuid);
+    const decisive = slots
+      .filter((s) => (s.status === 'approved' || s.status === 'rejected') && s.decidedAt)
+      .sort((a, b) => Date.parse(b.decidedAt!) - Date.parse(a.decidedAt!))[0];
+    const outcome = request!.status as 'approved' | 'returned';
+    await card.onDecision({ tenantId: ctx.tenantId }, {
+      requuid, scope: request!.scope, classification: request!.classification, subjectRef: request!.subjectRef,
+      outcome, decidedBy: decisive?.decidedBy ?? ctx.actor.userId, remarks: decisive?.remarks ?? null,
+    });
+    return { requuid, outcome };
+  }
+
+  /**
+   * WITHDRAW (28-Sep-2026, Sahil E6 / Q8: "only the sender"). Ends a PENDING request as 'withdrawn':
+   * every open slot is superseded (never deleted), approvers of the active step are told via the
+   * 'request-withdrawn' event. The card's onDecision is NOT called — the module that asked for the
+   * withdrawal resets its own record. Who may withdraw is decided by the host module (it knows the
+   * sender of its record); the engine only refuses a request that is no longer pending (409).
+   */
+  async withdraw(ctx: EngineCtx, requuid: string, reason: string | null): Promise<{ requuid: string; status: 'withdrawn' }> {
+    return this.serialized(ctx, requuid, () => this.withdrawUnlocked(ctx, requuid, reason));
+  }
+  private async withdrawUnlocked(ctx: EngineCtx, requuid: string, reason: string | null): Promise<{ requuid: string; status: 'withdrawn' }> {
+    const repo = this.repo(ctx);
+    const request = await repo.getRequest(requuid);
+    if (!request) err(404, 'NOT_FOUND', `request ${requuid} not found`);
+    if (request!.status !== 'pending') {
+      err(409, 'ALREADY_DECIDED', `request ${requuid} is already ${request!.status}`);
+    }
+    const slots = await repo.getSlots(requuid);
+    const approverUserIds = Array.from(new Set(slots.filter((s) => s.status === 'active').flatMap((s) => s.resolvedApproverIds ?? [])));
+    const transitioned = await repo.finalizeRequest(requuid, 'withdrawn');
+    if (!transitioned) err(409, 'ALREADY_DECIDED', `request ${requuid} was decided meanwhile`);
+    await repo.applySlotUpdates(requuid, slots
+      .filter((s) => s.status === 'active' || s.status === 'pending')
+      .map((s) => ({ nodeKey: s.nodeKey, slotOrdinal: s.slotOrdinal, status: 'superseded' as const })), null);
+    this.emit({ type: 'request-withdrawn', tenantId: ctx.tenantId, requuid, scope: request!.scope, subjectRef: request!.subjectRef,
+      withdrawnBy: ctx.actor.userId, approverUserIds, reason });
+    return { requuid, status: 'withdrawn' };
+  }
+
+  // ── decide ─────────────────────────────────────────────────────────────────
+  async decide(ctx: EngineCtx, requuid: string, input: DecideInput): Promise<DecideResult> {
+    return this.serialized(ctx, requuid, () => this.decideUnlocked(ctx, requuid, input));
+  }
+  private async decideUnlocked(ctx: EngineCtx, requuid: string, input: DecideInput): Promise<DecideResult> {
+    const repo = this.repo(ctx);
+    const request = await repo.getRequest(requuid);
+    if (!request) err(404, 'NOT_FOUND', `request ${requuid} not found`);
+    if (request!.status !== 'pending') {
+      err(409, 'ALREADY_DECIDED', `request ${requuid} is already ${request!.status}`);
+    }
+    const { card } = this.cardFor(request!.scope);
+    const slots = await repo.getSlots(requuid);
+    const active = slots.filter((s) => s.status === 'active');
+    // F3b (narrowed — Q3): an admin (host-marked ctx.actor.isAdmin) may decide ONLY a step that
+    // resolved to ZERO approvers — i.e. nobody could otherwise act (a Super Admin configured as the
+    // sole approver whose crew directory row is absent, or a silently-stalled step). Admins do NOT
+    // get to decide steps that already have other resolved approvers. When it fires, the decision is
+    // recorded DISTINCTLY as an admin override in the slot remarks (below) + the audit row via
+    // onDecision — it is NOT a normal approval.
+    const isAdminActor = !!ctx.actor.isAdmin;
+    // Decision D3 (Ghazi, 22-Oct-2026): one person may NOT fill two slots of the same step — "all must
+    // approve" means different people. A user holding two roles approves once; the other slot needs someone else.
+    const alreadyApprovedHere = active.length > 0
+      && stepApprovers(slots.filter((s) => s.nodeKey === active[0].nodeKey)).has(ctx.actor.userId);
+    let mine = alreadyApprovedHere ? undefined : active.find((s) => (s.resolvedApproverIds ?? []).includes(ctx.actor.userId));
+    let adminOverride = false;
+    if (!mine && isAdminActor && !alreadyApprovedHere) {
+      // Jeevan #14(a): a stuck step — the admin may decide one of its EMPTY slots only.
+      const emptySlot = stuckEmptySlot(request!.snapshot.nodes, slots);
+      if (emptySlot) { mine = emptySlot; adminOverride = true; }
+    }
+    if (!mine && alreadyApprovedHere) {
+      err(403, 'ALREADY_APPROVED_THIS_STEP', 'you have already approved this step; the remaining approval must come from a different person');
+    }
+    if (!mine) {
+      err(403, 'NOT_YOUR_TURN', 'you are not an approver for the currently active step of this request');
+    }
+    const effRemarks: string | null = adminOverride
+      ? `[ADMIN OVERRIDE — ${ctx.actor.role ?? 'admin'}; step had no resolved approver]${input.remarks ? ' ' + input.remarks : ''}`
+      : (input.remarks ?? null);
+    if (adminOverride) {
+      console.warn(`[approval-engine] ADMIN OVERRIDE decide — request ${requuid} node ${mine!.nodeKey} by ${ctx.actor.userId} (${ctx.actor.role}); the step had zero resolved approvers.`);
+    }
+    const now = this.nowIso();
+    const nodeKey = mine!.nodeKey;
+    const node = request!.snapshot.nodes.find((n) => n.key === nodeKey)!;
+    const nodeSlots = slots.filter((s) => s.nodeKey === nodeKey);
+
+    if (input.decision === 'reject') {
+      const updates: SlotUpdate[] = [
+        { nodeKey, slotOrdinal: mine!.slotOrdinal, status: 'rejected', decidedBy: ctx.actor.userId, decidedAt: now, remarks: effRemarks },
+        // every other non-terminal slot of the whole request is superseded — NEVER deleted (audit)
+        ...slots
+          .filter((s) => !(s.nodeKey === nodeKey && s.slotOrdinal === mine!.slotOrdinal))
+          .filter((s) => s.status === 'active' || s.status === 'pending')
+          .map((s) => ({ nodeKey: s.nodeKey, slotOrdinal: s.slotOrdinal, status: 'superseded' as const })),
+      ];
+      await repo.applySlotUpdates(requuid, updates, null);
+      this.emitSlotDecided(ctx, request!, nodeKey, node?.label ?? null, 'reject', effRemarks, adminOverride);
+      return this.finalize(ctx, card, request!, 'returned', ctx.actor.userId, effRemarks, nodeKey);
+    }
+
+    // approve
+    const updates: SlotUpdate[] = [
+      { nodeKey, slotOrdinal: mine!.slotOrdinal, status: 'approved', decidedBy: ctx.actor.userId, decidedAt: now, remarks: effRemarks },
+    ];
+    const approvedCount = nodeSlots.filter((s) => s.status === 'approved').length + 1;
+    const needed = quorumNeeded(node.quorum!, nodeSlots.length);
+    const satisfied = approvedCount >= needed;
+    if (satisfied) {
+      for (const s of nodeSlots) {
+        if (s.slotOrdinal === mine!.slotOrdinal) continue;
+        if (s.status === 'active') updates.push({ nodeKey, slotOrdinal: s.slotOrdinal, status: 'superseded' });
+      }
+    }
+    await repo.applySlotUpdates(requuid, updates, undefined);
+    this.emitSlotDecided(ctx, request!, nodeKey, node?.label ?? null, 'approve', effRemarks, adminOverride);
+    if (!satisfied) {
+      return { requuid, requestStatus: 'pending', nodeKey, nodeSatisfied: false, activatedNodeKey: null };
+    }
+    const next = nextNodeKey(request!.snapshot, nodeKey);
+    const nextNode = request!.snapshot.nodes.find((n) => n.key === next!);
+    if (!nextNode || nextNode.type === 'end') {
+      return this.finalize(ctx, card, request!, 'approved', ctx.actor.userId, effRemarks, nodeKey);
+    }
+    await this.activateNode(ctx, card, request!, nextNode.key);
+    return { requuid, requestStatus: 'pending', nodeKey, nodeSatisfied: true, activatedNodeKey: nextNode.key };
+  }
+
+  private emitSlotDecided(ctx: EngineCtx, request: RequestRow, nodeKey: string, nodeLabel: string | null,
+    decision: 'approve' | 'reject', remarks: string | null, adminOverride: boolean) {
+    this.emit({ type: 'slot-decided', tenantId: ctx.tenantId, requuid: request.requuid, scope: request.scope, subjectRef: request.subjectRef,
+      vesselId: request.vesselId ?? null, nodeKey, nodeLabel, decision, decidedBy: ctx.actor.userId, remarks, adminOverride });
+  }
+
+  /** Terminal transition + exactly-once onDecision (guarded by the repository transition). */
+  private async finalize(
+    ctx: EngineCtx, card: ApprovalCard, request: RequestRow,
+    status: 'approved' | 'returned', decidedBy: string, remarks: string | null, nodeKey: string,
+  ): Promise<DecideResult> {
+    const transitioned = await this.repo(ctx).finalizeRequest(request.requuid, status);
+    let callbackError: string | undefined;
+    if (transitioned) {
+      if (status === 'approved') {
+        this.emit({ type: 'request-completed', tenantId: ctx.tenantId, requuid: request.requuid, scope: request.scope, subjectRef: request.subjectRef });
+      } else {
+        this.emit({ type: 'request-returned', tenantId: ctx.tenantId, requuid: request.requuid, scope: request.scope, subjectRef: request.subjectRef, returnedBy: decidedBy, remarks });
+      }
+      try {
+        await card.onDecision({ tenantId: ctx.tenantId }, {
+          requuid: request.requuid, scope: request.scope, classification: request.classification,
+          subjectRef: request.subjectRef, outcome: status, decidedBy, remarks,
+        });
+      } catch (e: any) {
+        // The terminal state is committed; the card owns idempotent recovery (see INTEGRATION-GUIDE).
+        callbackError = e?.message || String(e);
+        console.error(`[approval-engine] card.onDecision failed for ${request.requuid} (state already ${status}):`, e);
+      }
+    }
+    return { requuid: request.requuid, requestStatus: status, nodeKey, nodeSatisfied: true, activatedNodeKey: null, callbackError };
+  }
+
+  // ── reads ──────────────────────────────────────────────────────────────────
+  /** CONTRACT (25-Sep-2026, Sahil E7): requests for the subject, NEWEST FIRST by submittedAt
+   *  (ties: requuid descending, so the order is total and stable). Enforced here, not left to
+   *  the repository adapter — consumers may rely on rows[0] being the latest request. */
+  async status(ctx: EngineCtx, scope: Scope, subjectRef: string): Promise<Array<RequestRow & { slots: RequestSlotRow[] }>> {
+    const repo = this.repo(ctx);
+    const rows = orderRequestsNewestFirst(await repo.listBySubject(scope, subjectRef));
+    return Promise.all(rows.map(async (r) => ({ ...r, slots: await repo.getSlots(r.requuid) })));
+  }
+  /** Read-only: one request with its slots, or null. */
+  async getRequest(ctx: EngineCtx, requuid: string): Promise<(RequestRow & { slots: RequestSlotRow[] }) | null> {
+    const repo = this.repo(ctx);
+    const r = await repo.getRequest(requuid);
+    return r ? { ...r, slots: await repo.getSlots(requuid) } : null;
+  }
+  /** Read-only: every pending request with its slots (host health checks / diagnostics). */
+  async pendingRequests(ctx: EngineCtx): Promise<Array<RequestRow & { slots: RequestSlotRow[] }>> {
+    const repo = this.repo(ctx);
+    const rows = orderRequestsNewestFirst(await repo.listPending());
+    return Promise.all(rows.map(async (r) => ({ ...r, slots: await repo.getSlots(r.requuid) })));
+  }
+  async pendingForUser(ctx: EngineCtx, userId: string): Promise<PendingItem[]> {
+    return this.repo(ctx).pendingSlotsForUser(userId);
+  }
+}
+
+/** Engine status() ordering contract: newest submittedAt first; ties by requuid descending. */
+export function orderRequestsNewestFirst<T extends { submittedAt: string; requuid: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const ta = Date.parse(a.submittedAt); const tb = Date.parse(b.submittedAt);
+    if (tb !== ta) return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+    return a.requuid < b.requuid ? 1 : a.requuid > b.requuid ? -1 : 0;
+  });
+}
