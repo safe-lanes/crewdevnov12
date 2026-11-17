@@ -72,7 +72,93 @@ Source guards are not runtime end-to-end verification of every export or every
 Report; those unexercised runtime paths are explicitly NOT VERIFIED end-to-end.
 Their source-level exclusion and resource separation are verified.
 
+## Development write inventory
+The repeatable-read, read-only fingerprints compare all 275 pre-existing public
+tables. Exactly three changed; all other 272 match byte-derived row fingerprints.
+| Table | Before | After | Allowed change |
+| --- | ---: | ---: | --- |
+| `adm_menumaster_ac` | 82 | 84 | Internal Comments and Internal Actions |
+| `adm_roleaccess_ac` | 1,469 | 1,549 | 40 roles × two resources; every new grant is false |
+| `schema_migrations` | 285 | 287 | 0273 and 0274 ledger entries |
+
+The four new Part H tables each contain zero development rows. No verification
+crew, assignments, vessels, comments, actions, users or enabled grants were added
+to development. No other development content changed in the measured interval.
+Raw counts and fingerprints are retained in ignored evidence, without row contents.
+Filtering out the two new menu identifiers also reproduces the exact original
+82-row menu fingerprint and 1,469-row permission fingerprint: no existing menu
+or permission row was changed.
+
+The current user master has no active/left-company field. The dropdown may
+therefore include departed staff; only the parent can supply a trustworthy
+lifecycle flag and its update semantics. There is no company/tenant time-zone
+setting: overdue is evaluated against the current UTC calendar date, with the
+whole due date available. Both limitations and the future legal-erasure question
+are recorded in the production checklist.
+
 The first permission-migration attempt was refused because a synthetic grant
 identifier exceeded an existing varchar(36) constraint. The transaction rolled
 back and 0274 was not recorded in either target. Its identifier generation was
 corrected before successful application; no applied migration was edited.
+
+## Commit record
+| Step | HEAD after implementation |
+| --- | --- |
+| 1 — preflight and checklist | `0db48d2c8b5d6eac1988f2025021c37c7515cb56` |
+| 2 — storage | `7e569af3b50587d13ca2e7ecf7812514bb46758a` |
+| 3 — permissions and reads | `a0c04bf4ae5b7c0799cab1d04f16a8dc798eeea6` |
+| 4 — comments | `9291aec9e06488bd81719666d0a12b98c680b3df` |
+| 5 — actions | `0fe35e1fbffa6c0e7695866bb494449572856417` |
+| 6 — profile screens | `46a8f8a1fb264554fd79e6428323a0a58b4dbf32` |
+| 7 — isolation and disclosure checks | `c17bfdcf72afb6c08802a310cb25f3422eadcf8e` |
+| 7 — additional stale-history guard and transition/route checks | `e9b8e41dd11a0c055f309ba36b622c0e4e4714bc` |
+
+Step 8 is the closing evidence/documentation commit containing this document;
+its resulting HEAD and the later backend start time are reported in chat.
+
+## Gate provenance
+The earlier full run started at 14:26:33 UTC while the additional privacy check
+was still being completed. It is not the closing gate. It reported 2,410 passed,
+163 failed and 67 skipped. Its failing set was the known 162 plus:
+
+`tests/integration/company-form-combined-grid-browser.test.ts` —
+`saves all three groups through the screen, then proves a real third-writer failure rolls everything back`.
+
+That existing browser test timed out waiting for Access Control at line 99.
+Its captured page was empty, with no page errors or API timings. It loads its
+frontend through the external development preview rather than the dedicated
+test origin. The exact cause of this blank load is NOT PROVEN. This test and
+the two previously deferred unstable tests were not changed.
+All 19 new Part H assertions passed in that run. A separate final full run is
+required against the completed implementation, with the failing identities
+compared to the committed stable inventory.
+
+### Closing full run — completed implementation
+- Command: unchanged `npm test`; existing `fileParallelism: false`.
+- Implementation HEAD: `e9b8e41dd11a0c055f309ba36b622c0e4e4714bc`.
+- 2,411 passed; 162 failed; 67 pending/skipped; 2,640 total.
+- The 162 failed identities are exactly the known stable set, with no additions
+  or omissions. Sorted failure-name fingerprint:
+  `75cbd79a8432018302fc4fbea4ef6f74fa8f510ea183e165fe888ac41767d37c`.
+- Company Forms: 432 assertions passed, zero failed, zero skipped, within this
+  full run (case-insensitive `company.*form` test-file inventory).
+- Part H: all 19 assertions passed, including the real delayed-history response
+  across window closure/edit/reopening, concurrent complete/reopen revision
+  conflicts, and all fifteen route/method combinations for vessel, wrong-crew
+  and missing matching View. The second-tenant-schema test cannot read the first
+  tenant's crew even when its actor/grant fixtures are copied.
+- TypeScript: 222 diagnostics, with none in the new Part H modules.
+- The existing Access Control browser test that failed in the earlier run
+  passed in the closing full run; it remains unchanged. Its earlier blank-load
+  failure is retained above, not hidden by the accepted closing result.
+
+Evidence is outside Git in `generated-artifacts/part-h/`: `full-suite.json`,
+`full-suite.log`, `full-suite-backend.log`, `typescript.log`, development
+fingerprints, screenshots and the self-contained `browser-evidence.html`.
+The earlier full-run reports are retained with the `first-` prefix.
+The gallery covers Add/Edit/View/history, overdue/completed actions, removed
+entries, narrow layout, the two permission rows and vessel refusal.
+
+No production parent sign-in was exercised; test personas and verified isolated
+database identities were used. That production/staging acceptance check remains
+separate from the passing resource authorization tests.
