@@ -539,6 +539,14 @@ type ReviewChildData = {
   b2FleetGroups?: any;
 };
 
+type SaveReviewParams = {
+  onboardContext: OnboardPromotionExecutionContext | null;
+  resolveLockedContext: () => Promise<OnboardPromotionExecutionContext>;
+  writeHeader: (tx: any) => Promise<PromotionReviewV2 | null | undefined>;
+  childData: ReviewChildData;
+  auditUserUuid: string | null;
+};
+
 export class PromotionReviewsService {
   async getCriteriaMaster() {
     return criteriaMasterRepo.findAll();
@@ -1171,18 +1179,22 @@ export class PromotionReviewsService {
   // One save = one transaction (PRD-04). With an on-board context the
   // position lock is taken on the same transaction, so the lock and the
   // writes share one connection and are released by the same commit.
+  // With `outerTx` (VS-03) the work joins the caller's transaction instead of
+  // opening its own: the caller commits or rolls back everything together.
   private async withSaveTransaction<T>(
     lockContext: OnboardPromotionExecutionContext | null,
     work: (tx: any) => Promise<T>,
+    outerTx?: any,
   ): Promise<T> {
-    return getDb().transaction(async (tx: any) => {
+    const run = async (tx: any) => {
       if (lockContext) {
         await tx.execute(
           sql`SELECT pg_advisory_xact_lock(hashtext(${lockContext.vesselUuid}), hashtext(${lockContext.targetPosition}))`,
         );
       }
       return work(tx);
-    });
+    };
+    return outerTx ? run(outerTx) : getDb().transaction(run);
   }
 
   // Enforce the promotion workflow rules before a write is persisted:
@@ -1976,6 +1988,33 @@ export class PromotionReviewsService {
   }
 
   async updateReview(reviewUuid: string, data: any) {
+    return this.saveReviewInTransaction(await this.buildReviewUpdate(reviewUuid, data));
+  }
+
+  // VS-03: same save as updateReview, but on the caller's transaction (the
+  // header, children, ledger row and rank change are written there and commit
+  // or roll back with it). Nothing is split or placed yet: the caller runs
+  // `afterCommit()` once its own transaction has committed (sea-service and
+  // rest-hours splits, on-board placement - best-effort, as in updateReview).
+  async updateReviewInTx(
+    reviewUuid: string,
+    data: any,
+    tx: any,
+  ): Promise<{ review: PromotionReviewV2; afterCommit: () => Promise<void> } | null> {
+    const params = await this.buildReviewUpdate(reviewUuid, data);
+    const saved = await this.saveReviewCore(params, tx);
+    if (!saved) return null;
+    return {
+      review: saved.review,
+      afterCommit: () => this.runAfterCompletionCommit(
+        saved.review, saved.executed, params.auditUserUuid, saved.lockedContext,
+      ),
+    };
+  }
+
+  // Everything updateReview decides before it writes: input clean-up and the
+  // workflow guards. Returns the save parameters; writes nothing.
+  private async buildReviewUpdate(reviewUuid: string, data: any): Promise<SaveReviewParams> {
     assertNoLegacyLists(data);
     const auditedData = applyAuditUser(data);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, changes, checklistProgressData, checklistChanges,
@@ -2064,7 +2103,7 @@ export class PromotionReviewsService {
       reviewUuid,
     });
 
-    return this.saveReviewInTransaction({
+    return {
       onboardContext,
       resolveLockedContext: () => this.resolveOnboardPromotionContext({
         crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? "",
@@ -2108,7 +2147,7 @@ export class PromotionReviewsService {
         b2VesselTypes, b2FleetGroups,
       },
       auditUserUuid: coreFields.updatedByUuid ?? null,
-    });
+    };
   }
 
   // One review save = one transaction (PRD-04). The header, every child list,
@@ -2119,13 +2158,17 @@ export class PromotionReviewsService {
   // the context is re-resolved under it. Attachment files written during a
   // save that then fails are deleted again. Only the best-effort completion
   // steps run after the commit (runAfterCompletionCommit).
-  private async saveReviewInTransaction(params: {
-    onboardContext: OnboardPromotionExecutionContext | null;
-    resolveLockedContext: () => Promise<OnboardPromotionExecutionContext>;
-    writeHeader: (tx: any) => Promise<PromotionReviewV2 | null | undefined>;
-    childData: ReviewChildData;
-    auditUserUuid: string | null;
-  }) {
+  private async saveReviewInTransaction(params: SaveReviewParams) {
+    const saved = await this.saveReviewCore(params);
+    if (!saved) return null;
+
+    await this.runAfterCompletionCommit(saved.review, saved.executed, params.auditUserUuid, saved.lockedContext);
+    return this.getReviewByUuid(saved.review.reviewUuid);
+  }
+
+  // The transactional part of a review save. With `outerTx` it runs on the
+  // caller's transaction (VS-03); the caller then owns commit and rollback.
+  private async saveReviewCore(params: SaveReviewParams, outerTx?: any) {
     const { onboardContext, auditUserUuid } = params;
     const writtenFiles: string[] = [];
     let saved: {
@@ -2141,15 +2184,12 @@ export class PromotionReviewsService {
         await this.saveChildData(review.reviewUuid, params.childData, auditUserUuid, tx, writtenFiles);
         const executed = await this.executeCompletionInTx(review, auditUserUuid, tx);
         return { review, executed, lockedContext };
-      });
+      }, outerTx);
     } catch (err) {
       await Promise.all(writtenFiles.map((filePath) => fileStorageService.deleteAttachment(filePath)));
       throw err;
     }
-    if (!saved) return null;
-
-    await this.runAfterCompletionCommit(saved.review, saved.executed, auditUserUuid, saved.lockedContext);
-    return this.getReviewByUuid(saved.review.reviewUuid);
+    return saved;
   }
 
   // Soft-deletes the review and all its live child rows in one transaction

@@ -73,6 +73,77 @@ async function captureRow(
   await captureChange(executor, { table, rowUuid, oldRow, newRow, actorUuid: actorUuid ?? null });
 }
 
+/**
+ * E1 sea-service auto-create on sign-on (VS-03). Runs on the sign-on tx so the
+ * sea-service row and its capture commit or roll back with the planning change.
+ * Duplicate / overlapping-open-record cases are skipped (not errors), as before.
+ * Vessel name/type are resolved by the caller before the tx (own connection).
+ */
+async function createCompanySeaServiceOnSignOn(
+  tx: any,
+  p: {
+    crewUuid: string;
+    vesselUuid: string;
+    vesselName: string | null;
+    vesselTypeUuid: string | null;
+    rank: string | null;
+    fromDate: string;
+    actorUuid?: string | null;
+  },
+): Promise<void> {
+  const existing = await tx
+    .select({ id: crewSeaService.id })
+    .from(crewSeaService)
+    .where(and(
+      eq(crewSeaService.crewUuid, p.crewUuid),
+      eq(crewSeaService.vesselUuid, p.vesselUuid),
+      eq(crewSeaService.fromDate, p.fromDate),
+      eq(crewSeaService.serviceType, 'company'),
+      eq(crewSeaService.isDeleted, false),
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    console.log(`ℹ️ [VESSEL-PLANNING-V2] E1 auto-create skipped: record already exists for crew ${p.crewUuid} on vessel ${p.vesselUuid} from ${p.fromDate}`);
+    return;
+  }
+
+  // Overlap check: crew already has an open (no toDate) company sea service record
+  const openRecord = await tx
+    .select({ id: crewSeaService.id })
+    .from(crewSeaService)
+    .where(and(
+      eq(crewSeaService.crewUuid, p.crewUuid),
+      eq(crewSeaService.serviceType, 'company'),
+      eq(crewSeaService.isDeleted, false),
+      isNull(crewSeaService.toDate),
+    ))
+    .limit(1);
+  if (openRecord.length > 0) {
+    console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 auto-create skipped: crew ${p.crewUuid} already has an open company sea service record (overlapping period)`);
+    return;
+  }
+
+  const { v4: uuidv4e1 } = await import("uuid");
+  const newSeaUuid = uuidv4e1();
+  const [seaRow] = await tx.insert(crewSeaService).values({
+    seaUuid: newSeaUuid,
+    crewUuid: p.crewUuid,
+    serviceType: 'company',
+    vesselUuid: p.vesselUuid,
+    vesselName: p.vesselName,
+    vesselTypeUuid: p.vesselTypeUuid,
+    rank: p.rank,
+    fromDate: p.fromDate,
+    toDate: null,
+    isDeleted: false,
+    isSync: false,
+    createdByUuid: p.actorUuid || null,
+    updatedByUuid: p.actorUuid || null,
+  }).returning();
+  await captureRow(tx, crewSeaService, newSeaUuid, null, seaRow, p.actorUuid);
+  console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service auto-created for crew ${p.crewUuid} on vessel ${p.vesselUuid} from ${p.fromDate}`);
+}
+
 /** Match Company Form subject-first locks, including two-subject unassigns.
  * Never acquire a newly discovered assignment while holding Planning: reject
  * changed links and let the caller reload instead.
@@ -1382,7 +1453,7 @@ export const vesselPlanningService = {
       : undefined;
 
     let signOffEventUuid: string | undefined;
-    const { signedOff, crewUuid, vesselUuid } = await db.transaction(async (tx: typeof db) => {
+    await db.transaction(async (tx: typeof db) => {
       // Company Form starts/signatures lock subject first, then planning when
       // validating their entry context. Use the same order for departure.
       if (!planning.crewAssignUuid) throw new Error("Incumbent assignment link is missing; reconcile planning before sign-off");
@@ -1473,49 +1544,37 @@ export const vesselPlanningService = {
           .returning();
         await captureRow(tx, vesselPlanningV2, secondaryCrew.planUuid, secondaryCrew, promotedSecondary, data.auditUserUuid);
       }
+
+      // E1 Sea Service sync: close the open company sea-service row(s). Runs on
+      // the same tx as the planning change (VS-03): both commit or neither does.
+      const openSeaRows = await tx
+        .select()
+        .from(crewSeaService)
+        .where(
+          and(
+            eq(crewSeaService.crewUuid, locked.crewUuid),
+            eq(crewSeaService.vesselUuid, locked.vesselUuid),
+            eq(crewSeaService.serviceType, 'company'),
+            eq(crewSeaService.isDeleted, false),
+            isNull(crewSeaService.toDate)
+          )
+        )
+        .for("update");
+      for (const oldSea of openSeaRows) {
+        const [newSea] = await tx
+          .update(crewSeaService)
+          .set({
+            toDate: data.signOffDate,
+            signOffReason: data.signOffReason || null,
+            updatedAt: new Date(),
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(eq(crewSeaService.seaUuid, oldSea.seaUuid))
+          .returning();
+        await captureRow(tx, crewSeaService, oldSea.seaUuid, oldSea, newSea, data.auditUserUuid);
+      }
       return { signedOff: true, crewUuid: locked.crewUuid, vesselUuid: locked.vesselUuid };
     });
-
-    // E1 Sea Service sync: update toDate on sign-off
-    if (signedOff) {
-      try {
-        const db2 = getDb();
-        // Own transaction: the sea-service write and its sync capture commit or
-        // roll back together (VS-01). Moving this into the main sign-off
-        // transaction is VS-03.
-        await db2.transaction(async (tx2: any) => {
-          const openRows = await tx2
-            .select()
-            .from(crewSeaService)
-            .where(
-              and(
-                eq(crewSeaService.crewUuid, crewUuid),
-                eq(crewSeaService.vesselUuid, vesselUuid),
-                eq(crewSeaService.serviceType, 'company'),
-                eq(crewSeaService.isDeleted, false),
-                isNull(crewSeaService.toDate)
-              )
-            )
-            .for("update");
-          for (const oldSea of openRows) {
-            const [newSea] = await tx2
-              .update(crewSeaService)
-              .set({
-                toDate: data.signOffDate,
-                signOffReason: data.signOffReason || null,
-                updatedAt: new Date(),
-                updatedByUuid: data.auditUserUuid || null,
-              })
-              .where(eq(crewSeaService.seaUuid, oldSea.seaUuid))
-              .returning();
-            await captureRow(tx2, crewSeaService, oldSea.seaUuid, oldSea, newSea, data.auditUserUuid);
-          }
-        });
-        console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service toDate updated for crew ${crewUuid} on vessel ${vesselUuid}`);
-      } catch (e1Err) {
-        console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-off sync skipped:`, e1Err);
-      }
-    }
 
     await finishLifecycle(signOffEventUuid, data.auditUserUuid || "system");
     return vesselPlanningRepository.findByPlanUuid(planUuid);
@@ -1768,6 +1827,58 @@ export const vesselPlanningService = {
       }
     }
 
+    // E1 sea-service inputs: read-only master data, resolved before the tx
+    // (resolveVesselTypeUuid uses its own connection).
+    const [seaVesselRow] = await db
+      .select({ vesselName: masterVessels.vessel, vesselTypeName: masterVessels.vesselType })
+      .from(masterVessels)
+      .where(eq(masterVessels.vesselUuid, vesselUuid))
+      .limit(1);
+    const seaVesselTypeUuid = seaVesselRow?.vesselTypeName
+      ? await resolveVesselTypeUuid(seaVesselRow.vesselTypeName)
+      : null;
+    const seaParams = {
+      crewUuid: relieverCrewUuid,
+      vesselUuid,
+      vesselName: seaVesselRow?.vesselName || null,
+      vesselTypeUuid: seaVesselTypeUuid,
+      rank: planning.rank || null,
+      fromDate: signOnDate,
+      actorUuid: data.auditUserUuid,
+    };
+
+    // Prior-joining promotion (VS-03): a prior-joining promotion only takes
+    // effect when the promotee signs on. Find the pending approved review before
+    // the tx (read-only); the completion itself runs inside the sign-on tx, so
+    // the planning change, sea service and rank change commit or roll back
+    // together. Splits run after the commit (promotionAfterCommit).
+    const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+    const promoCrew = await crewMembersService.getByUuid(relieverCrewUuid);
+    let pendingPriorJoiningUuid: string | null = null;
+    if (promoCrew?.empNo) {
+      const { PromotionReviewsRepository, ExecutionLedgerRepository } = await import("../../promotions/repositories");
+      const reviews = await new PromotionReviewsRepository().findByCrewMemberId(promoCrew.empNo);
+      const pending = reviews.find((r) =>
+        (r.status ?? "").trim().toLowerCase() === "approved" &&
+        (r.promotionTiming ?? "").trim().toLowerCase() === "prior-joining"
+      );
+      if (pending && !(await new ExecutionLedgerRepository().findByReviewUuid(pending.reviewUuid))) {
+        pendingPriorJoiningUuid = pending.reviewUuid;
+      }
+    }
+    let promotionAfterCommit: (() => Promise<void>) | undefined;
+    const completePendingPromotion = async (tx: any) => {
+      if (!pendingPriorJoiningUuid) return;
+      console.log(`🎖️ [VESSEL-PLANNING-V2] Completing prior-joining promotion ${pendingPriorJoiningUuid} for crew ${promoCrew?.empNo} on sign-on`);
+      const { PromotionReviewsService } = await import("../../promotions/services");
+      const completed = await new PromotionReviewsService().updateReviewInTx(pendingPriorJoiningUuid, {
+        status: "completed",
+        promotionDate: signOnDate,
+        auditUserUuid: data.auditUserUuid,
+      }, tx);
+      promotionAfterCommit = completed?.afterCommit;
+    };
+
     let signOnEventUuid: string | undefined;
     const result = await db.transaction(async (tx: typeof db) => {
       const locked = await lockPlanningAfterAssignments(tx, planning);
@@ -1787,7 +1898,12 @@ export const vesselPlanningService = {
             eq(vesselPlanningV2.planUuid, secondaryPlanUuid(linkedAssignUuid, vesselUuid, locked.rank)),
             eq(vesselPlanningV2.isDeleted, false),
           )).limit(1);
-        if (already) return locked;
+        if (already) {
+          // A retry still finishes a promotion an earlier attempt left pending
+          // (idempotent: the execution ledger guards a second run).
+          await completePendingPromotion(tx);
+          return locked;
+        }
       }
       const [linkedAssignment] = await tx.select().from(crewAssignments)
         .where(eq(crewAssignments.assignUuid, linkedAssignUuid))
@@ -1925,6 +2041,8 @@ export const vesselPlanningService = {
         const formEvent = await checkLifecycle({ subjectRef: linkedAssignUuid, stage: "on_board", source: "sign_on",
           sourceKey: planUuid, actor: data.auditUserUuid || "system", businessDate: signOnDate }, tx, true);
         signOnEventUuid = formEvent?.event_uuid;
+        await createCompanySeaServiceOnSignOn(tx, seaParams);
+        await completePendingPromotion(tx);
         return updated;
       } else {
         console.log(`🔄 [VESSEL-PLANNING-V2] CASE B: Position vacant — promoting reliever ${relieverCrewUuid} to primary`);
@@ -1979,132 +2097,22 @@ export const vesselPlanningService = {
         const formEvent = await checkLifecycle({ subjectRef: linkedAssignUuid, stage: "on_board", source: "sign_on",
           sourceKey: planUuid, actor: data.auditUserUuid || "system", businessDate: signOnDate }, tx, true);
         signOnEventUuid = formEvent?.event_uuid;
+        await createCompanySeaServiceOnSignOn(tx, seaParams);
+        await completePendingPromotion(tx);
         return updated;
       }
     });
 
     await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
-    // E1 Sea Service sync: auto-create entry on sign-on
-    try {
-      const db3 = getDb();
-      const finalCrewUuid = relieverCrewUuid;
-      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
-
-      // Resolve vessel info for E1 record
-      const [vesselRow] = await db3
-        .select({ vesselName: masterVessels.vessel, vesselTypeName: masterVessels.vesselType })
-        .from(masterVessels)
-        .where(eq(masterVessels.vesselUuid, vesselUuid))
-        .limit(1);
-
-      const resolvedVesselName = vesselRow?.vesselName || null;
-      const resolvedVesselTypeName = vesselRow?.vesselTypeName || null;
-      let resolvedVesselTypeUuid: string | null = null;
-      if (resolvedVesselTypeName) {
-        resolvedVesselTypeUuid = await resolveVesselTypeUuid(resolvedVesselTypeName);
+    // The rank change is committed with the sign-on. Only the repeatable
+    // sea-service / rest-hours splits run now (best-effort, logged); they need
+    // the sea-service row created by this sign-on, which has committed.
+    if (promotionAfterCommit) {
+      try {
+        await promotionAfterCommit();
+      } catch (splitErr) {
+        console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion splits failed after commit (non-fatal):`, splitErr);
       }
-
-      // Duplicate check: same crew + vessel + fromDate + company service
-      const existing = await db3
-        .select({ id: crewSeaService.id })
-        .from(crewSeaService)
-        .where(
-          and(
-            eq(crewSeaService.crewUuid, finalCrewUuid),
-            eq(crewSeaService.vesselUuid, vesselUuid),
-            eq(crewSeaService.fromDate, finalSignOnDate),
-            eq(crewSeaService.serviceType, 'company'),
-            eq(crewSeaService.isDeleted, false)
-          )
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        console.log(`ℹ️ [VESSEL-PLANNING-V2] E1 auto-create skipped: record already exists for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
-      } else {
-        // Overlap check: crew already has an open (no toDate) company sea service record
-        const openRecord = await db3
-          .select({ id: crewSeaService.id })
-          .from(crewSeaService)
-          .where(
-            and(
-              eq(crewSeaService.crewUuid, finalCrewUuid),
-              eq(crewSeaService.serviceType, 'company'),
-              eq(crewSeaService.isDeleted, false),
-              isNull(crewSeaService.toDate)
-            )
-          )
-          .limit(1);
-
-        if (openRecord.length > 0) {
-          console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 auto-create skipped: crew ${finalCrewUuid} already has an open company sea service record (overlapping period)`);
-        } else {
-          const { v4: uuidv4e1 } = await import("uuid");
-          const newSeaUuid = uuidv4e1();
-          // Own transaction: insert and sync capture commit together (VS-01).
-          await db3.transaction(async (tx3: any) => {
-          const [seaRow] = await tx3.insert(crewSeaService).values({
-            seaUuid: newSeaUuid,
-            crewUuid: finalCrewUuid,
-            serviceType: 'company',
-            vesselUuid: vesselUuid,
-            vesselName: resolvedVesselName,
-            vesselTypeUuid: resolvedVesselTypeUuid,
-            rank: planning.rank || null,
-            fromDate: finalSignOnDate,
-            toDate: null,
-            isDeleted: false,
-            isSync: false,
-            createdByUuid: data.auditUserUuid || null,
-            updatedByUuid: data.auditUserUuid || null,
-          }).returning();
-          await captureRow(tx3, crewSeaService, newSeaUuid, null, seaRow, data.auditUserUuid);
-          });
-          console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service auto-created for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
-        }
-      }
-    } catch (e1Err) {
-      console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
-    }
-
-    // Prior-joining promotion: a prior-joining promotion only takes effect when
-    // the promotee signs on. If this crew has an approved prior-joining review
-    // pending, complete it now so the rank-propagation engine flips the rank as
-    // of the sign-on date. Best-effort — a promotion hiccup must not block the
-    // sign-on, but failures are logged at error level so they stay visible.
-    try {
-      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
-      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
-      const crew = await crewMembersService.getByUuid(relieverCrewUuid);
-      const empNo = crew?.empNo;
-
-      if (empNo) {
-        const { PromotionReviewsRepository, ExecutionLedgerRepository } = await import("../../promotions/repositories");
-        const reviewsRepo = new PromotionReviewsRepository();
-        const ledgerRepo = new ExecutionLedgerRepository();
-
-        const reviews = await reviewsRepo.findByCrewMemberId(empNo);
-        const pendingPriorJoining = reviews.find((r) =>
-          (r.status ?? "").trim().toLowerCase() === "approved" &&
-          (r.promotionTiming ?? "").trim().toLowerCase() === "prior-joining"
-        );
-
-        if (pendingPriorJoining) {
-          const alreadyApplied = await ledgerRepo.findByReviewUuid(pendingPriorJoining.reviewUuid);
-          if (!alreadyApplied) {
-            console.log(`🎖️ [VESSEL-PLANNING-V2] Completing prior-joining promotion ${pendingPriorJoining.reviewUuid} for crew ${empNo} on sign-on`);
-            const { PromotionReviewsService } = await import("../../promotions/services");
-            const reviewsService = new PromotionReviewsService();
-            await reviewsService.updateReview(pendingPriorJoining.reviewUuid, {
-              status: "completed",
-              promotionDate: finalSignOnDate,
-              auditUserUuid: data.auditUserUuid,
-            });
-          }
-        }
-      }
-    } catch (promoErr) {
-      console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion completion failed (non-fatal):`, promoErr);
     }
 
     return result;
