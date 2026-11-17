@@ -1374,7 +1374,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           : existingAppraisal.appraisalData;
         
         // Reset form with existing data
-        form.reset(parsedData);
+        form.reset({
+          ...parsedData,
+          primaryAppraiser: parsedData.primaryAppraiser ?? "",
+          personalityIndexCategory: parsedData.personalityIndexCategory ?? "",
+        });
         
         // Explicitly set nested array fields after reset to ensure Select components bind correctly
         if (parsedData.competenceAssessments) {
@@ -3317,7 +3321,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
                                     <SelectValue placeholder="Select appraiser" />
@@ -3347,7 +3351,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                   <FormControl>
                                     <SelectTrigger className="bg-[#ffffff]">
                                       <SelectValue placeholder="Select category" />
