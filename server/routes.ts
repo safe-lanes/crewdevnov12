@@ -23,6 +23,7 @@ import { interviewsV2Routes } from "./v2/interviews";
 import { debriefingsV2Routes } from "./v2/debriefings";
 import companyFormSubmissionsRoutes from "./v2/company-forms/routes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
+import { mountCrewingApprovals } from "./v2/approvals/mount";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
@@ -131,6 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Shared SAIL chat widget: identity token for the central assistant (knowledge answers, stage 1)
   app.use("/api/v2/assistant", assistantV2Routes);
+
+  // Approval engine (office only): engine API + Crewing host routes. See docs/APPROVAL-ENGINE-CREWING.md.
+  mountCrewingApprovals(app);
 
   // Start crewing alert background scanner (multi-tenant only)
   if (tenantConnectionManager.isMultiTenantEnabled) {
