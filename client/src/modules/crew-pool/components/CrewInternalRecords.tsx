@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, History, Pencil, Plus, RotateCcw, Trash2, Check, Clock3, LockKeyhole } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { getTenantId } from "@/lib/tenantStorage";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -86,8 +87,12 @@ function ActionButton({
 }
 
 export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) {
-  const { userType, userId, isLoading: permissionsLoading, canView, canCreate, canEdit, canDelete } = usePermissions();
+  const { userType, userId: signedInUserId, roleId, isLoading: permissionsLoading, canView, canCreate, canEdit, canDelete } = usePermissions();
   const queryClient = useQueryClient();
+  // Scope private caches to tenant, actor, role and effective grants. Revoking
+  // Delete must not leave removed wording in an already-open details window.
+  const userId = JSON.stringify([getTenantId(), signedInUserId, roleId, userType,
+    ...["Internal Comments", "Internal Actions"].flatMap(menu => [canView(menu), canCreate(menu), canEdit(menu), canDelete(menu)])]);
   const isOffice = ["office", "sail admin"].includes(userType?.trim().toLowerCase() || "");
   const viewComments = isOffice && canView("Internal Comments");
   const viewActions = isOffice && canView("Internal Actions");
@@ -124,6 +129,8 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
 
   const commentsQuery = useQuery<ListResponse>({
     queryKey: commentsKey,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
     enabled: !!crewUuid && viewComments && !permissionsLoading,
     queryFn: async () => {
       const response = await apiRequest("GET", basePath(crewUuid, "comments"));
@@ -146,6 +153,8 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
   });
   const actionsQuery = useQuery<ListResponse>({
     queryKey: actionsKey,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
     enabled: !!crewUuid && viewActions && !permissionsLoading,
     queryFn: async () => {
       const response = await apiRequest("GET", basePath(crewUuid, "actions"));
@@ -176,6 +185,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
 
   const assigneesQuery = useQuery<Person[]>({
     queryKey: ["/api/v2/crew-internal", crewUuid, userId, "assignees"],
+    gcTime: 0,
     enabled: !!crewUuid && viewActions && !permissionsLoading && !!modal && modal.kind === "edit" && modal.resource === "actions",
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/v2/crew-internal/${encodeURIComponent(crewUuid)}/assignees`);
@@ -392,7 +402,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
     const rows = data?.rows || [];
     const title = resource === "comments" ? "H1. Comments" : "H2. Actions";
     return (
-      <section className="overflow-hidden rounded-xl border border-[#dce5e4] bg-[#fffefd] shadow-[0_2px_12px_rgba(40,65,69,0.04)]">
+      <section data-testid={`internal-${resource}`} className="overflow-hidden rounded-xl border border-[#dce5e4] bg-[#fffefd] shadow-[0_2px_12px_rgba(40,65,69,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8eeee] px-4 py-3 sm:px-5">
           <div><h2 className="text-sm font-semibold tracking-[0.01em] text-[#28424a]">{title}</h2>
             {resource === "actions" && <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500"><Clock3 className="h-3 w-3" />Overdue is calculated against the current UTC calendar date.</p>}
@@ -409,7 +419,7 @@ export default function CrewInternalRecords({ crewUuid }: { crewUuid: string }) 
   const activeEntry = modal && "entry" in modal ? modal.entry : undefined;
 
   return (
-    <div className="space-y-5 rounded-2xl border border-[#d6e1e0] bg-[#f7f8f5] p-3 sm:p-5">
+    <div data-testid="crew-internal-records" className="space-y-5 rounded-2xl border border-[#d6e1e0] bg-[#f7f8f5] p-3 sm:p-5">
       <header className="border-b border-[#cbd9d7] pb-3">
         <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#dce9e7] text-xs font-bold text-[#315e68]">H</span><h1 className="text-base font-semibold tracking-tight text-[#29444b] sm:text-lg">Part H — Internal Comments</h1></div>
         <p className="mt-2 pl-9 text-xs leading-5 text-[#657579]">Recorded by authorised office users. Not visible to vessel users or the seafarer.</p>

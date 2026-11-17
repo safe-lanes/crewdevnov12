@@ -8,7 +8,7 @@ const holder=vi.hoisted(()=>({db:null as any}));
 vi.mock("@server/v2/db",()=>({getDb:()=>holder.db}));
 import { authorize,eligibleAssignees } from "../../server/v2/crew-internal/access";
 import { createComment,editComment,removeEntry } from "../../server/v2/crew-internal/write";
-import { listEntries,history } from "../../server/v2/crew-internal/read";
+import { listEntries,history,readEntry } from "../../server/v2/crew-internal/read";
 import { createAction,editAction,transitionAction } from "../../server/v2/crew-internal/actions";
 const schema=`test_internal_${randomUUID().replaceAll("-","")}`;
 const admin=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL});
@@ -83,6 +83,38 @@ describe("Part H action lifecycle",()=>{
 });
 afterAll(async()=>{await pool.end();await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();});
 describe("Part H comment lifecycle",()=>{
+  it("does not let a different crew record address an entry or its revisions",async()=>{
+    const row=await createComment(req(1,{body:"Exact crew only"}));
+    await expect(readEntry(holder.db,"comments","different-crew",row.entry_uuid)).rejects.toMatchObject({status:404});
+    await expect(history(holder.db,"comments","different-crew",row.entry_uuid,true)).rejects.toMatchObject({status:404});
+  });
+  it("does not fall through from a second tenant schema into the first tenant",async()=>{
+    const tenant=`${schema}_tenant2`;
+    await admin.query(`CREATE SCHEMA ${tenant}`);
+    const second=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL,options:`-c search_path=${tenant}`});
+    try{
+      for(const t of ["master_users","adm_rolemaster_ac","adm_menumaster_ac","adm_roleaccess_ac","crew_members_v2"]){
+        await second.query(`CREATE TABLE ${t} (LIKE ${schema}.${t} INCLUDING ALL)`);
+        if(t!=="crew_members_v2")await second.query(`INSERT INTO ${t} SELECT * FROM ${schema}.${t}`);
+      }
+      holder.db=drizzle(second);
+      await expect(authorize(req(1),"comments")).rejects.toMatchObject({status:404});
+    }finally{holder.db=drizzle(pool);await second.end();await admin.query(`DROP SCHEMA ${tenant} CASCADE`);}
+  });
+  it("refuses missing matching View/Create/Edit/Delete even with a general crew grant",async()=>{
+    await pool.query(`INSERT INTO adm_roleaccess_ac(rauid,role_id,menu_id,canview,cancreate,canedit,candelete)
+      VALUES('general','viewer','crew',true,true,true,true)`);
+    try{
+      for(const resource of ["comments","actions"] as const){
+        await pool.query("UPDATE adm_roleaccess_ac SET canview=false WHERE role_id='viewer' AND menu_id=$1",
+          [resource==="comments"?"cp-internal-comments":"cp-internal-actions"]);
+        await expect(authorize(req(2),resource)).rejects.toMatchObject({status:403});
+        await pool.query("UPDATE adm_roleaccess_ac SET canview=true,cancreate=false,canedit=false,candelete=false WHERE role_id='viewer'");
+        for(const capability of ["cancreate","canedit","candelete"])
+          await expect(authorize(req(2),resource,capability)).rejects.toMatchObject({status:403});
+      }
+    }finally{await pool.query("UPDATE adm_roleaccess_ac SET canview=true,cancreate=true WHERE role_id='viewer'");}
+  });
   it("freezes the server name and designation; rejects browser identity",async()=>{
     await expect(createComment(req(1,{body:"private",author:{name:"forged"}}))).rejects.toMatchObject({status:400});
     const row=await createComment(req(1,{body:"Frozen wording"}));
