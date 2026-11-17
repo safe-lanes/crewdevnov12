@@ -16,16 +16,22 @@ const entry=`
 import React from "react";
 import {createRoot} from "react-dom/client";
 import {FormattedDateInput} from "./client/src/components/ui/formatted-date-input";
-import {validateRecruitmentDate} from "./shared/v2/crew-pool/profileValidation";
+import {validateRecruitmentDate,validateCrewProfile} from "./shared/v2/crew-pool/profileValidation";
+import {validateMobileNumber} from "./client/src/modules/recruitment/countryDialingCodes";
 ${shell}
-const Fixture=new Function("React","FormattedDateInput","validateRecruitmentDate","Dialog","DialogContent","DialogHeader","DialogTitle","DialogFooter","Button",${JSON.stringify(fixture)})
- (React,FormattedDateInput,validateRecruitmentDate,Dialog,Wrap,Wrap,Wrap,Wrap,Button);
+const Fixture=new Function("React","FormattedDateInput","validateRecruitmentDate","validateCrewProfile","validateMobileNumber","Dialog","DialogContent","DialogHeader","DialogTitle","DialogFooter","Button",${JSON.stringify(fixture)})
+ (React,FormattedDateInput,validateRecruitmentDate,validateCrewProfile,validateMobileNumber,Dialog,Wrap,Wrap,Wrap,Wrap,Button);
 window.controls={toasts:[]};window.writes=[];window.fail=false;
 const api={
  patch:async data=>{window.writes.push(data);if(window.fail)throw new Error("offline");return {ok:true};},
  refresh:async()=>{},ensure:async()=>{throw new Error("Unexpected creation");}
 };
-createRoot(document.getElementById("root")).render(<Fixture api={api} controls={window.controls}/>);
+const root=createRoot(document.getElementById("root"));
+root.render(<Fixture api={api} controls={window.controls}/>);
+window.newCrew=()=>{
+ window.writes=[];window.controls.toasts=[];
+ root.render(<Fixture key="new-crew" api={api} controls={window.controls} member={null} initial={{firstName:"",recruitmentDate:""}}/>);
+};
 `;
 const bundle=await build({stdin:{contents:entry,loader:"tsx",resolveDir:process.cwd()},
   bundle:true,write:false,jsx:"automatic",format:"iife",
@@ -64,5 +70,21 @@ try{
   await page.getByRole("button",{name:"Open date"}).click();
   assert.equal(await input.inputValue(),"17-Nov-2026");
   console.log("PASS: cancel/reopen restores the accepted date instead of a rejected draft");
+  await page.evaluate(()=>window.newCrew());
+  await page.waitForFunction(()=>window.controls.current.formData.firstName==="");
+  await input.fill("01-Nov-2026");await save.click();
+  await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));
+  assert.equal(await page.getByTestId("header-date").innerText(),"2026-11-01");
+  assert.deepEqual(await page.evaluate(()=>window.writes),[]);
+  assert.deepEqual(await page.evaluate(()=>window.controls.toasts),[]);
+  console.log("PASS: empty-name new crew accepts a valid date locally and closes without persistence or success toast");
+  await page.getByRole("button",{name:"Open date"}).click();
+  assert.equal(await input.inputValue(),"01-Nov-2026");
+  await input.fill("01-Dec-2026");await input.blur();
+  assert.equal(await save.isDisabled(),true);
+  await page.getByRole("button",{name:"Cancel"}).click();
+  assert.equal(await page.getByTestId("header-date").innerText(),"2026-11-01");
+  assert.deepEqual(await page.evaluate(()=>window.writes),[]);
+  console.log("PASS: new-crew staged date survives reopen/cancel and future dates remain blocked");
   assert.deepEqual(errors,[]);
 }finally{await browser.close();}

@@ -25,12 +25,13 @@ function declaration(name: string) {
 }
 const production = [
   "profileEditKey", "persistProfileDependents", "validateProfileBeforeSave", "getEffectiveCrewUuid",
-  "ensureCrewExists", "handleSectionAutoSave", "toggleEditSection", "handleSaveDraft", "createCrewMutation",
+  "ensureCrewExists", "handleSectionAutoSave", "toggleEditSection", "handleSaveDraft", "createCrewMutation", "handleUpdateRecruitmentDate",
 ].map(declaration).join("\n");
 const effect = source.slice(source.indexOf("  // Click-outside detection for B1/B2/B3"),
   source.indexOf("  // Helper function to calculate age from date of birth"));
 const setters = [...new Set((production.match(/\bset[A-Z]\w+/g) || []))]
-  .filter(name => !["setFormData","setEditingSections","setCreatedCrewId","setIsBatchSaving","setIsCreatingCrew","setTimeout"].includes(name));
+  .filter(name => !["setFormData","setEditingSections","setCreatedCrewId","setIsBatchSaving","setIsCreatingCrew","setTimeout",
+    "setIsRecruitmentDateEditOpen","setTempRecruitmentDate","setIsSavingRecruitmentDate"].includes(name));
 const errorFields: Record<string,string> = {
   setFirstNameError:"firstName",setRecruitmentDateError:"recruitmentDate",setDobError:"dateOfBirth",
   setMobileError:"mobile",setEmailError:"email",setNokEmailError:"nokEmail",
@@ -38,7 +39,7 @@ const errorFields: Record<string,string> = {
 };
 const code = `
 const {useState,useRef,useEffect}=React;
-const {validateCrewProfile,validateCrewDob:validateDob,validateProfileEmail:validateEmail}=rules;
+const {validateCrewProfile,validateRecruitmentDate,validateCrewDob:validateDob,validateProfileEmail:validateEmail}=rules;
 const {mapLegacyCrewToV2,mapLegacyPersonalDetailsToV2,mapLegacyAddressToV2,mapLegacyFamilyInfoToV2}=mappers;
 return function Harness({initial,api,controls,member="crew"}){
  const [formData,setFormData]=useState(initial);
@@ -47,6 +48,11 @@ return function Harness({initial,api,controls,member="crew"}){
  const [createdCrewId,setCreatedCrewId]=useState(null);
  const [isBatchSaving,setIsBatchSaving]=useState(false);
  const [isCreatingCrew,setIsCreatingCrew]=useState(false);
+ const [isRecruitmentDateEditOpen,setIsRecruitmentDateEditOpen]=useState(false);
+ const [tempRecruitmentDate,setTempRecruitmentDate]=useState("");
+ const [isSavingRecruitmentDate,setIsSavingRecruitmentDate]=useState(false);
+ const recruitmentDateSavingRef=useRef(false);
+ const isRecruitmentDateDraftValid=true;
  const profileSaveRef=useRef(false), isBatchSavingRef=useRef(false),isCreatingCrewRef=useRef(false);
  const profileLatestRef=useRef(formData);profileLatestRef.current=formData;
  const profileCreateUncertainRef=useRef(null);
@@ -71,6 +77,8 @@ return function Harness({initial,api,controls,member="crew"}){
  const invalidateCrewData=()=>{};
  const queryClient={invalidateQueries:async()=>{},refetchQueries:async()=>{},cancelQueries:async()=>{}};
  const crewPoolApiV2=api;
+ const updateFormData=(key,value)=>setFormData(prev=>({...prev,[key]:value}));
+ const apiRequest=async(method,url,data)=>{await api.updateCrew(member,data);return {ok:true};};
  const updateCrewMutationV2={mutateAsync:({crewUuid,data})=>api.updateCrew(crewUuid,mapLegacyCrewToV2(data))};
  const createCrewMutationV2={mutateAsync:data=>api.createCrew(mapLegacyCrewToV2(data))};
  const savePersonalDetailsMutationV2={mutateAsync:({crewUuid,data})=>api.savePersonalDetails(crewUuid,mapLegacyPersonalDetailsToV2(data))};
@@ -80,11 +88,12 @@ return function Harness({initial,api,controls,member="crew"}){
  ${setters.filter(n=>n!=="setDeletedChildUuids").map(n=>`const ${n}=value=>setErrors(prev=>({...prev,${JSON.stringify(errorFields[n] || n)}:value}));`).join("\n")}
  ${production}
  ${effect}
- controls.current={formData,errors,editingSections,createdCrewId,deletedChildUuids,isBatchSaving,
+ controls.current={formData,errors,editingSections,createdCrewId,deletedChildUuids,isBatchSaving,isRecruitmentDateEditOpen,isSavingRecruitmentDate,
    change:(data)=>setFormData(prev=>({...prev,...data})),
    section:(s)=>setEditingSections({B1:false,B2:false,B3:false,[s]:true}),
    switchSession:()=>{d3SessionRef.current={open:true,crewKey:"other"};},
-   generalSave:handleSaveDraft};
+   generalSave:handleSaveDraft,dateSave:handleUpdateRecruitmentDate,
+   selectDate:date=>{setTempRecruitmentDate(date);setIsRecruitmentDateEditOpen(true);}};
  return <><div ref={sectionB1Ref}>
  <input aria-label="DOB" value={formData.dateOfBirth||""} onChange={e=>setFormData({...formData,dateOfBirth:e.target.value})}
  onBlur={()=>setDobError(validateDob(formData.dateOfBirth))}/>
@@ -133,6 +142,52 @@ const noWrites=(api:any)=>Object.values(api).forEach((fn:any)=>expect(fn).not.to
 const noSuccess=(controls:any)=>expect(controls.toasts.some((t:any)=>["Saved","Auto-saved","Record Created"].includes(t.title))).toBe(false);
 
 describe("Actual Crew Pool handlers and click-outside effect",()=>{
+  it("stages a date with no writes, then creates once with that date after First Name is entered",async()=>{
+    const {api,controls}=setup({firstName:"",recruitmentDate:"",deleted:["pending-child"]},null);
+    // Leave an existing validation error visible; date staging must not clear it.
+    outside();await waitFor(()=>expect(controls.current.errors.firstName).toBeTruthy());
+    const errors={...controls.current.errors};
+    act(()=>controls.current.selectDate("2026-11-01"));
+    await act(async()=>controls.current.dateSave());
+    expect(controls.current.isRecruitmentDateEditOpen).toBe(false);
+    expect(controls.current.formData.recruitmentDate).toBe("2026-11-01");
+    expect(controls.current.errors.firstName).toBe(errors.firstName);
+    expect(controls.current.deletedChildUuids).toEqual(["pending-child"]);
+    noWrites(api);noSuccess(controls);
+    outside();noWrites(api);
+    act(()=>controls.current.change({firstName:"Fixture"}));
+    outside();
+    await waitFor(()=>expect(controls.current.createdCrewId).toBe("created"));
+    await waitFor(()=>expect(controls.current.isBatchSaving).toBe(false));
+    expect(api.createCrew).toHaveBeenCalledOnce();
+    expect(api.createCrew.mock.calls[0][0]).toMatchObject({firstName:"Fixture",recruitmentDate:"2026-11-01"});
+    outside();await waitFor(()=>expect(controls.current.isBatchSaving).toBe(false));
+    expect(api.createCrew).toHaveBeenCalledOnce();
+  });
+  it("stages a valid date with other invalid fields, but prevents creation until corrected",async()=>{
+    const {api,controls}=setup({firstName:"",recruitmentDate:"",email:"bad"},null);
+    act(()=>controls.current.selectDate("2026-11-01"));
+    await act(async()=>controls.current.dateSave());
+    expect(controls.current.isRecruitmentDateEditOpen).toBe(false);noWrites(api);
+    act(()=>controls.current.change({firstName:"Fixture"}));
+    outside();noWrites(api);
+    act(()=>controls.current.change({email:"good@example.com"}));
+    outside();
+    await waitFor(()=>expect(controls.current.isBatchSaving).toBe(false));
+    expect(api.createCrew).toHaveBeenCalledOnce();
+    expect(api.createCrew.mock.calls[0][0].recruitmentDate).toBe("2026-11-01");
+  });
+  it("keeps a creation-ready popup open on a lost create response without locally accepting or retrying",async()=>{
+    const {api,controls}=setup({},null);api.createCrew.mockRejectedValueOnce(new Error("response lost"));
+    act(()=>controls.current.selectDate("2026-11-01"));
+    await act(async()=>controls.current.dateSave());
+    expect(controls.current.formData.recruitmentDate).toBe("2026-01-01");
+    expect(controls.current.isRecruitmentDateEditOpen).toBe(true);
+    await act(async()=>controls.current.dateSave());
+    expect(api.createCrew).toHaveBeenCalledOnce();
+    expect(controls.toasts.some((t:any)=>t.title==="Creation not confirmed")).toBe(true);
+    noSuccess(controls);
+  });
   it.each(["outside","Edit B2","Save","Mobile Save"])("blocks invalid DOB via %s",async trigger=>{
     const {api,stored,controls}=setup();
     fireEvent.change(screen.getByLabelText("DOB"),{target:{value:"2020-01-01"}});

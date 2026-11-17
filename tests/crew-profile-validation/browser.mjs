@@ -25,9 +25,14 @@ ${empty}
 window.controls={toasts:[]};window.writes=[];window.stored={dob:"1990-01-01"};
 const api={};
 for(const method of ["updateCrew","createCrew","savePersonalDetails","saveAddress","saveFamilyInfo","saveNextOfKin","saveVesselTypesApplied","deleteChild","createChild","updateChild"]){
- api[method]=async(...args)=>{window.writes.push(method);if(method==="updateCrew")Object.assign(window.stored,args[1]);return {crewUuid:"created",childUuid:"child-created"};};
+ api[method]=async(...args)=>{window.writes.push(method);if(method==="updateCrew")Object.assign(window.stored,args[1]);if(method==="createCrew")Object.assign(window.stored,args[0]);return {crewUuid:"created",childUuid:"child-created"};};
 }
-createRoot(document.getElementById("root")).render(<Harness initial={empty()} api={api} controls={window.controls}/>);
+const root=createRoot(document.getElementById("root"));
+root.render(<Harness initial={empty()} api={api} controls={window.controls}/>);
+window.newCrew=()=>{
+ window.writes=[];window.controls.toasts=[];
+ root.render(<Harness key="new-crew" initial={{...empty(),firstName:"",recruitmentDate:""}} member={null} api={api} controls={window.controls}/>);
+};
 `;
 const bundle = await build({
   stdin: { contents: entry, loader: "tsx", resolveDir: process.cwd() },
@@ -63,5 +68,24 @@ try {
   assert.match(await page.getByRole("alert").innerText(),/Spouse first name/);
   assert.equal(await page.evaluate(()=>window.writes.length),writes);
   console.log("PASS: invalid B3 spouse/NOK values block all section writes");
+  await page.evaluate(()=>window.newCrew());
+  await page.waitForFunction(()=>window.controls.current.formData.firstName==="");
+  await page.evaluate(()=>window.controls.current.selectDate("2026-11-01"));
+  await page.waitForFunction(()=>window.controls.current.isRecruitmentDateEditOpen);
+  await page.evaluate(()=>window.controls.current.dateSave());
+  await page.waitForFunction(()=>!window.controls.current.isRecruitmentDateEditOpen);
+  assert.equal(await page.evaluate(()=>window.controls.current.formData.recruitmentDate),"2026-11-01");
+  assert.deepEqual(await page.evaluate(()=>window.writes),[]);
+  assert.deepEqual(await page.evaluate(()=>window.controls.toasts),[]);
+  console.log("PASS: actual handler stages a recruitment date on an empty new form without creating a crew");
+  await page.evaluate(()=>window.controls.current.change({firstName:"Fixture"}));
+  await page.waitForFunction(()=>window.controls.current.formData.firstName==="Fixture");
+  await page.getByText("Outside",{exact:true}).click();
+  await page.waitForFunction(()=>window.controls.current.createdCrewId==="created"&&!window.controls.current.isBatchSaving);
+  assert.equal(await page.evaluate(()=>window.stored.recruitmentDate),"2026-11-01");
+  assert.equal(await page.evaluate(()=>window.writes.filter(m=>m==="createCrew").length),1);
+  await page.getByText("Outside",{exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.writes.filter(m=>m==="createCrew").length),1);
+  console.log("PASS: entering First Name later creates the crew once using the staged date");
   assert.deepEqual(errors,[]);
 } finally { await browser.close(); }

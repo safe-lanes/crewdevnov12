@@ -9412,7 +9412,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Validate the visible draft AND accepted value before any write.
   const handleUpdateRecruitmentDate = async () => {
     if (recruitmentDateSavingRef.current || profileSaveRef.current ||
-        isBatchSavingRef.current || isCreatingCrewRef.current) return;
+        isBatchSavingRef.current || isCreatingCrewRef.current ||
+        isD3Blocked() || firstCreateOwnerRef.current) return;
     const error = !tempRecruitmentDate ? 'Date of Recruitment is required.' :
       validateRecruitmentDate(tempRecruitmentDate);
     if (error || !isRecruitmentDateDraftValid) {
@@ -9423,6 +9424,27 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const submittedDate = tempRecruitmentDate;
     let crewId = getEffectiveCrewUuid();
     const existingCrew = Boolean(crewId);
+    if (!existingCrew) {
+      if (profileCreateUncertainRef.current === session) {
+        toast({ title: 'Creation not confirmed', description: 'Check the crew list and reopen the record before retrying.', variant: 'destructive' });
+        return;
+      }
+      const readinessErrors = validateCrewProfile({
+        ...profileLatestRef.current, recruitmentDate: submittedDate,
+      }, ['B1', 'B2', 'B3'], {
+        requireRecruitmentDate: canEditSection('B'),
+        mobileValidator: validateMobileNumber,
+      });
+      if (Object.keys(readinessErrors).length) {
+        // Selecting a date in an incomplete new form is a local edit, not a
+        // failed database save. Do not run creation or clear unrelated errors.
+        updateFormData('recruitmentDate', submittedDate);
+        setRecruitmentDateError('');
+        setIsRecruitmentDateEditOpen(false);
+        setTempRecruitmentDate('');
+        return;
+      }
+    }
     recruitmentDateSavingRef.current = true;
     setIsSavingRecruitmentDate(true);
     // Creation manages its own profile lock. Existing-crew PATCH shares that
