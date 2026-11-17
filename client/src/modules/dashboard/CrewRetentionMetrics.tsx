@@ -38,7 +38,7 @@ interface RetentionResponse {
 
 const CATEGORIES: { key: Category; label: string }[] = [
   { key: "senior", label: "Senior Officers" },
-  { key: "officer", label: "Officers" },
+  { key: "officer", label: "All Officers" },
   { key: "rating", label: "Ratings" },
 ];
 

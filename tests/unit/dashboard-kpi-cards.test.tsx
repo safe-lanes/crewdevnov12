@@ -62,6 +62,9 @@ describe("Dashboard KPI card display", () => {
     expect(screen.getAllByText("Off track")[0]).toHaveAttribute("title",
       "Forecast based on the last 24 months. The official result uses 1 Jan 2025 to 31 Dec 2026.");
     expect(screen.getAllByTestId("metrics-crew-retention")).toHaveLength(1);
+    expect(screen.getByTestId("label-retention-officer")).toHaveTextContent(/^All Officers$/);
+    expect(screen.getByTestId("tile-retention-officer")).toHaveAttribute("title",
+      "Measures all officers, including senior officers, following TMSA 3.4.");
     expect(screen.getByTestId("text-retention-senior")).toHaveClass("text-emerald-600");
     expect(screen.getByTestId("text-retention-officer")).toHaveClass("text-red-600");
     expect(screen.getByTestId("text-da-alcohol-violations")).toHaveClass("text-red-600");

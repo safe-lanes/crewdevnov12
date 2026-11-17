@@ -155,6 +155,28 @@ describe("Annual KPI targets — isolated database with real constraints", () =>
     expect((await read()).lastChanged?.name).toBe("Original Editor");
     expect(Object.keys((await read()).lastChanged!)).toEqual(["name", "recordedAt"]);
   });
+  it("renames only the officers catalogue label, preserving targets and frozen historical audit labels", async () => {
+    await saveKpiTargets(targetRequest({ [officers]: "95" }));
+    const component = (await pool.query("SELECT * FROM kpi_components WHERE component_uuid=$1", [officers])).rows[0];
+    const targets = (await pool.query("SELECT * FROM kpi_target_values ORDER BY component_uuid")).rows;
+    const [oldEvent] = await audit();
+    expect(oldEvent.details.componentLabel).toBe("Officers");
+    const migration = await readFile("migrations/0272_retention_all_officers_label.sql", "utf8");
+    await pool.query(migration);
+    await pool.query(migration); // Idempotent replay cannot rewrite audit or targets.
+    expect((await pool.query("SELECT * FROM kpi_components WHERE component_uuid=$1", [officers])).rows[0])
+      .toEqual({ ...component, label: "All Officers" });
+    expect((await pool.query("SELECT * FROM kpi_target_values ORDER BY component_uuid")).rows).toEqual(targets);
+    expect(await audit()).toEqual([oldEvent]);
+    expect(presentAccessAudit(oldEvent).sentence).toContain("Retention Rate — Officers target");
+    await saveKpiTargets(targetRequest({ [officers]: "96" }, 1));
+    const events = await audit();
+    expect(events[0]).toEqual(oldEvent);
+    expect(events[1].details.componentLabel).toBe("All Officers");
+    expect(presentAccessAudit(events[1]).sentence).toContain("Retention Rate — All Officers target from 95% to 96%");
+    expect((await readKpiCatalogue()).find(k => k.code === "retention")!.components.find(c => c.code === "officers")!.label)
+      .toBe("All Officers");
+  });
   it("rejects browser identity/time/authority and unknown scope fields", async () => {
     for (const key of ["actor", "actorName", "auditUserUuid", "recordedAt", "tenantId", "scope", "allowed"]) {
       const request = targetRequest({ [retention]: "95" });

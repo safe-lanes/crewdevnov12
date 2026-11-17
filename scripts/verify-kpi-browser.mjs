@@ -9,7 +9,7 @@ import { prepareTestEnvironment, sameIdentity } from "./test-database-guard.mjs"
 const identity = await prepareTestEnvironment();
 const base = process.env.TEST_API_URL;
 if (new URL(base).port === "5000") throw Error("Development preview is forbidden.");
-const out = "generated-artifacts/kpi-settings/browser";
+const out = process.env.KPI_BROWSER_EVIDENCE_DIR || "generated-artifacts/kpi-settings/browser";
 await fs.mkdir(out, { recursive: true });
 const fd = openSync(`${out}/backend.log`, "w");
 const instance = randomUUID();
@@ -43,6 +43,12 @@ try {
     ORDER BY y LIMIT 1`)).rows[0]?.year;
   if (!year) throw Error("No unused isolated evidence year; refuse to overwrite.");
   report.year = year;
+  const officersComponent = (await db.query(`SELECT c.component_uuid,c.label FROM kpi_components c
+    JOIN kpi_definitions k USING(kpi_uuid) WHERE k.code='retention' AND c.code='officers'`)).rows[0];
+  if (officersComponent?.label !== "All Officers") throw Error("Expected migrated All Officers catalogue.");
+  // Isolated test data only: capture an authentic pre-rename event through
+  // the screen, then replay the label-only migration before the next save.
+  await db.query("UPDATE kpi_components SET label='Officers' WHERE component_uuid=$1", [officersComponent.component_uuid]);
   await db.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES($1,$2,'Office',true)", [roleId, roleName]);
   actorId = (await db.query(`INSERT INTO master_users(user_uuid,role,user_type,fullname,display_name)
     VALUES($1,$2,'Office','Synthetic KPI Editor','Synthetic KPI Editor') RETURNING id`, [randomUUID(), roleName])).rows[0].id;
@@ -99,7 +105,24 @@ try {
   await page.getByTestId("input-kpi-target-ratings").fill("94");
   await page.getByTestId("button-kpi-save").click();
   await expect(page.getByTestId("text-kpi-last-changed")).toContainText("Synthetic KPI Editor");
+  const oldOfficerAudit = (await db.query(`SELECT * FROM adm_access_control_audit
+    WHERE actor->>'masterUserId'=$1 AND details->>'componentLabel'='Officers' ORDER BY id DESC LIMIT 1`, [String(actorId)])).rows[0];
+  expect(oldOfficerAudit?.details.componentLabel).toBe("Officers");
+  await db.query(await fs.readFile("migrations/0272_retention_all_officers_label.sql", "utf8"));
+  await page.reload();
+  await page.getByTestId("sidebar-item-kpis").click();
+  await page.getByTestId("tree-kpi-retention").click();
+  await page.getByTestId("input-kpi-year").fill(String(year));
+  await page.getByTestId("input-kpi-year").press("Tab");
+  await expect(page.getByText("All Officers", { exact: true })).toBeVisible();
   await shot("retention-saved");
+  await page.getByTestId("button-kpi-edit").click();
+  await page.getByTestId("input-kpi-target-officers").fill("94");
+  await page.getByTestId("button-kpi-save").click();
+  await expect(page.getByTestId("button-kpi-edit")).toBeVisible();
+  expect((await db.query("SELECT * FROM adm_access_control_audit WHERE id=$1", [oldOfficerAudit.id])).rows[0]).toEqual(oldOfficerAudit);
+  expect((await db.query(`SELECT details->>'componentLabel' AS label FROM adm_access_control_audit
+    WHERE actor->>'masterUserId'=$1 ORDER BY id DESC LIMIT 1`, [String(actorId)])).rows[0].label).toBe("All Officers");
   // Unsaved edits stay until the real in-app discard confirmation is accepted.
   await page.getByTestId("button-kpi-edit").click();
   await page.getByTestId("input-kpi-target-ratings").fill("93");
@@ -149,6 +172,12 @@ try {
   await expect(grantPage.getByRole("dialog")).toContainText("Alcohol violations");
   await expect(grantPage.getByRole("dialog")).toContainText("Synthetic KPI Editor");
   await shot("audit-history", grantPage);
+  await search.fill("Retention Rate — Officers target");
+  await expect(grantPage.getByRole("dialog")).toContainText("Retention Rate — Officers target");
+  await shot("audit-frozen-officers", grantPage);
+  await search.fill("Retention Rate — All Officers target");
+  await expect(grantPage.getByRole("dialog")).toContainText("Retention Rate — All Officers target");
+  await shot("audit-new-all-officers", grantPage);
   report.passed = true;
   report.audit = (await db.query(`SELECT actor_display_name,before_value,after_value,details,recorded_at
     FROM adm_access_control_audit WHERE event='kpi_target_changed' AND details->>'year'=$1 ORDER BY id`, [String(year)])).rows;
@@ -162,6 +191,7 @@ try {
     await db.query("DELETE FROM master_users WHERE id=$1", [actorId]);
     await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid=$1", [roleId]);
   }
+  await db.query(await fs.readFile("migrations/0272_retention_all_officers_label.sql", "utf8"));
   await db.end();
   backend.kill("SIGTERM");
   await fs.writeFile(`${out}/report.json`, JSON.stringify(report, null, 2));

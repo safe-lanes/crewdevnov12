@@ -122,6 +122,7 @@ try {
   async function reload() { await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded" }); await page.reload(); await loaded(); }
   await reload();
   await expect(retention()).toContainText("Rolling 2 years:");
+  await expect(page.getByTestId("label-retention-officer")).toHaveText("All Officers");
   await expect(retention().getByTestId("kpi-retention-senior")).toContainText("On track");
   await expect(retention().getByTestId("kpi-retention-rating")).toContainText("Off track");
   await expect(retention().getByText("On track").first()).toHaveAttribute("title",
