@@ -393,6 +393,8 @@ describe("real PostgreSQL activation and applicable wage integration", () => {
     const blank = await wageScalesService.create({ scaleName: "Undated", currency: "USD" });
     expect(blank.effectiveFrom).toBeNull();
     await expect(wageScalesService.update(blank.scaleUuid, { effectiveFrom: "2000-01-01" }))
+      .resolves.toMatchObject({ effectiveFrom: "2000-01-01" });
+    await expect(wageScalesService.update(blank.scaleUuid, { effectiveTo: "1999-12-31" }))
       .rejects.toMatchObject({ code: "VALIDATION" });
     await expect(wageScalesService.update("old", { effectiveTo: "2090-12-31" }))
       .rejects.toMatchObject({ code: "VALIDATION" });
