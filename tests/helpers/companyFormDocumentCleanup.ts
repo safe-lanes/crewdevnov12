@@ -1,3 +1,5 @@
+import { finishTestDocumentPreparations } from "./test-document-preparations";
+
 /** Disposable test evidence only. No application/preview caller may use this. */
 export async function clearCompanyFormDocumentFixtures(db: any, submissions: string[]) {
   if (process.env.NODE_ENV !== "test" || process.env.TEST_DATABASE_VERIFIED !== "true") {
@@ -10,6 +12,9 @@ export async function clearCompanyFormDocumentFixtures(db: any, submissions: str
   if (actual.clusterid !== expected.clusterid || actual.databaseoid !== expected.databaseoid) {
     throw new Error("Document fixture teardown refused an unregistered database.");
   }
+  // Must precede every trigger/table lock. Join any active test-owned queue
+  // work, including work from the last assertion, before removing its evidence.
+  await finishTestDocumentPreparations();
   // Requires the caller's transaction. On any error the savepoint also restores
   // trigger state; never leave live immutability disabled after failed teardown.
   await db.query("SAVEPOINT document_fixture_cleanup");
@@ -25,7 +30,9 @@ export async function clearCompanyFormDocumentFixtures(db: any, submissions: str
       await db.query(`DELETE FROM ${table} WHERE ${predicate}`, [submissions]);
       await db.query(`ALTER TABLE ${table} ENABLE TRIGGER USER`);
     }
-    for (const table of ["frm_document_handovers", "frm_document_preparation_events", "frm_document_files",
+    // prepareDocument INSERTs the file before the preparation event. Preserve
+    // that order even now that the dedicated test backend has no detached tick.
+    for (const table of ["frm_document_handovers", "frm_document_files", "frm_document_preparation_events",
       "frm_document_samples", "frm_document_preparation_requests", "frm_document_snapshots", "frm_document_assets", "frm_document_headers",
       "frm_document_references"]) {
       await db.query(`ALTER TABLE ${table} DISABLE TRIGGER USER`);

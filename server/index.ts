@@ -15,8 +15,11 @@ if (process.env.TEST_BACKEND === "true") {
   if (process.env.TEST_DATABASE_VERIFIED !== "true" || process.env.PORT === "5000")
     throw new Error("Dedicated test backend requires verified database isolation.");
   app.get("/api/test-database-identity", (_req, res) => {
-    res.json({ ...JSON.parse(process.env.TEST_DATABASE_IDENTITY!), instance: process.env.TEST_BACKEND_INSTANCE });
+    res.json({ ...JSON.parse(process.env.TEST_DATABASE_IDENTITY!), instance: process.env.TEST_BACKEND_INSTANCE,
+      documentPreparationMode: "awaited" });
   });
+  const { installTestDocumentPreparations } = await import("../scripts/test-document-preparations");
+  installTestDocumentPreparations(app);
 }
 app.set("trust proxy", 1);
 app.use(express.json({ limit: '10mb' }));
@@ -122,7 +125,9 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
-    startDocumentPreparationWorker();
+    // Tests explicitly await queue work before teardown. Production retains its
+    // existing periodic worker; no test timer may outlive a test's fixtures.
+    if (process.env.TEST_BACKEND !== "true") startDocumentPreparationWorker();
   });
 
   // Handle port conflicts explicitly

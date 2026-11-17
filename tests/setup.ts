@@ -5,6 +5,7 @@ import path from 'path';
 import { installConnectionGuard } from '../scripts/test-database-guard.mjs';
 import { verifyTestBackend } from './helpers/test-backend';
 import pg from 'pg';
+import { finishTestDocumentPreparations } from './helpers/test-document-preparations';
 
 installConnectionGuard();
 await verifyTestBackend();
@@ -29,8 +30,12 @@ beforeAll(async () => {
   startingFormIds = (await cleanupPool.query("SELECT id FROM adm_forms_v2")).rows.map(row => row.id);
 });
 
-afterEach(() => {
-  vi.clearAllMocks();
+afterEach(async () => {
+  try {
+    await finishTestDocumentPreparations();
+  } finally {
+    vi.clearAllMocks();
+  }
 });
 
 afterAll(async () => {

@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 import {
   createRequirementFixture, requirementApi, requirementPool, requirementToken, requirementTokenFor,
@@ -10,6 +10,8 @@ import { tenantConnectionManager } from "../../server/utils/tenantConnectionMana
 import { getDb } from "../../server/v2/db";
 import { readDocumentEvidenceStatus } from "../../server/v2/company-forms/documentEvidenceRepository";
 import { createDocumentPreparationQueue, prepareDocument } from "../../server/v2/company-forms/documentArchive";
+import { clearCompanyFormDocumentFixtures } from "../helpers/companyFormDocumentCleanup";
+import { finishTestDocumentPreparations } from "../helpers/test-document-preparations";
 
 const prefix = "/api/v2/company-form-submissions";
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=";
@@ -113,6 +115,47 @@ describe("registered sample PDF archive", () => {
         await client.query("COMMIT");
       } catch (error) { await client.query("ROLLBACK"); throw error; }
       finally { client.release(); }
+    }
+  });
+  it("waits for an in-flight PDF before fixture teardown takes any trigger lock", async () => {
+    const f = await start(true);
+    await sign(f, "officer");
+    await sign(f, "seafarer");
+    expect((await post(`${f.sectionPath}/submit`)).status).toBe(200);
+    const holder = await requirementPool.connect(), cleanup = await requirementPool.connect();
+    let drain: Promise<unknown> | undefined, deleting: Promise<unknown> | undefined;
+    let finished = false;
+    try {
+      await holder.query("BEGIN");
+      const holderPid = (await holder.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+      await holder.query("SELECT assign_uuid FROM crew_assignments WHERE assign_uuid=$1 FOR UPDATE", [f.assignUuid]);
+      await cleanup.query("BEGIN");
+      const cleanupPid = (await cleanup.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+      drain = finishTestDocumentPreparations();
+      await vi.waitFor(async () => {
+        const waiting = await requirementPool.query(`SELECT 1 FROM pg_stat_activity
+          WHERE datid=(SELECT oid FROM pg_database WHERE datname=current_database())
+          AND $1=ANY(pg_blocking_pids(pid))`, [holderPid]);
+        expect(waiting.rowCount).toBeGreaterThan(0);
+      });
+      deleting = clearCompanyFormDocumentFixtures(cleanup, [f.submission]).then(() => { finished = true; });
+      await cleanup.query("SELECT 1");
+      expect(finished).toBe(false);
+      const locks = await requirementPool.query(`SELECT 1 FROM pg_locks
+        WHERE pid=$1 AND mode='ShareRowExclusiveLock' AND granted`, [cleanupPid]);
+      expect(locks.rowCount).toBe(0);
+      await holder.query("ROLLBACK");
+      await drain;
+      await deleting;
+      // Restore the immutable evidence removed inside the test transaction.
+      await cleanup.query("ROLLBACK");
+      expect((await requirementPool.query("SELECT 1 FROM frm_document_files WHERE submission_uuid=$1",
+        [f.submission])).rowCount).toBe(1);
+    } finally {
+      await holder.query("ROLLBACK");
+      await Promise.allSettled([drain, deleting].filter(Boolean));
+      await cleanup.query("ROLLBACK");
+      holder.release(); cleanup.release();
     }
   });
   it("drains disabled-period requests from frozen evidence only after the server enables generation", async () => {

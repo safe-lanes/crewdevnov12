@@ -107,7 +107,9 @@ describe("Company Form rule editor read-only authoring APIs", () => {
       page.on("requestfailed", r => failures.push(`${r.failure()?.errorText} ${r.url()}`));
       const errors: string[] = [];
       page.on("pageerror", e => errors.push(e.message));
-      await page.goto(`https://${process.env.REPLIT_DEV_DOMAIN}/admin`, { waitUntil: "domcontentloaded" });
+      // The dedicated backend also serves Vite: both assets and API requests
+      // belong to the isolated run, not the main preview's external TLS proxy.
+      await page.goto(`${process.env.TEST_API_URL}/admin`, { waitUntil: "domcontentloaded" });
       await page.getByTestId("tab-company-forms").click({ timeout: 45000 });
       await page.getByRole("button", { name: `Configure TEST ONLY Rule editor ${suffix}`, exact: true }).click();
       await page.getByTestId("button-toggle-applicability-settings").click();

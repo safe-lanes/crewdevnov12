@@ -7,7 +7,7 @@ if (!testApiUrl || new URL(testApiUrl).port === "5000")
 export async function verifyTestBackend() {
   // Node HTTP deliberately avoids happy-dom CORS, cache and test fetch mocks.
   const identity: any = await new Promise((resolve, reject) => {
-    const request = http.get(`${testApiUrl}/api/test-database-identity`, response => {
+    const request = http.get(`${testApiUrl}/api/test-database-identity`, { agent: false }, response => {
       let body = "";
       response.on("data", chunk => { body += chunk; });
       response.on("end", () => {
@@ -21,4 +21,5 @@ export async function verifyTestBackend() {
   const expected = JSON.parse(process.env.TEST_DATABASE_IDENTITY!);
   if (identity.clusterid !== expected.clusterid || identity.databaseoid !== expected.databaseoid)
     throw new Error("API backend does not use the verified test database.");
+  return identity;
 }
