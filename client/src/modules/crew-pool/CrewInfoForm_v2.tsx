@@ -41,6 +41,7 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { seaServiceRankLabel, type SeaServiceRankMaster } from "./seaServicePresentation";
 import { CrewCompanyFormsHistory } from './components/CrewCompanyFormsHistory';
+import CrewInternalRecords from './components/CrewInternalRecords';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
@@ -982,6 +983,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     permissions,
     roleName,
     userId,
+    userType,
     manningAgent: userManningAgent,
     isLoading: permissionsLoading,
   } = usePermissions();
@@ -1067,11 +1069,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const canViewSection = useCallback((sectionId: string): boolean => {
+    if (sectionId === 'H') return ['office', 'sail admin'].includes(userType?.trim().toLowerCase() || '')
+      && (canView('Internal Comments') || canView('Internal Actions'));
     const menuName = sectionMenuMap[sectionId];
     if (!menuName) return true;
     if (permissions.length === 0) return true;
     return canView(menuName);
-  }, [permissions, canView]);
+  }, [permissions, canView, userType]);
 
   const canEditSection = useCallback((sectionId: string): boolean => {
     const menuName = sectionMenuMap[sectionId];
@@ -1109,12 +1113,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     { id: 'D', title: 'Training & Certificates', number: 'D' },
     { id: 'E', title: 'Sea Service', number: 'E' },
     { id: 'F', title: 'Medical', number: 'F' },
-    { id: 'G', title: 'Brief & Debrief', number: 'G' }
+    { id: 'G', title: 'Brief & Debrief', number: 'G' },
+    { id: 'H', title: 'Internal Comments', number: 'H' }
   ];
 
   const sections = useMemo(() =>
     allSections.filter(s => canViewSection(s.id)),
-    [permissions]
+    [permissions, userType, canViewSection]
   );
 
   // Refs for scroll detection
@@ -1125,6 +1130,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
   const sectionGRef = useRef<HTMLDivElement>(null);
+  const sectionHRef = useRef<HTMLDivElement>(null);
   const isBatchSavingRef = useRef(false);
   const deletingContextRef = useRef<{ crewId: string; count: number } | null>(null);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
@@ -9645,7 +9651,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
-      D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
+      D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef, H: sectionHRef,
     };
     sections.forEach((s) => {
       const ref = sectionRefMap[s.id];
@@ -9687,6 +9693,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         break;
       case 'G':
         targetRef = sectionGRef;
+        break;
+      case 'H':
+        targetRef = sectionHRef;
         break;
       default:
         return;
@@ -10230,6 +10239,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
             )}
             </fieldset>
+            {crewUuid && canViewSection('H') && (
+              <div ref={sectionHRef} data-section="H" className="mt-6">
+                <CrewInternalRecords crewUuid={crewUuid} />
+              </div>
+            )}
           </div>
         </div>
       </div>
