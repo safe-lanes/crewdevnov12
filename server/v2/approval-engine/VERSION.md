@@ -3,7 +3,7 @@
 This folder is an **unchanged copy** of the approval engine from the Technical module (PMS).
 
 - Source repo: Technical module (PMS)
-- Source commit: `ab51e0730` on branch `fix/approval-admin-role-approvers-path` (= `replit_dev` 2e12c5457 + the admin screen's `roleApproversPath` prop). Re-point this line to the `replit_dev` commit once that branch is merged.
+- Source commit: `ab51e0730` on branch `replit_dev` (includes the admin screen's `roleApproversPath` prop).
 - Source path: `server/modules/approval-engine/`
 - Copied: 2026-11-17
 
