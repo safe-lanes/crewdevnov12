@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { crewMembersService } from "../services";
 import { insertCrewMemberV2Schema } from "@shared/v2/crew-pool/types";
+import { assertProfileWrite } from "../services/profileWriteValidation";
 import { z } from "zod";
 
 export const crewMembersController = {
@@ -111,6 +112,7 @@ export const crewMembersController = {
       const validatedData = insertCrewMemberV2Schema
         .omit({ crewUuid: true })
         .parse(req.body);
+      await assertProfileWrite('crew', validatedData, {}, true);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const crew = await crewMembersService.create({
         ...validatedData,
@@ -130,9 +132,15 @@ export const crewMembersController = {
 
   async createWithRelatedData(req: Request, res: Response) {
     try {
+      await assertProfileWrite('crew', req.body.crew || {}, {}, true);
+      if (req.body.address) await assertProfileWrite('address', req.body.address, {}, true);
+      if (req.body.familyInfo) await assertProfileWrite('family', req.body.familyInfo, {}, true);
+      if (req.body.nextOfKin) await assertProfileWrite('nok', req.body.nextOfKin, {}, true);
       const crew = await crewMembersService.createWithRelatedData(req.body);
       res.status(201).json(crew);
     } catch (error: any) {
+      if (error instanceof z.ZodError)
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
       if (error.message?.includes("already exists")) {
         return res.status(409).json({ error: error.message });
       }
@@ -148,6 +156,7 @@ export const crewMembersController = {
     try {
       const { crewUuid } = req.params;
       const validatedData = insertCrewMemberV2Schema.partial().parse(req.body);
+      await assertProfileWrite('crew', validatedData, await crewMembersService.getByUuid(crewUuid));
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const crew = await crewMembersService.update(crewUuid, {
         ...validatedData,
@@ -172,6 +181,7 @@ export const crewMembersController = {
     try {
       const { crewUuid } = req.params;
       const { allowVesselClear, ...data } = req.body;
+      await assertProfileWrite('crew', data, await crewMembersService.getByUuid(crewUuid));
       const crew = await crewMembersService.updateWithProtection(
         crewUuid,
         data,
@@ -179,6 +189,8 @@ export const crewMembersController = {
       );
       res.json(crew);
     } catch (error: any) {
+      if (error instanceof z.ZodError)
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
