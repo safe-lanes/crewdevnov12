@@ -8,6 +8,7 @@ import { TrainingMatrixCompliance } from "../../client/src/modules/vessel/compon
 import { apiRequest } from "../../client/src/lib/queryClient";
 import { calculateTrainingCompliance } from "../../server/v2/shared/training-compliance/calculator";
 import { trainingComplianceCases } from "../fixtures/trainingComplianceCases";
+import { rotationAssignmentsForSave } from "../../client/src/modules/rotation/assignmentDates";
 vi.mock("../../client/src/lib/queryClient", () => ({ apiRequest: vi.fn() }));
 let client: QueryClient;
 function value(index: number) {
@@ -93,6 +94,75 @@ describe("crew profile D3 navigation", () => {
   });
 });
 describe("read-only Reliever Status training display", () => {
+  it("shows all initial problems, colours and details from Rotation's saved calendar date without a Planning save", async () => {
+    const [assignment] = rotationAssignmentsForSave([{
+      joiningDate: new Date(2026, 10, 16).toISOString(),
+    }]);
+    const seed = trainingComplianceCases[0].input;
+    const calculated = calculateTrainingCompliance({
+      ...seed, plannedJoiningDate: assignment.joiningDate,
+      contractRangeEndMonths: null, contractPeriodMonths: 3, certificates: [],
+      matrix: {
+        revisionUuid: "initial-revision", revision: "R1", equivalents: [],
+        requirements: Array.from({ length: 14 }, (_, index) => ({
+          courseUuid: `initial-${index}`, name: `Required initial course ${index}`,
+          obligation: "mandatory" as const,
+        })),
+      },
+    });
+    const data = {
+      ...value(0), ...calculated,
+      courses: calculated.courses.map(course => ({ ...course, certificates: [] })),
+    };
+    vi.mocked(apiRequest).mockImplementation(async method => new Response(JSON.stringify(
+      method === "GET" ? data : { suggestions: [], canCreate: false },
+    )));
+    mount();
+    expect((await screen.findByText("Mandatory: Action needed (14 problems)")).className).toContain("text-rose-800");
+    expect(screen.getByText("Recommended: None required for this rank").className).toContain("text-emerald-800");
+    expect(screen.queryByText(/Incomplete \(1 problem\)/)).toBeNull();
+    fireEvent.click(screen.getByTestId("training-compliance-see-details"));
+    const dialog = screen.getByRole("dialog", { name: "Training Matrix Compliance" });
+    expect(within(dialog).getByText("16-Nov-2026")).toBeTruthy();
+    expect(within(dialog).getByText("16-Feb-2027")).toBeTruthy();
+    expect(within(dialog).getByText("Mandatory: Action needed (14 problems)")).toBeTruthy();
+    expect(within(dialog).getAllByTestId(/^training-course-row-/)).toHaveLength(14);
+    // Existing suggestion reconciliation is separate; no Planning/assignment
+    // write may be needed to populate the initial compliance summary or details.
+    expect(vi.mocked(apiRequest).mock.calls.every(([method, url]) =>
+      method === "GET" || (method === "POST" && String(url).endsWith("/training-suggestions")),
+    )).toBe(true);
+    expect(vi.mocked(apiRequest).mock.calls.filter(([method]) => method === "GET")).toHaveLength(1);
+  });
+
+  it("hides the previous crew's open details while a different assignment is loading", async () => {
+    const firstData = value(0);
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(firstData)));
+    const view = mount();
+    fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    expect(screen.getByText(firstData.context.crewName)).toBeTruthy();
+
+    let finish!: (response: Response) => void;
+    const nextData = {
+      ...value(4), assignmentUuid: "different-assignment",
+      context: { ...firstData.context, crewUuid: "different-crew", crewName: "TEST ONLY Different Reliever" },
+    };
+    vi.mocked(apiRequest).mockImplementation(async method => method === "GET"
+      ? new Promise<Response>(resolve => { finish = resolve; })
+      : new Response(JSON.stringify({ suggestions: [], canCreate: false })));
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <TrainingMatrixCompliance open planUuid="plan" assignmentUuid="different-assignment" />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByText(firstData.context.crewName)).toBeNull();
+    expect(screen.getAllByLabelText("Loading training compliance").length).toBeGreaterThan(0);
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    finish(new Response(JSON.stringify(nextData)));
+    expect(await screen.findByText(nextData.context.crewName)).toBeTruthy();
+    expect(screen.queryByText(firstData.context.crewName)).toBeNull();
+  });
+
   it.each([0, 4, 6, 9, 10])("shows course state explicitly for review row %s", async index => {
     const data = value(index);
     vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridTable } from '@/components/AgGrid/AgGridTable';
 import { ColDef } from 'ag-grid-community';
-import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -227,7 +227,7 @@ const ApprovalTimelineViewV2: React.FC<{
         }
       }
       
-      const joiningDate = new Date(proposal.joiningDate);
+      const joiningDate = parseISO(proposal.joiningDate);
       const contractEndDate = addMonths(joiningDate, proposal.contractPeriod);
       
       const proposedStart = Math.max(0, ((differenceInDays(joiningDate, startDate) / totalDays) * width));

@@ -21,7 +21,9 @@ import {
   endOfMonth,
   format,
   parse,
+  parseISO,
 } from 'date-fns';
+import { rotationAssignmentsForSave } from './assignmentDates';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1494,7 +1496,7 @@ function DatePeriodDialog({
   // Pre-populate form when editing (initialValues provided)
   useEffect(() => {
     if (open && initialValues) {
-      setJoiningDate(new Date(initialValues.joiningDate));
+      setJoiningDate(parseISO(initialValues.joiningDate));
       setContractPeriod(initialValues.contractPeriod.toString());
     } else if (!open) {
       setJoiningDate(undefined);
@@ -2042,7 +2044,7 @@ function VesselTimelineView({
         const bottomBarHeight = 15;
         
         rowData.assignments.forEach(assignment => {
-          const joiningDate = new Date(assignment.joiningDate);
+          const joiningDate = parseISO(assignment.joiningDate);
           const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
           
           const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
@@ -2173,7 +2175,7 @@ function VesselTimelineView({
           if (rowData?.assignments) {
             // Check each assignment to see if click is within its X range
             for (const assignment of rowData.assignments) {
-              const joiningDate = new Date(assignment.joiningDate);
+              const joiningDate = parseISO(assignment.joiningDate);
               const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
               
               const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
@@ -3094,12 +3096,12 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     }
 
     // Calculate plan date range from assignments
-    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const joiningDates = assignments.map(a => parseISO(a.joiningDate));
     const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
     
     // Calculate planToDate as the latest contract end date
     const contractEndDates = assignments.map(a => {
-      const joiningDate = new Date(a.joiningDate);
+      const joiningDate = parseISO(a.joiningDate);
       return addMonths(joiningDate, a.contractPeriod);
     });
     const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
@@ -3113,7 +3115,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       crew: crewRoles,
       planFromDate: format(planFromDate, 'yyyy-MM-dd'),
       planToDate: format(planToDate, 'yyyy-MM-dd'),
-      assignments: JSON.stringify(assignments),
+      assignments: JSON.stringify(rotationAssignmentsForSave(assignments)),
     };
 
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
@@ -3172,12 +3174,12 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     }
 
     // Calculate plan date range from assignments
-    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const joiningDates = assignments.map(a => parseISO(a.joiningDate));
     const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
     
     // Calculate planToDate as the latest contract end date
     const contractEndDates = assignments.map(a => {
-      const joiningDate = new Date(a.joiningDate);
+      const joiningDate = parseISO(a.joiningDate);
       return addMonths(joiningDate, a.contractPeriod);
     });
     const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
@@ -3191,7 +3193,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       crew: crewRoles,
       planFromDate: format(planFromDate, 'yyyy-MM-dd'),
       planToDate: format(planToDate, 'yyyy-MM-dd'),
-      assignments: JSON.stringify(assignments),
+      assignments: JSON.stringify(rotationAssignmentsForSave(assignments)),
     };
 
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
