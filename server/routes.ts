@@ -75,6 +75,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount v2 recruitment routes (isolated from existing functionality)
   app.use("/api/v2/recruitment", recruitmentV2Routes);
   
+  // Part H is a separate confidential resource, never part of crew DTOs.
+  app.use("/api/v2/crew-internal", (await import("./v2/crew-internal/routes")).default);
+
   // Mount v2 crew pool routes
   app.use("/api/v2/crew-pool", crewPoolV2Routes);
   
