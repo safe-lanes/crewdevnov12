@@ -80,6 +80,8 @@ import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewIn
 import BriefingLiveSubmissionHost from './components/BriefingLiveSubmissionHost';
 import DebriefingLiveSubmissionHost, { debriefingCreationErrorMessage, isPersistedDebriefingUuid, openOrCreateDebriefing } from './components/DebriefingLiveSubmissionHost';
 import { crewPoolApiV2 } from './api/crewPoolApiV2';
+import { visaCountryForSave } from '@shared/v2/crew-pool/visaCountry';
+import { VisaCountryField } from './components/VisaCountryField';
 import { 
   useCreateCrewV2, 
   useUpdateCrewV2, 
@@ -345,6 +347,8 @@ interface Visa {
   visaUuid?: string;
   countryId: string;  // Template ID (e.g., USA, SCHENGEN) - empty for manual entries
   issuingCountry: string;
+  country?: string;
+  countryUnavailable?: boolean;
   serialNo: string;
   issued: string;
   expiry: string;
@@ -2512,7 +2516,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setFormData(prev => ({
       ...prev,
       visas: prev.visas.map(visa => 
-        visa.id === id ? { ...visa, [field]: value } : visa
+        visa.id === id ? { ...visa, [field]: value,
+          ...(field === 'issuingCountry' ? { country: value, countryUnavailable: false } : {}),
+        } : visa
       )
     }));
   };
@@ -5342,16 +5348,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} data-visa-uuid={(visa as any).visaUuid || undefined} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {visa.countryId ? (
-                    <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
-                  ) : (
-                    <Input
+                    <VisaCountryField
                       value={visa.issuingCountry}
-                      onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
-                      onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
-                      className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                      countryId={visa.countryId}
+                      unavailable={visa.countryUnavailable}
+                      invalid={!!visaRequiredErrors[visa.id]?.issuingCountry}
+                      onChange={(value) => { updateVisa(visa.id, 'issuingCountry', value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      onBlur={() => { if (!visaCountryForSave(visa).trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
                     />
-                  )}
                   {visaRequiredErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].issuingCountry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -7417,7 +7421,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     formData.visas.forEach((visa) => {
       if (!isVisaBlank(visa)) {
         const vReq: { issuingCountry?: string; visaType?: string } = {};
-        if (!(visa.issuingCountry || '').trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
+        if (!visaCountryForSave(visa).trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
         if (!(visa.visaType || '').trim()) { vReq.visaType = 'Visa type is required.'; hasErrors = true; }
         if (vReq.issuingCountry || vReq.visaType) newVisaReqErrors[visa.id] = vReq;
         const ie = validateIssuedDate(visa.issued); if (ie) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), issued: ie}; hasErrors = true; }
@@ -7808,7 +7812,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               const visaData = {
                 visaUuid: visa.visaUuid,
                 countryId: visa.countryId || '',
-                country: visa.issuingCountry || visa.country || '',
+                country: visaCountryForSave(visa),
                 serialNo: visa.serialNo ?? visa.serialNumber ?? '',
                 issued: visa.issued || '',
                 expiry: visa.expiry || '',

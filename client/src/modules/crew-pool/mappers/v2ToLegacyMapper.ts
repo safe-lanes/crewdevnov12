@@ -1,3 +1,5 @@
+import { visaCountryPresentation, visaCountryForSave } from "@shared/v2/crew-pool/visaCountry";
+
 export interface LegacyCrewMember {
   id?: string;
   crewUuid?: string;
@@ -397,12 +399,14 @@ export interface LegacyVisa {
 }
 
 export function mapV2VisaToLegacy(v2: any): any {
+  const presentation = visaCountryPresentation(v2 || {});
   return {
     visaUuid: v2?.visaUuid,
     id: v2?.visaUuid || `VIS-${Date.now()}`,
     country: v2?.country || '',
     countryId: v2?.countryUuid || '',
-    issuingCountry: v2?.country || '',
+    issuingCountry: presentation.name,
+    countryUnavailable: presentation.unavailable,
     serialNo: v2?.serialNo || '',
     serialNumber: v2?.serialNo || '',
     issued: v2?.issued || v2?.issuedDate || '',
@@ -425,7 +429,7 @@ export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
     countryUuid: legacy.countryId || undefined,
-    country: legacy.country ?? legacy.issuingCountry ?? undefined,
+    country: visaCountryForSave(legacy) || legacy.country || undefined,
     serialNo: legacy.serialNo ?? legacy.serialNumber ?? undefined,
     issued: legacy.issuedDate ?? legacy.issued ?? undefined,
     expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
