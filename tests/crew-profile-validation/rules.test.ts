@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { calendarToday, validateCrewDob, validateCrewProfile, validateProfileEmail } from "../../shared/v2/crew-pool/profileValidation";
+import { calendarToday, validateCrewDob, validateCrewProfile, validateProfileEmail, validateRecruitmentDate } from "../../shared/v2/crew-pool/profileValidation";
 import { validateMobileNumber } from "../../client/src/modules/recruitment/countryDialingCodes";
 
 describe("Existing B1–B3 rules", () => {
+  it.each([
+    ["",""],["2026-11-17",""],["2026-11-16",""],
+    ["2026-11-18","future"],["2026-02-30","valid Date"],["bad","valid Date"],["0000-01-01","valid Date"],
+  ])("validates recruitment date %s against the calendar day", (value,message)=>{
+    const result=validateRecruitmentDate(value,"2026-11-17");
+    message?expect(result).toContain(message):expect(result).toBe("");
+  });
+  it("rejects future recruitment in shared B1 saves without tightening other sections",()=>{
+    const values={firstName:"Crew",recruitmentDate:"2026-11-18"};
+    expect(validateCrewProfile(values,["B1"],{today:"2026-11-17"}).recruitmentDate).toContain("future");
+    expect(validateCrewProfile(values,["B2"],{today:"2026-11-17"})).toEqual({});
+  });
   it.each([
     ["", ""], ["2008-11-17", ""], ["2008-11-18", "at least 18"],
     ["1990-01-01", ""], ["2027-01-01", "future"], ["2008-02-30", "valid date"],

@@ -25,6 +25,12 @@ export function validateCrewDob(value: string, today = calendarToday()): string 
   return age < 18 ? 'Crew member must be at least 18 years old.' : '';
 }
 
+export function validateRecruitmentDate(value: string, today = calendarToday()): string {
+  if (!value.trim()) return '';
+  if (!validCalendarDate(value) || value.startsWith('0000-')) return 'Please enter a valid Date of Recruitment.';
+  return value > today ? 'Date of Recruitment cannot be a future date.' : '';
+}
+
 export function validateProfileEmail(value: string): string {
   if (!value) return '';
   if (/\s/.test(value)) return 'Email must not contain spaces.';
@@ -45,6 +51,8 @@ export function validateCrewProfile(
     if (!text('firstName').trim()) errors.firstName = 'First name is required.';
     if (options.requireRecruitmentDate && !text('recruitmentDate').trim())
       errors.recruitmentDate = 'Date of Recruitment is required.';
+    const recruitmentDate = validateRecruitmentDate(text('recruitmentDate'), today);
+    if (recruitmentDate) errors.recruitmentDate = recruitmentDate;
     const dob = validateCrewDob(text('dateOfBirth'), today);
     if (dob) errors.dateOfBirth = dob;
   }

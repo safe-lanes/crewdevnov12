@@ -62,6 +62,17 @@ async function request(handler:any,body:any){
 }
 async function storedCrew(){return(await state.db.select().from(schema.crewMembersV2).where(eq(schema.crewMembersV2.crewUuid,"crew")))[0];}
 describe("Actual controller/service/repository persistence on isolated PostgreSQL",()=>{
+  it("never persists rejected recruitment dates and saves a corrected date",async()=>{
+    const before=(await storedCrew()).recruitmentDate;
+    for(const recruitmentDate of ["2099-01-01","2026-02-30"]){
+      expect((await request(crewMembersController.update,{recruitmentDate})).code).toBe(400);
+      expect((await storedCrew()).recruitmentDate).toBe(before);
+    }
+    expect((await request(crewMembersController.create,{empNo:"TEST-2",firstName:"Fixture",recruitmentDate:"2099-01-01"})).code).toBe(400);
+    expect(await state.db.select().from(schema.crewMembersV2)).toHaveLength(1);
+    expect((await request(crewMembersController.update,{recruitmentDate:"2026-01-02"})).code).toBe(200);
+    expect((await storedCrew()).recruitmentDate).toBe("2026-01-02");
+  });
   it("never persists rejected DOB and persists corrected DOB on reopen",async()=>{
     expect((await request(crewMembersController.update,{dob:"2020-01-01"})).code).toBe(400);
     expect((await storedCrew()).dob).toBe("1990-01-01");

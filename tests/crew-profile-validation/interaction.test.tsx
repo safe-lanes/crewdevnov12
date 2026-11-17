@@ -211,6 +211,19 @@ describe("Actual Crew Pool handlers and click-outside effect",()=>{
     fireEvent.mouseDown(screen.getByLabelText("DOB"));
     expect(controls.toasts).toEqual([]);noWrites(api);
   });
+  it.each(["Save","Mobile Save","Outside","Edit B2"])("blocks future recruitment date for %s before any writes",async action=>{
+    const {api,controls}=setup({recruitmentDate:"2099-01-01",deleted:["pending-child"]});
+    if(action==="Outside")outside();else fireEvent.click(screen.getByText(action));
+    await waitFor(()=>expect(controls.current.errors.recruitmentDate).toContain("future"));
+    noWrites(api);noSuccess(controls);
+    expect(controls.current.deletedChildUuids).toEqual(["pending-child"]);
+  });
+  it("does not automatically create a crew with a future recruitment date",async()=>{
+    const {api,controls}=setup({recruitmentDate:"2099-01-01"},null);
+    outside();
+    await waitFor(()=>expect(controls.current.errors.recruitmentDate).toContain("future"));
+    noWrites(api);noSuccess(controls);
+  });
   it.each([{email:"bad"},{nokEmail:"bad"},{maritalStatus:"Married",spouseFirstName:""}])
     ("validates all B1–B3 fields before any full Save requests",async bad=>{
       const {api,controls}=setup({...bad,deleted:["pending-child"]});

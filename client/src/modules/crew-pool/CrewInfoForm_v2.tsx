@@ -36,7 +36,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
-import { validateCrewProfile, validateCrewDob, validateProfileEmail, type ProfileSection } from '@shared/v2/crew-pool/profileValidation';
+import { validateCrewProfile, validateCrewDob, validateProfileEmail, validateRecruitmentDate, type ProfileSection } from '@shared/v2/crew-pool/profileValidation';
 import { saveProfileDependents, confirmedProfileRejection } from './saveProfileDependents';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
@@ -918,6 +918,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [isNextAvailabilityDraftValid, setIsNextAvailabilityDraftValid] = useState(false);
   const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
   const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
+  const [isRecruitmentDateDraftValid, setIsRecruitmentDateDraftValid] = useState(false);
+  const [isSavingRecruitmentDate, setIsSavingRecruitmentDate] = useState(false);
+  const recruitmentDateSavingRef = useRef(false);
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
@@ -9406,68 +9409,66 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setTempNextAvailability('');
   };
 
-  // Handle updating date of recruitment (mirrors Next Availability pattern)
+  // Validate the visible draft AND accepted value before any write.
   const handleUpdateRecruitmentDate = async () => {
-    if (!tempRecruitmentDate) return;
-    // V2: Use crewUuid as the primary identifier. For manually added crew that
-    // have not been persisted yet, hold the date locally; create the crew only
-    // when both First Name and Date of Recruitment are present.
-    let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
-    if (!crewId) {
-      // New unsaved crew: keep the date in the form (header now shows it)
-      updateFormData('recruitmentDate', tempRecruitmentDate);
-      setRecruitmentDateError('');
-      if ((formData.firstName || '').trim()) {
-        await ensureCrewExists(tempRecruitmentDate);
-      } else {
-        setFirstNameError('First name is required.');
-        toast({
-          title: "Validation Error",
-          description: "Fill the First Name to create the crew record.",
-          variant: "destructive",
-        });
-      }
-      setIsRecruitmentDateEditOpen(false);
-      setTempRecruitmentDate('');
+    if (recruitmentDateSavingRef.current || profileSaveRef.current ||
+        isBatchSavingRef.current || isCreatingCrewRef.current) return;
+    const error = !tempRecruitmentDate ? 'Date of Recruitment is required.' :
+      validateRecruitmentDate(tempRecruitmentDate);
+    if (error || !isRecruitmentDateDraftValid) {
+      if (error) setRecruitmentDateError(error);
       return;
     }
-    // Existing saved crew: save the date to the server, but WITHOUT triggering
-    // the full-profile refetch that would overwrite unsaved local edits.
-    updateFormData('recruitmentDate', tempRecruitmentDate);   // date visible in header + validation passes
-    setRecruitmentDateError('');
+    const session = d3SessionRef.current;
+    const submittedDate = tempRecruitmentDate;
+    let crewId = getEffectiveCrewUuid();
+    const existingCrew = Boolean(crewId);
+    recruitmentDateSavingRef.current = true;
+    setIsSavingRecruitmentDate(true);
+    // Creation manages its own profile lock. Existing-crew PATCH shares that
+    // lock with profile saves so neither can overwrite the other's date.
+    if (existingCrew) profileSaveRef.current = true;
     try {
-      const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${crewId}`, { recruitmentDate: tempRecruitmentDate });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!crewId) {
+        crewId = await ensureCrewExists(submittedDate);
+        if (!crewId) return;
+      } else {
+        const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${crewId}`, { recruitmentDate: submittedDate });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      if (d3SessionRef.current !== session) return;
+      updateFormData('recruitmentDate', submittedDate);
+      setRecruitmentDateError('');
+      setIsRecruitmentDateEditOpen(false);
+      setTempRecruitmentDate('');
+      toast({ title: "Saved", description: "Date of Recruitment updated successfully.", duration: 3000 });
       // Refresh the crew list grid (safe — doesn't touch the open form)
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
+      // Refresh failures must not turn a confirmed write into a failed save.
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] }).catch(console.error);
       // Mark the profile cache stale WITHOUT refetching now — fresh data loads
       // next time the form is opened; no reload = no wipe of unsaved edits
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId, 'full-profile'], refetchType: 'none' });
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId, 'full-profile'], refetchType: 'none' }).catch(console.error);
       // Also mark the crew's broader caches (single crew, documents, visas, etc.)
       // stale without refetching now — same coverage as the old broad invalidation
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'assignments'] });
-      toast({
-        title: "Status Updated",
-        description: "Crew member status has been updated.",
-        duration: 3000,
-      });
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId], refetchType: 'none' }).catch(console.error);
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'dashboard'] }).catch(console.error);
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'assignments'] }).catch(console.error);
     } catch (error: any) {
+      if (d3SessionRef.current !== session) return;
       toast({
         title: "Error",
-        description: `Failed to update status: ${error.message}`,
+        description: `Date of Recruitment save was not confirmed. ${error.message}`,
         variant: "destructive",
         duration: 5000,
       });
+    } finally {
+      if (existingCrew) profileSaveRef.current = false;
+      recruitmentDateSavingRef.current = false;
+      setIsSavingRecruitmentDate(false);
     }
-    setIsRecruitmentDateEditOpen(false);
-    setTempRecruitmentDate('');
   };
 
-  const isSaving = isBatchSaving || isCreatingCrew || createCrewMutation.isPending || updateCrewMutationV2.isPending ||
+  const isSaving = isSavingRecruitmentDate || isBatchSaving || isCreatingCrew || createCrewMutation.isPending || updateCrewMutationV2.isPending ||
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
@@ -10388,7 +10389,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={setIsRecruitmentDateEditOpen}>
+      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={(open) => {
+        if (!recruitmentDateSavingRef.current) setIsRecruitmentDateEditOpen(open);
+      }}>
         <DialogContent className="sm:max-w-[350px]">
           <DialogHeader>
             <DialogTitle>Set Date of Recruitment</DialogTitle>
@@ -10399,15 +10402,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               value={tempRecruitmentDate}
               onChange={(e) => setTempRecruitmentDate(e.target.value)}
               className="mt-1"
-              max={todayStr}
+              disableFutureDates
+              maxDateErrorMessage="Date of Recruitment cannot be a future date."
+              onDraftValidityChange={setIsRecruitmentDateDraftValid}
+              disabled={isSavingRecruitmentDate}
               data-testid="input-recruitment-date"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRecruitmentDateEditOpen(false)}>
+            <Button variant="outline" disabled={isSavingRecruitmentDate} onClick={() => setIsRecruitmentDateEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate}>
+            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate || !isRecruitmentDateDraftValid || isSavingRecruitmentDate || isSaving}>
               Save
             </Button>
           </DialogFooter>

@@ -34,6 +34,7 @@ beforeEach(() => {
   Object.assign(state.crew,{
     getByUuid:async()=>({...state.stored}),
     create:async(data:any)=>{state.writes.push("create");return state.stored={...data,crewUuid:"created"};},
+    createWithRelatedData:async(data:any)=>{state.writes.push("related");return state.stored={...data.crew,crewUuid:"created"};},
     update:async(_:string,data:any)=>{state.writes.push("update");return state.stored={...state.stored,...data};},
     updateWithProtection:async(_:string,data:any)=>{state.writes.push("protected");return state.stored={...state.stored,...data};},
   });
@@ -48,6 +49,28 @@ beforeEach(() => {
   });
 });
 describe("Direct Crew Pool controller write boundaries", () => {
+  it.each([crewMembersController.update,crewMembersController.updateWithProtection])(
+    "rejects changed future and malformed recruitment dates before writing",async handler=>{
+      for(const recruitmentDate of ["2099-01-01","2026-02-30","not a date"]){
+        const result=await request(handler,{recruitmentDate});
+        expect(result.code).toBe(400);
+        expect(result.body.details[0].path).toEqual(["recruitmentDate"]);
+      }
+      expect(state.writes).toEqual([]);
+      expect(state.stored.recruitmentDate).toBe("2026-01-01");
+    });
+  it.each([crewMembersController.create,crewMembersController.createWithRelatedData])(
+    "rejects future recruitment on both direct creation endpoints",async handler=>{
+      const crew={firstName:"Crew",recruitmentDate:"2099-01-01"};
+      expect((await request(handler,handler===crewMembersController.create?crew:{crew})).code).toBe(400);
+      expect(state.writes).toEqual([]);
+    });
+  it("permits unrelated edits with unchanged legacy future recruitment, then corrected dates",async()=>{
+    state.stored.recruitmentDate="2099-01-01";
+    expect((await request(crewMembersController.update,{familyName:"Changed",recruitmentDate:"2099-01-01"})).code).toBe(200);
+    expect((await request(crewMembersController.update,{recruitmentDate:"2026-01-01"})).code).toBe(200);
+    expect(state.stored.recruitmentDate).toBe("2026-01-01");
+  });
   it.each([crewMembersController.update,crewMembersController.updateWithProtection,crewPersonalController.upsertPersonalDetails])
     ("rejects underage DOB before any write", async handler => {
       const res=await request(handler,{dob:"2020-01-01"});
