@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { authorize, eligibleAssignees, InternalError, type Resource } from "./access";
 import { history, listEntries, present, readEntry } from "./read";
 import { createComment, editComment, removeEntry } from "./write";
+import { createAction, editAction, transitionAction } from "./actions";
 
 export const internalRouter = Router();
 // Never cache confidential material in shared/browser HTTP caches.
@@ -38,6 +39,10 @@ internalRouter.get("/:crewUuid/assignees",endpoint(async(req,res)=>{
 }));
 internalRouter.post("/:crewUuid/comments",endpoint(async(req,res)=>{res.status(201).json(await createComment(req));}));
 internalRouter.patch("/:crewUuid/comments/:entryUuid",endpoint(async(req,res)=>{res.json(await editComment(req));}));
+internalRouter.post("/:crewUuid/actions",endpoint(async(req,res)=>{res.status(201).json(await createAction(req));}));
+internalRouter.patch("/:crewUuid/actions/:entryUuid",endpoint(async(req,res)=>{res.json(await editAction(req));}));
+internalRouter.post("/:crewUuid/actions/:entryUuid/complete",endpoint(async(req,res)=>{res.json(await transitionAction(req,true));}));
+internalRouter.post("/:crewUuid/actions/:entryUuid/reopen",endpoint(async(req,res)=>{res.json(await transitionAction(req,false));}));
 for (const resource of ["comments","actions"] as Resource[]) {
   internalRouter.post(`/:crewUuid/${resource}/:entryUuid/remove`,endpoint(async(req,res)=>{
     res.json(await removeEntry(req,resource));

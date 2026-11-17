@@ -9,6 +9,7 @@ vi.mock("@server/v2/db",()=>({getDb:()=>holder.db}));
 import { authorize,eligibleAssignees } from "../../server/v2/crew-internal/access";
 import { createComment,editComment,removeEntry } from "../../server/v2/crew-internal/write";
 import { listEntries,history } from "../../server/v2/crew-internal/read";
+import { createAction,editAction,transitionAction } from "../../server/v2/crew-internal/actions";
 const schema=`test_internal_${randomUUID().replaceAll("-","")}`;
 const admin=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL});
 const pool=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL,options:`-c search_path=${schema}`,max:6});
@@ -33,6 +34,52 @@ beforeAll(async()=>{
   await pool.query(`UPDATE adm_roleaccess_ac SET canview=true,cancreate=true,
     canedit=(role_id='author'),candelete=(role_id='deleter')`);
   holder.db=drizzle(pool);
+});
+describe("Part H action lifecycle",()=>{
+  it("revalidates assignees and records reassignment independently of live labels",async()=>{
+    await expect(createAction(req(1,{body:"Task",assigneeUuid:"ship",dueDate:"2026-11-17"}))).rejects.toMatchObject({status:400});
+    const row=await createAction(req(1,{body:"Task",assigneeUuid:"viewer",dueDate:"2026-11-17"}));
+    expect(row.assignee.designation).toBe("designation not recorded");
+    await editAction(req(1,{body:"Assigned again",assigneeUuid:"deleter",dueDate:"2026-11-18",revision:1},row.entry_uuid));
+    const events=await history(holder.db,"actions",crew,row.entry_uuid,false);
+    expect(events.map((e:any)=>e.event)).toEqual(["created","reassigned"]);
+    expect(events[0].snapshot.assignee.uuid).toBe("viewer");
+    await pool.query("UPDATE adm_roleaccess_ac SET canview=false WHERE role_id='viewer' AND menu_id='cp-internal-actions'");
+    await expect(editAction(req(1,{body:"Task",assigneeUuid:"viewer",dueDate:"2026-11-17",revision:2},row.entry_uuid))).rejects.toMatchObject({status:400});
+    await pool.query("UPDATE adm_roleaccess_ac SET canview=true WHERE role_id='viewer'");
+  });
+  it("allows assignee and raiser to complete/reopen without Edit, retaining completion history",async()=>{
+    const row=await createAction(req(2,{body:"Action",assigneeUuid:"author",dueDate:"2026-11-17"}));
+    await expect(transitionAction(req(3,{revision:1},row.entry_uuid),true)).rejects.toMatchObject({status:403});
+    await transitionAction(req(2,{revision:1,closingNote:"Finished"},row.entry_uuid),true);
+    await transitionAction(req(1,{revision:2,closingNote:"Review again"},row.entry_uuid),false);
+    const events=await history(holder.db,"actions",crew,row.entry_uuid,false);
+    expect(events.map((e:any)=>e.event)).toEqual(["created","completed","reopened"]);
+    expect(events[1].snapshot.completed_by.uuid).toBe("viewer");
+    expect(events[1].snapshot.closing_note).toBe("Finished");
+    expect(events[2].snapshot.completed_at).toBeNull();
+  });
+  it("derives overdue on UTC day boundaries without storing that status",async()=>{
+    const today=(await pool.query("SELECT (now() AT TIME ZONE 'UTC')::date::text AS d")).rows[0].d;
+    const yesterday=(await pool.query("SELECT ((now() AT TIME ZONE 'UTC')::date-1)::text AS d")).rows[0].d;
+    const due=await createAction(req(1,{body:"Due today",assigneeUuid:"viewer",dueDate:today}));
+    const overdue=await createAction(req(1,{body:"Due yesterday",assigneeUuid:"viewer",dueDate:yesterday}));
+    const rows=await listEntries(holder.db,"actions",crew,false);
+    expect(rows.find((r:any)=>r.entry_uuid===due.entry_uuid).overdue).toBe(false);
+    expect(rows.find((r:any)=>r.entry_uuid===overdue.entry_uuid).overdue).toBe(true);
+    expect(rows.find((r:any)=>r.entry_uuid===overdue.entry_uuid).status).toBe("Open");
+    await transitionAction(req(2,{revision:1},overdue.entry_uuid),true);
+    expect((await listEntries(holder.db,"actions",crew,false)).find((r:any)=>r.entry_uuid===overdue.entry_uuid).overdue).toBe(false);
+    await expect(createAction(req(1,{body:"Bad date",assigneeUuid:"viewer",dueDate:"2026-02-30"}))).rejects.toMatchObject({status:400});
+  });
+  it("restricts removed action content and history, and rejects all later transitions",async()=>{
+    const row=await createAction(req(1,{body:"Private action",assigneeUuid:"viewer",dueDate:"2026-11-17"}));
+    await removeEntry(req(3,{reason:"wrong seafarer",revision:1},row.entry_uuid),"actions");
+    expect(JSON.stringify((await listEntries(holder.db,"actions",crew,false)).find((r:any)=>r.entry_uuid===row.entry_uuid))).not.toContain("Private action");
+    await expect(history(holder.db,"actions",crew,row.entry_uuid,false)).rejects.toMatchObject({status:403});
+    expect((await history(holder.db,"actions",crew,row.entry_uuid,true))[0].snapshot.body).toBe("Private action");
+    await expect(transitionAction(req(2,{revision:2},row.entry_uuid),true)).rejects.toMatchObject({status:409});
+  });
 });
 afterAll(async()=>{await pool.end();await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();});
 describe("Part H comment lifecycle",()=>{
