@@ -40,10 +40,10 @@ How the wiring works (`server/v2/approvals/`):
   - Ship-type roles: only users assigned to the record's vessel (`master_users.vessel_ids`).
   - Office-type roles: all users with the role (office users are not assigned per vessel).
 - **Who can change chains:** Access Control **edit** on the **Approval Workflow** menu. A role with no Access Control row is refused.
-- **Emails:** `notifier.ts` sends "approval needed", "approved", "returned" and "withdrawn" emails.
-  - It uses SES when the shared SES variables are set, otherwise the existing Crewing email path.
-  - `APPROVAL_EMAILS_ENABLED=false` switches them off.
-  - An email failure never blocks an approval.
+- **Notifications, in-app and email:** `notifier.ts` sends "approval needed", "approved", "returned" and "withdrawn" to the same people both ways.
+  - **In-app:** one row per person (`approval_notifications_v2`, migration 0273), shown in the notification bell under "Approvals". Only that person sees it; marking it read affects only them. Routes: `GET /api/v2/approvals/notifications`, `POST /api/v2/approvals/notifications/:anuuid/read`, `POST /api/v2/approvals/notifications/read-all`. A card can add `subjectLink` so the bell's "Open" link goes to the record.
+  - **Email:** SES when the shared SES variables are set, otherwise the existing Crewing email path. `APPROVAL_EMAILS_ENABLED=false` switches emails off (in-app stays on).
+  - A notification failure never blocks an approval.
 - **Office only:** the engine never runs on a vessel server (`mount.ts`, `isShipInstance`). Today Crewing has no vessel server. When ship–office sync lands, plug its check in there.
 - **Submit and decide only through the module:** the engine's generic HTTP submit/decide routes are closed. Each flow submits and decides through its own routes, so the module's checks always run first.
 
@@ -64,6 +64,7 @@ Copy `server/v2/approvals/cards/sampleCard.ts` to, for example, `server/v2/appro
 6. **`onDecision(ctx, notice)`**: apply `approved` or `returned` to the record **through the module's own repository**.
    - It must be **idempotent**: if the record is no longer "pending approval", do nothing. The engine calls it once, but a recovery replay can call it again.
 7. **`describeSubject(scope, subjectRef)`** (optional): the record's name in emails, for example `Portage bill May 2026 — Vessel X`.
+8. **`subjectLink(scope, subjectRef)`** (optional): the in-app path that opens the record, used by the bell's "Open" link, for example `/accounts/portage/<uuid>`.
 
 Then add the card to `server/v2/approvals/cards/index.ts`. A card that fails the engine's checks stops the server from starting.
 
@@ -125,7 +126,7 @@ The component fails soft: with no chain it shows nothing and the screen behaves 
 3. **Module checks run before `submitForApproval`.** The engine does not know Crewing's business rules.
 4. **The actor comes from the login token.** Never read the user, the role or the approver from the request body.
 5. **`onDecision` is idempotent** and writes only through the module's own repository.
-6. **The `apprv_*` tables are never synced** to vessels. Do not add them to any sync configuration.
+6. **The `apprv_*` tables and `approval_notifications_v2` are never synced** to vessels. Do not add them to any sync configuration.
 7. **Do not touch Crewing sync code** (`server/v2/sync/`, the `crew_offline` work) without Ghazi.
 8. **Migrations:** next free number, idempotent, no hardcoded ids, run twice to prove it.
 9. **Before every push:**
@@ -137,7 +138,7 @@ The component fails soft: with no chain it shows nothing and the screen behaves 
 1. Card registered; the server starts; the flow appears in Admin → Approval Workflow.
 2. With **no chain** saved: submit and approve behave exactly as before.
 3. With the flow **switched off**: the same.
-4. One-step chain: submit → the approver gets the email → approve → the record is approved, once.
+4. One-step chain: submit → the approver gets the email and the in-app notification → approve → the record is approved, once; the submitter is notified.
 5. Reject: the record is returned with the remarks; the submitter gets the email.
 6. Two-step chain: the second step's approvers cannot act until the first step approves.
 7. A user who does not hold the step's role gets 403.
@@ -177,7 +178,7 @@ Today's approver rows (typed names, picked users) stay read-only for history. Ne
 |---|---|
 | `AWS_SES_REGION` (or `APPROVAL_SES_REGION`), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `APPROVAL_EMAIL_FROM` (or `SUPPORT_EMAIL`) | The shared SES settings, the same names and values as the other SAIL modules. When all are set, approval emails go through SES |
 | `APPROVAL_SMTP_JSON=1` | Test mode: approval emails are logged, not sent |
-| `APPROVAL_EMAILS_ENABLED=false` | Switch approval emails off |
+| `APPROVAL_EMAILS_ENABLED=false` | Switch approval emails off (in-app notifications stay on) |
 | `APPROVAL_ENGINE_SAMPLE_CARD=true` | Register the sample card (local and test servers only) |
 
 Values are set on each server. They never go in the repository.

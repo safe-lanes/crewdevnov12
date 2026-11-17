@@ -12,7 +12,7 @@ Paste this section into the Replit project's `replit.md` (or the agent's project
 5. When submitForApproval returns NO_WORKFLOW or DISABLED, the flow must behave EXACTLY as it does today. Do not change today's behaviour for that case.
 6. The user, role and approver ALWAYS come from the login token (req.user via gateway.ts). Never read a user id, user uuid, role or approver from the request body or query.
 7. onDecision must be idempotent (do nothing if the record is no longer pending approval) and must write only through the module's own repository.
-8. The apprv_* tables are office-only and NEVER synced to vessels. Do not add them to any sync configuration.
+8. The apprv_* tables and approval_notifications_v2 are office-only and NEVER synced to vessels. Do not add them to any sync configuration.
 9. Do not touch server/v2/sync/ or any ship–office sync code.
 10. Do not reopen the engine's HTTP submit/decide routes (closed in server/v2/approvals/mount.ts). Flows submit and decide through their own routes.
 11. Migrations: next free number in migrations/, CREATE ... IF NOT EXISTS / ADD COLUMN IF NOT EXISTS, no hardcoded ids, safe to run twice.

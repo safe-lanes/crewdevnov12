@@ -24,6 +24,11 @@ import { approvalEventNotifier, approvalEmailsEnabled, setNotifierCards } from "
 import { setCrewingEngine } from "./gateway";
 import { listApprovalRoles, resolveRoleApproverUserIds, contactsForUsers, roleApproverDirectory } from "./roles";
 import { sesConfig } from "../shared/emailService";
+import {
+  countUnreadApprovalNotifications,
+  listApprovalNotificationsForUser,
+  markApprovalNotificationsRead,
+} from "./notificationsRepository";
 import type { CrewingApprovalCard } from "./cards/types";
 import { crewingApprovalCards } from "./cards";
 import { SAMPLE_MODULE_ID } from "./cards/sampleCard";
@@ -100,6 +105,23 @@ export function mountCrewingApprovals(app: Express, cards: CrewingApprovalCard[]
     const ids = await resolveRoleApproverUserIds(roleId, vesselUuid);
     const contacts = await contactsForUsers(ids);
     res.json({ roleId, names: ids.map((id) => contacts.get(id)?.name || id) });
+  }));
+
+  // In-app approval notifications of the SIGNED-IN user only (user from the login token).
+  host.get("/notifications", safe(async (req, res) => {
+    const userUuid = req.approvalActor!.userId;
+    const unreadOnly = req.query.unreadOnly === "true";
+    const [items, unread] = await Promise.all([
+      listApprovalNotificationsForUser(userUuid, unreadOnly),
+      countUnreadApprovalNotifications(userUuid),
+    ]);
+    res.json({ unread, items });
+  }));
+  host.post("/notifications/read-all", safe(async (req, res) => {
+    res.json({ updated: await markApprovalNotificationsRead(req.approvalActor!.userId, "all") });
+  }));
+  host.post("/notifications/:anuuid/read", safe(async (req, res) => {
+    res.json({ updated: await markApprovalNotificationsRead(req.approvalActor!.userId, [req.params.anuuid]) });
   }));
 
   // Email delivery status for the admin screen (never shows key values).
