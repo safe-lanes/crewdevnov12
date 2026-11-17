@@ -7,7 +7,8 @@ import { spawn, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { prepareTestEnvironment, sameIdentity } from "./test-database-guard.mjs";
 const identity = await prepareTestEnvironment(), base = process.env.TEST_API_URL;
-const out = "generated-artifacts/dashboard-kpis/browser";
+const evidenceDir = process.env.DASHBOARD_KPI_EVIDENCE_DIR || "generated-artifacts/dashboard-kpis";
+const out = `${evidenceDir}/browser`;
 await fs.mkdir(out, { recursive: true });
 const fd = openSync(`${out}/backend.log`, "w"), instance = randomUUID();
 const backend = spawn(process.execPath, ["--import", "tsx", "scripts/start-test-backend.ts"], {
@@ -121,12 +122,15 @@ try {
   async function reload() { await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded" }); await page.reload(); await loaded(); }
   await reload();
   await expect(retention()).toContainText("Rolling 2 years:");
-  await expect(retention().getByTestId("kpi-retention-senior")).toContainText("Met");
-  await expect(retention().getByTestId("kpi-retention-rating")).toContainText("Missed");
+  await expect(retention().getByTestId("kpi-retention-senior")).toContainText("On track");
+  await expect(retention().getByTestId("kpi-retention-rating")).toContainText("Off track");
+  await expect(retention().getByText("On track").first()).toHaveAttribute("title",
+    `Forecast based on the last 24 months. The official result uses 1 Jan ${year - 1} to 31 Dec ${year}.`);
+  await expect(da()).toContainText("(year to date)");
   await expect(da()).toContainText("Within KPI so far");
   await expect(da().getByTestId("kpi-da-alcohol")).toContainText("Missed");
   expect(apiRequests.filter(u => new URL(u).pathname === `/api/v2/admin/dashboard-kpis/${year}`).length).toBeLessThanOrEqual(2); // initial mount + reload
-  await shot("retention-rolling-met-missed", retention());
+  await shot("retention-rolling-on-off-track", retention());
   await shot("da-current-within-and-missed", da());
   await page.getByTestId("tile-retention-officer").hover();
   await expect(page.getByTestId("tile-retention-officer")).toHaveAttribute("title", /including senior officers.*TMSA 3.4/);
@@ -168,7 +172,7 @@ try {
   await page.getByTestId("button-clear-filters").click();
   await loaded();
   await expect(retention()).toContainText("Rolling 2 years:");
-  await expect(da()).toContainText(`1 Jan ${year} – 31 Dec ${year}`);
+  await expect(da()).toContainText("(year to date)");
   report.checks.push("Clear restores rolling Retention without changing other cards' current-year default");
   report.otherCardRequestsAfterClear = apiRequests.slice(beforeOther).filter(u => !/dashboard-kpis|retention|violations/.test(u)).map(u => new URL(u).pathname + new URL(u).search);
   await page.getByTestId("select-rank").click();
@@ -247,7 +251,7 @@ try {
   await fs.writeFile(`${out}/report.json`, JSON.stringify(report, null, 2));
   if (report.screenshots.length) {
     const sections = await Promise.all(report.screenshots.map(async file => `<section><h2>${file.replace(".jpg","").replaceAll("-"," ")}</h2><img src="data:image/jpeg;base64,${(await fs.readFile(`${out}/${file}`)).toString("base64")}"></section>`));
-    await fs.writeFile("generated-artifacts/dashboard-kpis/dashboard-kpi-evidence.html",
+    await fs.writeFile(`${evidenceDir}/dashboard-kpi-evidence.html`,
       `<!doctype html><meta charset="utf-8"><title>Dashboard KPI browser evidence</title><style>body{font:16px system-ui;max-width:1100px;margin:30px auto;background:#f3f6fa;color:#18354c}section{background:white;padding:20px;margin:20px 0;border-radius:8px}img{max-width:100%;height:auto}</style><h1>Dashboard KPI browser evidence</h1><p>Actual app on the identity-verified isolated test database. Synthetic Dashboard View-only persona. No development writes. Failed-request screenshots deliberately inject transport errors; all successful screenshots use actual API data.</p>${sections.join("")}`);
   }
   console.log(JSON.stringify({ passed: report.passed, screenshots: report.screenshots.length, errors: report.errors, checks: report.checks }));

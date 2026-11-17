@@ -54,7 +54,13 @@ describe("Dashboard KPI card display", () => {
     render(wrap(cards()));
     await screen.findByText("Within KPI so far");
     expect(screen.getByText("Rolling 2 years: 17 Nov 2024 – 16 Nov 2026")).toBeInTheDocument();
-    expect(screen.getByText("1 Jan 2026 – 31 Dec 2026")).toBeInTheDocument();
+    expect(screen.getByText("1 Jan 2026 – 16 Nov 2026 (year to date)")).toBeInTheDocument();
+    expect(screen.getByTestId("kpi-retention-senior")).toHaveTextContent("On track");
+    expect(screen.getByTestId("kpi-retention-officer")).toHaveTextContent("Off track");
+    expect(screen.getAllByText("On track")[0]).toHaveAttribute("title",
+      "Forecast based on the last 24 months. The official result uses 1 Jan 2025 to 31 Dec 2026.");
+    expect(screen.getAllByText("Off track")[0]).toHaveAttribute("title",
+      "Forecast based on the last 24 months. The official result uses 1 Jan 2025 to 31 Dec 2026.");
     expect(screen.getAllByTestId("metrics-crew-retention")).toHaveLength(1);
     expect(screen.getByTestId("text-retention-senior")).toHaveClass("text-emerald-600");
     expect(screen.getByTestId("text-retention-officer")).toHaveClass("text-red-600");
@@ -72,6 +78,8 @@ describe("Dashboard KPI card display", () => {
     expect(screen.queryByText("Within KPI so far")).not.toBeInTheDocument();
     expect(screen.queryByText("Met")).not.toBeInTheDocument();
     expect(screen.queryByText("Missed")).not.toBeInTheDocument();
+    expect(screen.queryByText("On track")).not.toBeInTheDocument();
+    expect(screen.queryByText("Off track")).not.toBeInTheDocument();
     expect(screen.getAllByText("Company-wide target — shown for reference while filters are applied.")).toHaveLength(2);
     expect(screen.getByTestId("text-da-alcohol-violations")).toHaveClass("text-gray-900");
     expect(screen.getByTestId("text-retention-senior")).toHaveClass("text-gray-900");
@@ -90,9 +98,21 @@ describe("Dashboard KPI card display", () => {
     render(wrap(cards({ periodExplicitlySelected: true, period: { mode: "date-range", dateFrom: new Date(2025, 0, 1), dateTo: new Date(2026, 11, 31) } })));
     await screen.findByTestId("kpi-retention-senior");
     expect(screen.getByTestId("kpi-retention-senior")).toHaveTextContent("Met");
+    expect(screen.getByTestId("kpi-retention-officer")).toHaveTextContent("Missed");
+    expect(screen.queryByText("On track")).not.toBeInTheDocument();
+    expect(screen.queryByText("Off track")).not.toBeInTheDocument();
     expect(screen.getByTestId("metrics-crew-retention")).toHaveTextContent("KPI (2026)");
     expect(screen.getByTestId("kpi-da-drug").firstElementChild).toHaveClass("text-slate-400");
     expect(screen.getByTestId("kpi-da-drug")).not.toHaveTextContent("Within KPI so far");
+  });
+  it("completed D&A year keeps its full dates and final results, never a year-to-date label", async () => {
+    render(wrap(<DAAnalysisMetrics period={{ mode: "year", year: 2025 }} />));
+    await screen.findByTestId("kpi-da-drug");
+    expect(screen.getByText("1 Jan 2025 – 31 Dec 2025")).toBeInTheDocument();
+    expect(screen.queryByText(/year to date/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("kpi-da-drug")).toHaveTextContent("Met");
+    expect(screen.getByTestId("kpi-da-alcohol")).toHaveTextContent("Missed");
+    expect(screen.getByTestId("text-da-drug-violations")).toHaveClass("text-emerald-600");
   });
   it("unavailable Retention preserves N/A without status, but still shows its saved KPI", async () => {
     unavailable = true;

@@ -282,6 +282,7 @@ export const CrewRetentionMetrics = ({
           componentCode={cat.key === "senior" ? "senior_officers" : cat.key === "officer" ? "officers" : "ratings"}
           actual={tileIsInteractive(i) ? queries[i].data!.retentionRate : null}
           comparisonPeriod={comparisonPeriod}
+          forecastYear={!periodExplicitlySelected ? kpiYear ?? undefined : undefined}
           filtered={filtered}
           testId={`retention-${cat.key}`}
         />

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
@@ -184,7 +185,11 @@ export const DAAnalysisMetrics = ({
         data-testid="metrics-da-analysis"
       >
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-200 pb-2 text-xs">
-          <span className="font-medium text-slate-600">{rangeLabel(range)}</span>
+          <span className="font-medium text-slate-600">
+            {comparisonPeriod === "in-progress" && range
+              ? `${rangeLabel({ ...range, to: format(today, "yyyy-MM-dd") })} (year to date)`
+              : rangeLabel(range)}
+          </span>
           {hasAnyTarget && (
             <span className="text-slate-500">
               {comparisonPeriod === "reference" ? `Annual KPI reference (${kpiYear})` : `KPI (${kpiYear})`}

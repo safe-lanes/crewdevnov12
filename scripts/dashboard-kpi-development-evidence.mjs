@@ -2,7 +2,7 @@
 import fs from "node:fs/promises";
 import pg from "pg";
 import { execFileSync } from "node:child_process";
-const out = "generated-artifacts/dashboard-kpis";
+const out = process.env.DASHBOARD_KPI_EVIDENCE_DIR || "generated-artifacts/dashboard-kpis";
 await fs.mkdir(out, { recursive: true });
 const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await db.connect();
