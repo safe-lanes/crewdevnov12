@@ -296,14 +296,22 @@ export const formsController = {
       }
       const result = insertAdmFormVersionV2Schema
         .omit({ fvUuid: true, formId: true, stageSubjectType: true })
-        .extend({ stageKey: z.string().nullable().optional() })
+        .extend({
+          stageKey: z.string().nullable().optional(),
+          draftIntent: z.literal("open").optional(),
+          sourceVersionId: z.number().int().positive().optional(),
+        })
         .safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const payload = { ...result.data, auditUserUuid } as any;
-      const version = await formsService.createVersionByFormId(formId, payload);
+      const { draftIntent, sourceVersionId, ...versionData } = result.data;
+      if (sourceVersionId !== undefined && draftIntent !== "open") {
+        return res.status(400).json({ error: "A source version can be selected only when opening a draft." });
+      }
+      const payload = { ...versionData, auditUserUuid } as any;
+      const version = await formsService.createVersionByFormId(formId, payload, { draftIntent, sourceVersionId });
       res.json(version);
     } catch (error: any) {
       if (error instanceof EffectivenessConfigurationError) {

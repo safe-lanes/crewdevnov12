@@ -24,6 +24,7 @@ import { formsService } from "../../server/v2/admin/services/formsService";
 import { formStructureRepository } from "../../server/v2/admin/repositories/formStructureRepository";
 import { formsController } from "../../server/v2/admin/controllers/formsController";
 import { requirePermission } from "../../server/middleware/requirePermission";
+import { registerLegacyCases } from "./legacyCases";
 
 const tables = [...new Map([...Object.values(admin), ...Object.values(engine)]
   .filter((t): t is PgTable => is(t, PgTable)).map(t => [getTableConfig(t).name, t])).values()];
@@ -80,6 +81,7 @@ async function fixture(category = "briefing", templates = true) {
 }
 const versions = () => state.db.select().from(admin.admFormVersionsV2);
 const parts = () => state.db.select().from(engine.frmFormParts);
+registerLegacyCases(() => state.db, fixture);
 
 describe("scoped first-draft transaction", () => {
   it.each(["briefing", "debriefing", "interview"])("initializes %s once, preserves templates, releases and copies normally", async category => {
@@ -154,7 +156,8 @@ describe("scoped first-draft transaction", () => {
     });
     await expect(formsService.createVersionByFormId(form.id, {
       rankGroupId: category === "dynamic" ? null : group.id, configuration: '{"attempt":true}',
-    } as any)).rejects.toThrow("no version-owned parts");
+    } as any)).rejects.toThrow(["appraisal", "promotion"].includes(category)
+      ? "cannot safely create a draft" : "no version-owned parts");
     expect(await versions()).toMatchObject([{ versionNo: "09", status: "released", configuration: '{"untouched":true}' }]);
   });
 });

@@ -43,6 +43,7 @@ import { Form, FormVersion, RankGroup } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { assertConfirmedDraft, assertConfirmedRelease, configurationObject, openStandardDraft, standardDraftError, StaleFormOperation, useFormOperationScope } from "@/lib/standardDraftWorkflow";
 import {
   defaultEffectivenessOptions,
   getEffectivenessScore,
@@ -495,6 +496,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const versionsQueryKey = currentRankGroup?.id 
     ? `${versionsApiBase}?rankGroupId=${currentRankGroup.id}`
     : versionsApiBase;
+  const captureOperation = useFormOperationScope(`${realFormId}:${rankGroupName}:${currentRankGroup?.id}`);
+  const entryBusy = useRef(false);
+  const releaseBusy = useRef(false);
+  const [isOpeningDraft, setIsOpeningDraft] = useState(false);
+  useEffect(() => {
+    entryBusy.current = false;
+    releaseBusy.current = false;
+    setIsOpeningDraft(false);
+    setIsConfigMode(false);
+    setHasSavedDraft(false);
+    setVersionExplicitlySelected(false);
+    setActiveVersion("");
+  }, [realFormId, rankGroupName]);
   const { data: versionsData } = useQuery<FormVersion[]>({
     queryKey: [versionsQueryKey],
     enabled: !!realFormId,
@@ -597,16 +611,26 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     },
   });
   const createDraftMutation = useMutation({
-    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string; silent?: boolean }) => {
+    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string; silent?: boolean; draftIntent?: "open"; sourceVersionId?: number }) => {
+      const isCurrent = captureOperation();
       const { silent, ...payload } = versionData;
-      const response = await apiRequest('POST', versionsPostUrl, {
-        ...payload,
-        status: 'draft',
-        rankGroupId: currentRankGroup?.id,
-      });
-      return response.json();
+      try {
+        const body = { ...payload, status: 'draft', rankGroupId: currentRankGroup?.id };
+        const saved = payload.draftIntent === "open" && useV2
+          ? await openStandardDraft(versionsQueryKey, { ...body, formId: realFormId }, isCurrent)
+          : await (await apiRequest('POST', versionsPostUrl, body)).json();
+        if (!isCurrent()) throw new StaleFormOperation();
+        assertConfirmedDraft(saved, realFormId, currentRankGroup?.id);
+        return saved;
+      } catch (error) {
+        if (!isCurrent()) throw new StaleFormOperation();
+        throw error;
+      }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<FormVersion[]>([versionsQueryKey], old => [
+        ...(old ?? []).filter(v => v.id !== data.id), data,
+      ]);
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
       if (useV2) {
         queryClient.invalidateQueries({ predicate: (q) => {
@@ -623,16 +647,26 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       }
     },
     onError: (error: Error) => {
+      if (error instanceof StaleFormOperation) return;
       setHasSavedDraft(false);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Draft not confirmed", description: standardDraftError(error), variant: "destructive" });
     }
   });
   
   const releaseVersionMutation = useMutation({
     mutationFn: async (versionId: number) => {
+      const isCurrent = captureOperation();
       const releaseUrl = useV2 ? `/api/v2/admin/form-versions/${versionId}/release` : `/api/form-versions/${versionId}/release`;
-      const response = await apiRequest('POST', releaseUrl);
-      return response.json();
+      try {
+        const response = await apiRequest('POST', releaseUrl);
+        const released = await response.json();
+        if (!isCurrent()) throw new StaleFormOperation();
+        assertConfirmedRelease(released, versionId, realFormId, currentRankGroup?.id);
+        return released;
+      } catch (error) {
+        if (!isCurrent()) throw new StaleFormOperation();
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
@@ -651,7 +685,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       toast({ title: "Version released", description: "The version has been released successfully." });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error instanceof StaleFormOperation) return;
+      toast({ title: "Release not confirmed", description: standardDraftError(error), variant: "destructive" });
     }
   });
   
@@ -726,6 +761,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       .filter(([, visible]) => !visible)
       .map(([section]) => section);
     return JSON.stringify({
+      ...configurationObject(versionsData?.find(v => v.versionNo === activeVersion)?.configuration),
       ...formData, hiddenFields, hiddenSections,
       effectivenessOptions: options.map(option => ({ ...option })),
     });
@@ -758,7 +794,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   };
 
   const buildDraftPayload = () => {
-    const sharedConfig = { appraisalTypeOptions };
+    const sharedConfig = {
+      ...configurationObject(versionsData?.find(v => v.versionNo === activeVersion)?.sharedConfig),
+      appraisalTypeOptions,
+    };
     const versionNo = selectedVersionNo || "01";
     const versionDate = selectedVersionDate
       ? format(selectedVersionDate, "dd-MMM-yyyy")
@@ -799,7 +838,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // form state to the draft — otherwise rows just added in Parts B–F1 are
   // lost because /release only flips status on whatever the server holds.
   const handleReleaseVersion = async () => {
-    if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+    if (entryBusy.current || releaseBusy.current || createDraftMutation.isPending || releaseVersionMutation.isPending) return;
+    const isCurrent = captureOperation();
+    releaseBusy.current = true;
+    try {
     const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
     if (!draftVersion?.id) {
       toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
@@ -824,6 +866,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         // createDraftMutation.onError already surfaced a toast; abort release.
         return;
       }
+      if (!isCurrent()) return;
       if (!saved || typeof saved.id !== "number") {
         toast({
           title: "Draft save could not be confirmed",
@@ -834,10 +877,42 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       }
       baselineConfigRef.current = payload.configuration;
       recordSavedEffectiveness(payload.configuration);
-      releaseVersionMutation.mutate(saved.id);
+      await releaseVersionMutation.mutateAsync(saved.id);
       return;
     }
-    releaseVersionMutation.mutate(draftVersion.id);
+    await releaseVersionMutation.mutateAsync(draftVersion.id);
+    } catch { /* Scoped mutation callbacks report a failure or uncertain result. */ }
+    finally { if (isCurrent()) releaseBusy.current = false; }
+  };
+
+  const handleEnterDraft = async () => {
+    if (entryBusy.current || createDraftMutation.isPending || releaseVersionMutation.isPending || !currentRankGroup) return;
+    const isCurrent = captureOperation();
+    entryBusy.current = true;
+    setIsOpeningDraft(true);
+    try {
+      const source = (versionsData ?? []).find(v => v.versionNo === activeVersion && v.status === "released") || latestReleasedVersion;
+      const draft = await createDraftMutation.mutateAsync({
+        versionNo: nextVersionNo, versionDate: format(new Date(), "dd-MMM-yyyy"),
+        configuration: source?.configuration ?? undefined,
+        sharedConfig: source?.sharedConfig ?? undefined,
+        ...(useV2 ? { draftIntent: "open" as const, sourceVersionId: source?.id } : {}),
+        silent: true,
+      });
+      if (!isCurrent()) return;
+      setSelectedVersionNo(draft.versionNo);
+      setSelectedVersionDate(draft.versionDate ? new Date(draft.versionDate) : new Date());
+      setActiveVersion(draft.versionNo);
+      setVersionExplicitlySelected(true);
+      setHasSavedDraft(true);
+      setIsConfigMode(true);
+    } catch { /* The scoped mutation reports failures without changing selection. */ }
+    finally {
+      if (isCurrent()) {
+        entryBusy.current = false;
+        setIsOpeningDraft(false);
+      }
+    }
   };
 
   // Configuration helper functions
@@ -1422,14 +1497,15 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [editingAppraisalType, setEditingAppraisalType] = useState<string>("");
   const [editingAppraisalTypeIndex, setEditingAppraisalTypeIndex] = useState<number>(-1);
   
-  // Load shared config from form on mount
+  const activeSharedConfiguration = versionsData?.find(v => v.versionNo === activeVersion)?.sharedConfig ?? form.sharedConfig;
+  // Version settings are authoritative; the form mirror is legacy fallback only.
   useEffect(() => {
-    if (form.sharedConfig) {
+    if (activeSharedConfiguration) {
       try {
         // Handle both object and string formats (API may return either)
-        const sharedConfig = typeof form.sharedConfig === 'string' 
-          ? JSON.parse(form.sharedConfig) 
-          : form.sharedConfig;
+        const sharedConfig = typeof activeSharedConfiguration === 'string'
+          ? JSON.parse(activeSharedConfiguration)
+          : activeSharedConfiguration;
         if (sharedConfig.appraisalTypeOptions && Array.isArray(sharedConfig.appraisalTypeOptions)) {
           setAppraisalTypeOptions(sharedConfig.appraisalTypeOptions);
         }
@@ -1437,7 +1513,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         console.error("Failed to parse form sharedConfig:", e);
       }
     }
-  }, [form.sharedConfig]);
+  }, [activeSharedConfiguration]);
 
   // PI Category configuration state
   const [piCategoryOptions, setPiCategoryOptions] = useState<string[]>([
@@ -2319,6 +2395,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             )}
             <Button
               variant={isConfigMode ? "default" : "outline"}
+              disabled={isOpeningDraft || createDraftMutation.isPending || releaseVersionMutation.isPending || !currentRankGroup}
               onClick={() => {
                 if (isConfigMode) {
                   if (createDraftMutation.isPending || releaseVersionMutation.isPending) return;
@@ -2340,56 +2417,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   }
                   setIsConfigMode(false);
                 } else {
-                  // Entering edit mode = "Edit as new draft".
-                  // One draft per rank group:
-                  //  - If a draft exists, jump selection to it (with toast if user was
-                  //    viewing a different version) and resume editing.
-                  //  - Otherwise immediately POST to seed a new draft from the currently
-                  //    loaded configuration (released config if viewing released).
-                  const existingDraft = versionsData?.find(v => v.status === 'draft');
-                  if (existingDraft) {
-                    if (existingDraft.versionNo !== activeVersion) {
-                      toast({
-                        title: "Draft already exists",
-                        description: `A draft already exists for this rank group. Release or discard it before creating a new draft from v${existingDraft.versionNo}.`,
-                        variant: "destructive",
-                      });
-                    }
-                    setSelectedVersionNo(existingDraft.versionNo);
-                    setSelectedVersionDate(existingDraft.versionDate ? new Date(existingDraft.versionDate) : new Date());
-                    setActiveVersion(existingDraft.versionNo);
-                    setVersionExplicitlySelected(true);
-                  } else {
-                    setSelectedVersionNo(nextVersionNo);
-                    setSelectedVersionDate(new Date());
-                    setActiveVersion(nextVersionNo);
-                    // Persist the seed draft right away so the grid + dropdown reflect
-                    // it immediately and the "one draft per rank group" guarantee is
-                    // enforced server-side from the moment the user enters edit mode.
-                    // Seed strictly from the immutable latest released version's
-                    // configuration (not the on-screen form state) so released remains
-                    // the canonical baseline.
-                    if (currentRankGroup) {
-                      // Seed strictly from the currently selected released version
-                      // (the one the user is viewing), falling back to latest released
-                      // if no specific row is selected yet.
-                      const selectedReleased = (versionsData || []).find(
-                        v => v.versionNo === activeVersion && v.status === 'released',
-                      ) || latestReleasedVersion;
-                      const releasedSrc = selectedReleased as
-                        | { configuration?: string | null; sharedConfig?: string | null }
-                        | null;
-                      createDraftMutation.mutate({
-                        versionNo: nextVersionNo,
-                        versionDate: format(new Date(), "dd-MMM-yyyy"),
-                        configuration: releasedSrc?.configuration ?? '{}',
-                        sharedConfig: releasedSrc?.sharedConfig ?? JSON.stringify({ appraisalTypeOptions }),
-                        silent: true,
-                      });
-                      setHasSavedDraft(true);
-                    }
-                  }
-                  setIsConfigMode(true);
+                  void handleEnterDraft();
                 }
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
@@ -2467,6 +2495,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   <span className="text-xs sm:text-sm font-medium text-gray-700">Viewing version:</span>
                   <Select
                     value={activeVersion}
+                    disabled={isOpeningDraft || createDraftMutation.isPending || releaseVersionMutation.isPending}
                     onValueChange={(val) => {
                       setActiveVersion(val);
                       setVersionExplicitlySelected(true);

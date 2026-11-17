@@ -11,6 +11,8 @@ import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2
 import { getBaseRank } from "../../../../shared/crew-mapping";
 import { formStructureRepository } from "../repositories/formStructureRepository";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
+import { formsService } from "./formsService";
+import { isLegacyStandardCategory } from "../../../../shared/v2/forms-engine/legacyStandardConfiguration";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
@@ -251,6 +253,13 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     month: "short",
     year: "numeric",
   }).replace(/ /g, "-");
+
+  if (isLegacyStandardCategory(form.category)) {
+    // Reuse the same locked eligibility and draft allocation policy as the
+    // version endpoint. Explicit Save still replaces configuration.
+    await formsService.createVersionByFormId(formId, { rankGroupId, configuration, versionDate, auditUserUuid } as any);
+    return;
+  }
 
   const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
   if (existingDraft) {
