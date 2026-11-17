@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ncReportsService } from "../services";
+import { NCReportWorkflowError } from "../services/ncReportWorkflow";
 
 export const ncReportsController = {
   // V1 pattern: GET /api/nc-reports/all - returns all NC reports (no filtering)
@@ -69,6 +70,9 @@ export const ncReportsController = {
       const report = await ncReportsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(report);
     } catch (error: any) {
+      if (error instanceof NCReportWorkflowError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
