@@ -265,6 +265,26 @@ export const formsController = {
     }
   },
 
+  async ensureInitialStandardDraft(req: Request, res: Response) {
+    const formId = Number(req.params.id);
+    const payload = z.object({ rankGroupId: z.number().int().positive() }).strict().safeParse(req.body);
+    if (!Number.isInteger(formId) || formId < 1 || !payload.success) {
+      return res.status(400).json({ error: "Select a valid form and rank group." });
+    }
+    try {
+      const version = await formsService.ensureInitialStandardDraft(formId, payload.data.rankGroupId, getAuditUserUuid(req));
+      res.json(version);
+    } catch (error: any) {
+      if (error instanceof Error && (error as any).statusCode === 400) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Initial standard form configuration failed", error);
+      res.status(error?.message?.includes("not found") ? 404 : 500).json({
+        error: "Unable to prepare the initial draft. Refresh the form versions before retrying.",
+      });
+    }
+  },
+
   async createVersion(req: Request, res: Response) {
     try {
       const formId = parseInt(req.params.id);

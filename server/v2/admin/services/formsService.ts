@@ -16,6 +16,8 @@ import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifec
 import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
 import { validatePersistedCompanyFormStructure } from "./formStructureService";
 import { enrichCompanyVersions, recordReleaseChanges } from "./versionChanges";
+import { supportsInitialStandardDraft } from "../../../../shared/v2/forms-engine/initialStandardDraft";
+import { admFormVersionsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -524,6 +526,54 @@ export const formsService = {
       return enrichCompanyVersions(await formVersionsRepo.findByFormId(form.id, null));
     }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
+  },
+
+  // Separate from normal creation: opening an editor must never overwrite a draft.
+  async ensureInitialStandardDraft(formId: number, rankGroupId: number, auditUserUuid: string | null = null): Promise<AdmFormVersionV2> {
+    return getDb().transaction(async (tx: any) => {
+      const form = await lockWritableForm(tx, formId);
+      if (!supportsInitialStandardDraft(form.category)) {
+        throw new FormStageValidationError("Initial configuration is not supported for this form type.");
+      }
+      if (form.archivedAt) throw new FormStageValidationError("This form is archived and cannot be configured.");
+      const [group] = await tx.select().from(admRankGroupsV2).where(and(
+        eq(admRankGroupsV2.id, rankGroupId), eq(admRankGroupsV2.formId, form.id),
+        eq(admRankGroupsV2.isDeleted, false),
+      )).for("update");
+      if (!group || group.archivedAt) throw new FormStageValidationError("Select an active rank group belonging to this form.");
+      // Include deleted history: initialization must not recycle historical numbers.
+      const history: AdmFormVersionV2[] = await tx.select().from(admFormVersionsV2).where(and(
+        eq(admFormVersionsV2.formId, form.id), eq(admFormVersionsV2.rankGroupId, rankGroupId),
+      ));
+      const active = history.filter(v => !v.isDeleted);
+      const drafts = active.filter(v => v.status === "draft");
+      if (drafts.length > 1) throw new FormStageValidationError("Multiple drafts exist. Review the form versions before continuing.");
+      if (drafts[0]) return drafts[0];
+      const latest = [...active].sort((a, b) => Number(b.versionNo) - Number(a.versionNo))[0];
+      if (latest) return latest; // Another editor may already have released the initial draft.
+      if (history.length) throw new FormStageValidationError("This rank group has archived version history. Review its versions before creating another draft.");
+      const versionDate = new Date().toLocaleDateString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+      }).replace(/ /g, "-");
+      const created = await formVersionsRepo.create(applyAuditUser({
+        formId: form.id, rankGroupId, versionNo: "01", versionDate, status: "draft",
+        configuration: group.configuration ?? null, releasedAt: null, auditUserUuid,
+      }, true), tx);
+      await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
+      const parts = await tx.select().from(frmFormParts).where(and(
+        eq(frmFormParts.formVersionUuid, created.fvUuid), eq(frmFormParts.isDeleted, false),
+      ));
+      if (!parts.some((part: typeof frmFormParts.$inferSelect) => part.partType === "configurable")) {
+        // Only a fresh target draft may get this minimal part; templates/history stay untouched.
+        await tx.insert(frmFormParts).values({
+          formPartUuid: uuidv4(), formUuid: form.formUuid, formVersionUuid: created.fvUuid,
+          partCode: "MAIN", partTitle: "Form Configuration", partType: "configurable",
+          isOfficeOnly: false, sortOrder: parts.length ? Math.max(...parts.map((p: any) => p.sortOrder)) + 1 : 0,
+          isDeleted: false, isSync: false,
+        });
+      }
+      return created;
+    });
   },
 
   async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {

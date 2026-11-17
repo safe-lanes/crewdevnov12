@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { supportsInitialStandardDraft } from "@shared/v2/forms-engine/initialStandardDraft";
+import { readInitialStandardVersions, useInitialStandardDraft, type InitialStandardVersion } from "@/hooks/useInitialStandardDraft";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import type { CompanyFormValidationContext } from "@/lib/companyFormValidation";
 import { CompanyFormProblems } from "@/components/company-forms/CompanyFormProblems";
@@ -730,12 +732,16 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     [providedRankGroupId, rankGroups, rankGroupName],
   );
 
-  const { data: versions = [], isLoading: isLoadingVersions, refetch: refetchVersions } = useQuery<VersionRow[]>({
+  const isInitialStandard = supportsInitialStandardDraft(form.category);
+  const { data: versions = [], isLoading: isLoadingVersions, isSuccess: versionsLoaded, isFetching: versionsFetching,
+    error: versionsError, refetch: refetchVersions } = useQuery<VersionRow[]>({
     queryKey: [`/api/v2/admin/forms/${realFormId}/versions`, rankGroupId],
     queryFn: async () => {
       const query = rankGroupId ? `?rankGroupId=${rankGroupId}` : "";
       const response = await apiRequest("GET", `/api/v2/admin/forms/${realFormId}/versions${query}`);
-      return response.json();
+      const value = await response.json();
+      return isInitialStandard && rankGroupId !== null
+        ? readInitialStandardVersions(value, realFormId, rankGroupId) : value;
     },
     enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
   });
@@ -802,6 +808,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
+  const acceptInitialDraft = useCallback((version: InitialStandardVersion) => {
+    setAuthoritativeVersion(version);
+    setSelectedVersionUuid(version.fvUuid);
+    setIsEditing(version.status === "draft");
+    void refetchVersions();
+  }, [refetchVersions]);
+  const initialDraft = useInitialStandardDraft({
+    enabled: isInitialStandard && !!versionsLoaded && !versionsFetching && !versionsError && versions.length === 0
+      && !selectedVersion && !readOnly && !(form as Form & { archivedAt?: unknown }).archivedAt
+      && viewMode === "configure",
+    formId: realFormId, rankGroupId, onReady: acceptInitialDraft,
+  });
+  const waitingForInitialDraft = isInitialStandard && !selectedVersion;
   const currentStageKey = stageSelection && selectedVersion
     && stageSelection.versionUuid === selectedVersion.fvUuid
     ? stageSelection.stageKey
@@ -908,7 +927,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   ])), [trees]);
   const serializedState = JSON.stringify({ trees, optionSets });
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
-  const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft");
+  const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft") && !waitingForInitialDraft;
   const canModify = canEdit && !isSaving && !isSavingAndContinuing && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
   const canManageParts = form.category === "dynamic" && !!selectedVersion &&
     selectedVersion.status === "draft" && canEdit && !isSaving && !isSavingAndContinuing && !isReleasing &&
@@ -927,7 +946,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (sortedVersions[0]) {
       setSelectedVersionUuid(sortedVersions[0].fvUuid);
       setIsEditing(sortedVersions[0].status === "draft");
-    } else if (!isLoadingVersions && (form.category === "dynamic" || rankGroupId !== null)) {
+    } else if (!isInitialStandard && !isLoadingVersions && (form.category === "dynamic" || rankGroupId !== null)) {
       setIsEditing(true);
     }
   }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions]);
@@ -2306,13 +2325,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                        Save any applicability changes first, then wait for policy and stage saves to finish before release.
                      </span>
                    )}
-                   {viewMode === "configure" && !readOnly && !canEdit && (
+                   {viewMode === "configure" && !readOnly && !canEdit && !waitingForInitialDraft && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
                       Released versions are read-only. Create a new draft to make changes.
                     </div>
                   )}
-                   {viewMode === "configure" && !readOnly && !canEdit && (
+                   {viewMode === "configure" && !readOnly && !canEdit && !waitingForInitialDraft && (
                     <Button onClick={startEditing} data-testid="button-edit-as-new-draft">
                       <Plus className="h-4 w-4 mr-2" /> Edit as new draft
                     </Button>
@@ -2327,6 +2346,21 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                    <div className="mt-3 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
                  </div>
 
+              {waitingForInitialDraft && (
+                <div className="mx-6 mt-4 rounded-md border px-4 py-3 text-sm" role="status" data-testid="initial-standard-draft-status">
+                  {versionsError ? "Form versions could not be loaded. Refresh before editing."
+                    : initialDraft.error || (initialDraft.busy ? "Preparing the initial draft…"
+                      : readOnly ? "No saved version is available to preview."
+                      : rankGroupId === null ? "Add or select a rank group before configuring this form."
+                      : "Loading form versions…")}
+                  {(!!versionsError || !!initialDraft.error) && !readOnly && viewMode === "configure" && (
+                    <Button variant="outline" className="ml-3" onClick={() => {
+                      void refetchVersions();
+                      initialDraft.retry();
+                    }} data-testid="retry-initial-standard-draft">Refresh and retry</Button>
+                  )}
+                </div>
+              )}
               {saveError && (isCompanyForm ? <CompanyFormProblems message={saveError} testId="text-form-save-error" /> : (
                 <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 flex items-start gap-2" data-testid="text-form-save-error">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />

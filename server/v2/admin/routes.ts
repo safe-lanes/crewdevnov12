@@ -52,6 +52,7 @@ router.delete("/forms/:id", requirePermission("Forms", "delete"), formsControlle
 
 router.get("/forms/:id/versions", requirePermission("Forms", "view"), formsController.getVersions);
 router.post("/forms/:id/versions", requirePermission("Forms", "create"), formsController.createVersion);
+router.post("/forms/:id/initial-draft", requirePermission("Forms", "create"), requirePermission("Forms", "edit"), formsController.ensureInitialStandardDraft);
 
 router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
 router.post("/form-versions/:fvUuid/parts", requirePermission("Forms", "edit"), formPartController.create);
