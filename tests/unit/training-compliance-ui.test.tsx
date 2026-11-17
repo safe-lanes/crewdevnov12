@@ -2,6 +2,8 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Router } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
 import { TrainingMatrixCompliance } from "../../client/src/modules/vessel/components/TrainingMatrixCompliance";
 import { apiRequest } from "../../client/src/lib/queryClient";
 import { calculateTrainingCompliance } from "../../server/v2/shared/training-compliance/calculator";
@@ -33,6 +35,63 @@ beforeEach(() => {
   vi.mocked(apiRequest).mockReset();
 });
 afterEach(() => { cleanup(); client.clear(); });
+describe("crew profile D3 navigation", () => {
+  it.each([
+    { base: "", source: "planning" },
+    { base: "/crewing", source: "planning" },
+    { base: "", source: "matrix" },
+    { base: "/crewing", source: "matrix" },
+  ])("preserves the crew and D3 with base '$base' from $source", async ({ base, source }) => {
+    const data = value(0);
+    data.context.crewUuid = source === "planning" ? "selected-reliever-uuid" : "selected-matrix-crew-uuid";
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));
+    const start = `${base}/vessel`;
+    const location = memoryLocation({ path: start, record: true });
+    render(
+      <Router base={base} hook={location.hook}>
+        <QueryClientProvider client={client}>
+          <TrainingMatrixCompliance open
+            planUuid={source === "planning" ? "plan" : undefined}
+            assignmentUuid={source === "planning" ? "synthetic-assignment" : undefined}
+            embeddedResult={source === "matrix" ? data : undefined} />
+        </QueryClientProvider>
+      </Router>,
+    );
+    if (source === "planning") {
+      fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    }
+    const link = await screen.findByRole("link", { name: "Open crew profile (D3)" });
+    const target = `${base}/crew-pool?crew=${encodeURIComponent(data.context.crewUuid)}&section=D3`;
+    expect(link.getAttribute("href")).toBe(target);
+
+    // Modified clicks keep a real, correctly prefixed href for opening a new tab.
+    expect(fireEvent.click(link, { button: 0, ctrlKey: true })).toBe(true);
+    expect(fireEvent.click(link, { button: 0, metaKey: true })).toBe(true);
+    expect(location.history).toEqual([start]);
+
+    // Ordinary clicks use the router and push history rather than reloading the host.
+    expect(fireEvent.click(link, { button: 0 })).toBe(false);
+    expect(location.history).toEqual([start, target]);
+  });
+
+  it("encodes the crew value without allowing it to replace the D3 parameter", () => {
+    const data = value(0);
+    data.context.crewUuid = "crew/with spaces&section=A1";
+    const location = memoryLocation({ path: "/crewing/vessel", record: true });
+    render(
+      <Router base="/crewing" hook={location.hook}>
+        <QueryClientProvider client={client}>
+          <TrainingMatrixCompliance open embeddedResult={data} />
+        </QueryClientProvider>
+      </Router>,
+    );
+    const link = screen.getByTestId("training-open-crew-profile");
+    const url = new URL(link.getAttribute("href")!, "https://example.test");
+    expect(url.pathname).toBe("/crewing/crew-pool");
+    expect(url.searchParams.get("crew")).toBe(data.context.crewUuid);
+    expect(url.searchParams.getAll("section")).toEqual(["D3"]);
+  });
+});
 describe("read-only Reliever Status training display", () => {
   it.each([0, 4, 6, 9, 10])("shows course state explicitly for review row %s", async index => {
     const data = value(index);
