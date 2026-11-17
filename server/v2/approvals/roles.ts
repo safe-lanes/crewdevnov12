@@ -80,6 +80,54 @@ export async function resolveRoleApproverUserIds(roleId: string, vesselUuid: str
   );
 }
 
+/**
+ * Read-only directory for the admin screen's "configured approvers" panel: every user holding
+ * the role, with the vessels they would approve for. Shape matches the engine admin screen:
+ * { names, vesselScoped, users: [{ id, name, vessels }] }.
+ *   Ship roles  → the user's assigned vessels (master_users.vessel_ids → vessel names)
+ *   Office roles → "All vessels" (office roles approve fleet-wide in Crewing)
+ */
+export async function roleApproverDirectory(roleId: string): Promise<{
+  names: string[];
+  vesselScoped: boolean;
+  users: Array<{ id: string; name: string; vessels: string[] }>;
+} | null> {
+  const db = getDb();
+  const role = (
+    await db
+      .select({ name: admRoleMasterAc.assignedRole, roletype: admRoleMasterAc.roletype, isDeleted: admRoleMasterAc.isDeleted, isActive: admRoleMasterAc.isActive })
+      .from(admRoleMasterAc)
+      .where(eq(admRoleMasterAc.ruid, roleId))
+      .limit(1)
+  )[0];
+  if (!role || role.isDeleted === true || role.isActive !== true) return null;
+
+  const rows = await db
+    .select({ userUuid: masterUsers.userUuid, fullname: masterUsers.fullname, displayName: masterUsers.displayName, vesselIds: masterUsers.vesselIds })
+    .from(masterUsers)
+    .where(and(isNotNull(masterUsers.userUuid), sql`lower(btrim(${masterUsers.role})) = ${role.name.trim().toLowerCase()}`));
+  const holders = rows.filter((u: { userUuid: string | null }) => !!u.userUuid?.trim());
+  const isShipRole = role.roletype.trim().toLowerCase() === "ship";
+
+  let vesselNameById = new Map<number, string>();
+  if (isShipRole) {
+    const ids: number[] = Array.from(new Set<number>(holders.flatMap((u: { vesselIds: string | null }) => splitVesselIds(u.vesselIds))));
+    if (ids.length > 0) {
+      const vessels = await db.select({ id: masterVessels.id, name: masterVessels.vessel }).from(masterVessels).where(inArray(masterVessels.id, ids));
+      vesselNameById = new Map(vessels.map((v: { id: number; name: string | null }) => [v.id, (v.name ?? `Vessel ${v.id}`).trim()]));
+    }
+  }
+
+  const users = holders.map((u: { userUuid: string | null; fullname: string | null; displayName: string | null; vesselIds: string | null }) => ({
+    id: u.userUuid!.trim(),
+    name: (u.displayName || u.fullname || u.userUuid || "").trim(),
+    vessels: isShipRole
+      ? splitVesselIds(u.vesselIds).map((id) => vesselNameById.get(id)).filter((n): n is string => !!n)
+      : ["All vessels"],
+  }));
+  return { names: users.map((u: { name: string }) => u.name), vesselScoped: isShipRole, users };
+}
+
 /** Email addresses and names for user_uuids (notifications). */
 export async function contactsForUsers(userUuids: string[]): Promise<Map<string, { email: string | null; name: string }>> {
   const unique = Array.from(new Set(userUuids.filter(Boolean)));

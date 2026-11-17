@@ -2,8 +2,8 @@
 
 This folder is an **unchanged copy** of the approval engine from the Technical module (PMS).
 
-- Source repo: Technical module (PMS), branch `replit_dev`
-- Source commit: `2e12c5457`
+- Source repo: Technical module (PMS)
+- Source commit: `ab51e0730` on branch `fix/approval-admin-role-approvers-path` (= `replit_dev` 2e12c5457 + the admin screen's `roleApproversPath` prop). Re-point this line to the `replit_dev` commit once that branch is merged.
 - Source path: `server/modules/approval-engine/`
 - Copied: 2026-11-17
 
@@ -19,7 +19,7 @@ This folder is an **unchanged copy** of the approval engine from the Technical m
 d6a5e8c20f0b3bd9a02baf73daf8f6134b86189760e67e7f9bc113014cae129b *./INTEGRATION-GUIDE.md
 e0fe2ea0b95891ab81cddc58ebae592e56160f62764c43d71c8e63ad8e1a6cbb *./__tests__/importBoundary.test.ts
 73b458d8793fb2ffe38aa66a3bad3f158c4af94ec839d407df8c273202cd7c3e *./__tests__/statusOrdering.test.ts
-61d792e4402bd5ba41866174160b7eb2384ff1b111a703ba7153d75e81a6fef6 *./client/ApprovalEngineAdmin.tsx
+c914f9d864e2f1564a3c5a7b536f3d46fa6b5b112ceb5bf520b8985eddcf5ffc *./client/ApprovalEngineAdmin.tsx
 32cb87458c78b7a5bdf09d3c3dbf328f260e655526be56f38930596872e68c79 *./client/ConfiguredApproverRole.tsx
 b9e554311101351321746a3e7bb5324cd3f2268850face8ede5dea13b4aef859 *./core/engine.ts
 eb6ed9448a675c7ab2597ec6935096e91042670aefab651c7ec4ab1ad2f07654 *./core/registry.ts

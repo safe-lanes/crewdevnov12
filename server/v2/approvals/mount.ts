@@ -22,7 +22,7 @@ import { requireApprovalActor } from "./actor";
 import { AlsTenantRepositoryProvider, currentEngineTenantId } from "./tenantProvider";
 import { approvalEventNotifier, approvalEmailsEnabled, setNotifierCards } from "./notifier";
 import { setCrewingEngine } from "./gateway";
-import { listApprovalRoles, resolveRoleApproverUserIds, contactsForUsers } from "./roles";
+import { listApprovalRoles, resolveRoleApproverUserIds, contactsForUsers, roleApproverDirectory } from "./roles";
 import { sesConfig } from "../shared/emailService";
 import type { CrewingApprovalCard } from "./cards/types";
 import { crewingApprovalCards } from "./cards";
@@ -82,11 +82,19 @@ export function mountCrewingApprovals(app: Express, cards: CrewingApprovalCard[]
   const host = Router();
   host.use(requireApprovalActor);
 
-  // Who holds a role (names), for the admin screen. Ship roles are listed per vessel.
+  // Who holds a role, for the admin screen's read-only "configured approvers" panel.
+  //   no vesselUuid → every holder with the vessels they approve for ({ names, vesselScoped, users })
+  //   vesselUuid    → the approvers a request on that vessel would get ({ names })
   host.get("/role-approvers", configView, safe(async (req, res) => {
     const roleId = typeof req.query.roleId === "string" ? req.query.roleId : "";
     const vesselUuid = typeof req.query.vesselUuid === "string" && req.query.vesselUuid ? req.query.vesselUuid : null;
     if (!roleId) { res.status(400).json({ error: "roleId is required" }); return; }
+    if (!vesselUuid) {
+      const directory = await roleApproverDirectory(roleId);
+      if (!directory) { res.status(404).json({ error: "role not found" }); return; }
+      res.json({ roleId, ...directory });
+      return;
+    }
     const role = (await listApprovalRoles()).find((r) => r.roleId === roleId);
     if (!role) { res.status(404).json({ error: "role not found" }); return; }
     const ids = await resolveRoleApproverUserIds(roleId, vesselUuid);

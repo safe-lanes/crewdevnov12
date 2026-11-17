@@ -142,6 +142,7 @@ export default function ApprovalWorkflowPage(): JSX.Element {
               <ApprovalEngineAdmin
                 key={`${selected.moduleId}/${selected.screenId}/${selected.actionId}`}
                 basePath={ENGINE_BASE}
+                roleApproversPath="/api/v2/approvals/role-approvers"
                 scope={{ moduleId: selected.moduleId, screenId: selected.screenId, actionId: selected.actionId }}
                 readOnly={readOnly}
               />

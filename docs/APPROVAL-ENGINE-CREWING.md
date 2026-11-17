@@ -184,6 +184,6 @@ Values are set on each server. They never go in the repository.
 
 ## 9. Known points
 
-1. The copied admin screen asks a Technical address (`/technical/api/approvals/role-approvers`) for "who holds this role". In Crewing that lookup does not reach Crewing, so the saved chain shows "could not load the approvers" next to each role. The chain itself works. Fix: make that address a setting of the admin screen in the Technical module, then copy the engine again. Crewing already serves the lookup at `/api/v2/approvals/role-approvers`.
+1. The admin screen's "configured approvers" panel reads Crewing's `/api/v2/approvals/role-approvers` (the engine admin screen's `roleApproversPath` setting, added in Technical and copied here). Ship-role approvers are listed with their assigned vessels; Office-role approvers show "All vessels".
 2. A Ship-type role resolves only to users assigned to the record's vessel. A record with no vessel has no Ship-role approver. The engine reports such a step as stuck, and only an admin can decide it.
 3. Approvals raised on a vessel will need the "arrival sweep" pattern from the engine guide (§3c) once Crewing ship–office sync is live. Agree it with the sync owner first.
