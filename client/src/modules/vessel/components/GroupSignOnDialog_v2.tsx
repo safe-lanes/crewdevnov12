@@ -225,6 +225,7 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
         for (const crew of selectedCrew) {
             try {
                 await vesselApiV2.signOnReliever(crew.planUuid, {
+                    relieverCrewUuid: crew.relieverCrewUuid,
                     signOnDate: selectedGroup.date,
                     signOnPort: selectedGroup.portUuid,
                     contractPeriodMonths: crew.relieverContractPeriodMonths,

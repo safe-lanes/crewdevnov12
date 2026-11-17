@@ -14,6 +14,7 @@ import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v
 import { eq, and, sql, desc, or, isNull, aliasedTable, inArray, ne } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 import { captureChange } from "../../sync/changeCapture";
+import { secondaryPlanUuid } from "../utils/vesselUuid";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
 
@@ -1676,6 +1677,40 @@ export const vesselPlanningService = {
    *
    * All operations are wrapped in a transaction for consistency.
    */
+  /**
+   * VS-02: a retried sign-on. The plan row no longer names the reliever, so find
+   * the row the first call produced (same vessel and rank, that crew, primary or
+   * secondary, active) whose assignment is now OnBoard + current. Read-only.
+   */
+  async findSignedOnReplay(planning: VesselPlanningV2, relieverCrewUuid: string, signOnDate?: string) {
+    const db = getDb();
+    return db.transaction(async (tx: typeof db) => {
+      // Same lock as sign-on, so a first call still in flight finishes first.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${relieverCrewUuid}, 0))`);
+      const rows = await tx.select().from(vesselPlanningV2).where(and(
+        eq(vesselPlanningV2.vesselUuid, planning.vesselUuid),
+        eq(vesselPlanningV2.rankId, planning.rankId),
+        eq(vesselPlanningV2.crewUuid, relieverCrewUuid),
+        inArray(vesselPlanningV2.crewStatus, ["primary", "secondary"]),
+        eq(vesselPlanningV2.isDeleted, false),
+        eq(vesselPlanningV2.isArchived, false),
+      ));
+      for (const row of rows) {
+        if (!row.crewAssignUuid) continue;
+        if (signOnDate && row.signOnDate !== signOnDate) continue;
+        const [assignment] = await tx.select({ assignUuid: crewAssignments.assignUuid }).from(crewAssignments)
+          .where(and(
+            eq(crewAssignments.assignUuid, row.crewAssignUuid),
+            eq(crewAssignments.assignmentType, "OnBoard"),
+            eq(crewAssignments.isCurrent, true),
+            eq(crewAssignments.isDeleted, false),
+          )).limit(1);
+        if (assignment) return planning;
+      }
+      return null;
+    });
+  },
+
   async signOnReliever(planUuid: string, data: {
     signOnDate?: string;
     signOnPort?: string;
@@ -1685,16 +1720,28 @@ export const vesselPlanningService = {
     plannedConfirmedDate?: string;
     travelStartDate?: string;
     auditUserUuid?: string;
+    /** Reliever the caller believes is being signed on; lets a retry be recognised (VS-02). */
+    relieverCrewUuid?: string;
   }) {
     const db = getDb();
-    
+
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!planning) {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
 
     if (!planning.relieverCrewUuid) {
+      // VS-02: a successful sign-on clears the reliever fields, so a retry has
+      // nothing to match. When the caller names the reliever, return the
+      // already signed-on row instead of failing.
+      if (data.relieverCrewUuid) {
+        const replay = await vesselPlanningService.findSignedOnReplay(planning, data.relieverCrewUuid, data.signOnDate);
+        if (replay) return replay;
+      }
       throw new Error("No reliever crew assigned to sign on");
+    }
+    if (data.relieverCrewUuid && data.relieverCrewUuid !== planning.relieverCrewUuid) {
+      throw new Error("Reliever planning changed during sign-on; reload and try again");
     }
 
     const relieverCrewUuid = planning.relieverCrewUuid;
@@ -1732,6 +1779,16 @@ export const vesselPlanningService = {
         throw new Error("Reliever assignment link is missing; reconcile planning before sign-on");
       }
       const linkedAssignUuid = locked.relieverAssignUuid;
+      // VS-02: the secondary row for this assignment already exists (another
+      // server or an earlier attempt made it): treat as a replay, change nothing.
+      if (locked.crewUuid && locked.rank) {
+        const [already] = await tx.select({ planUuid: vesselPlanningV2.planUuid }).from(vesselPlanningV2)
+          .where(and(
+            eq(vesselPlanningV2.planUuid, secondaryPlanUuid(linkedAssignUuid, vesselUuid, locked.rank)),
+            eq(vesselPlanningV2.isDeleted, false),
+          )).limit(1);
+        if (already) return locked;
+      }
       const [linkedAssignment] = await tx.select().from(crewAssignments)
         .where(eq(crewAssignments.assignUuid, linkedAssignUuid))
         .for("update");
@@ -1774,12 +1831,12 @@ export const vesselPlanningService = {
           throw new Error(`A secondary crew member is already assigned to rank ${planning.rank}. Only one secondary crew is allowed per rank.`);
         }
 
-        const { v4: uuidv4 } = await import("uuid");
-        const secondaryPlanUuid = uuidv4();
+        // VS-02: same key on every server, so a retry or double sync lands on one row.
+        const newSecondaryUuid = secondaryPlanUuid(linkedAssignUuid, vesselUuid, planning.rank);
         const [secondaryRow] = await tx
           .insert(vesselPlanningV2)
           .values({
-            planUuid: secondaryPlanUuid,
+            planUuid: newSecondaryUuid,
             vesselUuid,
             activeRevisionUuid: planning.activeRevisionUuid,
             rankId: planning.rankId,
@@ -1818,10 +1875,13 @@ export const vesselPlanningService = {
             createdByUuid: data.auditUserUuid || null,
             updatedByUuid: data.auditUserUuid || null,
           })
+          .onConflictDoNothing({ target: vesselPlanningV2.planUuid })
           .returning();
-        await captureRow(tx, vesselPlanningV2, secondaryPlanUuid, null, secondaryRow, data.auditUserUuid);
+        // Lost a race to the same deterministic row (sync or parallel call): replay, change nothing.
+        if (!secondaryRow) return locked;
+        await captureRow(tx, vesselPlanningV2, newSecondaryUuid, null, secondaryRow, data.auditUserUuid);
 
-        console.log(`✅ [VESSEL-PLANNING-V2] Created secondary planning record: ${secondaryPlanUuid}`);
+        console.log(`✅ [VESSEL-PLANNING-V2] Created secondary planning record: ${newSecondaryUuid}`);
 
         const [updated] = await tx
           .update(vesselPlanningV2)

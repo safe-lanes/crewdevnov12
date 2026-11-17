@@ -426,9 +426,12 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths, plannedConfirmedDate, travelStartDate } = req.body;
+      const relieverCrew = z.string().uuid().nullish().safeParse(req.body?.relieverCrewUuid);
+      if (!relieverCrew.success) return res.status(400).json({ error: "relieverCrewUuid must be a uuid" });
       const auditUserUuid = getAuditUserUuid(req);
-      
+
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
+        relieverCrewUuid: relieverCrew.data ?? undefined,
         signOnDate,
         signOnPort,
         contractPeriodMonths,
@@ -478,7 +481,10 @@ export const vesselPlanningController = {
       }
 
       if (joiningStatus === "Signed On") {
+        const relieverCrew = z.string().uuid().nullish().safeParse(req.body?.relieverCrewUuid);
+        if (!relieverCrew.success) return res.status(400).json({ error: "relieverCrewUuid must be a uuid" });
         const planning = await vesselPlanningService.signOnReliever(planUuid, {
+          relieverCrewUuid: relieverCrew.data ?? undefined,
           signOnDate: relieverSignOnDate,
           signOnPort: joiningPortUuid,
           contractPeriodMonths: relieverContractPeriodMonths,

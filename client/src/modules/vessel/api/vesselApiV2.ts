@@ -255,6 +255,8 @@ export const vesselApiV2 = {
     contractEndRangeEndMonths?: number | null;
     plannedConfirmedDate?: string | null;
     travelStartDate?: string | null;
+    /** Reliever being signed on; lets the server recognise a retry (VS-02). */
+    relieverCrewUuid?: string | null;
   }): Promise<VesselPlanningV2> {
     const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/sign-on`, data);
     if (!response.ok) {

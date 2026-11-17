@@ -366,6 +366,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 const contractPeriodMonths = data.relieverContractPeriodMonths ?? null;
                 
                 saveResult = await vesselApiV2.signOnReliever(planningData.planUuid, {
+                    relieverCrewUuid: planningData.relieverCrewUuid,
                     signOnDate,
                     signOnPort,
                     contractPeriodMonths,
