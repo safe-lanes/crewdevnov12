@@ -40,7 +40,7 @@ have no line; unavailable actuals stay unavailable. KPI read failures offer
 Retry and never pretend that no KPI is set. Stored direction and unit govern
 wording/comparison, including real zero and exact decimal target values.
 
-Senior Officers intentionally also belong to Officers when both flags apply:
+Senior Officers intentionally also belong to All Officers when both flags apply:
 TMSA 2.4 and 3.4 are different, overlapping measurements.
 
 ## Verification

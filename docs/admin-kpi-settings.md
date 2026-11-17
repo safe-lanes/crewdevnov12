@@ -9,7 +9,7 @@ The sole group is **Training & Retention**:
 
 | KPI | Components | Direction | Unit | Period basis |
 | --- | --- | --- | --- | --- |
-| Retention Rate | Senior Officers; Officers; Ratings | minimum | percentage | annual percentage |
+| Retention Rate | Senior Officers; All Officers; Ratings | minimum | percentage | annual percentage |
 | Alcohol violations | Overall | maximum | count | annual count |
 | Drug violations | Overall | maximum | count | annual count |
 
@@ -112,10 +112,10 @@ lock wait. Existing audit event types retain their prior timestamp semantics.
   separately. No development target or grant is created by verification.
 
 ## Deliberate retention overlap
-Senior Officers and Officers are **not mutually exclusive**. A rank marked as
+Senior Officers and All Officers are **not mutually exclusive**. A rank marked as
 both counts in both retention calculations, deliberately following **TMSA 2.4**
 (senior officer retention) and **TMSA 3.4** (all officers, including senior
-officers). Do not “fix” this by excluding senior officers from Officers.
+officers). Do not “fix” this by excluding senior officers from All Officers.
 Only an explanatory source comment was added; the calculation is unchanged.
 
 ## Reports alignment assessment — no implementation
