@@ -18,3 +18,10 @@ menu entries and new default-off permission rows only. Verification content and
 enabled grants belong exclusively to the identity-verified test database.
 Before/after fingerprints are stored under ignored `generated-artifacts/part-h/`.
 The known failing-name baseline is `docs/test-suite-stability-2026-11-17.md`.
+
+## Step 2 — storage
+After preflight, migration 0273 was promoted to the runner's migration directory.
+It adds four dedicated tables and retention/identity/history guards, with
+restricting crew foreign keys. It does not touch existing crew or form rows.
+The staged draft remains outside the runner as preparation evidence; only the
+promoted SQL is executable by the runner.
