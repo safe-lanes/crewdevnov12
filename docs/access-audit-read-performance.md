@@ -20,10 +20,14 @@ page limit. Exact counts, broad substring searches and exports still
 have work proportional to their match sets.
 
 Migration 0275 adds a derived trigram search index for complete frozen
-sentences. Migration 0276 adds derived portions of menu sentences,
-leaving the live menu name first and the captured menu name as fallback.
-Neither updates the original audit rows. Rows missing necessary captured
-facts continue through database-side live presentation at read time.
+sentences. Migration 0276 adds derived portions of legacy menu sentences,
+leaving the live menu name first and the old details hint as fallback.
+Migration 0277 records the menu label in a new audit column at insert
+and indexes the complete frozen sentence. It does not relabel or
+re-index existing entries. Rows missing necessary captured facts
+continue through database-side live presentation at read time. The CSV
+exports the current and recorded menu labels separately; legacy
+recorded-at-event values remain blank.
 The SQL and TypeScript sentence renderers must be changed together if
 the search wording changes; the old-reader compatibility test protects
 that contract.

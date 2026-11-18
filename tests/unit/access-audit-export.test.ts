@@ -78,4 +78,14 @@ describe("audit screen comparisons and CSV export", () => {
       key: "frozenRole", label: "Affected role (recorded at event)",
     });
   });
+  it("exports current and captured menu labels separately, leaving the legacy capture blank", () => {
+    const menuGrant = { ...row, event: "grant_change", resource: "menu:crew", action: "view", menu_name: "New label" };
+    const frozen = accessAuditExportRow({ ...menuGrant, menu_display_label: "Original label, with comma" });
+    const legacy = accessAuditExportRow(menuGrant);
+    expect(frozen).toMatchObject({ menu: "New label", frozenMenu: "Original label, with comma" });
+    expect(frozen.sentence).toContain("View — Original label, with comma");
+    expect(legacy).toMatchObject({ menu: "New label", frozenMenu: "" });
+    expect(legacy.sentence).toContain("View — New label");
+    expect(rowsToCsv(ACCESS_AUDIT_CSV_COLUMNS, [frozen])).toContain("Menu (current label),Menu (recorded at event)");
+  });
 });

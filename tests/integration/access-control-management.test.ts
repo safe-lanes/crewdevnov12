@@ -372,6 +372,51 @@ describe("Access Control real database authority, audit and parent synchronizati
     await pool.query("DELETE FROM adm_menumaster_ac WHERE muid='crew'");
     await compare({ page: "1", search: "Captured menu" });
   });
+  it("freezes all four menu grant labels while legacy display, exact search and CSV keep their own semantics", async () => {
+    await pool.query(`ALTER TABLE adm_access_control_audit DISABLE TRIGGER adm_audit_capture_menu_label;
+      INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value,
+        details,actor_display_name,affected_role_name,permission_display_label) VALUES
+        ('grant_change','{}','target','menu:crew','view','false','true','{"menuName":"Old details hint"}',
+          'Historical editor','Historical role','View');
+      ALTER TABLE adm_access_control_audit ENABLE TRIGGER adm_audit_capture_menu_label;
+      UPDATE adm_menumaster_ac SET display_name='Original 100%_! Crew' WHERE muid='crew'`);
+    const legacy = (await audit())[0];
+    expect(legacy.menu_display_label).toBeNull();
+    const liveCount = async () => (await pool.query(`SELECT count(*)::int AS n
+      FROM adm_access_control_audit a LEFT JOIN adm_access_control_audit_search s ON a.id=s.audit_id
+      WHERE s.sentence_folded IS NULL`)).rows[0].n;
+    expect(await liveCount()).toBe(1);
+    const grants = (enabled: boolean) => writeMenuGrants(req(1, { permissions: [{
+      menuId: "crew", canview: enabled, cancreate: enabled, canedit: enabled, candelete: enabled,
+    }] }), "target");
+    await grants(true);
+    const originals = (await audit()).slice(1);
+    expect(originals.map(row => row.action).sort()).toEqual(["create", "delete", "edit", "view"]);
+    expect(originals.map(row => row.menu_display_label)).toEqual(Array(4).fill("Original 100%_! Crew"));
+    await pool.query("UPDATE adm_menumaster_ac SET display_name='Renamed Crew' WHERE muid='crew'");
+    await grants(false);
+    expect(await liveCount()).toBe(1);
+    expect((await audit()).slice(-4).map(row => row.menu_display_label)).toEqual(Array(4).fill("Renamed Crew"));
+    expect((await audit())[0]).toEqual(legacy);
+
+    const read = (search = "") => readAccessAuditPage({ query: { page: "1", export: "all", search } } as unknown as Request);
+    const shown = (await read()).items;
+    for (const query of ["Original 100%_! Crew", "Renamed Crew", "View — Renamed Crew” permission",
+      "Edit — Original 100%_! Crew” permission", "Old details hint", "Crew Database", "100XX!"]) {
+      const expected = shown.filter(row => row.sentence.toLowerCase().includes(query.toLowerCase()));
+      expect((await read(query)).items).toEqual(expected);
+    }
+    expect((await read("Original 100%_! Crew")).total).toBe(4);
+    expect((await read("Renamed Crew")).total).toBe(5);
+    expect(accessAuditExportRow(shown.find(row => row.id === originals[0].id)!))
+      .toMatchObject({ menu: "Renamed Crew", frozenMenu: "Original 100%_! Crew" });
+    expect(accessAuditExportRow(shown.find(row => row.id === legacy.id)!))
+      .toMatchObject({ menu: "Renamed Crew", frozenMenu: "" });
+    await pool.query("DELETE FROM adm_menumaster_ac WHERE muid='crew'");
+    expect((await read("Original 100%_! Crew")).total).toBe(4);
+    expect((await read("Renamed Crew")).total).toBe(4);
+    expect((await read("Old details hint")).total).toBe(1);
+  });
   it("freezes the affected role name across rename and deletion, with separate current/frozen export values", async () => {
     await saveActionDecisions(req(), "target", "company_forms", { view: true });
     const original = (await audit())[0];
