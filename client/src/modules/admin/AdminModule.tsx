@@ -9,6 +9,7 @@ import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { readListVersions, storedStandardVersion, standardInitialVersionLabel, type VersionLoadResult } from "./formsListVersions";
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { StandardVersionCell } from "./components/StandardVersionCell";
+import { CompanyAbbreviationInput } from "./components/CompanyAbbreviationInput";
 import { isStandardVersionCategory, type StandardVersionOpening } from "@/lib/standardVersionOpening";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5829,7 +5830,7 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const renderTrainingMatrixModule = () => (
-    <div className="h-full flex flex-col">
+    <div className={selectedTrainingMatrixTab === "training-master" ? "h-full flex flex-col" : "min-h-0 flex-1 flex flex-col"}>
       {/* Responsive Header Layout */}
       <div className={`mb-4 ${currentBreakpoint === 'mobile' ? 'space-y-3' : currentBreakpoint === 'tablet' ? 'space-y-3' : 'grid grid-cols-3 items-center'}`}>
         {/* Title */}
@@ -6110,7 +6111,7 @@ const AdminModuleInner = (): JSX.Element => {
       )}
 
       {/* Tab Content Area */}
-      <div className="flex-1 overflow-hidden">
+      <div className={selectedTrainingMatrixTab === "training-master" ? "flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-hidden"}>
         {selectedTrainingMatrixTab === "training-master" && (
           <div data-testid="content-training-master" className="h-full">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 220px)' }}>
@@ -6362,10 +6363,10 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
         {selectedTrainingMatrixTab === "company" && (
-          <div data-testid="content-training-company" className="h-full">
+          <div data-testid="content-training-company" className="h-full min-h-0 flex flex-col">
             {/* Company Filter Bar */}
             {showCompanyTrainingFilters && (
-              <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+              <div className="shrink-0 mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="shrink-0 w-48">
                     <Input
@@ -6380,15 +6381,16 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             {/* Company Training Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-              <div className="flex-1 overflow-auto relative">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-0 flex-1 flex flex-col overflow-hidden">
+              {/* The Table's own wrapper owns both axes, bounded by the panel. */}
+              <div className="min-h-0 flex-1 overflow-hidden relative [&>div]:h-full" data-testid="company-training-table-viewport">
                   <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
                     <TableHeader className="sticky top-0 z-50">
                       <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                         <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
                         <TableHead className="w-28 text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
-                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 z-40 bg-[#52baf3]">Training Label</TableHead>
-                        <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Abr</TableHead>
+                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 max-md:static z-40 bg-[#52baf3]">Training Label</TableHead>
+                        <TableHead className={`${isCompanyTrainingEditing ? "min-w-[176px]" : "w-24"} text-xs font-normal text-white bg-[#52baf3]`}>Abr</TableHead>
                         <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
                         <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
                         {isCompanyTrainingEditing && (
@@ -6420,7 +6422,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <TableRow key={`skeleton-company-${index}`} className="border-b border-gray-100">
                             <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
                             <TableCell className="sticky left-12 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
-                            <TableCell className="sticky left-40 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="sticky left-40 max-md:static bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
@@ -6464,15 +6466,14 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className="text-gray-600">{training.companyId || '-'}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs sticky left-40 z-10 bg-white" data-testid={`text-company-training-label-${training.id}`}>
+                        <TableCell className="text-xs sticky left-40 max-md:static z-10 bg-white" data-testid={`text-company-training-label-${training.id}`}>
                           {training.trainingLabel || '-'}
                         </TableCell>
                         <TableCell className="text-xs" data-testid={`cell-company-abr-${training.id}`}>
                           {isCompanyTrainingEditing ? (
-                            <Input
+                            <CompanyAbbreviationInput
                               value={training.abr || ''}
                               onChange={(e) => handleCompanyTrainingFieldChange(training.id, 'abr', e.target.value)}
-                              className="h-7 text-xs w-full"
                               placeholder="Enter abbreviation"
                               data-testid={`input-company-abr-${training.id}`}
                             />
@@ -6641,7 +6642,7 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
         {selectedTrainingMatrixTab === "vessel" && (
-          <div className="h-full flex flex-col" data-testid="content-training-vessel">
+          <div className="h-full min-h-0 flex flex-col" data-testid="content-training-vessel">
             {/* Vessel Filters */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
               <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
@@ -6877,8 +6878,8 @@ const AdminModuleInner = (): JSX.Element => {
 
             {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
             <div className="flex-1 min-h-0 overflow-y-auto pb-4" data-testid="training-vessel-scroll">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[50vh] min-h-[250px] flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-auto relative">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[50vh] max-h-full min-h-0 flex flex-col overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-hidden relative [&>div]:h-full" data-testid="vessel-training-table-viewport">
                 <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
                   <TableHeader className="sticky top-0 z-50">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
@@ -6888,7 +6889,7 @@ const AdminModuleInner = (): JSX.Element => {
                       </TableHead>
                       <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-20 z-40 bg-[#52baf3]">#</TableHead>
                       <TableHead className="w-28 text-xs font-normal text-white sticky left-32 z-40 bg-[#52baf3]">Company ID</TableHead>
-                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-60 z-40 bg-[#52baf3]">Training Label</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-60 max-md:static z-40 bg-[#52baf3]">Training Label</TableHead>
                       <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
                       <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
                       {tmRevisionMode && (
@@ -6922,7 +6923,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
                           <TableCell className="text-center sticky left-20 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
                           <TableCell className="sticky left-32 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
-                          <TableCell className="sticky left-60 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          <TableCell className="sticky left-60 max-md:static bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
                           <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
                           <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                           {tmRevisionMode && <TableCell />}
@@ -6989,7 +6990,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <TableCell className="text-xs sticky left-32 z-10 bg-white">
                             <span className="text-gray-600">{training.companyId || '-'}</span>
                           </TableCell>
-                          <TableCell className="text-xs sticky left-60 z-10 bg-white" data-testid={`text-vessel-training-label-${training.id}`}>
+                          <TableCell className="text-xs sticky left-60 max-md:static z-10 bg-white" data-testid={`text-vessel-training-label-${training.id}`}>
                             {training.trainingLabel || '-'}
                           </TableCell>
                           <TableCell className="text-xs">
