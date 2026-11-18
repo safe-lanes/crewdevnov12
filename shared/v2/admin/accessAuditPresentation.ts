@@ -8,6 +8,7 @@ export interface AccessAuditEntry {
   actor_display_name?: string | null;
   affected_role_name?: string | null;
   permission_display_label?: string | null;
+  menu_display_label?: string | null;
 }
 export const AUDIT_SETTING_LABELS: Record<string, string> = {
   block_expiring_during_contract: "Block seafarer deployment when mandatory courses expiring during contract",
@@ -87,7 +88,7 @@ export function presentAccessAudit(row: AccessAuditEntry): { sentence: string; u
         : `updated “${label}”`;
       break;
     case "grant_change": {
-      const menu = safeLabel(row.menu_name) ?? safeLabel(details.menuName);
+      const menu = safeLabel(row.menu_display_label) ?? safeLabel(row.menu_name) ?? safeLabel(details.menuName);
       if (row.resource?.startsWith("menu:") && !menu) unmapped.push(`menu:${row.resource.slice(5)}`);
       const permission = `${label}${row.resource?.startsWith("menu:") ? ` — ${menu ?? "an unavailable screen"}` : ""}`;
       change = row.after_value === true

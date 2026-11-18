@@ -53,7 +53,7 @@ export async function readAccessAuditPage(req: Request, db = getDb()) {
       CASE WHEN adm_audit_safe_label(${roleLabel}) IS NOT NULL THEN ${roleLabel} END AS role_label,
       coalesce(nullif(adm_audit_trim(a.permission_display_label),''),${actions}::jsonb->>a.action,'Access setting')
         AS permission_label,
-      coalesce(adm_audit_safe_label(${menuName}),${capturedMenu}) AS menu_label
+      coalesce(adm_audit_safe_label(a.menu_display_label),adm_audit_safe_label(${menuName}),${capturedMenu}) AS menu_label
     FROM scoped a ${nameJoins}
     WHERE NOT EXISTS (SELECT 1 FROM adm_access_control_audit_search s WHERE s.audit_id=a.id)
   ), live_grants AS NOT MATERIALIZED (
@@ -109,6 +109,7 @@ export async function readAccessAuditPage(req: Request, db = getDb()) {
       UNION ALL
       SELECT resource, max(a.id), 3 FROM scoped a ${menuJoin}
         WHERE a.event='grant_change' AND left(a.resource,5)='menu:'
+          AND a.menu_display_label IS NULL
           AND ${capturedMenu} IS NULL AND adm_audit_safe_label(${menuName}) IS NULL
         GROUP BY resource
     ), meta AS (

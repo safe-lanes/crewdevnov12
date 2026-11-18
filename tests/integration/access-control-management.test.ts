@@ -68,6 +68,7 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
   await pool.query(await readFile("migrations/0275_access_audit_search.sql", "utf8"));
   await pool.query(await readFile("migrations/0276_access_audit_menu_search_parts.sql", "utf8"));
+  await pool.query(await readFile("migrations/0277_access_audit_menu_label.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -297,10 +298,13 @@ describe("Access Control real database authority, audit and parent synchronizati
     expect(after).toEqual({ ...before, permission_display_label: null });
     await pool.query(await readFile("migrations/0275_access_audit_search.sql", "utf8"));
     await pool.query(await readFile("migrations/0276_access_audit_menu_search_parts.sql", "utf8"));
+    await pool.query(await readFile("migrations/0277_access_audit_menu_label.sql", "utf8"));
     expect((await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0].sentence)
       .toContain(liveAuditActionLabel(after));
   });
   it("matches the previous audit sentences, search, filters, pages and export across capture eras", async () => {
+    // Simulate records written before 0277, including the old details hint.
+    await pool.query("ALTER TABLE adm_access_control_audit DISABLE TRIGGER adm_audit_capture_menu_label");
     await pool.query(`UPDATE master_users SET fullname='Álvaro İpek' WHERE id=1;
       UPDATE adm_menumaster_ac SET display_name='Live menu 100%_!' WHERE muid='crew';
       INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value,
@@ -326,6 +330,7 @@ describe("Access Control real database authority, audit and parent synchronizati
       SELECT 'grant_change','{}','target','training_compliance','override','false','true',
         '2026-10-01T20:00:00Z','Page test','Frozen Role','Original permission' FROM generate_series(1,24);
     `);
+    await pool.query("ALTER TABLE adm_access_control_audit ENABLE TRIGGER adm_audit_capture_menu_label");
     expect((await pool.query("SELECT count(*)::int AS n FROM adm_access_control_audit_search")).rows[0].n).toBe(26);
     const old = async () => (await holder.db.execute(sql`SELECT a.*, coalesce(nullif(u.fullname,''),nullif(u.display_name,''),
       nullif(trim(concat_ws(' ',u.firstname,u.lastname)),'')) AS actor_name, r.assigned_role AS role_name,
