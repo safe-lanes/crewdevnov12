@@ -1,0 +1,959 @@
+{
+  "version": 1,
+  "suites": {
+    "tests/integration/api/attachment-security.test.ts": [
+      "attachment 'briefings' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'briefings' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'briefings' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'company/asset' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'company/asset' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'company/asset' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'company/pdf' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'company/pdf' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'company/pdf' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/briefing' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/briefing' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/briefing' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/debriefing' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/debriefing' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/debriefing' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/doctor-visits' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/doctor-visits' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/doctor-visits' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/documents' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/documents' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/documents' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/education' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/education' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/education' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/licenses' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/licenses' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/licenses' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/medical' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/medical' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/medical' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/sea-service' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/sea-service' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/sea-service' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/training' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/training' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/training' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'crew/visas' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'crew/visas' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'crew/visas' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'debriefings' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'debriefings' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'debriefings' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'drugs-alcohol' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'drugs-alcohol' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'drugs-alcohol' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'interviews' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'interviews' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'interviews' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'planning' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'planning' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'planning' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'promotion' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'promotion' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'promotion' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/additional-info' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/additional-info' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/additional-info' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/documents' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/documents' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/documents' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/education' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/education' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/education' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/licenses' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/licenses' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/licenses' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b1' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b1' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b1' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b2' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b2' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b2' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b3' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b3' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b3' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b4' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b4' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b4' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b5' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b5' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b5' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b6' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b6' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b6' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/screening/b8' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/screening/b8' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/screening/b8' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/sea-service' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/sea-service' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/sea-service' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/training' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/training' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/training' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "attachment 'recruitment/visas' allows authenticated office and own-vessel users to read actual bytes",
+      "attachment 'recruitment/visas' refuses deleted attachment, deleted parent, deleted crew and orphaned parent",
+      "attachment 'recruitment/visas' refuses other vessel, other tenant, missing grant, no JWT and forged JWT",
+      "secondary attachment response paths D&A details and aggregate lists cannot expose attachments outside vessel scope",
+      "secondary attachment response paths crew profile and collections require grants and own-vessel ownership",
+      "secondary attachment response paths planning attachment metadata has the same vessel boundary as raw bytes",
+      "secondary attachment response paths promotion review details and lists authorize the owning seafarer",
+      "secondary attachment response paths recruitment metadata cannot bypass the Office permission boundary"
+    ],
+    "tests/integration/api/company-form-applicability.test.ts": [
+      "Company Form applicability foundation accepts a specific date equal to the release day and blocks archived draft writes",
+      "Company Form applicability foundation defaults automatic dates to on release, freezes them and independently copies a released policy",
+      "Company Form applicability foundation defaults to manual only and rejects invalid/unknown/browser-provenance fields",
+      "Company Form applicability foundation persists exactly one policy per Company version and none for Standard versions",
+      "Company Form applicability foundation preserves authored IDs inside configuration while excluding cloned database identities",
+      "Company Form applicability foundation records initial, unchanged copy, content-only, applicability-only, both and signing-only changes",
+      "Company Form applicability foundation refuses a date before actual release, accepts a future specific date and explains why",
+      "Company Form applicability foundation rejects browser release comparison, actor, timestamps and readiness claims",
+      "Company Form applicability foundation serializes a release versus a policy edit without changing a frozen release",
+      "Company Form applicability foundation stores conditional data but refuses conditional release; IDs are stable and isolated"
+    ],
+    "tests/integration/api/company-form-dimension-release.test.ts": [
+      "trusted conditional dimension release releases valid master-ID conditions, freezes labels and copies independently without resolving anything"
+    ],
+    "tests/integration/api/company-form-requirement-lifecycle.test.ts": [
+      "atomic required form lifecycle and preserved cancellation history attaches replacement to the same pin and requirement, then excludes cancellation from outstanding",
+      "atomic required form lifecycle and preserved cancellation history completes atomically, refuses false status, then voids to OUTSTANDING",
+      "atomic required form lifecycle and preserved cancellation history never substitutes manual fulfillment, and records unresolved decisions and failed checks",
+      "atomic required form lifecycle and preserved cancellation history serializes concurrent starts and preserves the signed/started pin on re-resolution"
+    ],
+    "tests/integration/api/company-form-requirement-start.test.ts": [
+      "pinned required and unchanged manual starting keeps manual starts independent of requirements after the stage check",
+      "pinned required and unchanged manual starting rejects browser pins and manual bypass, and starts the older pinned version"
+    ],
+    "tests/integration/api/company-form-rule-editor.test.ts": [
+      "Company Form rule editor read-only authoring APIs explains release refusals, freezes release and copies with independent IDs without resolving requirements",
+      "Company Form rule editor read-only authoring APIs preserves identities on repeated draft saves",
+      "Company Form rule editor read-only authoring APIs refuses API authoring reads without an explicit authenticated grant",
+      "Company Form rule editor read-only authoring APIs rejects forged identity/facts, unavailable dimensions and unsupported comparisons",
+      "Company Form rule editor read-only authoring APIs reports imported-on-board missing first-service captures as unresolved, never No",
+      "Company Form rule editor read-only authoring APIs searches retained exact assignments with readable context",
+      "Company Form rule editor read-only authoring APIs starts manual only and trials two sets with different outcomes without saving any policy or operational records",
+      "Company Form rule editor read-only authoring APIs tests the promoted draft action through the screen and keyboard without saving"
+    ],
+    "tests/integration/api/company-form-signing-and-completion.test.ts": [
+      "Company Form signing, section submission, completion, and void history freezes every pinned System point exactly once, enforces required answers/signatures, and auto-completes",
+      "Company Form signing, section submission, completion, and void history voids a completed declaration without changing its completion and permits one live replacement",
+      "Company Form signing, section submission, completion, and void history voids an in-progress submission with server-audited identity and preserves immutable replacement history"
+    ],
+    "tests/integration/api/company-form-submission-answer-roundtrip.test.ts": [
+      "Company Form answer round-trip through the client mapper round-trips text, booleans, and multi-select values through the saved form mapper"
+    ],
+    "tests/integration/api/company-form-submission-boundary.test.ts": [
+      "Company Form relationship boundary allows a fully scoped vessel actor and a view-only office through every authorized route without Admin routes",
+      "Company Form relationship boundary fails closed for every route on untrusted, missing, malformed, or mismatched scope and denied relationships",
+      "Company Form relationship boundary keeps office reads independent of vessel scope and tests injected seafarer linkage at the service boundary"
+    ],
+    "tests/integration/api/company-form-submission-races.test.ts": [
+      "Company Form submission concurrency boundaries serializes simultaneous starts so only one pinned submission and one subject link commit",
+      "Company Form submission concurrency boundaries takes the generic parent lock before observing a newly submitted section state",
+      "Company Form submission concurrency boundaries takes the generic submission lock before section state and refuses an edit if the parent completes while it waits",
+      "Company Form submission concurrency boundaries waits for archive and refuses a start against the committed archived form",
+      "Company Form submission concurrency boundaries waits for assignment cancellation and refuses a start against the committed cancelled row"
+    ],
+    "tests/integration/api/company-form-submission-starts.test.ts": [
+      "Company Form subject-scoped starts and lists authorizes replacement reads without Forms grants and returns a pinned, stage-matched eligible version",
+      "Company Form subject-scoped starts and lists creates once, rejects client-owned identity fields and duplicates, and keeps cancelled assignment history",
+      "Company Form subject-scoped starts and lists rechecks archived state on start and retires the old Admin eligible endpoint as JSON 410",
+      "Company Form subject-scoped starts and lists renders the authorized persisted pin without Admin routes and serves only submission-owned historical assets",
+      "Company Form subject-scoped starts and lists serializes guarded pinned draft edits and enforces subject, section, point, and audit policy"
+    ],
+    "tests/integration/api/company-form-submission-void-races.test.ts": [
+      "Office void versus trusted Master writes serializes an Office void against a permitted Master draft with no deadlock or HTTP 500",
+      "Office void versus trusted Master writes serializes an Office void against a permitted Master signature with no deadlock or HTTP 500",
+      "Office void versus trusted Master writes uses the locked completed status rather than pre-lock in-progress status (204)",
+      "Office void versus trusted Master writes uses the locked completed status rather than pre-lock in-progress status (403)"
+    ],
+    "tests/integration/api/company-form-unfinished-drafts.test.ts": [
+      "Company Form draft completeness is checked on every release Standard Forms retain the original database responsibility rule",
+      "Company Form draft completeness is checked on every release blank choice label: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release blank choice label: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release blank point wording: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release blank point wording: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release blank section title: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release blank section title: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release complete draft saves and releases normally, then cannot be edited through the API",
+      "Company Form draft completeness is checked on every release copy-version service keeps unfinished data, independently identified, and release still refuses",
+      "Company Form draft completeness is checked on every release department not chosen: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release department not chosen: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release direct INSERT of an already released Company Form version is refused",
+      "Company Form draft completeness is checked on every release direct multi-row INSERT accepts only draft exceptions, and direct release cannot bypass the guard",
+      "Company Form draft completeness is checked on every release duplicated identities, unsafe content, incompatible settings and unsupported fields still refuse saving",
+      "Company Form draft completeness is checked on every release empty content body: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release empty content body: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release incomplete automatic applicability saves but unchanged release refuses {\"mode\":\"all\",\"obligation\":\"mandatory\",\"effectiveKind\":\"specific_date\"}",
+      "Company Form draft completeness is checked on every release incomplete automatic applicability saves but unchanged release refuses {\"mode\":\"all\"}",
+      "Company Form draft completeness is checked on every release missing choices: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release missing choices: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release named answer set without choices: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release named answer set without choices: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release refuses comments on system fields in single-part and bulk draft writes without changing saved data",
+      "Company Form draft completeness is checked on every release released children retain database completeness checks on direct insert and update",
+      "Company Form draft completeness is checked on every release role not chosen: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release role not chosen: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release rollback refuses unfinished drafts without changing content or removing guards",
+      "Company Form draft completeness is checked on every release system field not chosen: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release system field not chosen: single save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release unfinished named answer set: bulk save succeeds; unchanged release is refused",
+      "Company Form draft completeness is checked on every release unfinished named answer set: single save succeeds; unchanged release is refused"
+    ],
+    "tests/integration/api/company-form-versions.test.ts": [
+      "Company Form version line allows a stage-less Company Form with a valid submission path to release",
+      "Company Form version line refuses to release a Company Form version with no submission-requiring section",
+      "Company Form version line scopes null-rank-group drafts, release sources, numbering, and lists to each form",
+      "Company Form version line waits for a concurrent archive and rejects a version write after the archive commits"
+    ],
+    "tests/integration/api/form-category-creation.test.ts": [
+      "client form creation category boundary rejects unknown SQL and missing ORM categories, rejects standard API creation, and accepts dynamic"
+    ],
+    "tests/integration/api/form-part-edit.test.ts": [
+      "version-scoped part edit API blocks deletion while active sections reference a part; then soft-deletes an empty part",
+      "version-scoped part edit API cannot reclassify a SAIL fixed form to bypass the part-edit gate",
+      "version-scoped part edit API creates, renames, and reorders only dynamic draft parts with server-derived audit identity",
+      "version-scoped part edit API denies missing Forms:edit permission and forged payload fields",
+      "version-scoped part edit API denies standard drafts of different categories and released versions without touching their parts",
+      "version-scoped part edit API generates unique codes for omitted-code creates without changing explicit-code rejection",
+      "version-scoped part edit API rejects duplicate codes and partial/duplicate reorder inventories without changing SQL rows"
+    ],
+    "tests/integration/api/forms-list-summary.test.ts": [
+      "Forms Configuration list with server version summaries loads 1,000 mixed forms with real versions and metadata in one response",
+      "Forms Configuration list with server version summaries loads one row's summary for Retry without requesting or replacing other forms"
+    ],
+    "tests/integration/company-form-combined-grid-browser.test.ts": [
+      "keeps management roles independent, confirms grants and own-role removal, and retains frozen audit capture",
+      "saves all three groups through the screen, then proves a real third-writer failure rolls everything back"
+    ],
+    "tests/integration/company-form-crew-import-backfill.test.ts": [
+      "keeps overlapping/current-row ambiguity unresolved, recording the attempted verification",
+      "never recalculates sign-on captures, including unresolved captured values",
+      "recalculates verified backfill after relief history arrives, while the resolved requirement keeps its original facts",
+      "reports an overlapping company contract for review instead of creating a duplicate",
+      "skips an exact company contract already imported in history",
+      "writes the current company contract once and never calculates first-service facts inside import"
+    ],
+    "tests/integration/company-form-current-history-backfill.test.ts": [
+      "excludes the one exact contract row, includes relief and records verified provenance",
+      "is idempotent and refuses changes to verified facts",
+      "keeps no-match and ambiguous exact matches unresolved without guessing"
+    ],
+    "tests/integration/company-form-dimension-context.test.ts": [
+      "retained assignment deciding context captures relief-inclusive history before E1, then remains frozen",
+      "retained assignment deciding context captures the persisted planning alias's canonical rank, never present rank",
+      "retained assignment deciding context returns every dimension explicitly and keeps owner/flag unavailable"
+    ],
+    "tests/integration/company-form-document-cleanup.test.ts": [
+      "Company Form document teardown lock order waits on files without holding the preparation-event trigger lock"
+    ],
+    "tests/integration/company-form-document-evidence.test.ts": [
+      "immutable Company Form document evidence in the registered test database captures answers and section comments at section-first completion without a signature",
+      "immutable Company Form document evidence in the registered test database completes a historical form without fabricating its missing header or exposing raw errors",
+      "immutable Company Form document evidence in the registered test database exposes evidence through View without Forms authoring and rejects a vessel user outside the subject vessel",
+      "immutable Company Form document evidence in the registered test database freezes the first header and definition, then completes with recorded signatures, bytes and Not recorded",
+      "immutable Company Form document evidence in the registered test database reads identically named records only from the trusted tenant executor, never a public fallback",
+      "immutable Company Form document evidence in the registered test database rejects evidence changes and stores one durable request across concurrent final submits and later retries",
+      "immutable Company Form document evidence in the registered test database rolls back form, section, requirement, snapshot and request together when recording fails",
+      "registered sample PDF archive authorizes branding by explicit management grant, versions it, and freezes the selected logo independently",
+      "registered sample PDF archive drains disabled-period requests from frozen evidence only after the server enables generation",
+      "registered sample PDF archive publishes non-sample forms once, serves identical bytes, and records a server-derived handover",
+      "registered sample PDF archive waits for an in-flight PDF before fixture teardown takes any trigger lock"
+    ],
+    "tests/integration/company-form-document-void-copy.test.ts": [
+      "immutable void-aware PDF and separate handover keeps the original, freezes server identity, serializes downloads and preserves later replacement revisions",
+      "immutable void-aware PDF and separate handover prepares a voided original from frozen evidence when void precedes PDF preparation"
+    ],
+    "tests/integration/company-form-permission-migration.test.ts": [
+      "Company Forms bootstrap and upgrade seeds explicitly identified upgrade=false without overwriting decisions",
+      "Company Forms bootstrap and upgrade seeds explicitly identified upgrade=true without overwriting decisions"
+    ],
+    "tests/integration/company-form-required-signing.test.ts": [
+      "required before-joining form: representative, witnessed seafarer, then Submit keeps Not recorded when capture happens between the representative and witnessed signatures",
+      "required before-joining form: representative, witnessed seafarer, then Submit saves missing rank as Not recorded, completes, and keeps signature and System field frozen after later capture",
+      "required before-joining form: representative, witnessed seafarer, then Submit shows the frozen missing signature rank on an older form without rewriting its profile-derived snapshot",
+      "required before-joining form: representative, witnessed seafarer, then Submit uses the captured contract UUID, not the mutable crew rank, and completes the pinned requirement"
+    ],
+    "tests/integration/company-form-requirement-ledger.test.ts": [
+      "retained requirement recording harness creates one pinned obligation, freezes evidence and appends only history",
+      "retained requirement recording harness records empty checks and retries without creating forms"
+    ],
+    "tests/integration/company-form-signature-constraints.test.ts": [
+      "company form responsibility and signature constraints installs the expanded CHECK contracts and accepts only the supported row shapes"
+    ],
+    "tests/integration/company-form-stage-go-live.test.ts": [
+      "Company Form tenant-local go-live upgrade a failed tenant upgrade leaves enforcement off and resumes without duplicate events",
+      "Company Form tenant-local go-live upgrade activates only the tenant upgraded, with recorded empty checks and no retrospective requirements",
+      "Company Form tenant-local go-live upgrade keeps events and attempts append-only"
+    ],
+    "tests/integration/company-form-stage-less-runtime.test.ts": [
+      "stage-less Company Form submission service does not backfill a legacy declaration without snapshot rows and distinguishes it from a frozen null value",
+      "stage-less Company Form submission service does not freeze System values after failed validation or invalid signature data",
+      "stage-less Company Form submission service freezes one complete snapshot when submit and sign race on different required sections",
+      "stage-less Company Form submission service rejects an unknown subject type instead of falling back to crew assignment behavior",
+      "stage-less Company Form submission service rolls back a signature when asset persistence or the first snapshot fails",
+      "stage-less Company Form submission service runs eligible, create, list/count, home, pinned reads, and draft edits with no crew or vessel records"
+    ],
+    "tests/integration/company-form-stage-persistence.test.ts": [
+      "Company Form stage and submission persistence allows NULL drafts, rejects unknown/mismatched stages, and enforces release immutability",
+      "Company Form stage and submission persistence allows stage-less releases but refuses to add a first stage after an unstaged release",
+      "Company Form stage and submission persistence pins submissions to a released same-form version and protects crew-assignment links",
+      "Company Form stage and submission persistence preserves the approved historical mapping and leaves new crew drafts unclassified"
+    ],
+    "tests/integration/company-form-stage-runtime.test.ts": [
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry Deploy, vacant sign-on, first Planned and Confirmed use one immutable event per stage",
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry a failed Deploy check leaves Deploy committed; Fill in can retry its frozen facts, authoring alone cannot",
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry deferral withdraws only unstarted requirements, keeps started ones, and replan is additive",
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry planning created already Planned resolves on its supplied, server-verified incumbent assignment",
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry sign-off without any qualifying relief transition resolves once at the actual sign-off",
+      "Company Form immutable stage lifecycle, additive relief cycles and scoped retry the rank-change sign-off path creates no at-sign-off stage event"
+    ],
+    "tests/integration/debriefing-submission.acceptance.test.ts": [
+      "debriefing submission acceptance pins an active G2's actual rank-group version and remains readable after G2 deletion"
+    ],
+    "tests/integration/form-option-set-migration.test.ts": [
+      "form option-set migration extracts only unambiguous numeric endpoint descriptors and leaves incomplete labels unchanged",
+      "form option-set migration preserves active and soft-deleted legacy options and succeeds twice",
+      "form option-set migration refuses to remove the legacy table while an answer foreign key depends on it"
+    ],
+    "tests/integration/form-structure-service.test.ts": [
+      "form structure service integration accepts draft or released sources but still requires a draft target",
+      "form structure service integration copies between same-form rank groups, creates v01, confirms replacement, and rejects released-only or cross-form targets",
+      "form structure service integration copies sanitized Content from released versions and freezes released Content rows",
+      "form structure service integration copies through the rank-group draft path and blocks direct releases when structure exists",
+      "form structure service integration exposes System field keys through the create, single-part, and batch HTTP APIs",
+      "form structure service integration handles the acceptance-sized source through both draft-copy paths without mutating the released source",
+      "form structure service integration keeps reusable sets when another part is saved with the legacy payload",
+      "form structure service integration persists named shared sets, resolves section defaults, and exposes effectiveLayout",
+      "form structure service integration persists subject-scoped and shared System fields on drafts, preserves keys in a new version, and rejects invalid writes",
+      "form structure service integration rejects Content on a Standard Form draft in both write paths without persisting a row",
+      "form structure service integration rejects Content whose body becomes empty after sanitization in either write path",
+      "form structure service integration rejects cross-form ownership and invalid master-data references before writes",
+      "form structure service integration retains an unreferenced named set so it can be assigned later",
+      "form structure service integration rolls back every configurable part when a batch member fails validation",
+      "form structure service integration rolls back the entire tree when a database write fails mid-replacement",
+      "form structure service integration sanitizes and reads back Content on both single-part and batch writes",
+      "form structure service integration writes draft trees transactionally, keeps identities, protects releases, and deep-copies a new draft"
+    ],
+    "tests/integration/form-version-template-init.test.ts": [
+      "first form version template initialization copies from a released version rather than newly changed templates",
+      "first form version template initialization creates version-owned parts with fresh UUIDs and unchanged ordered templates",
+      "first form version template initialization initializes the rank-group save path and does not reinitialize an existing draft",
+      "first form version template initialization permits an empty first version when the form has no templates",
+      "first form version template initialization rolls back the version and parts together if initialization's transaction fails"
+    ],
+    "tests/unit/access-control-my-permissions.test.ts": [
+      "/my-permissions returns a generic 403 without querying permissions when role resolution fails",
+      "/my-permissions uses only the server-resolved role despite browser-supplied role query parameters"
+    ],
+    "tests/unit/briefing-creation-resolution.test.ts": [
+      "briefing creation rank resolution rejects a G1 row with no joining rank and never falls back to present rank",
+      "briefing creation rank resolution rejects a matching rank group that has no released version",
+      "briefing creation rank resolution rejects a rank not covered by a rank group and names the rank",
+      "briefing creation rank resolution resolves differently configured ranks to different groups and versions",
+      "briefing creation rank resolution resolves the G1 joining rank through formsService and returns its released rank-group version"
+    ],
+    "tests/unit/briefing-live-submission-host.test.ts": [
+      "Briefing live submission part grouping keeps two configurable parts under their real part UUIDs"
+    ],
+    "tests/unit/company-form-applicability-window.test.tsx": [
+      "Company Form applicability window state asks before closing dirty settings and keeps edits when cancelled",
+      "Company Form applicability window state cancel preserves conditions, obligation and date together; Escape cancels only the confirmation",
+      "Company Form applicability window state discards only the unsaved local edits on confirmed close",
+      "Company Form applicability window state keeps a draft version's read-only settings frozen",
+      "Company Form applicability window state keeps a released version's read-only settings frozen",
+      "Company Form applicability window state keeps the registered save safeguard and saved policy after closing the window",
+      "Company Form applicability window state shows the draft trial inside the window only for conditional rules",
+      "Company Form applicability window state still confirms Manual only resets obligation and effective-date settings, with no retained state",
+      "Company Form applicability window state still confirms before discarding groups; cancel preserves them and accepting clears them"
+    ],
+    "tests/unit/company-form-checklist-planning-request.test.ts": [
+      "Company Forms checklist Planning requests does not manufacture browser audit identity on an update",
+      "Company Forms checklist Planning requests leaves creation audit identity to the server too"
+    ],
+    "tests/unit/company-form-checklist-policy.test.ts": [
+      "Company Form checklist exception scope allows only an entirely unresolved/pending/failed blocker set",
+      "Company Form checklist exception scope does not override a missing deployment or invent an empty exception",
+      "Company Form checklist exception scope refuses OUTSTANDING even alongside missing facts and failed checks",
+      "Company Form checklist exception scope refuses STARTED even alongside missing facts and failed checks"
+    ],
+    "tests/unit/company-form-checklist-report-access.test.tsx": [
+      "Company Forms report entry admits Company Forms View without granting the legacy Reports menu",
+      "Company Forms report entry does not admit unrelated modules through Company Forms View",
+      "Company Forms report entry refuses the report when neither grant exists"
+    ],
+    "tests/unit/company-form-contract-rank.test.ts": [
+      "contract rank capture provenance reads the planning rank and records unresolved ambiguity without a profile fallback",
+      "contract rank capture provenance refuses a missing exact planning association"
+    ],
+    "tests/unit/company-form-dimension-validation.test.ts": [
+      "release dimension validation derives readable labels from real selected master identifiers",
+      "release dimension validation refuses unavailable or undeclared flag",
+      "release dimension validation refuses unavailable or undeclared owner",
+      "release dimension validation refuses unavailable or undeclared unknown",
+      "release dimension validation rejects invented master IDs and unsupported operators"
+    ],
+    "tests/unit/company-form-display-formatting.test.ts": [
+      "Company Form readable system values does not match a crew profile rank by display label",
+      "Company Form readable system values formats calendar/release dates in SAIL format with no browser-local shift",
+      "Company Form readable system values refuses ambiguous masters instead of choosing a signature identity",
+      "Company Form readable system values resolves both date system fields readably and preserves the raw calendar date",
+      "Company Form readable system values returns the master rank name and separately resolves the code, never guessing",
+      "Company Form readable system values shows Not recorded when no contract rank is captured: {\"rows\":[]}",
+      "Company Form readable system values shows Not recorded when no contract rank is captured: {\"rows\":[{\"contract_rank_uuid\":null,\"contract_rank_label\":\"Pumpman\",\"rank\":null}]}",
+      "Company Form readable system values still refuses a captured identifier that no longer resolves to an eligible master"
+    ],
+    "tests/unit/company-form-document-drain.test.ts": [
+      "test-owned Company Form document drain joins unfinished work and only resolves after all selected batches finish",
+      "test-owned Company Form document drain propagates a drain error without retrying it"
+    ],
+    "tests/unit/company-form-document-evidence.test.ts": [
+      "subject-neutral canonical document evidence hashes equivalent JSON identically and preserves ordered content",
+      "subject-neutral canonical document evidence logs only presence flags in email startup configuration, never secret prefixes",
+      "subject-neutral canonical document evidence never exposes internal failure codes or stack traces"
+    ],
+    "tests/unit/company-form-document-header-dates.test.ts": [
+      "frozen stage-specific document dates omits missing planned and sign-on dates rather than inventing a value",
+      "frozen stage-specific document dates shows only actual sign-on for at_sign_off",
+      "frozen stage-specific document dates shows only actual sign-on for on_board",
+      "frozen stage-specific document dates uses the frozen planned joining date before joining, never sign-on"
+    ],
+    "tests/unit/company-form-document-queue.test.ts": [
+      "server-controlled document preparation queue does not visit production tenant queues while disabled",
+      "server-controlled document preparation queue enables the approved default rollout for real forms",
+      "server-controlled document preparation queue retains the registered-sample restriction under an explicitly disabled policy",
+      "server-controlled document preparation queue selects all pending missing-file requests when enabled, with no sample-only join",
+      "server-controlled document preparation queue visits every active tenant in its own context even if a previous tenant fails"
+    ],
+    "tests/unit/company-form-document-reference.test.ts": [
+      "frozen Company Form document reference keeps the signing-time short reference",
+      "frozen Company Form document reference uses only frozen source facts for legacy references without mutating evidence"
+    ],
+    "tests/unit/company-form-document-void-renderer.test.ts": [
+      "stored void notice PDF appends notice pages without changing the original input, including long reasons and missing historic facts"
+    ],
+    "tests/unit/company-form-draft-section-policy.test.ts": [
+      "Company Form draft section responsibility allows office and subject-scoped vessel actors for not-applicable sections, but honors office-only parts",
+      "Company Form draft section responsibility allows the trusted linked seafarer or an authorized office actor, but never a vessel witness",
+      "Company Form draft section responsibility requires an exact trusted role id and rejects other roles",
+      "Company Form draft section responsibility uses only the authenticated master-user department for department responsibility"
+    ],
+    "tests/unit/company-form-errors.test.ts": [
+      "Company Form safe error presentation allows explicit safe assignment guidance and masks unknown backend reasons",
+      "Company Form safe error presentation explains known missing facts specifically and never labels them as stage failures",
+      "Company Form safe error presentation maps allowlisted structured business refusals to useful next steps",
+      "Company Form safe error presentation maps structured stage-check evidence and masks raw backend evidence",
+      "Company Form safe error presentation never surfaces HTTP-prefixed JSON or its identifiers",
+      "Company Form safe error presentation never surfaces SQL or stack diagnostics",
+      "Company Form safe error presentation preserves allowlisted applicability release refusals without exposing payload text"
+    ],
+    "tests/unit/company-form-first-service.test.ts": [
+      "company first-service deciding values counts relief and role variants through authoritative mappings",
+      "company first-service deciding values does not count outside-company or future service",
+      "company first-service deciding values does not turn missing historical rank into first-in-rank",
+      "company first-service deciding values shows same-day ordering ambiguity instead of counting the current contract"
+    ],
+    "tests/unit/company-form-import-sea-service-presentation.test.ts": [
+      "Imported E1 rank presentation without identity-by-name matching keeps old display text only as presentation, not a master identity",
+      "Imported E1 rank presentation without identity-by-name matching never exposes an unresolved UUID as rank text",
+      "Imported E1 rank presentation without identity-by-name matching renders the canonical UUID and code as their master name"
+    ],
+    "tests/unit/company-form-lifecycle-policy.test.ts": [
+      "Company Form content-derived section lifecycle accepts a valid department responsible party for a submission section",
+      "Company Form content-derived section lifecycle accepts a valid role responsible party for a submission section",
+      "Company Form content-derived section lifecycle accepts a valid seafarer responsible party for a submission section",
+      "Company Form content-derived section lifecycle rejects submission sections without a valid department responsible party",
+      "Company Form content-derived section lifecycle rejects submission sections without a valid not_applicable responsible party",
+      "Company Form content-derived section lifecycle rejects submission sections without a valid role responsible party",
+      "Company Form content-derived section lifecycle rejects submission sections without a valid role responsible party",
+      "Company Form content-derived section lifecycle requires submission for an answerable checkbox point",
+      "Company Form content-derived section lifecycle requires submission for an answerable date point",
+      "Company Form content-derived section lifecycle requires submission for an answerable free_text point",
+      "Company Form content-derived section lifecycle requires submission for an answerable number point",
+      "Company Form content-derived section lifecycle requires submission for an answerable single_select point",
+      "Company Form content-derived section lifecycle requires submission for an answerable yes_no point",
+      "Company Form content-derived section lifecycle requires submission for signatures even when every point is informational",
+      "Company Form content-derived section lifecycle treats a section with only content points as informational without signatures",
+      "Company Form content-derived section lifecycle treats a section with only info_only points as informational without signatures",
+      "Company Form content-derived section lifecycle treats a section with only system_field points as informational without signatures"
+    ],
+    "tests/unit/company-form-migration-order.test.ts": [
+      "Company Forms migration safety preserves later grants and leaves completed void off",
+      "Company Forms migration safety uses explicit pre-run bootstrap context rather than seeded roles"
+    ],
+    "tests/unit/company-form-operational-permissions.test.ts": [
+      "Independent Company Forms operations denies every support operation despite grants, allowing only granted View",
+      "Independent Company Forms operations does not infer support category from a role name",
+      "Independent Company Forms operations hard-denies Vessel representative despite an explicit grant",
+      "Independent Company Forms operations keeps pinned Vessel Management independent of operational grants",
+      "Independent Company Forms operations separates all six grants and permits representative/witness without Fill in",
+      "Independent Company Forms operations uses Fill in for start, not legacy Create"
+    ],
+    "tests/unit/company-form-pdf-handover-dialog.test.tsx": [
+      "Company PDF handover in-app confirmation cancels without writing, then confirms exactly once (voided=false)",
+      "Company PDF handover in-app confirmation cancels without writing, then confirms exactly once (voided=true)"
+    ],
+    "tests/unit/company-form-pdf-renderer.test.ts": [
+      "frozen-input PDF renderer paginates Unicode, all signature kinds and a long answer with logo=false",
+      "frozen-input PDF renderer paginates Unicode, all signature kinds and a long answer with logo=true",
+      "frozen-input PDF renderer refuses altered frozen input or altered frozen logo bytes"
+    ],
+    "tests/unit/company-form-permission-catalogue.test.ts": [
+      "Company Forms action catalogue declares seven independent permissions, all off without explicit grants",
+      "Company Forms action catalogue never default-allows missing browser actions or unknown categories"
+    ],
+    "tests/unit/company-form-permission-editor-layout.test.tsx": [
+      "Company Forms controlled permission multiselect cannot open or change permissions while disabled",
+      "Company Forms controlled permission multiselect lists all seven permissions and keeps selections open while updating the summary",
+      "Company Forms controlled permission multiselect opens tap help for Override checklist without changing its permission",
+      "Company Forms controlled permission multiselect opens tap help for Sign as Company Representative without changing its permission",
+      "Company Forms controlled permission multiselect opens tap help for Void completed without changing its permission",
+      "Company Forms controlled permission multiselect opens tap help for Void without changing its permission",
+      "Company Forms controlled permission multiselect opens tap help for Witness without changing its permission",
+      "Company Forms controlled permission multiselect retains hover help",
+      "Company Forms controlled permission multiselect shows the saved selections without opening the dropdown",
+      "Company Forms controlled permission multiselect shows the saved selections without opening the dropdown",
+      "Company Forms controlled permission multiselect shows the saved selections without opening the dropdown"
+    ],
+    "tests/unit/company-form-planning-lock-order.test.ts": [
+      "real Planning assignment-first concurrency a valid contract/relief-due update followed by concurrent sign-off both succeed",
+      "real Planning assignment-first concurrency contract/relief-due update serializes with context-bound sign-off without deadlock",
+      "real Planning assignment-first concurrency contract/relief-due update serializes with context-bound signature without deadlock",
+      "real Planning assignment-first concurrency contract/relief-due update serializes with context-bound start without deadlock"
+    ],
+    "tests/unit/company-form-profile-home-service.test.ts": [
+      "existing submission home enriches rather than filters complete history limits vessel groups to trusted membership instead of unioning all profile assignments",
+      "existing submission home enriches rather than filters complete history refuses an unrelated/unprovisioned actor before listing",
+      "existing submission home enriches rather than filters complete history refuses an unrelated/unprovisioned actor before listing",
+      "existing submission home enriches rather than filters complete history refuses an unrelated/unprovisioned actor before listing",
+      "existing submission home enriches rather than filters complete history retains every stage/status, cancelled history, empty active groups and submitted deleted subjects"
+    ],
+    "tests/unit/company-form-render-contract.test.tsx": [
+      "Company Form submission renderer contract checks fresh server retirement state before writing, rather than the initial render",
+      "Company Form submission renderer contract clears date and number answers as null and reloads them as blank controls",
+      "Company Form submission renderer contract deletes a signature by its section-signature UUID rather than its attachment asset UUID",
+      "Company Form submission renderer contract discards uncommitted overlays when a parent submission is voided",
+      "Company Form submission renderer contract does not offer section submission for a purely informational Company section",
+      "Company Form submission renderer contract edits and persists server-authorized drafts without an optional answer notification callback",
+      "Company Form submission renderer contract fetches and renders the pinned form through the submission endpoint and exposes answer editing",
+      "Company Form submission renderer contract hides unsupported Company section submission while keeping Save Draft available",
+      "Company Form submission renderer contract keeps a late signature-only viewer answer-locked and saves only the missing Vessel Management signature",
+      "Company Form submission renderer contract keeps a rejected signature transient and reports the server error without freezing stale client state",
+      "Company Form submission renderer contract keeps server-denied drafts read-only even with an answer notification callback",
+      "Company Form submission renderer contract lets read-only viewers navigate and view every pinned part",
+      "Company Form submission renderer contract limits the retired placeholder to the correct history state: {\"retired\":false,\"replacement\":null,\"stage\":\"on_board\",\"expected\":false}",
+      "Company Form submission renderer contract limits the retired placeholder to the correct history state: {\"retired\":true,\"replacement\":\"related-id\",\"stage\":\"on_board\",\"expected\":false}",
+      "Company Form submission renderer contract limits the retired placeholder to the correct history state: {\"retired\":true,\"replacement\":null,\"stage\":\"before_joining\",\"expected\":false}",
+      "Company Form submission renderer contract limits the retired placeholder to the correct history state: {\"retired\":true,\"replacement\":null,\"stage\":\"on_board\",\"expected\":true}",
+      "Company Form submission renderer contract maps pinned generic fixed parts, Content/System values, named options, answers and comments without a Standard registry",
+      "Company Form submission renderer contract navigates to later pinned parts, renders them and saves edits to that part's section",
+      "Company Form submission renderer contract persists a successful signature before showing its frozen values and changed-record notice",
+      "Company Form submission renderer contract persists comments on unanswered optional questions, including from Save Draft",
+      "Company Form submission renderer contract preserves newer edits and explicit clears in another section across a signature refetch and an older autosave acknowledgement",
+      "Company Form submission renderer contract refreshes a cached exact original on reciprocal navigation without resolving a latest version",
+      "Company Form submission renderer contract refuses cross-stage content in operational viewers while G3 remains unscoped",
+      "Company Form submission renderer contract requires a void reason, shows server denial, then voids and follows both sides of a replacement",
+      "Company Form submission renderer contract requires explicit retirement confirmation and cancellation performs no write",
+      "Company Form submission renderer contract round-trips scalar strings and typed checkbox/multi-select answers losslessly across save and reload",
+      "Company Form submission renderer contract serializes same-section edits, preserves latest errors, and flushes Save Draft after queued answers",
+      "Company Form submission renderer contract shows persisted values for a section submitted elsewhere while other sections remain editable",
+      "Company Form submission renderer contract shows the exact changed-record notice and navigates to the linked void replacement",
+      "Company Form submission renderer contract surfaces corrupt typed persisted answers instead of silently coercing them",
+      "Company Form submission renderer contract surfaces permission refusals from draft saves",
+      "Company Form submission renderer contract surfaces permission refusals rather than disguising them as missing configuration",
+      "Company Form submission renderer contract uses server-declared editability for completed and draft submissions (completed)",
+      "Company Form submission renderer contract uses server-declared editability for completed and draft submissions (in_progress)",
+      "Company Form submission renderer contract uses server-declared editability for completed and draft submissions (in_progress)",
+      "Company Form submission renderer contract waits for queued answer saves before submitting, then refetches persisted completion"
+    ],
+    "tests/unit/company-form-requirements-presentation.test.tsx": [
+      "Company Form operational requirements presentation does not infer authoring rights from unknown-menu allow and preserves hook order when grants load",
+      "Company Form operational requirements presentation keeps required form start disabled when enforced readiness is 'deferred'",
+      "Company Form operational requirements presentation keeps required form start disabled when enforced readiness is 'missing'",
+      "Company Form operational requirements presentation keeps required form start disabled when enforced readiness is 'pending'",
+      "Company Form operational requirements presentation renders an actionable safe explanation for the Fill in reason and retries only the recorded stage check",
+      "Company Form operational requirements presentation shows earlier manual conflicts without linking or auto-voiding them",
+      "Company Form operational requirements presentation shows missing stage checks as information rather than hiding manual readiness",
+      "Company Form operational requirements presentation starts an outstanding pin from its requirement and opens the returned form"
+    ],
+    "tests/unit/company-form-rule-dimensions.test.ts": [
+      "subject-owned rule dimension declarations declares independent typed dimensions without local owner/flag catalogues",
+      "subject-owned rule dimension declarations never guesses an unmapped or ambiguous source label",
+      "subject-owned rule dimension declarations stores the master ID, not a uniquely matched legacy label"
+    ],
+    "tests/unit/company-form-rule-preview.test.ts": [
+      "Company Form read-only rule evaluation authoring reads do not invoke operational grants and vessel reads keep their exact scope",
+      "Company Form read-only rule evaluation discloses unresolved branches even when a complete OR branch matches",
+      "Company Form read-only rule evaluation does not mutate policy or facts",
+      "Company Form read-only rule evaluation evaluates set membership and booleans",
+      "Company Form read-only rule evaluation manual only is never a requirement and all does not need unrelated facts",
+      "Company Form read-only rule evaluation never treats missing facts as a negative match, including negative comparisons",
+      "Company Form read-only rule evaluation uses AND within cards and OR between cards"
+    ],
+    "tests/unit/company-form-signature-ownership.test.ts": [
+      "Company Form signer-or-recorded-witness removal ownership allows the actual signer or recorded witness, not another actor"
+    ],
+    "tests/unit/company-form-signoff-policy.test.ts": [
+      "Sign-off stage policy allows Office historical sign-off creation but not cancelled/deleted subjects",
+      "Sign-off stage policy allows aboard Ship sign-off writes but only signature saves after sign-off",
+      "Sign-off stage policy authorizes only trusted active permitted Master membership for aboard and late signing",
+      "Sign-off stage policy captures locked authoritative assignment provenance without historical reconstruction",
+      "Sign-off stage policy permits Office witnessing only when the sign-off section has Company Representative",
+      "Sign-off stage policy permits a planned date only while the exact authoritative incumbent is aboard",
+      "Sign-off stage policy refuses late signing with missing, mismatched or ambiguous aboard provenance",
+      "Sign-off stage policy rejects cross-profile/vessel and stale exact planning contexts",
+      "Sign-off stage policy releases ashore and dual-configured sign-off sections without widening before-joining"
+    ],
+    "tests/unit/company-form-subject-contracts.test.ts": [
+      "Company Form subject-neutral declarations declares crew assignment entry points, all-assignment history, one Forms column and signatories",
+      "Company Form subject-neutral declarations reads eligible versions for a stage-less subject without inventing an assignment or stage",
+      "Company Form subject-neutral declarations uses only the subject's persisted stage declaration and supports a stage-less adapter",
+      "trusted Company Form principal and action policy deduplicates complete positive vessel IDs",
+      "trusted Company Form principal and action policy fails closed for Ship actors with no usable scope or a role/userType mismatch",
+      "trusted Company Form principal and action policy keeps seafarer authorization disabled without trusted server linkage and limits injected links to their own crew",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \",12\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"-12\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"12,\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"12.5\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"12junk\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: \"9007199254740992\"",
+      "trusted Company Form principal and action policy rejects malformed trusted vessel ID encodings: undefined",
+      "trusted Company Form principal and action policy requires authentication and reports permission separately",
+      "trusted Company Form principal and action policy resolves office authority independently from vessel scope and uses Company Forms grants by action",
+      "trusted Company Form principal and action policy uses strictly decoded DB vessel scope, never the JWT vessels claim"
+    ],
+    "tests/unit/company-form-submission-lifecycle-contracts.test.ts": [
+      "Company Form lifecycle contracts accepts the configured 'department' responsible party without assignment-specific metadata",
+      "Company Form lifecycle contracts accepts the configured 'role' responsible party without assignment-specific metadata",
+      "Company Form lifecycle contracts accepts the configured 'seafarer' responsible party without assignment-specific metadata",
+      "Company Form lifecycle contracts does not require submission for a section containing only content points",
+      "Company Form lifecycle contracts does not require submission for a section containing only info_only points",
+      "Company Form lifecycle contracts does not require submission for a section containing only system_field points",
+      "Company Form lifecycle contracts rejects an empty required-section set and identifies sections with no responsible party",
+      "Company Form lifecycle contracts rejects not_applicable, missing, and blank role/department responsible parties when submission is required",
+      "Company Form lifecycle contracts requires submission for a signature-only informational section",
+      "Company Form lifecycle contracts requires submission for any answerable point without adding section requiredness metadata",
+      "crew-assignment responsible-party declarations permits trusted vessel witnessing on board but refuses it before joining",
+      "crew-assignment responsible-party declarations resolves the authenticated seafarer link on the server and limits sign/submit to his own assignment"
+    ],
+    "tests/unit/company-form-submission-lifecycle.test.ts": [
+      "Company Form lifecycle rules rejects a forged section completion payload instead of trusting caller point lists",
+      "Company Form lifecycle rules rejects body-supplied signer identity and designation",
+      "Company Form lifecycle rules requires a written void reason"
+    ],
+    "tests/unit/company-form-validation.test.ts": [
+      "Company Form validation explanations does not discard multiple issue details in favour of a top-level code",
+      "Company Form validation explanations keeps an unfamiliar but readable service explanation",
+      "Company Form validation explanations keeps every returned issue with its readable position",
+      "Company Form validation explanations resolves internal references, or identifies the part without exposing an unknown reference",
+      "Company Form validation explanations splits joined lifecycle failures without splitting the corrective instruction",
+      "Company Form validation explanations turns schema-type diagnostics into field instructions, with one item per failure",
+      "Company Form validation explanations uses the fallback only when there is no safe specific explanation"
+    ],
+    "tests/unit/company-form-vessel-policy.test.ts": [
+      "Vessel signature release policy Vessel Management is content requiring submission",
+      "Vessel signature release policy accepts multiple stable permitted roles",
+      "Vessel signature release policy does not impose vessel witnessing on before-joining forms",
+      "Vessel signature release policy rejects Vessel Management on a before-joining release",
+      "Vessel signature release policy rejects inactive or unknown role policy",
+      "Vessel signature release policy requires a current on-board subject for creation by Office as well as Ship",
+      "Vessel signature release policy requires permitted roles for Vessel Management",
+      "Vessel signature release policy requires permitted roles for on-board seafarer witnessing",
+      "Vessel signature release policy retains historical reads and Office before-joining creation"
+    ],
+    "tests/unit/company-form-void-handover-presentation.test.tsx": [
+      "void-notice handover presentation does not record a cancelled confirmation",
+      "void-notice handover presentation shows the exact reminder, confirms handover, sends only the annotated fingerprint and clears the reminder",
+      "void-notice handover presentation shows the reminder but no handover action without Fill in"
+    ],
+    "tests/unit/company-forms-closing-gate.test.ts": [
+      "Company Forms closing test gate accepts only an executed passing suite",
+      "Company Forms closing test gate discovers authoring, renderer, lifecycle and every boundary suite",
+      "Company Forms closing test gate fails a missing or skipped suite even when the runner reports success",
+      "Company Forms closing test gate fails a skipped test inside a passed suite"
+    ],
+    "tests/unit/company-forms/CompanyFormApplicabilityEditor.test.tsx": [
+      "CompanyFormApplicabilityEditor permissions and frozen cards allows viewing but keeps policy controls read-only without explicit Forms edit permission",
+      "CompanyFormApplicabilityEditor permissions and frozen cards clarifies that a specific date is compared with the actual release date",
+      "CompanyFormApplicabilityEditor permissions and frozen cards fails closed when the Forms permission entry is missing",
+      "CompanyFormApplicabilityEditor permissions and frozen cards freezes released condition cards and omits the draft trial",
+      "CompanyFormApplicabilityEditor permissions and frozen cards registers an async save handler that reports the server save result"
+    ],
+    "tests/unit/company-forms/CompanyFormRuleTrial.test.tsx": [
+      "CompanyFormRuleTrial blocks a trial while the subject stage is being saved and hides trials outside draft status",
+      "CompanyFormRuleTrial checks the current displayed policy for a friendly crew assignment, even without edit permission"
+    ],
+    "tests/unit/company-forms/applicabilitySummary.test.ts": [
+      "summarizeApplicability explains manual start without implying a mandatory or blocking requirement",
+      "summarizeApplicability formats a specific effective date as readable language",
+      "summarizeApplicability joins conditions with and, then alternate groups with or",
+      "summarizeApplicability names all crew for the all mode and includes the actual release date when known",
+      "summarizeApplicability retains readable labels for selected values that are no longer in current choices",
+      "summarizeApplicability states mandatory obligation and release timing",
+      "summarizeApplicability states optional obligation"
+    ],
+    "tests/unit/configured-form-renderer.test.tsx": [
+      "configured form renderer preview PASS: Preview comment controls open and accept typed text",
+      "configured form renderer preview PASS: Preview response controls accept checkbox and single-select answers",
+      "configured form renderer preview PASS: Preview sections collapse and expand",
+      "configured form renderer preview PASS: Preview stepper controls switch between configured and fixed parts",
+      "configured form renderer preview PASS: Preview vessel selector opens and changes the applicable sections",
+      "configured form renderer preview collapses the footer when no footer content is configured",
+      "configured form renderer preview disables every matrix response for a live section the user does not own",
+      "configured form renderer preview dispatches supplied fixed components by part code, case-insensitively",
+      "configured form renderer preview does not number Content or shift surrounding Company Form point numbers",
+      "configured form renderer preview keeps live save and submit actions available without optional footer content",
+      "configured form renderer preview keeps sections from two configurable parts under their own navigator parts",
+      "configured form renderer preview keeps the department responsibility line in the footer",
+      "configured form renderer preview keeps the shared header and a full-width Content row in a mixed Company Form section",
+      "configured form renderer preview marks vessel-restricted sections as not applicable and preserves preview section state",
+      "configured form renderer preview navigates every part and renders a fixed-part fallback when no component is supplied",
+      "configured form renderer preview numbers Company Form list and matrix points by position in preview and live without changing codes",
+      "configured form renderer preview omits inactive nodes, sorts supplied orders and keeps stable identities through renames",
+      "configured form renderer preview omits the responsibility line when responsibility is not applicable",
+      "configured form renderer preview renders System fields read-only without an answer, comment, or consumed point number",
+      "configured form renderer preview renders a server-resolved matrix with option headers and select controls",
+      "configured form renderer preview renders a stored signature and date as one compact footer row",
+      "configured form renderer preview renders each configured section like an Appraisal F white outlined panel",
+      "configured form renderer preview renders every configured response type with option labels only",
+      "configured form renderer preview renders explicit inline messages for incomplete configuration",
+      "configured form renderer preview renders independent officer and seafarer signature blocks with live crew defaults",
+      "configured form renderer preview renders populated fixed parts directly and keeps the shared card/progress presentation on Part B only",
+      "configured form renderer preview renders sanitized Content as display-only HTML without a response or point number",
+      "configured form renderer preview renders through the Base form stepper with no save controls or fetches",
+      "configured form renderer preview retains Standard Form part letters, section codes and point codes",
+      "configured form renderer preview retains local collapsed state when the shared shell rerenders",
+      "configured form renderer preview separates the preview banner from content using section spacing",
+      "configured form renderer preview shows numeric-scale endpoint descriptors separately from matrix headers and list choices",
+      "configured form renderer preview shows seafarer section responsibility without a role or department",
+      "configured form renderer preview uses Appraisal-style muted comment icons and distinguishes entered list and matrix comments",
+      "configured form renderer preview uses Company Representative for Company Form officer signatures in preview and live, leaving Standard Forms unchanged",
+      "configured form renderer preview uses regular Appraisal-style point text and shared header typography in list and matrix layouts",
+      "configured form renderer preview uses the same matrix rendering branch for live hosts"
+    ],
+    "tests/unit/content-point-editor.test.tsx": [
+      "Company Form Content editor notices table and image removal, but not ordinary Word styling"
+    ],
+    "tests/unit/crew-company-forms-home.test.tsx": [
+      "G3 complete crew Company Form history does not read a home for an unsaved profile",
+      "G3 complete crew Company Form history groups all stages/statuses, keeps cancelled and history-only rows, and never exposes extra assignment props",
+      "G3 complete crew Company Form history opens pinned renderer and returns to the same profile home",
+      "G3 complete crew Company Form history opens the exact row and reciprocal target with readable void identity, including inside a disabled fieldset",
+      "G3 complete crew Company Form history reports a permission refusal, not an empty or missing-configuration success"
+    ],
+    "tests/unit/crew-company-forms-signoff.test.tsx": [
+      "G3 office sign-off creation and unfinished indicators counts only authorized unfinished-stage in-progress declarations and links to the exact row",
+      "G3 office sign-off creation and unfinished indicators keeps G3 creation restricted to server-provided sign-off startability, even with a completed check",
+      "G3 office sign-off creation and unfinished indicators re-fetches subject history and resumes a nonvoided form rather than starting another",
+      "G3 office sign-off creation and unfinished indicators surfaces explicit permission failures from eligible-form requests"
+    ],
+    "tests/unit/debriefing-live-submission-host.test.ts": [
+      "Debriefing submission helpers builds the exact Part A PUT contract for every API mode",
+      "Debriefing submission helpers builds the exact Part C PUT contract and preserves null for an empty review",
+      "Debriefing submission helpers creates a submission and returns its server UUID",
+      "Debriefing submission helpers enables the action only for a persisted G2 UUID",
+      "Debriefing submission helpers groups only real submission sections by form_part_uuid",
+      "Debriefing submission helpers inherits a section default option set when a question has no option set",
+      "Debriefing submission helpers merges a failed batch without overwriting newer answer, comment, or section-comment edits",
+      "Debriefing submission helpers reconciles a newly saved G2 UUID into its local row",
+      "Debriefing submission helpers reopens an existing submission without creating another",
+      "Debriefing submission helpers shows the server's creation error",
+      "Debriefing submission helpers uses matrix layout only for eligible compact select questions"
+    ],
+    "tests/unit/fixed-part-registry.test.tsx": [
+      "fixed-part preview registry keeps the live factory interactive by default",
+      "fixed-part preview registry normalizes category lookup and leaves unknown categories unregistered",
+      "fixed-part preview registry renders Interview A/C read-only with no actions",
+      "fixed-part preview registry renders briefing A/C read-only with no actions",
+      "fixed-part preview registry renders debriefing A/C read-only with no actions"
+    ],
+    "tests/unit/form-effective-layout.test.ts": [
+      "effective form section layout returns list for explicit list, more than twelve options, mixed sets, and non-select points",
+      "effective form section layout uses matrix for seven through twelve options only when every label is at most four characters",
+      "effective form section layout uses matrix through six options regardless of label length"
+    ],
+    "tests/unit/form-structure-contract.test.ts": [
+      "form structure request contract accepts a full nested structure and defaults omitted booleans",
+      "form structure request contract accepts named sets, section defaults, and matrix layout without inline question options",
+      "form structure request contract rejects invalid layouts and option-set references on non-select questions",
+      "form structure request contract rejects options for response types that do not support them",
+      "form structure request contract requires a department target for department responsibility",
+      "form structure request contract requires a role UUID for role responsibility",
+      "form structure request contract requires options for single-select and multi-select questions"
+    ],
+    "tests/unit/forms-permission-route-inventory.test.ts": [
+      "Forms Configuration permission route inventory applies exactly the approved explicit route-to-action table",
+      "Forms Configuration permission route inventory keeps every Access Control route unguarded for grant recovery",
+      "Forms Configuration permission route inventory keeps ordinary appraisal and promotion configuration reads unguarded"
+    ],
+    "tests/unit/forms-rank-consumer-errors.test.ts": [
+      "unconfigured rank consumer errors distinguishes an unconfigured appraisal rank from an unreleased version",
+      "unconfigured rank consumer errors distinguishes an unconfigured promotion rank from an unreleased version"
+    ],
+    "tests/unit/forms-rank-fallback.test.ts": [
+      "getFormForRank unmatched-rank behavior returns null if there are no forms in the requested category",
+      "getFormForRank unmatched-rank behavior returns null instead of the newest unrelated form when no group covers the rank"
+    ],
+    "tests/unit/generic-form-editor-helpers.test.ts": [
+      "generic configurable-form editor helpers PASS: keeps Configure and Preview scroll positions independent across view switches",
+      "generic configurable-form editor helpers accepts the master-data string[] department response and serializes the chosen department",
+      "generic configurable-form editor helpers builds a server-valid numeric-scale payload with stable numeric values and validates bad ranges",
+      "generic configurable-form editor helpers clears role and department targets for the seafarer responsibility mode",
+      "generic configurable-form editor helpers derives independent section and point codes from the parent part code",
+      "generic configurable-form editor helpers explains every matrix eligibility fallback without relying on the saved server layout",
+      "generic configurable-form editor helpers generates hidden option values only when adding new options and suffixes same-question collisions",
+      "generic configurable-form editor helpers persists an inherited option edit through the section default instead of a discarded point-local array",
+      "generic configurable-form editor helpers preserves option identities only for their original set and omits them for duplicated or custom sets",
+      "generic configurable-form editor helpers requires a discard confirmation before replacing a dirty version tree",
+      "generic configurable-form editor helpers resolves immediate Preview layout from the current unsaved draft",
+      "generic configurable-form editor helpers round-trips System field keys and keeps them non-mandatory with no options",
+      "generic configurable-form editor helpers round-trips default-backed points as inherited while preserving a distinct named-set override",
+      "generic configurable-form editor helpers uses role titles, sorts selectable roles, and preserves stale assignment warnings"
+    ],
+    "tests/unit/generic-form-editor-preview-portal.test.tsx": [
+      "GenericFormEditor shared Preview shell does not add Company Form version metadata to a Standard Form title",
+      "GenericFormEditor shared Preview shell keeps Preview response and comment inputs focused while typing",
+      "GenericFormEditor shared Preview shell keeps a first save authoritative while a structure write is delayed",
+      "GenericFormEditor shared Preview shell keeps controlled Configure text focused while typing and preserves it when adding a point",
+      "GenericFormEditor shared Preview shell keeps one mounted dialog while switching its content",
+      "GenericFormEditor shared Preview shell keeps page lock and returns from Preview with Escape",
+      "GenericFormEditor shared Preview shell navigates every fixed part and shows the same placeholder in Configure and Preview",
+      "GenericFormEditor shared Preview shell offers System Field only for Company Forms and renders the selected field as read-only",
+      "GenericFormEditor shared Preview shell omits System Field from both Standard Form response choosers",
+      "GenericFormEditor shared Preview shell renders editable Configure points as Preview-aligned table rows and retains save and dialog actions",
+      "GenericFormEditor shared Preview shell retains all 5 sections and 50 points from a fast save response",
+      "GenericFormEditor shared Preview shell shows the selected Company Form version and formats its persisted release timestamp in UTC",
+      "GenericFormEditor shared Preview shell yields Escape to an open portalled listbox"
+    ],
+    "tests/unit/generic-form-editor-release.test.tsx": [
+      "GenericFormEditor release workflow confirms a draft release and switches the editor to released read-only mode",
+      "GenericFormEditor release workflow disables release while applicability is dirty and gives a save-first instruction",
+      "GenericFormEditor release workflow keeps 'release' refusal (400) visible as 2 readable list items",
+      "GenericFormEditor release workflow keeps 'save' refusal (400) visible as 2 readable list items",
+      "GenericFormEditor release workflow keeps 'save' refusal (500) visible as 1 readable list items",
+      "GenericFormEditor release workflow loads stage options from the subject registry and keeps an unselected stage draft-only",
+      "GenericFormEditor release workflow opens legacy released system fields safely in builder and preview without saving or releasing them",
+      "GenericFormEditor release workflow renders while versions have not loaded and no stage selection exists",
+      "GenericFormEditor release workflow saves dirty structure before releasing the numeric version returned by the draft",
+      "GenericFormEditor release workflow turns comments off with a notice when changing a point to a system field"
+    ],
+    "tests/unit/interview-creation-resolution.test.ts": [
+      "Crew Interview creation rank resolution rejects a rank group without a released version",
+      "Crew Interview creation rank resolution rejects an unmatched rank while naming it",
+      "Crew Interview creation rank resolution uses rank applied for and returns the released rank group/version"
+    ],
+    "tests/unit/interview-live-submission-host.test.ts": [
+      "Interview submission helpers creates an interview and returns the API submission UUID",
+      "Interview submission helpers enables only persisted B6 interview UUIDs regardless of outcome fields",
+      "Interview submission helpers groups only real submission sections by form_part_uuid",
+      "Interview submission helpers reopens a persisted submission without creating another one",
+      "Interview submission helpers replaces a temporary B6 row id immediately with the saved int_uuid",
+      "Interview submission helpers surfaces the server's actual creation error"
+    ],
+    "tests/unit/joining-company-forms.test.tsx": [
+      "Joining Company Forms use the recorded planning association does not display a late creation result after switching relievers",
+      "Joining Company Forms use the recorded planning association does not make an orphan start or lookup for an absent link",
+      "Joining Company Forms use the recorded planning association keeps manual form entry closed for enforced DEFERRED readiness",
+      "Joining Company Forms use the recorded planning association keeps manual form entry closed for enforced PENDING readiness",
+      "Joining Company Forms use the recorded planning association keeps readable voided history when the eligible catalogue is empty",
+      "Joining Company Forms use the recorded planning association reads the exact link without a crew/current-assignment discovery query",
+      "Joining Company Forms use the recorded planning association refuses stale or mismatched links without searching for a replacement",
+      "Joining Company Forms use the recorded planning association rejects a linked-reader response belonging to another crew member",
+      "Joining Company Forms use the recorded planning association requires manual released-version selection and uses submission-owned endpoints",
+      "Joining Company Forms use the recorded planning association resumes the existing pinned parent instead of creating another declaration",
+      "Joining Company Forms use the recorded planning association shows a permission error rather than reporting empty eligibility",
+      "Joining Company Forms use the recorded planning association shows only before-joining declarations and keeps assignment IDs out of the introduction",
+      "Joining Company Forms use the recorded planning association uses pinned version metadata and the display stage even outside today's eligible catalogue"
+    ],
+    "tests/unit/native-dialog-continuations.test.ts": [
+      "every converted confirmation/prompt continuation components/company-forms/CompanyFormApplicabilityEditor.tsx / Changing this mode cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/company-forms/CompanyFormApplicabilityEditor.tsx / Discard unsaved applicability cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/configured-form/CompanyPdfActions.tsx / Record that the void notice cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/configured-form/CompanyPdfActions.tsx / Record that this PDF cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/dialogs/PromotionHierarchyDialog.tsx / hierarchy? cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/form-editor-parts/PartG.tsx / Enter comment: cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation components/wage/ElementLineRow.tsx / Are you sure you want to delete cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/accounts/pages/CbaReferencePage.tsx / Delete CBA reference cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/accounts/pages/PayElementsPage.tsx / This performs a soft-delete. cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/accounts/pages/WageScalesPage.tsx / Delete draft cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/admin/AdminModule.tsx / Are you sure you want to delete the form cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/admin/AdminModule.tsx / Existing submissions will stay readable cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/admin/TrainingEquivalentsEditor.tsx / switch vessel? cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/admin/TrainingEquivalentsEditor.tsx / view another revision? cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/recruitment/RecruitmentModule_v2.tsx / Are you sure you want to delete cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/training-retention/components/Training.tsx / Delete this training need? cancels without touching anything and confirms once",
+      "every converted confirmation/prompt continuation modules/vessel/components/ReliefStatusEditDialog_v2.tsx / Discard unsaved changes? cancels without touching anything and confirms once"
+    ],
+    "tests/unit/onboard-company-form-corrections.test.ts": [
+      "Crew List count and reciprocal labels keeps before_joining count semantics scoped and does not filter archived saved records",
+      "Crew List count and reciprocal labels keeps on_board count semantics scoped and does not filter archived saved records",
+      "Crew List count and reciprocal labels labels creation fallback and unavailable saved identity without consulting current users",
+      "Crew List count and reciprocal labels refuses labels for an unauthorized related submission",
+      "Crew List count and reciprocal labels uses the actual pinned form and original saved voider in the replaced_by direction",
+      "Crew List count and reciprocal labels uses the actual pinned form and original saved voider in the replaces direction",
+      "Retirement acknowledgement under the server form lock accepts only the exact current archive state, acknowledgement=2026-10-01T00:00:00.000Z",
+      "Retirement acknowledgement under the server form lock accepts only the exact current archive state, acknowledgement=2026-10-03T09:36:28.067Z",
+      "Retirement acknowledgement under the server form lock accepts only the exact current archive state, acknowledgement=undefined"
+    ],
+    "tests/unit/onboard-company-forms.test.tsx": [
+      "Crew List popup preserves retained history and refreshes the column includes voided history, excludes other stages and explicitly labels the total",
+      "Crew List popup preserves retained history and refreshes the column refreshes completion and current eligibility when the embedded-form popup is closed and reopened",
+      "Crew List popup preserves retained history and refreshes the column shows permission/load failures rather than manufacturing a zero",
+      "Crew List popup preserves retained history and refreshes the column uses scoped counts and refreshes counts after creation and renderer return"
+    ],
+    "tests/unit/scratch/restrictedPaste.test.ts": [
+      "restricted Word paste flattens nested lists and joins each table row into one paragraph",
+      "restricted Word paste joins a number and its statement from separate Word cells, without special-casing the header",
+      "restricted Word paste keeps text but drops dangerous markup before the server allowlist",
+      "restricted Word paste retains all nine numbered statements row by row in the second real Word clipboard fixture",
+      "restricted Word paste retains every nonempty paragraph of the first real Word clipboard fixture",
+      "restricted Word paste shows only the image line for an image and no notice for stripped Word styling",
+      "restricted Word paste turns consecutive * marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive - marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive o marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive § marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive · marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive – marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive • marker paragraphs into real flat list items",
+      "restricted Word paste turns consecutive ▪ marker paragraphs into real flat list items",
+      "scratch server allowlist contains exactly the five specified tags and no attributes"
+    ],
+    "tests/unit/signoff-company-forms.test.tsx": [
+      "Planning at-sign-off company forms does not confuse a proposed planning date with an authoritative sign-off",
+      "Planning at-sign-off company forms does not infer an assignment when the exact planning link is absent",
+      "Planning at-sign-off company forms keeps the manual sign-off picker closed while an enforced check is deferred",
+      "Planning at-sign-off company forms requires manual released-version selection and passes full request context to the renderer",
+      "Planning at-sign-off company forms resumes one existing nonvoided at-sign-off declaration instead of creating a duplicate",
+      "Planning at-sign-off company forms shows only at-sign-off declarations, including voided, without assignment IDs",
+      "Planning at-sign-off company forms validates the exact incumbent link and rejects stale, archived, deleted, or signed-off rows"
+    ],
+    "tests/unit/signoff-planning-popup.test.tsx": [
+      "On Board Status Sign-off forms popup keeps the sign-off form launch visible but disabled for DEFERRED readiness",
+      "On Board Status Sign-off forms popup keeps the sign-off form launch visible but disabled for MISSING readiness",
+      "On Board Status Sign-off forms popup keeps the sign-off form launch visible but disabled for PENDING readiness",
+      "On Board Status Sign-off forms popup offers the top button without forms grants, opens a separate popup and returns",
+      "On Board Status Sign-off forms popup resets the forms popup after the parent closes and after switching assignments"
+    ],
+    "tests/unit/training-checklist-combined-gate.test.ts": [
+      "combined forms and training acceptance gate Override checklist never overrides a training gap",
+      "combined forms and training acceptance gate an incomplete calculation blocks and can only use the training override",
+      "combined forms and training acceptance gate authorized training-only override records server actor and overridden results",
+      "combined forms and training acceptance gate names both blockers together and identifies noninterchangeable overrides",
+      "combined forms and training acceptance gate refuses invalid or forged override object {\"reason\":\" \"}",
+      "combined forms and training acceptance gate refuses invalid or forged override object {\"reason\":\"\"}",
+      "combined forms and training acceptance gate refuses invalid or forged override object {\"reason\":\"Okay\",\"actorId\":999}",
+      "combined forms and training acceptance gate rejects browser audit identity",
+      "combined forms and training acceptance gate requires two independent grants and reasons for unresolved forms plus training",
+      "combined forms and training acceptance gate training override is refused without the new permission even with a reason",
+      "combined forms and training acceptance gate training override never bypasses OUTSTANDING mandatory forms",
+      "combined forms and training acceptance gate training override never bypasses STARTED mandatory forms",
+      "combined forms and training acceptance gate warning proceeds normally and creates fresh snapshots on later acceptances"
+    ]
+  }
+}
