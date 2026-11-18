@@ -130,7 +130,10 @@ the matching responsible role **and** `vessel_signature_role_uuids`, plus a
 saved actor name/designation resolved through an existing rank ID. No
 application permission code is relaxed. All three boundary cases must execute.
 
-Every closing run now invokes `scripts/verify-company-forms-tests.mjs`.
+At the time of this acceptance run, the closing command was
+`scripts/verify-company-forms-tests.mjs`. It is now diagnostic only;
+for the current closing requirement, see the
+[Company Forms full-run test gate](full-run-test-gate.md).
 It discovers the entire Company Forms/submission area by test names and
 imports, including shared authoring/renderer/structure consumers and direct
 authoring API and option-set migration checks. A Promotions browser test that

@@ -18,6 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "setup-microfrontend": "node scripts/setup-microfrontend.js",
     "test": "vitest run",
+    "test:company-forms-gate": "node scripts/verify-company-forms-full-run.mjs",
     "test:backend": "tsx scripts/start-test-backend.ts",
     "test:reset": "tsx scripts/reset-test-database.ts",
     "test:watch": "vitest",

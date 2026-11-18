@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { prepareTestEnvironment } from './scripts/test-database-guard.mjs';
+import { FullRunJsonReporter } from './tests/reporters/full-run-json.mjs';
 
 await prepareTestEnvironment();
 
@@ -39,7 +40,7 @@ export default defineConfig({
       ],
       all: true,
     },
-    reporters: ['verbose', 'json', 'junit', 'html'],
+    reporters: ['verbose', new FullRunJsonReporter({}), 'junit', 'html'],
     outputFile: {
       json: './test-results/results.json',
       junit: './test-results/junit.xml',
