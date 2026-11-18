@@ -9,9 +9,11 @@ import { createServer } from "node:http";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { expect } from "@playwright/test";
+import { matrixFixture, runMultiVesselRegression } from "./training-matrix-multi-vessel.fixture.mjs";
 
 const baseline = process.argv.includes("--baseline");
 const captureOnly = process.argv.includes("--capture");
+const multiVessel = process.argv.includes("--multi-vessel");
 const realisticLabels = [
   "Basic Training", "Personal Survival Techniques (PST)",
   "Fire Prevention and Fire Fighting (FPFF)", "Elementary First Aid (EFA)",
@@ -85,6 +87,7 @@ const server = createServer(async (req, res) => {
     return res.end(bundle.outputFiles[0].text);
   }
   if (req.url.startsWith("/api/")) {
+    if (multiVessel && await matrixFixture.handle(req, res)) return;
     res.setHeader("content-type", "application/json");
     const url = new URL(req.url, "http://fixture");
     let data = [];
@@ -144,6 +147,9 @@ try {
     console.log("Fixture screen:", (await page.locator("body").innerText()).slice(0, 2000));
     throw error;
   }
+  if (multiVessel) {
+    await runMultiVesselRegression(page);
+  } else {
   await page.getByTestId("tab-training-company").click();
   await page.getByTestId("row-company-training-80").waitFor({ state: "attached" });
   await page.getByTestId("button-edit-company-training").click();
@@ -368,6 +374,7 @@ try {
       await checkScrollPanel("vessel");
       await page.getByTestId("checkbox-app-to-vessel-1").check();
       await page.getByTestId("tm-cancel-button").click();
+       await page.getByRole("button", { name: "Discard and exit", exact: true }).click();
       await expect(page.getByTestId("tm-revision-button")).toBeVisible();
     }
     assert.equal(writes.length, writeCount, "Resizing, filtering, scrolling and Revision Cancel do not save");
@@ -396,6 +403,7 @@ try {
     await page.getByTestId("tab-training-company").click();
     await checkScrollPanel("company");
     console.log("PASS: filters, empty results, resize, tab switches, Vessel Cancel/Save Draft/Submit; Training Master remains unchanged");
+  }
   }
   assert.deepEqual(errors, [], "No browser runtime errors");
   if (baseline || captureOnly) assert.equal(writes.length, 0, "Opening and measuring the table must not write data");

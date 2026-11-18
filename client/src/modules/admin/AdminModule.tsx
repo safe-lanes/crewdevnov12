@@ -11,6 +11,7 @@ import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { StandardVersionCell } from "./components/StandardVersionCell";
 import { CompanyAbbreviationInput } from "./components/CompanyAbbreviationInput";
 import { TrainingMatrixTable } from "./components/TrainingMatrixTable";
+import { useTrainingMatrixVessels } from "./hooks/useTrainingMatrixVessels";
 import { isStandardVersionCategory, type StandardVersionOpening } from "@/lib/standardVersionOpening";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -876,216 +877,15 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Training Matrix Vessel state (separate from Rank Admin Vessel)
   const [tmSelectedVessels, setTmSelectedVessels] = useState<string[]>([]);
-  const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
   const [tmFlexDate, setTmFlexDate] = useState("");
   const tmFlexDateDraftValidRef = useRef(true);
-  const [tmRevisionMode, setTmRevisionMode] = useState(false);
   const [tmEquivalentsDirty, setTmEquivalentsDirty] = useState(false);
-  const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
-
-  // Training Matrix Vessel revision queries - use queryFn with explicit URL
-  const tmCurrentVesselId = tmSelectedVessels[0];
-  const tmQueryEnabled = selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && !!tmCurrentVesselId;
-
-  const { data: tmVesselRevisions = [] } = useQuery<any[]>({
-    queryKey: ['tm-vessel-revisions', tmCurrentVesselId],
-    queryFn: async ({ queryKey }) => {
-      const vesselId = queryKey[1];
-      if (!vesselId) return [];
-      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
-      if (!res.ok) throw new Error('Failed to fetch revisions');
-      return res.json();
-    },
-    enabled: tmQueryEnabled,
-    staleTime: 0,
-    refetchOnMount: 'always'
-  });
-
-  const { data: tmNextRevisionData } = useQuery<{ nextRevision: string; currentRevisionCount: number }>({
-    queryKey: ['tm-next-revision', tmCurrentVesselId],
-    queryFn: async ({ queryKey }) => {
-      const vesselId = queryKey[1];
-      if (!vesselId) return { nextRevision: 'R0', currentRevisionCount: 0 };
-      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/next-revision/${vesselId}`);
-      if (!res.ok) throw new Error('Failed to fetch next revision');
-      return res.json();
-    },
-    enabled: tmQueryEnabled,
-    staleTime: 0,
-    refetchOnMount: 'always'
-  });
-
-  // Training Matrix Vessel draft query - use queryFn with explicit URL
-  // API returns an array of drafts, we take the first one (should be only one per vessel)
-  const { data: tmVesselDraft } = useQuery<{ id: number; vesselId: string; draftData: any; updatedAt: string } | null>({
-    queryKey: ['tm-vessel-draft', tmCurrentVesselId],
-    queryFn: async ({ queryKey }) => {
-      const vesselId = queryKey[1];
-      if (!vesselId) return null;
-      const res = await fetch(`/api/v2/admin/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
-      if (!res.ok) {
-        if (res.status === 404) return null;
-        throw new Error('Failed to fetch draft');
-      }
-      const drafts = await res.json();
-      // API returns array, take first draft if exists
-      if (Array.isArray(drafts) && drafts.length > 0) {
-        const draft = drafts[0];
-        // Parse draftData if it's a string
-        if (typeof draft.draftData === 'string') {
-          try {
-            draft.draftData = JSON.parse(draft.draftData);
-          } catch (e) {
-            console.error('Failed to parse draftData:', e);
-          }
-        }
-        return draft;
-      }
-      return null;
-    },
-    enabled: tmQueryEnabled,
-    staleTime: 0,
-    refetchOnMount: 'always'
-  });
-
-  // Update tmNextRevision when query data changes
-  useEffect(() => {
-    if (tmNextRevisionData?.nextRevision) {
-      setTmNextRevision(tmNextRevisionData.nextRevision);
-    }
-  }, [tmNextRevisionData]);
-
-  // Hydrate tmApplicableTrainings from draft or latest revision when vessel changes or data loads
-  useEffect(() => {
-    if (!tmCurrentVesselId) {
-      return;
-    }
-
-    const vesselId = tmCurrentVesselId;
-    const applicableSet = new Set<number>();
-
-    // Priority: draft data first, then latest revision
-    let sourceData: any = null;
-    if (tmVesselDraft?.draftData) {
-      sourceData = tmVesselDraft.draftData;
-    } else if (tmVesselRevisions.length > 0) {
-      // Get the latest revision - copy array to avoid mutating cache
-      const sortedRevisions = [...tmVesselRevisions].sort((a: any, b: any) => {
-        // Use 'revision' field (e.g., "R0", "R1") not 'revisionNumber'
-        const aNum = parseInt((a.revision || '').replace('R', '') || '0');
-        const bNum = parseInt((b.revision || '').replace('R', '') || '0');
-        return bNum - aNum;
-      });
-      // Parse revisionData if it's a JSON string
-      let revData = sortedRevisions[0]?.revisionData;
-      if (typeof revData === 'string') {
-        try {
-          revData = JSON.parse(revData);
-        } catch (e) {
-          console.error('Failed to parse revisionData:', e);
-        }
-      }
-      sourceData = revData;
-    }
-
-    // Parse the source data - supports multiple formats for compatibility
-    if (sourceData) {
-      if (Array.isArray(sourceData)) {
-        // Direct array of training IDs (new format)
-        sourceData.forEach((id: number) => {
-          if (typeof id === 'number') {
-            applicableSet.add(id);
-          }
-        });
-      } else if (sourceData.applicableTrainingIds && Array.isArray(sourceData.applicableTrainingIds)) {
-        // Object format with applicableTrainingIds (new format)
-        sourceData.applicableTrainingIds.forEach((id: number) => {
-          if (typeof id === 'number') {
-            applicableSet.add(id);
-          }
-        });
-      } else if (typeof sourceData === 'object' && !Array.isArray(sourceData)) {
-        // Legacy format: object with trainingId keys and M/R values
-        // Any training with an M or R value is considered "applicable"
-        Object.entries(sourceData).forEach(([key, value]) => {
-          const trainingId = parseInt(key);
-          if (!isNaN(trainingId) && (value === 'M' || value === 'R' || value === true)) {
-            applicableSet.add(trainingId);
-          }
-        });
-      }
-    }
-
-    // Always update state for this vessel (even if empty - clears stale data)
-    setTmApplicableTrainings(prev => {
-      const newMap = new Map(prev);
-      newMap.set(vesselId, applicableSet);
-      return newMap;
-    });
-  }, [tmCurrentVesselId, tmVesselDraft, tmVesselRevisions]);
-
-  // Training Matrix Vessel Draft mutations
-  const tmSaveDraftMutation = useMutation({
-    mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
-    },
-    onSuccess: (_data, variables) => {
-      toast({
-        title: "Draft saved",
-        description: "Training matrix draft saved successfully.",
-        duration: 3000,
-      });
-      // Invalidate draft query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['tm-vessel-draft', variables.vesselId] });
-      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
-    },
-    onError: (error: any) => {
-      console.error('Failed to save training matrix draft:', error);
-      toast({
-        title: "Save failed",
-        description: "Failed to save training matrix draft.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
-
-  const tmSubmitRevisionMutation = useMutation({
-    mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
-    },
-    onSuccess: (_data, variables) => {
-      toast({
-        title: "Revision submitted",
-        description: "Training matrix revision submitted successfully.",
-        duration: 3000,
-      });
-      queryClient.invalidateQueries({ queryKey: ['training-matrix-equivalents', variables.vesselId] });
-      setTmRevisionMode(false);
-      // Invalidate all training matrix queries for this vessel using predicate for robust matching
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          if (!Array.isArray(key) || key.length < 2) return false;
-          const prefix = key[0] as string;
-          const vesselId = key[1];
-          return (
-            (prefix === 'tm-vessel-revisions' || prefix === 'tm-next-revision' || prefix === 'tm-vessel-draft') &&
-            vesselId === variables.vesselId
-          );
-        }
-      });
-    },
-    onError: (error: any) => {
-      console.error('Failed to submit training matrix revision:', error);
-      toast({
-        title: "Submit failed",
-        description: "Failed to submit training matrix revision.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
+  const tm = useTrainingMatrixVessels(
+    tmSelectedVessels, selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel",
+  );
+  const tmRevisionMode = tm.revisionMode;
+  const tmNextRevision = tm.nextRevision;
+  const tmApplicableTrainings = tm.applicable;
 
   // Track which vessels have been loaded to prevent duplicate fetches
   const loadedVesselsRef = React.useRef<Set<string>>(new Set());
@@ -4855,7 +4655,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {rankMasterData.map((rank, index) => (
                       <TableRow key={rank.id} className="bg-white" data-testid={`row-rank-master-${rank.id}`}>
                         <TableCell className="py-3 text-center border-r">
-                          <span 
+                                  <span
                             className={`text-sm ${rank.id.startsWith('new_') ? 'text-gray-400 italic' : ''}`} 
                             data-testid={`text-rank-id-${rank.id}`}
                             title={rank.id.startsWith('new_') ? 'Rank ID will be auto-generated when saved' : ''}
@@ -6654,7 +6454,7 @@ const AdminModuleInner = (): JSX.Element => {
                       role="combobox"
                       className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                       data-testid="tm-vessel-select"
-                      disabled={tmEquivalentsDirty}
+                      disabled={tmEquivalentsDirty || tmRevisionMode || tm.busy}
                     >
                       {tmSelectedVessels.length === 0 
                         ? "Select Vessel or Group" 
@@ -6675,6 +6475,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <CommandItem
                             key={vessel.value}
                             value={`${vessel.label} ${vessel.value}`}
+                            disabled={tmRevisionMode || tm.busy || tmEquivalentsDirty}
                             onSelect={() => {
                               if (vessel.type === 'group' && vessel.vesselIds) {
                                 const groupVesselIds = Array.isArray(vessel.vesselIds) 
@@ -6742,6 +6543,7 @@ const AdminModuleInner = (): JSX.Element => {
                   className="h-8 w-8 p-0 text-[#0f172a] hover:bg-gray-50"
                   onClick={() => setIsVesselGroupModalOpen(true)}
                   data-testid="tm-vessel-group-settings"
+                  disabled={tmRevisionMode || tm.busy || tmEquivalentsDirty}
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -6759,7 +6561,7 @@ const AdminModuleInner = (): JSX.Element => {
                       onDraftValidityChange={(valid) => { tmFlexDateDraftValidRef.current = valid; }}
                       placeholder="DD-MMM-YYYY or DD-MM-YYYY"
                       className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                      disabled={!tmRevisionMode}
+                      disabled={!tm.editable}
                       data-testid="tm-flex-date-input"
                     />
 
@@ -6777,10 +6579,9 @@ const AdminModuleInner = (): JSX.Element => {
                           });
                           return;
                         }
-                        setTmRevisionMode(true);
-                        setTmFlexDate(new Date().toISOString().split('T')[0]);
+                        if (tm.start()) setTmFlexDate(new Date().toISOString().split('T')[0]);
                       }}
-                      disabled={tmSelectedVessels.length === 0}
+                      disabled={!tm.ready}
                       className={`h-8 text-xs ${
                         tmSelectedVessels.length === 0 
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
@@ -6793,29 +6594,26 @@ const AdminModuleInner = (): JSX.Element => {
                   ) : (
                     <>
                       <Button
-                        onClick={() => {
-                          setTmRevisionMode(false);
-                          setTmApplicableTrainings(new Map());
+                        onClick={async () => {
+                          if (await ask("Discard unsaved matrix changes and exit Revision? Vessels already saved or submitted will not be undone. If a save outcome is uncertain, verify that vessel before submitting again.", {
+                            title: "Exit Revision", actionLabel: "Discard and exit", cancelLabel: "Keep editing",
+                          })) tm.cancel();
                         }}
                         className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
                         data-testid="tm-cancel-button"
-                        disabled={tmEquivalentsDirty}
+                        disabled={tmEquivalentsDirty || tm.busy}
                       >
                         Cancel
                       </Button>
                       <Button
                         onClick={() => {
-                          if (tmSelectedVessels.length === 0) return;
-                          const vesselId = tmSelectedVessels[0];
-                          const applicableIds = Array.from(tmApplicableTrainings.get(vesselId) || new Set());
-                          const draftData = { applicableTrainingIds: applicableIds };
-                          tmSaveDraftMutation.mutate({ vesselId, draftData });
+                          void tm.save("draft");
                         }}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-save-draft-button"
-                        disabled={tmEquivalentsDirty}
+                        disabled={tmEquivalentsDirty || tm.busy || (!!tm.operationKind && tm.operationKind !== "draft")}
                       >
-                        Save Draft
+                        {tm.operationKind === "draft" ? "Retry / Check Drafts" : "Save Draft"}
                       </Button>
                       <Button
                         onClick={() => {
@@ -6830,20 +6628,13 @@ const AdminModuleInner = (): JSX.Element => {
                             });
                             return;
                           }
-                          const vesselId = tmSelectedVessels[0];
-                          const applicableIds = Array.from(tmApplicableTrainings.get(vesselId) || new Set());
-                          const revisionData = { applicableTrainingIds: applicableIds };
-                          tmSubmitRevisionMutation.mutate({ 
-                            vesselId, 
-                            revisionDate: tmFlexDate, 
-                            revisionData 
-                          });
+                          void tm.save("submit", tmFlexDate);
                         }}
                         className="h-8 bg-[#00AF7B] hover:bg-[#0f4078] text-white text-xs"
                         data-testid="tm-submit-button"
-                        disabled={tmEquivalentsDirty}
+                        disabled={tmEquivalentsDirty || tm.busy || (!!tm.operationKind && tm.operationKind !== "submit")}
                       >
-                        Submit
+                        {tm.operationKind === "submit" ? "Retry / Check Results" : "Submit"}
                       </Button>
                     </>
                   )}
@@ -6851,6 +6642,28 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             </div>
 
+            {!tmRevisionMode && tmSelectedVessels.length > 0 && !tm.ready && (
+              <div role="status" className="text-sm p-2" data-testid="tm-load-status">
+                {tm.loadErrors.length > 0 ? (
+                  <>Could not load all selected vessel matrices. No changes can be saved.
+                    <Button variant="outline" onClick={tm.retryLoads} data-testid="tm-retry-load">Retry loading</Button>
+                  </>
+                ) : "Loading selected vessel matrices…"}
+              </div>
+            )}
+            {tm.outcomes.length > 0 && (
+              <div role="status" className="text-xs p-2 border rounded mb-2 max-h-32 overflow-y-auto shrink-0" data-testid="tm-save-results">
+                {tm.busy && <p>Saving selected vessels…</p>}
+                {tm.outcomes.map(result => (
+                  <p key={result.vesselId}>
+                    {vesselOptions.find(v => v.value === result.vesselId)?.label || result.vesselId}:{" "}
+                    {result.outcome === "saved" ? "Saved" : result.outcome === "failed" ? "Failed — retry available" :
+                      result.outcome === "uncertain" ? "Outcome uncertain — check saved status; no automatic resubmission" : "Pending"}
+                  </p>
+                ))}
+                {tm.operationKind && <p>Only failed vessels will be retried. Uncertain outcomes are checked without writing again. Editing and vessel selection are locked until resolved or cancelled.</p>}
+              </div>
+            )}
             {/* Selected Vessels Revision Indicator */}
             {tmRevisionMode && tmSelectedVessels.length > 0 && (
               <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 ${currentBreakpoint === 'mobile' ? 'text-sm' : ''}`} data-testid="tm-selected-vessels-indicator">
@@ -6946,9 +6759,7 @@ const AdminModuleInner = (): JSX.Element => {
                     </TableRow>
                   ) : (
                     filteredCompanyTrainingData.map((training, index) => {
-                      const vesselId = tmSelectedVessels[0];
-                      const applicableSet = tmApplicableTrainings.get(vesselId) || new Set<number>();
-                      const isApplicable = applicableSet.has(training.id);
+                      const { checked: isApplicable, mixed } = tm.checkboxState(training.id);
 
                       return (
                         <TableRow 
@@ -6962,19 +6773,12 @@ const AdminModuleInner = (): JSX.Element => {
                               <input
                                 type="checkbox"
                                 checked={isApplicable}
-                                onChange={() => {
-                                  setTmApplicableTrainings(prev => {
-                                    const newMap = new Map(prev);
-                                    const vesselSet = new Set(newMap.get(vesselId) || []);
-                                    if (isApplicable) {
-                                      vesselSet.delete(training.id);
-                                    } else {
-                                      vesselSet.add(training.id);
-                                    }
-                                    newMap.set(vesselId, vesselSet);
-                                    return newMap;
-                                  });
-                                }}
+                                ref={el => { if (el) el.indeterminate = mixed; }}
+                                aria-checked={mixed ? "mixed" : isApplicable}
+                                aria-label={`Apply ${training.trainingLabel || training.id} to selected vessels`}
+                                title={mixed ? "Mixed applicability — click to apply to all selected vessels" : undefined}
+                                disabled={!tm.editable}
+                                onChange={event => tm.setChecked(training.id, event.target.checked)}
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 data-testid={`checkbox-app-to-vessel-${training.id}`}
                               />
@@ -6982,6 +6786,8 @@ const AdminModuleInner = (): JSX.Element => {
                               <input
                                 type="checkbox"
                                 checked={isApplicable}
+                                ref={el => { if (el) el.indeterminate = mixed; }}
+                                aria-checked={mixed ? "mixed" : isApplicable}
                                 disabled
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 opacity-60"
                               />
@@ -7045,9 +6851,10 @@ const AdminModuleInner = (): JSX.Element => {
             {tmSelectedVessels.length === 1 && (
               <TrainingEquivalentsEditor
                 vesselId={tmSelectedVessels[0]}
-                editable={tmRevisionMode && canEdit("Admin Training Matrix")}
+                editable={tm.editable && canEdit("Admin Training Matrix")}
                 draftData={{ applicableTrainingIds: Array.from(tmApplicableTrainings.get(tmSelectedVessels[0]) || new Set<number>()) }}
                 onDirtyChange={setTmEquivalentsDirty}
+                onSaved={() => { void queryClient.invalidateQueries({ queryKey: ["tm-vessel-baseline", tmSelectedVessels[0]] }); }}
               />
             )}
             </div>
