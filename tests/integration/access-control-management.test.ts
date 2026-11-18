@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Request } from "express";
 import { hasCompanyFormPermission, emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
-import { AUDIT_ACTION_LABELS, liveAuditActionLabel } from "../../shared/v2/admin/accessAuditPresentation";
+import { AUDIT_ACTION_LABELS, liveAuditActionLabel, presentAccessAudit } from "../../shared/v2/admin/accessAuditPresentation";
 const holder = vi.hoisted(() => ({ db: null as any }));
 vi.mock("@server/v2/db", () => ({ getDb: () => holder.db }));
 import { accessControlAuthority, appendAudit, lockAccessControl, managedWrite, managementSnapshot,
@@ -66,6 +66,8 @@ beforeEach(async () => {
   await pool.query(await readFile("migrations/0267_access_audit_actor_name.sql", "utf8"));
   await pool.query(await readFile("migrations/0268_access_audit_affected_role_name.sql", "utf8"));
   await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
+  await pool.query(await readFile("migrations/0275_access_audit_search.sql", "utf8"));
+  await pool.query(await readFile("migrations/0276_access_audit_menu_search_parts.sql", "utf8"));
   const rows = snapshotRows();
   for (let i = 0; i < rows.length; i++) {
     await pool.query("INSERT INTO adm_rolemaster_ac(ruid,assigned_role,roletype,parent_owned) VALUES ($1,$2,$3,true)", [rows[i].ruid, rows[i].role, rows[i].roletype]);
@@ -281,6 +283,10 @@ describe("Access Control real database authority, audit and parent synchronizati
     } finally { AUDIT_ACTION_LABELS.override = originalLabel; }
   });
   it("adds the permission label column idempotently without backfilling legacy events", async () => {
+    await pool.query(`DROP TRIGGER adm_audit_index_capture ON adm_access_control_audit;
+      DROP FUNCTION adm_audit_has_frozen_sentence(adm_access_control_audit);
+      DROP FUNCTION adm_audit_frozen_sentence(adm_access_control_audit);
+      DROP FUNCTION adm_audit_menu_parts(adm_access_control_audit)`);
     await pool.query("ALTER TABLE adm_access_control_audit DROP COLUMN permission_display_label");
     await pool.query(`INSERT INTO adm_access_control_audit(event,actor,resource,action,before_value,after_value)
       VALUES ('grant_change','{}','training_compliance','override','false','true')`);
@@ -289,8 +295,77 @@ describe("Access Control real database authority, audit and parent synchronizati
     await pool.query(await readFile("migrations/0269_access_audit_permission_label.sql", "utf8"));
     const after = (await audit())[0];
     expect(after).toEqual({ ...before, permission_display_label: null });
+    await pool.query(await readFile("migrations/0275_access_audit_search.sql", "utf8"));
+    await pool.query(await readFile("migrations/0276_access_audit_menu_search_parts.sql", "utf8"));
     expect((await readAccessAuditPage({ query: { page: "1" } } as unknown as Request)).items[0].sentence)
       .toContain(liveAuditActionLabel(after));
+  });
+  it("matches the previous audit sentences, search, filters, pages and export across capture eras", async () => {
+    await pool.query(`UPDATE master_users SET fullname='Álvaro İpek' WHERE id=1;
+      UPDATE adm_menumaster_ac SET display_name='Live menu 100%_!' WHERE muid='crew';
+      INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value,
+        details,recorded_at,actor_display_name,affected_role_name,permission_display_label) VALUES
+      ('grant_change','{"masterUserId":1}','target','menu:crew','edit','false','true',
+        '{"menuName":"Captured menu"}','2026-09-30T23:59:00Z',NULL,NULL,NULL),
+      ('grant_change','{}','target','access_control','manage','false','true','{}',
+        '2026-10-01T00:00:00Z','Frozen Actor',NULL,NULL),
+      ('grant_change','{}','target','company_forms','void_completed','false','true','{}',
+        '2026-10-01T01:00:00Z','Frozen Actor','Frozen Role',NULL),
+      ('grant_change','{}','target','training_compliance','override','false','true','{}',
+        '2026-10-01T23:59:00Z','Frozen Actor','Frozen Role','Original permission'),
+      ('grant_change','{}','target','menu:crew','edit','false','true','{"menuName":"Captured menu"}',
+        '2026-10-01T23:59:00Z','Frozen Actor','Frozen Role','Original permission'),
+      ('parent_sync_category_readiness','{"source":"trusted_parent_sync:fixture"}',NULL,'access_control',
+        'category_readiness','false','true','{}','2026-10-02T00:00:00Z',NULL,NULL,NULL),
+      ('legacy_unknown','{}','target','other','unknown_action',NULL,'true','{}',
+        '2026-10-02T00:01:00Z',NULL,NULL,NULL),
+      ('grant_change','{}','target','menu:missing','view','false','true','{}',
+        '2026-10-02T00:02:00Z',NULL,NULL,NULL);
+      INSERT INTO adm_access_control_audit(event,actor,role_id,resource,action,before_value,after_value,
+        recorded_at,actor_display_name,affected_role_name,permission_display_label)
+      SELECT 'grant_change','{}','target','training_compliance','override','false','true',
+        '2026-10-01T20:00:00Z','Page test','Frozen Role','Original permission' FROM generate_series(1,24);
+    `);
+    expect((await pool.query("SELECT count(*)::int AS n FROM adm_access_control_audit_search")).rows[0].n).toBe(26);
+    const old = async () => (await holder.db.execute(sql`SELECT a.*, coalesce(nullif(u.fullname,''),nullif(u.display_name,''),
+      nullif(trim(concat_ws(' ',u.firstname,u.lastname)),'')) AS actor_name, r.assigned_role AS role_name,
+      coalesce(nullif(m.display_name,''),m.name) AS menu_name
+      FROM adm_access_control_audit a LEFT JOIN master_users u ON u.id::text=a.actor->>'masterUserId'
+      LEFT JOIN adm_rolemaster_ac r ON r.ruid=a.role_id LEFT JOIN adm_menumaster_ac m
+        ON m.muid=substring(a.resource from 6) AND a.resource LIKE 'menu:%' ORDER BY a.id DESC`)).rows;
+    async function compare(query: Record<string, string>) {
+      const scope = (await old()).filter(row =>
+        (!query.roleId || row.role_id === query.roleId) &&
+        (!query.from || new Date(row.recorded_at).toISOString().slice(0, 10) >= query.from) &&
+        (!query.to || new Date(row.recorded_at).toISOString().slice(0, 10) <= query.to) &&
+        (query.filter === "management" ? row.resource === "access_control" && row.action === "manage" :
+          query.filter === "void_completed" ? row.resource === "company_forms" && row.action === "void_completed" :
+            query.filter === "parent_sync" ? row.event.startsWith("parent_sync") : true));
+      const unmapped = new Set<string>();
+      const all = scope.flatMap(row => {
+        const result = presentAccessAudit(row);
+        result.unmapped.forEach(key => unmapped.add(key));
+      return result.sentence.toLocaleLowerCase("en-GB").includes((query.search ?? "").trim().toLocaleLowerCase("en-GB"))
+          ? [{ ...row, sentence: result.sentence }] : [];
+      });
+      const page = Number(query.page), size = Number(query.pageSize ?? 20);
+      const selected = query.export === "all" ? all : all.slice((page - 1) * size, page * size);
+      const result = await readAccessAuditPage({ query } as unknown as Request);
+      expect(result).toEqual({ items: selected, total: all.length, page, pageSize: size, unmappedKeys: [...unmapped] });
+      expect(result.items.map(accessAuditExportRow)).toEqual(selected.map(accessAuditExportRow));
+    }
+    for (const query of [
+      { page: "1" }, { page: "2" }, { page: "20" },
+      { page: "1", search: "ÁLVARO İPEK GRANTED" }, { page: "1", search: "100%_!" },
+      { page: "1", search: "01 oct 2026" }, { page: "1", search: "Captured menu" },
+      { page: "1", search: "Original permission", roleId: "target", from: "2026-10-01", to: "2026-10-01", export: "all" },
+      { page: "1", filter: "parent_sync", search: "the parent application" },
+      { page: "1", filter: "management" }, { page: "1", filter: "void_completed" },
+    ]) await compare(query as Record<string, string>);
+    await pool.query("UPDATE adm_menumaster_ac SET display_name='Renamed menu' WHERE muid='crew'");
+    await compare({ page: "1", search: "Renamed menu" });
+    await pool.query("DELETE FROM adm_menumaster_ac WHERE muid='crew'");
+    await compare({ page: "1", search: "Captured menu" });
   });
   it("freezes the affected role name across rename and deletion, with separate current/frozen export values", async () => {
     await saveActionDecisions(req(), "target", "company_forms", { view: true });
@@ -541,7 +616,7 @@ describe("Access Control real database authority, audit and parent synchronizati
   });
   it("audit storage rejects update, delete and truncate", async () => {
     await management(1, "ordinary", true);
-    for (const statement of ["UPDATE adm_access_control_audit SET action='spoof'", "DELETE FROM adm_access_control_audit", "TRUNCATE adm_access_control_audit"])
+    for (const statement of ["UPDATE adm_access_control_audit SET action='spoof'", "DELETE FROM adm_access_control_audit", "TRUNCATE adm_access_control_audit, adm_access_control_audit_search"])
       await expect(pool.query(statement)).rejects.toThrow("append-only");
   });
   it("audit API exposes Management, Void completed and parent-sync events by UUID", async () => {
