@@ -20,6 +20,7 @@ import { supportsInitialStandardDraft } from "../../../../shared/v2/forms-engine
 import { admFormVersionsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
 import { isLegacyJsonDraftSource } from "./legacyStandardDraft";
 import { isLegacyStandardCategory } from "../../../../shared/v2/forms-engine/legacyStandardConfiguration";
+import { releasedStandardStructureError } from "./releasedStandardStructure";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -392,6 +393,23 @@ export const formsService = {
 
         for (const group of sortedGroups) {
           const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
+          // Briefing/Interview render version-owned structure. A NULL legacy
+          // JSON column is not evidence that their released version is absent.
+          // Keep Appraisal/Promotion and all other JSON consumers unchanged.
+          if ((form.category === "briefing" || form.category === "interview") && releasedVersion) {
+            const structureError = releasedVersion.formId !== form.id || releasedVersion.rankGroupId !== group.id
+              ? "The released form's structure has an incorrect form or rank-group owner. Ask an administrator to review the released version."
+              : await releasedStandardStructureError(form.formUuid, releasedVersion.fvUuid);
+            return {
+              ...form,
+              rankGroupName: group.name,
+              rankGroupConfig: null,
+              formVersionId: structureError ? null : releasedVersion.id,
+              formVersionUuid: structureError ? null : releasedVersion.fvUuid,
+              noReleasedVersion: !!structureError,
+              ...(structureError ? { structureError, noReleasedVersionReason: structureError } : {}),
+            };
+          }
           if (releasedVersion?.configuration) {
             selectedGroup = group;
             latestReleasedVersion = releasedVersion;

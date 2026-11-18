@@ -13,6 +13,9 @@ import express from "express";
 import request from "supertest";
 import * as admin from "../../shared/v2/admin/schema";
 import * as engine from "../../shared/v2/forms-engine/schema";
+import { masterUsers } from "../../shared/schema";
+import { crewBriefings } from "../../shared/v2/crew-pool/schema";
+import { recruitmentCandidatesV2, screeningB6Interviews, screeningB6InterviewItems } from "../../shared/v2/recruitment/schema";
 
 const state = vi.hoisted(() => ({ db: null as any, authorized: true }));
 vi.mock("../../server/v2/db", () => ({ getDb: () => state.db }));
@@ -25,8 +28,10 @@ import { formStructureRepository } from "../../server/v2/admin/repositories/form
 import { formsController } from "../../server/v2/admin/controllers/formsController";
 import { requirePermission } from "../../server/middleware/requirePermission";
 import { registerLegacyCases } from "./legacyCases";
+import { registerReleasedResolutionCases } from "./releasedResolutionCases";
 
-const tables = [...new Map([...Object.values(admin), ...Object.values(engine)]
+const tables = [...new Map([...Object.values(admin), ...Object.values(engine),
+  masterUsers, crewBriefings, recruitmentCandidatesV2, screeningB6Interviews, screeningB6InterviewItems]
   .filter((t): t is PgTable => is(t, PgTable)).map(t => [getTableConfig(t).name, t])).values()];
 const quote = (s: string) => `"${s.replaceAll('"', '""')}"`;
 let pool: Pool, directory: string;
@@ -82,6 +87,7 @@ async function fixture(category = "briefing", templates = true) {
 const versions = () => state.db.select().from(admin.admFormVersionsV2);
 const parts = () => state.db.select().from(engine.frmFormParts);
 registerLegacyCases(() => state.db, fixture);
+registerReleasedResolutionCases(() => state.db, fixture);
 
 describe("scoped first-draft transaction", () => {
   it.each(["briefing", "debriefing", "interview"])("initializes %s once, preserves templates, releases and copies normally", async category => {
