@@ -11,8 +11,15 @@ import assert from "node:assert/strict";
 import { expect } from "@playwright/test";
 
 const baseline = process.argv.includes("--baseline");
+const captureOnly = process.argv.includes("--capture");
+const realisticLabels = [
+  "Basic Training", "Personal Survival Techniques (PST)",
+  "Fire Prevention and Fire Fighting (FPFF)", "Elementary First Aid (EFA)",
+  "Personal Safety and Social Responsibilities (PSSR)", "Advanced Fire Fighting (AFF)",
+];
 const trainings = Array.from({ length: 80 }, (_, i) => ({
-  id: i + 1, companyId: `CT${i + 1}`, trainingLabel: `Training ${i + 1}`,
+  id: i + 1, companyId: `SA${String(i + 1).padStart(3, "0")}`,
+  trainingLabel: realisticLabels[i] || `Training ${i + 1}`,
   abr: i === 0 ? "ADVANCED-FIRE-FIGHTING-CERTIFICATE" : i === 1 ? "" : "AFF",
   requirement: "STCW", groupCode: "A", sortOrder: i,
 }));
@@ -20,6 +27,7 @@ const ranks = Array.from({ length: 24 }, (_, i) => ({
   id: i + 1, name: `Rank ${i + 1}`, label: `Rank ${i + 1}`,
   rankId: `R${i + 1}`, applicableToCompany: true,
 }));
+let rankCount = 24;
 const writes = [];
 let savedRequirements = [];
 let vesselDraft = null;
@@ -38,6 +46,7 @@ const bundle = await build({
       import {queryClient} from "./client/src/lib/queryClient";
       import {TooltipProvider} from "./client/src/components/ui/tooltip";
       import {AdminModule_v2} from "./client/src/modules/admin/AdminModule";
+      window.fixtureQueryClient=queryClient;
       createRoot(document.getElementById("root")).render(
         <QueryClientProvider client={queryClient}><TooltipProvider>
           <div style={{height:67}}>Training Matrix layout regression fixture</div>
@@ -67,6 +76,10 @@ const bundle = await build({
   }],
 });
 const server = createServer(async (req, res) => {
+  if (req.url.startsWith("/fixture/rank-count/")) {
+    rankCount = Number(req.url.split("/").pop());
+    return res.end("ok");
+  }
   if (req.url === "/bundle.js") {
     res.setHeader("content-type", "application/javascript");
     return res.end(bundle.outputFiles[0].text);
@@ -76,7 +89,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture");
     let data = [];
     if (url.pathname.endsWith("/company-trainings")) data = trainings;
-    if (url.pathname.endsWith("/available-ranks")) data = ranks;
+    if (url.pathname.endsWith("/available-ranks")) data = ranks.slice(0, rankCount);
     if (url.pathname.endsWith("/company-training-groups")) data = [{ code: "A", label: "Statutory" }];
     if (url.pathname.endsWith("/company-training-requirements")) data = savedRequirements;
     if (url.pathname.endsWith("/external/vessels")) data = {
@@ -140,6 +153,10 @@ try {
     cell: el.closest("td").getBoundingClientRect().width,
   }));
   console.log("Company abbreviation dimensions:", dimensions);
+  if (captureOnly) {
+    await page.screenshot({ path: "/tmp/training-matrix-company-edit.png" });
+    console.log("Captured isolated fixture: /tmp/training-matrix-company-edit.png");
+  }
   if (baseline) {
     assert.ok(dimensions.text > dimensions.client, "Baseline should reproduce clipped abbreviation");
     console.log("Baseline scroll owners:", await page.getByTestId("content-training-company").evaluate(el =>
@@ -147,7 +164,7 @@ try {
         class: d.className, height: d.clientHeight, scrollHeight: d.scrollHeight,
         bottom: d.getBoundingClientRect().bottom,
       }))));
-  } else {
+  } else if (!captureOnly) {
     assert.ok(dimensions.text <= dimensions.client + 1, "Full abbreviation must fit without input scrolling");
     console.log("PASS: existing long abbreviation fits while unfocused");
     const settle = () => page.evaluate(() => new Promise(resolve =>
@@ -162,7 +179,7 @@ try {
       assert.ok(size.content <= size.visible + 1, `Unclipped input: ${JSON.stringify(size)}`);
       assert.equal(size.left, 0, "No hidden text left of the cursor");
     };
-    const checkScrollPanel = async (kind, vertical = true) => {
+    const checkScrollPanel = async (kind, vertical = true, requireOverflow = true) => {
       const panel = page.getByTestId(`${kind}-training-table-viewport`);
       const scroll = panel.locator(":scope > div");
       await settle();
@@ -182,7 +199,7 @@ try {
       assert.ok(initial.bottom <= Math.min(initial.screen, initial.mainBottom) + 1,
         `${kind}: horizontal scrollbar stays on screen ${JSON.stringify(initial)}`);
       assert.ok(["auto", "scroll"].includes(initial.overflow), "Native horizontal scrolling retained");
-      assert.ok(initial.contentWidth > initial.width, `${kind}: rank columns overflow`);
+      if (requireOverflow) assert.ok(initial.contentWidth > initial.width, `${kind}: rank columns overflow`);
       if (vertical) assert.ok(initial.contentHeight > initial.height, `${kind}: rows scroll inside panel`);
 
       for (const fraction of [0, 0.5, 1]) {
@@ -209,10 +226,61 @@ try {
         assert.ok(bottom <= initial.screen + 1, `${kind}: scrollbar accessible at row fraction ${fraction}`);
       }
       await scroll.evaluate(el => { el.scrollTop = 0; el.scrollLeft = 0; });
-      await scroll.hover();
-      await page.mouse.wheel(500, 0);
-      await expect.poll(() => scroll.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+      if (initial.contentWidth > initial.width) {
+        await scroll.hover();
+        await page.mouse.wheel(500, 0);
+        await expect.poll(() => scroll.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+      }
       await scroll.evaluate(el => { el.scrollLeft = 0; });
+      await settle();
+      const overlap = await panel.locator("table").evaluate(table => {
+        const heads = [...table.tHead.rows[0].cells];
+        const cells = [...table.tBodies[0].rows[0].cells];
+        const fixed = heads.filter(cell => getComputedStyle(cell).position === "sticky");
+        const dataFixed = cells.filter(cell => getComputedStyle(cell).position === "sticky");
+        const overlaps = list => list.slice(1).some((cell, i) =>
+          cell.getBoundingClientRect().left < list[i].getBoundingClientRect().right - 1);
+        const firstUnfrozen = heads.find(cell => getComputedStyle(cell).position !== "sticky");
+        const covered = firstUnfrozen && fixed.length > 0 &&
+          firstUnfrozen.getBoundingClientRect().left < fixed.at(-1).getBoundingClientRect().right - 1;
+        return {
+          headerOverlap: overlaps(fixed), rowOverlap: overlaps(dataFixed), covered,
+          widths: fixed.map(cell => cell.getBoundingClientRect().width),
+          lefts: fixed.map(cell => cell.getBoundingClientRect().left),
+        };
+      });
+      assert.equal(overlap.headerOverlap, false, `${kind}: frozen headers must not overlap ${JSON.stringify(overlap)}`);
+      assert.equal(overlap.rowOverlap, false, `${kind}: frozen row cells must not overlap ${JSON.stringify(overlap)}`);
+      assert.equal(overlap.covered, false, `${kind}: first unfrozen column must not be covered ${JSON.stringify(overlap)}`);
+      if (kind === "company") {
+        // A fitting input can still be hidden behind the Training Label cell.
+        // Check actual hit targets at both edges, not only scrollWidth.
+        const abr = panel.locator('[data-testid="input-company-abr-1"]');
+        if (await abr.count()) {
+          // On phones the abbreviation initially lies beyond the viewport.
+          // Bring it beside (not underneath) the remaining frozen ID columns.
+          await abr.evaluate(el => {
+            const table = el.closest("table"), viewport = table.parentElement;
+            const fixed = [...table.tHead.rows[0].cells]
+              .filter(cell => getComputedStyle(cell).position === "sticky")
+              .reduce((width, cell) => width + cell.getBoundingClientRect().width, 0);
+            const rect = el.getBoundingClientRect(), bounds = viewport.getBoundingClientRect();
+            if (rect.left >= bounds.right - 4) viewport.scrollLeft += rect.left - bounds.left - fixed - 8;
+          });
+          await settle();
+          const exposed = await abr.evaluate(el => {
+            const r = el.getBoundingClientRect(), viewport = el.closest("table").parentElement.getBoundingClientRect();
+            const points = [r.left + 2, Math.min(r.right - 2, viewport.right - 2)]
+              .filter(x => x >= Math.max(viewport.left, r.left) && x < Math.min(viewport.right, r.right));
+            return points.length > 0 && points.every(x =>
+              el.contains(document.elementFromPoint(x, r.y + r.height / 2)));
+          });
+          assert.ok(exposed, "Abbreviation input edges must not be hidden by another column");
+          await assertInputFits(page.getByTestId("input-company-id-1"), "SA001");
+          await scroll.evaluate(el => { el.scrollLeft = 0; });
+          await settle();
+        }
+      }
       // The same table lays out headers and cells; verify measured alignment.
       const alignment = await panel.locator("table").evaluate(table => {
         const heads = [...table.tHead.rows[0].cells];
@@ -249,6 +317,22 @@ try {
     const writeCount = writes.length;
     await companyEdit().click();
     assert.equal(writes.length, writeCount, "Save without edits performs no write");
+
+    // Few ranks let auto-layout expand fixed tracks; many ranks compress them.
+    // Both cases must use the measured track widths rather than nominal offsets.
+    for (const count of [1, 3, 24]) {
+      await page.evaluate(async count => {
+        await fetch("/fixture/rank-count/" + count);
+        await window.fixtureQueryClient.invalidateQueries({
+          predicate: query => query.queryKey.includes("available-ranks"),
+        });
+      }, count);
+      await expect(page.getByTestId("company-training-table-viewport").locator("thead th")).toHaveCount(6 + count);
+      await checkScrollPanel("company", true, false);
+      await companyEdit().click();
+      await checkScrollPanel("company", true, false);
+      await companyEdit().click();
+    }
 
     for (const [width, height] of [[1280, 800], [900, 800], [390, 800], [1280, 600], [390, 667]]) {
       await page.setViewportSize({ width, height });
@@ -314,7 +398,7 @@ try {
     console.log("PASS: filters, empty results, resize, tab switches, Vessel Cancel/Save Draft/Submit; Training Master remains unchanged");
   }
   assert.deepEqual(errors, [], "No browser runtime errors");
-  if (baseline) assert.equal(writes.length, 0, "Opening and measuring the table must not write data");
+  if (baseline || captureOnly) assert.equal(writes.length, 0, "Opening and measuring the table must not write data");
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

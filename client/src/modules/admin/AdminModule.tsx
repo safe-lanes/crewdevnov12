@@ -10,6 +10,7 @@ import { readListVersions, storedStandardVersion, standardInitialVersionLabel, t
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { StandardVersionCell } from "./components/StandardVersionCell";
 import { CompanyAbbreviationInput } from "./components/CompanyAbbreviationInput";
+import { TrainingMatrixTable } from "./components/TrainingMatrixTable";
 import { isStandardVersionCategory, type StandardVersionOpening } from "@/lib/standardVersionOpening";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6384,11 +6385,11 @@ const AdminModuleInner = (): JSX.Element => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-0 flex-1 flex flex-col overflow-hidden">
               {/* The Table's own wrapper owns both axes, bounded by the panel. */}
               <div className="min-h-0 flex-1 overflow-hidden relative [&>div]:h-full" data-testid="company-training-table-viewport">
-                  <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
+                  <TrainingMatrixTable frozenColumns={3} className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
                     <TableHeader className="sticky top-0 z-50">
                       <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
-                        <TableHead className="w-28 text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
+                        <TableHead className="w-12 min-w-[48px] text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
+                        <TableHead className="w-28 min-w-[112px] text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
                         <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 max-md:static z-40 bg-[#52baf3]">Training Label</TableHead>
                         <TableHead className={`${isCompanyTrainingEditing ? "min-w-[176px]" : "w-24"} text-xs font-normal text-white bg-[#52baf3]`}>Abr</TableHead>
                         <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
@@ -6636,7 +6637,7 @@ const AdminModuleInner = (): JSX.Element => {
                       </TableRow>
                     ))}
                     </TableBody>
-                  </Table>
+                  </TrainingMatrixTable>
               </div>
             </div>
           </div>
@@ -6880,15 +6881,15 @@ const AdminModuleInner = (): JSX.Element => {
             <div className="flex-1 min-h-0 overflow-y-auto pb-4" data-testid="training-vessel-scroll">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[50vh] max-h-full min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 flex-1 overflow-hidden relative [&>div]:h-full" data-testid="vessel-training-table-viewport">
-                <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
+                <TrainingMatrixTable frozenColumns={4} className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
                   <TableHeader className="sticky top-0 z-50">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       {/* App to Vessel column - first column */}
-                      <TableHead className="w-20 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">
+                      <TableHead className="w-20 min-w-[80px] text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">
                         <div className="leading-tight">App. To<br/>Vessel</div>
                       </TableHead>
-                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-20 z-40 bg-[#52baf3]">#</TableHead>
-                      <TableHead className="w-28 text-xs font-normal text-white sticky left-32 z-40 bg-[#52baf3]">Company ID</TableHead>
+                      <TableHead className="w-12 min-w-[48px] text-center text-xs font-normal text-white sticky left-20 z-40 bg-[#52baf3]">#</TableHead>
+                      <TableHead className="w-28 min-w-[112px] text-xs font-normal text-white sticky left-32 z-40 bg-[#52baf3]">Company ID</TableHead>
                       <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-60 max-md:static z-40 bg-[#52baf3]">Training Label</TableHead>
                       <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
                       <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
@@ -7038,7 +7039,7 @@ const AdminModuleInner = (): JSX.Element => {
                     })
                   )}
                   </TableBody>
-                </Table>
+                </TrainingMatrixTable>
               </div>
             </div>
             {tmSelectedVessels.length === 1 && (
