@@ -5,6 +5,8 @@ import { PromotionFormEditor } from '@/components/PromotionFormEditor';
 import { GenericFormEditor, type ConfigurableFormPart } from '@/components/GenericFormEditor';
 import { Form } from '@shared/schema';
 import { supportsInitialStandardDraft } from '@shared/v2/forms-engine/initialStandardDraft';
+import { isStandardVersionCategory, type StandardVersionOpening } from "@/lib/standardVersionOpening";
+import { StandardVersionOpeningGate } from "./StandardVersionOpening";
 
 // Dynamic form editor mapping
 const formEditors: Record<string, React.ComponentType<any>> = {
@@ -22,6 +24,7 @@ interface FormEditorFactoryProps {
   useV2?: boolean;
   readOnly?: boolean;
   initialPreview?: boolean;
+  standardOpening?: StandardVersionOpening;
   onClose: () => void;
   onSave: (data: any) => void;
 }
@@ -36,6 +39,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   useV2,
   readOnly,
   initialPreview,
+  standardOpening,
   onClose,
   onSave
 }) => {
@@ -64,9 +68,10 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
     );
   }
 
-  return (
+  const explicitOpening = isStandardVersionCategory(form.category) ? standardOpening : undefined;
+  const editor = (
     <EditorComponent
-      key={supportsInitialStandardDraft(form.category) ? `${(form as Form & { originalFormId?: number }).originalFormId ?? form.id}:${rankGroupId ?? rankGroupName ?? ""}` : undefined}
+      key={explicitOpening || supportsInitialStandardDraft(form.category) ? `${(form as Form & { originalFormId?: number }).originalFormId ?? form.id}:${rankGroupId ?? rankGroupName ?? ""}:${explicitOpening?.versionId ?? ""}` : undefined}
       form={form}
       formName={formName}
       rankGroupName={rankGroupName}
@@ -76,10 +81,15 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
       useV2={useV2}
       readOnly={readOnly || (supportsInitialStandardDraft(form.category) && Boolean((form as Form & { archivedAt?: unknown }).archivedAt))}
       initialPreview={initialPreview}
+      initialVersionId={explicitOpening?.versionId}
       onClose={onClose}
       onSave={onSave}
     />
   );
+  return explicitOpening ? <StandardVersionOpeningGate
+    key={`${(form as any).originalFormId ?? form.id}:${explicitOpening.rankGroupId}:${explicitOpening.versionId}`}
+    formId={(form as any).originalFormId ?? form.id} opening={explicitOpening} onClose={onClose}
+  >{editor}</StandardVersionOpeningGate> : editor;
 };
 
 // Function to register a new form editor

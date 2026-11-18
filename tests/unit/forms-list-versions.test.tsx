@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { loadRowVersions, readListVersions, storedStandardVersion } from "../../client/src/modules/admin/formsListVersions";
 import { VersionLoadStatus } from "../../client/src/modules/admin/components/VersionLoadStatus";
+import { StandardVersionCell, standardRowVersions } from "../../client/src/modules/admin/components/StandardVersionCell";
 
 const version = (id: number, versionNo: string, status: string) =>
   ({ id, formId: 1, rankGroupId: 7, versionNo, versionDate: "03-Jun-2026", status });
@@ -18,6 +19,37 @@ describe("Truthful Forms Configuration versions", () => {
   it("uses a real draft's own number and date only when no release exists", () => {
     expect(storedStandardVersion([version(1, "03", "draft")], 7)).toEqual(version(1, "03", "draft"));
     expect(storedStandardVersion([version(1, "03", "draft")], 8)).toBeUndefined();
+  });
+  it("keeps released and draft identities separate even with identical version numbers", () => {
+    const release = version(1, "09", "released"), draft = version(2, "09", "draft");
+    expect(standardRowVersions([release, draft, { ...version(3, "10", "draft"), rankGroupId: 8 }], 7))
+      .toEqual({ primary: release, draft });
+  });
+  it.each(["draft", "released"])("shows a numbered %s badge without inventing another version", status => {
+    render(<StandardVersionCell versions={[version(1, "03", status)]} rankGroupId={7} onOpenDraft={vi.fn()} />);
+    expect(screen.getByText("v03")).toBeInTheDocument();
+    expect(screen.getByText(status === "draft" ? "Draft" : "Released")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Draft" })).not.toBeInTheDocument();
+  });
+  it("shows both real statuses and passes the existing draft's ID when opened", () => {
+    const open = vi.fn(), draft = version(2, "10", "draft");
+    render(<StandardVersionCell versions={[version(1, "09", "released"), draft]} rankGroupId={7} onOpenDraft={open} />);
+    expect(screen.getByText("v09")).toBeInTheDocument();
+    expect(screen.getByText("Released")).toBeInTheDocument();
+    expect(screen.getByText("v10")).toBeInTheDocument();
+    expect(screen.getByText("Draft")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open Draft" }));
+    expect(open).toHaveBeenCalledWith(draft);
+  });
+  it("labels a versionless group as not initialized, not a saved Draft", () => {
+    render(<StandardVersionCell versions={[]} rankGroupId={7} onOpenDraft={vi.fn()} />);
+    expect(screen.getByText("v00 · Not initialized")).toBeInTheDocument();
+    expect(screen.queryByText("Draft")).not.toBeInTheDocument();
+  });
+  it("does not offer editable draft navigation in a read-only context", () => {
+    render(<StandardVersionCell versions={[version(1, "09", "released"), version(2, "10", "draft")]}
+      rankGroupId={7} readOnly onOpenDraft={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Open Draft" })).toBeDisabled();
   });
   it("refuses malformed responses rather than replacing them with an empty successful list", () => {
     expect(() => readListVersions({ error: "unavailable" })).toThrow();

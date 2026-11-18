@@ -8,6 +8,8 @@ import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { readListVersions, storedStandardVersion, standardInitialVersionLabel, type VersionLoadResult } from "./formsListVersions";
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
+import { StandardVersionCell } from "./components/StandardVersionCell";
+import { isStandardVersionCategory, type StandardVersionOpening } from "@/lib/standardVersionOpening";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -623,6 +625,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [trainingSearchFilter, setTrainingSearchFilter] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<(Form & { subjectType?: string | null }) | null>(null);
+  const [standardOpening, setStandardOpening] = useState<StandardVersionOpening | undefined>();
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [editingRankGroupId, setEditingRankGroupId] = useState<number | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
@@ -3772,7 +3775,13 @@ const AdminModuleInner = (): JSX.Element => {
     deleteFormMutation.mutate(form.id);
   };
 
-  const handleEditClick = (form: Form) => {
+  const handleEditClick = (form: Form, versionId?: number) => {
+    const row = form as Form & { rankGroupId?: number; originalFormId?: number };
+    const groupId = row.rankGroupId ?? null;
+    const primary = storedStandardVersion(allFormVersions.filter(v => v.formId === (row.originalFormId ?? row.id)), groupId);
+    setStandardOpening(isStandardVersionCategory(form.category)
+      ? { versionId: versionId ?? primary?.id ?? null, rankGroupId: groupId } : undefined);
+    setPreviewCompanyForm(false);
     setEditingForm(form);
     setEditingRankGroup(form.rankGroup || ""); // Use the actual rank group from the form
     setEditingRankGroupId((form as Form & { rankGroupId?: number }).rankGroupId ?? null);
@@ -3832,6 +3841,7 @@ const AdminModuleInner = (): JSX.Element => {
         row => row.rankGroupId === copiedTarget.id,
       );
       if (formRow) {
+        setStandardOpening(undefined);
         setEditingForm(formRow);
         setEditingRankGroup(copiedTarget.name);
         setEditingRankGroupId(copiedTarget.id);
@@ -4054,6 +4064,8 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleCloseEditor = () => {
+    if (standardOpening) void rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+    setStandardOpening(undefined);
     setEditingForm(null);
     setEditingRankGroup(null);
     setEditingRankGroupId(null);
@@ -8818,16 +8830,13 @@ const AdminModuleInner = (): JSX.Element => {
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       <div className="flex items-center gap-2">
                         {versionState(form.originalFormId) === "loaded"
-                          ? <span>{standardInitialVersionLabel(form.category, form.versionNo || "")}</span>
+                          ? isStandardVersionCategory(form.category) ? <StandardVersionCell
+                              versions={allFormVersions.filter(v => v.formId === form.originalFormId)}
+                              rankGroupId={form.rankGroupId ?? null}
+                              readOnly={Boolean((form as CompanyForm).archivedAt) || (permissions.length > 0 && !canEdit("Forms"))}
+                              onOpenDraft={version => handleEditClick(form, version.id)}
+                            /> : <span>{standardInitialVersionLabel(form.category, form.versionNo || "")}{form.hasDraft ? " · Draft" : ""}</span>
                           : <VersionLoadStatus state={versionState(form.originalFormId)} retry={() => void retryFormVersions(form.originalFormId)} />}
-                        {versionState(form.originalFormId) === "loaded" && form.hasDraft && (
-                          <span
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
-                            data-testid={`badge-draft-${form.id}`}
-                          >
-                            Draft
-                          </span>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
@@ -8930,8 +8939,10 @@ const AdminModuleInner = (): JSX.Element => {
             return null;
           })()}
           useV2={true}
-          readOnly={previewCompanyForm || Boolean((editingForm as CompanyForm).archivedAt)}
+          readOnly={previewCompanyForm || Boolean((editingForm as CompanyForm).archivedAt)
+            || (isStandardVersionCategory(editingForm.category) && permissions.length > 0 && !canEdit("Forms"))}
           initialPreview={previewCompanyForm}
+          standardOpening={standardOpening}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />
