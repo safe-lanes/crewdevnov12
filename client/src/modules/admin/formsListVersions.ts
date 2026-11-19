@@ -1,3 +1,9 @@
+import { supportsInitialStandardDraft } from "@shared/v2/forms-engine/initialStandardDraft";
+
+export function standardInitialVersionLabel(category: unknown, storedVersionNo: string) {
+  return storedVersionNo ? `v${storedVersionNo}` : supportsInitialStandardDraft(category) ? "v00" : "No versions";
+}
+
 export type ListVersion = {
   id: number;
   formId: number;

@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+// These tests exercise the pure summary function, never a database connection.
+vi.mock("../../server/v2/db", () => ({ getDb: () => { throw new Error("Unexpected database access in summary unit test"); } }));
 import { attachFormListSummaries } from "../../server/v2/admin/services/formsListSummary";
 import type { AdmFormV2 } from "../../shared/v2/admin/types";
 

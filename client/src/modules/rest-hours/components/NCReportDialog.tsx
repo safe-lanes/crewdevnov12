@@ -11,8 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { StatusBadge } from "@/components/ui/status-badge";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
@@ -29,6 +28,9 @@ interface NCReportDialogProps {
   crewRecord: RestHoursCrewRecord;
   vesselName: string;
 }
+
+type SavedNCReport = NCReport & { ncReportUuid?: string; uuid?: string };
+type SaveAction = "save" | "vessel-submitted" | "office-submitted";
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
   'A': "Minimum 10 hours of rest in any 24 hour period",
@@ -75,6 +77,10 @@ function getCurrentUserFromSession(): { name: string; designation: string } | nu
 
 export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: vesselIdProp }: NCReportDialogProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const savedReportRef = useRef<SavedNCReport | null>(null);
+  const preserveFieldsOnConflict = useRef(false);
+  const savingRef = useRef(false);
   const [identifiedRootCause, setIdentifiedRootCause] = useState("");
   const [immediateCorrectiveAction, setImmediateCorrectiveAction] = useState("");
   const [preventiveAction, setPreventiveAction] = useState("");
@@ -139,6 +145,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
   // Use crewMemberId (empNo like "V2-000001") for all V2 API calls
   const crewMemberId = crewRecord.crewMemberId;
+  const reportQueryKey = ['v2', 'rest-hours', 'nc-reports', 'by-crew', crewMemberId];
   const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, crewRecord.vesselId, crewRecord.monthValue],
     queryFn: async () => {
@@ -153,23 +160,33 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   });
 
   // Fetch existing NC report
-  const { data: existingReport, isLoading } = useQuery<NCReport | null>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', 'by-crew', crewMemberId],
+  const { data: existingReport, isLoading, isError: reportLoadFailed, refetch: retryReportLoad } = useQuery<NCReport | null>({
+    queryKey: reportQueryKey,
     queryFn: async () => {
       if (!crewMemberId) return null;
-      try {
-        const reports = await restHoursApiV2.ncReports.getAll();
-        const filtered = reports.filter((r: any) => r.crewMemberId === crewMemberId);
-        return filtered && filtered.length > 0 ? filtered[0] : null;
-      } catch (error) {
-        return null;
-      }
+      // A failed refresh is not evidence that this is a new report. Let Query
+      // retain its last successful response/UUID rather than replacing it with null.
+      const reports = await restHoursApiV2.ncReports.getAll();
+      const filtered = reports.filter((r: any) => r.crewMemberId === crewMemberId);
+      return filtered && filtered.length > 0 ? filtered[0] : null;
     },
     enabled: open && !!crewMemberId,
   });
 
   // Update form fields when existing report is loaded
   useEffect(() => {
+    if (!open) {
+      preserveFieldsOnConflict.current = false;
+      return;
+    }
+    savedReportRef.current = existingReport || null;
+    // A rejected stale save must refresh workflow/locking without discarding
+    // the user's unsaved content. Reopening loads the saved content normally.
+    if (existingReport) {
+      setSubmissionStatus((existingReport.submissionStatus as any) || "draft");
+      setStatus((existingReport.status as any) || "Open");
+    }
+    if (preserveFieldsOnConflict.current) return;
     if (existingReport) {
       setIdentifiedRootCause(existingReport.identifiedRootCause || "");
       setImmediateCorrectiveAction(existingReport.immediateCorrectiveAction || "");
@@ -180,8 +197,6 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setOfficeClosureVerifiedByName(existingReport.officeClosureVerifiedByName || "");
       setOfficeClosureVerifiedByPositionFallback(existingReport.officeClosureVerifiedByPosition || "");
       setOfficeClosureDate(existingReport.officeClosureDate ? new Date(existingReport.officeClosureDate) : undefined);
-      setSubmissionStatus(existingReport.submissionStatus as any);
-      setStatus((existingReport.status as any) || "Open");
     } else {
       // Reset form for new report
       setIdentifiedRootCause("");
@@ -196,7 +211,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setSubmissionStatus("draft");
       setStatus("Open");
     }
-  }, [existingReport]);
+  }, [existingReport, open]);
 
   // Auto-select current user from sessionStorage when opening new report
   useEffect(() => {
@@ -218,10 +233,15 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
   // Save/Submit mutation
   const saveMutation = useMutation({
-    mutationFn: async (submissionStatus: "draft" | "vessel-submitted" | "office-submitted") => {
-      // Determine NC status based on submission status
-      const ncStatus = submissionStatus === "office-submitted" ? "Closed" : "Open";
-      
+    onMutate: () => queryClient.cancelQueries({ queryKey: reportQueryKey, exact: true }),
+    mutationFn: async (action: SaveAction) => {
+      const current = savedReportRef.current || (existingReport as SavedNCReport | null);
+      const reportUuid = current?.ncReportUuid || current?.uuid;
+      // Existing-report Save changes content only. A first Save still creates
+      // a Draft; explicit submission actions carry their intended next stage.
+      const workflow = action === "save"
+        ? reportUuid ? {} : { submissionStatus: "draft", status: "Open" }
+        : { submissionStatus: action, status: action === "office-submitted" ? "Closed" : "Open" };
       const data = {
         crewMemberId: crewMemberId,
         vesselId: crewRecord.vesselId,
@@ -237,39 +257,65 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         officeClosureVerifiedByName,
         officeClosureVerifiedByPosition: selectedUserPosition,
         officeClosureDate,
-        status: ncStatus,
-        submissionStatus: submissionStatus,
+        ...workflow,
       };
       
       // If there's an existing report, update it; otherwise create new
-      const reportUuid = (existingReport as any)?.ncReportUuid || (existingReport as any)?.uuid;
-      if (existingReport && reportUuid) {
+      if (reportUuid) {
         return await restHoursApiV2.ncReports.update(reportUuid, data);
       }
       return await restHoursApiV2.ncReports.create(data);
     },
-    onSuccess: (_, submissionStatus) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'nc-reports'] });
-      const statusText = submissionStatus === "draft" ? "saved" : submissionStatus === "vessel-submitted" ? "submitted by vessel" : "submitted by office";
+    onSuccess: async (saved: SavedNCReport, action) => {
+      savedReportRef.current = saved;
+      preserveFieldsOnConflict.current = false;
+      await queryClient.cancelQueries({ queryKey: reportQueryKey, exact: true });
+      queryClient.setQueryData(reportQueryKey, saved);
+      setSubmissionStatus((saved.submissionStatus as any) || "draft");
+      setStatus((saved.status as any) || "Open");
+      void queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'nc-reports'] });
+      const statusText = action === "save" ? "saved" : action === "vessel-submitted" ? "submitted by vessel" : "submitted by office";
       toast({
         title: "Success",
         description: `NC Report ${statusText} successfully`,
       });
-      setSubmissionStatus(submissionStatus);
-      setStatus(submissionStatus === "office-submitted" ? "Closed" : "Open");
     },
-    onError: () => {
+    onError: async (error: Error) => {
+      const conflict = /^409:/.test(error.message);
       toast({
         title: "Error",
-        description: "Failed to save NC report. Please try again.",
+        description: conflict
+          ? "This NC report has changed or is locked. Your changes were not saved. Refreshing its status; reopen to review the saved content."
+          : "Failed to save NC report. Please try again.",
         variant: "destructive",
       });
+      if (conflict) {
+        preserveFieldsOnConflict.current = true;
+        const uuid = savedReportRef.current?.ncReportUuid || savedReportRef.current?.uuid;
+        if (uuid) {
+          try {
+            await queryClient.cancelQueries({ queryKey: reportQueryKey, exact: true });
+            const fresh = await restHoursApiV2.ncReports.getByUuid(uuid);
+            savedReportRef.current = fresh;
+            queryClient.setQueryData(reportQueryKey, fresh);
+            void queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'nc-reports'] });
+          } catch {
+            toast({ title: "Status refresh failed", description: "Your changes were not saved. Close and reopen the report before trying again.", variant: "destructive" });
+          }
+        }
+      }
     },
+    onSettled: () => { savingRef.current = false; },
   });
 
+  const saveReport = (action: SaveAction) => {
+    if (savingRef.current || submissionStatus === "office-submitted") return;
+    savingRef.current = true;
+    saveMutation.mutate(action);
+  };
   const handleSave = () => {
     if (!validateDates()) return;
-    saveMutation.mutate("draft");
+    saveReport("save");
   };
   const handleVesselSubmit = () => {
     if (!validateDates()) return;
@@ -291,11 +337,11 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       });
       return;
     }
-    saveMutation.mutate("vessel-submitted");
+    saveReport("vessel-submitted");
   };
   const handleOfficeSubmit = () => {
     if (!validateDates()) return;
-    saveMutation.mutate("office-submitted");
+    saveReport("office-submitted");
   };
 
   const isReadOnly = submissionStatus === "office-submitted";
@@ -377,6 +423,11 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
         {isLoading ? (
           <div className="py-8 text-center text-gray-500">Loading...</div>
+        ) : reportLoadFailed && !existingReport ? (
+          <div role="alert" className="py-8 text-center">
+            <p>Unable to load the NC report. No changes have been saved.</p>
+            <Button variant="outline" onClick={() => void retryReportLoad()} className="mt-3">Retry</Button>
+          </div>
         ) : (
           <div className="space-y-6">
             {/* Header Information - 3 Column Layout */}

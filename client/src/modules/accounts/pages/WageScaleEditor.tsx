@@ -43,7 +43,6 @@ import { formatDate, formatMoney, yearStepToMonths } from "../accountsFormat";
 import {
   getRevisionDateError,
   getWageScaleDateError,
-  minimumWageStart,
   revisionMinimum,
   type PredecessorAdjustment,
   shiftIsoDate,
@@ -124,7 +123,7 @@ export default function WageScaleEditor({
 
   const revisionDateLimit = (() => {
     if (!supersedes) {
-      return { min: minimumWageStart(), error: null };
+      return { min: undefined, error: null };
     }
     try {
       return { min: revisionMinimum(supersedes), error: null };

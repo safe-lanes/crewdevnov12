@@ -41,6 +41,7 @@ import { RequiredFormDetails } from "@/components/configured-form/RequiredFormDe
 import { JoiningCompanyForms } from "./JoiningCompanyForms";
 import { TrainingMatrixCompliance } from "./TrainingMatrixCompliance";
 import { AcceptedChecklistHistory } from "./AcceptedChecklistHistory";
+import { getSignOnDateError } from "@shared/v2/vessel/signOnValidation";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -131,6 +132,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const { ask, dialog } = useAppDialog();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const submitLock = React.useRef(false);
+    const signOnCompleted = React.useRef(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [signOnDraftValid, setSignOnDraftValid] = useState(true);
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
     const [blockerForm, setBlockerForm] = useState<{ subjectRef: string; requirementUuid: string; name: string } | null>(null);
     const { permissions, roleName, userType, canCompanyFormAction } = usePermissions();
@@ -212,6 +217,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             if (formSubjectRef.current === subjectKey) return;
             formSubjectRef.current = subjectKey;
         }
+        signOnCompleted.current = false;
         setAssignmentDetails(null);
         setAssignmentError(null);
         setClearReason('');
@@ -252,6 +258,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     }, [open, planningData, form, rankId, vesselUuid]);
 
     const handleDialogOpenChange = async (nextOpen: boolean) => {
+        if (submitLock.current) return;
         if (!nextOpen && formIsDirty && !await ask("Discard unsaved changes?", {
           title: "Close reliever status", actionLabel: "Discard changes", cancelLabel: "Keep editing",
         })) return;
@@ -281,13 +288,15 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         });
     };
 
-    const refreshAfterSave = async () => {
+    const refreshAfterSave = async (throwOnError = false) => {
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }, { throwOnError }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }, { throwOnError }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool'] }, { throwOnError }),
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', 'planning', planningData?.planUuid] }, { throwOnError }),
             queryClient.invalidateQueries({
                 queryKey: ["training-matrix-compliance", planningData?.planUuid ?? null, planningData?.relieverAssignUuid ?? null],
-            }),
+            }, { throwOnError }),
         ]);
     };
 
@@ -354,17 +363,25 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
         if (data.signOnStatus === "Signed On" && futureDateDraft.blocked) return;
+        const isSigningOn = data.signOnStatus === "Signed On";
+        let signOnRequested = false;
         try {
-            const isSigningOn = data.signOnStatus === "Signed On";
             let saveResult: any;
             
-            if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
+            if (isSigningOn) {
+                const dateError = !signOnDraftValid ? "Enter a valid Sign On Date."
+                    : getSignOnDateError(data.relieverSignOnDate, format(new Date(), "yyyy-MM-dd"));
+                if (dateError || !planningData?.planUuid || !(planningData.relieverCrewUuid || planningData.relieverCrewId)) {
+                    toast({ title: "Validation Error", description: dateError || "Reload and select the assigned crew member before signing on.", variant: "destructive" });
+                    return;
+                }
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
                 // and moves reliever to on-board crew
                 const signOnDate = data.relieverSignOnDate || null;
                 const signOnPort = data.relieverSignOnPort || null;
                 const contractPeriodMonths = data.relieverContractPeriodMonths ?? null;
                 
+                signOnRequested = true;
                 saveResult = await vesselApiV2.signOnReliever(planningData.planUuid, {
                     relieverCrewUuid: planningData.relieverCrewUuid,
                     signOnDate,
@@ -404,6 +421,23 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 }
             }
             
+            if (isSigningOn) {
+                // The response intentionally clears reliever fields. Never reset an
+                // editable sign-on form from that post-transition planning record.
+                signOnCompleted.current = true;
+                onOpenChange(false);
+                const warnings = saveResult?.signOnWarnings ?? [];
+                toast({
+                    title: warnings.length ? "Signed on — follow-up needed" : "Success",
+                    description: `Crew signed on successfully.${warnings.length ? ` ${warnings.join(" ")}` : ""}`,
+                });
+                try {
+                    await refreshAfterSave(true);
+                } catch {
+                    toast({ title: "Signed on — refresh needed", description: "Sign-on was saved. Refresh the vessel and crew views to see the latest status; do not submit sign-on again." });
+                }
+                return;
+            }
             await refreshAfterSave();
             resetAfterSave(data, saveResult);
             
@@ -413,6 +447,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             });
         } catch (error: any) {
             console.error('Relief status save error:', error);
+            const status = Number(String(error?.message ?? "").match(/^(\d{3}):/)?.[1]);
+            if (signOnRequested && (!status || status >= 500)) {
+                // A lost response can follow a committed transaction. Do not offer
+                // a blind retry or claim that the crew remains unsigned-on.
+                signOnCompleted.current = true;
+                onOpenChange(false);
+                toast({ title: "Sign-on status needs checking", description: "The server outcome could not be confirmed. Refresh and check the crew's onboard status before trying again.", variant: "destructive" });
+                await refreshAfterSave(true).catch(() => {
+                    toast({ title: "Refresh needed", description: "The latest crew status could not be loaded. Refresh the page or ask the office to confirm the sign-on before retrying." });
+                });
+                return;
+            }
             const conflict = parseChecklistConflict(error);
             if (conflict && data.deploymentChecklistCompleted === true && planningData?.planUuid) {
                 setChecklistConflict(conflict);
@@ -589,6 +635,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     };
 
     const handleSubmit = form.handleSubmit(async (data) => {
+        if (submitLock.current || signOnCompleted.current) return;
+        submitLock.current = true;
+        setIsSaving(true);
+        try {
         if (unassignChecked) {
             setShowUnassignConfirm(true);
             return;
@@ -606,9 +656,13 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             data.travelStartDate = normalizeToIsoDate(data.travelStartDate);
         }
 
-        if (data.signOnStatus === "Signed On" && !data.relieverSignOnDate) {
-            toast({ title: "Validation Error", description: "Sign On Date is required.", variant: "destructive" });
-            return;
+        if (data.signOnStatus === "Signed On") {
+            const error = !signOnDraftValid ? "Enter a valid Sign On Date."
+                : getSignOnDateError(data.relieverSignOnDate, format(new Date(), "yyyy-MM-dd"));
+            if (error) {
+                toast({ title: "Validation Error", description: error, variant: "destructive" });
+                return;
+            }
         }
 
         if (data.signOnStatus === "In Transit" && !data.travelStartDate) {
@@ -616,13 +670,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return;
         }
 
-        if (data.signOnStatus === "Signed On") {
-            const todayStr = format(new Date(), 'yyyy-MM-dd');
-            if (data.relieverSignOnDate && data.relieverSignOnDate > todayStr) {
-                toast({ title: "Validation Error", description: "Sign On Date cannot be a future date when Sign On Status is Signed On.", variant: "destructive" });
-                return;
-            }
-        }
         
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
@@ -650,7 +697,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 applicableDocsChecked: undefined,
             };
             
-            handleSaveV2(clearedData);
+            await handleSaveV2(clearedData);
         } else {
             const requiresConflictCheck = data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On";
             const relieverCrewUuid = planningData?.relieverCrewUuid || planningData?.relieverCrewId;
@@ -660,7 +707,11 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 if (hasConflict) return;
             }
             
-            handleSaveV2(data);
+            await handleSaveV2(data);
+        }
+        } finally {
+            submitLock.current = false;
+            setIsSaving(false);
         }
     });
     
@@ -729,6 +780,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             >
                 <VesselDateInput
                     value={getInputDate(field.value)}
+                    onDraftValidityChange={field.name === "relieverSignOnDate" ? setSignOnDraftValid : undefined}
                     disabled={!isRelieverAssigned}
                     min={min}
                     max={max}
@@ -1215,10 +1267,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict || (!unassignChecked && watchedSignOnStatus === "Signed On" && futureDateDraft.blocked)}
+                                disabled={!isRelieverAssigned || isSaving || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict || (!unassignChecked && watchedSignOnStatus === "Signed On" && (futureDateDraft.blocked || !signOnDraftValid))}
                                 data-testid="button-submit-relief"
                             >
-                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Save"}
+                                {isCheckingConflict ? "Checking..." : isSaving ? "Saving…" : unassignChecked ? "Unassign" : "Save"}
                             </Button>
                         </div>
                     </form>

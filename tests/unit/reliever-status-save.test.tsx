@@ -90,7 +90,7 @@ describe("ReliefStatusEditDialog_v2 step 3 save behavior", () => {
     expect(screen.getByText("Rank: Chief Officer")).toBeInTheDocument();
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["training-matrix-compliance", "plan-123", "assignment-456"],
-    });
+    }, { throwOnError: false });
 
     const confirm = vi.fn().mockReturnValue(false);
     Object.defineProperty(window, "confirm", { configurable: true, value: confirm });
@@ -141,6 +141,6 @@ describe("ReliefStatusEditDialog_v2 step 3 save behavior", () => {
     expect(screen.queryByText("Checklist needs attention")).not.toBeInTheDocument();
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["training-matrix-compliance", "plan-123", "assignment-456"],
-    });
+    }, { throwOnError: false });
   });
 });

@@ -220,11 +220,12 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
         if (!selectedGroup || selectedCrew.length === 0) return;
         setIsSubmitting(true);
         const succeeded: string[] = [];
+        const warnings: string[] = [];
         const failed: { name: string; reason: string }[] = [];
 
         for (const crew of selectedCrew) {
             try {
-                await vesselApiV2.signOnReliever(crew.planUuid, {
+                const result = await vesselApiV2.signOnReliever(crew.planUuid, {
                     relieverCrewUuid: crew.relieverCrewUuid,
                     signOnDate: selectedGroup.date,
                     signOnPort: selectedGroup.portUuid,
@@ -232,6 +233,7 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
                     contractEndRangeStartMonths: crew.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: crew.relieverContractEndRangeEndMonths,
                 });
+                warnings.push(...(result.signOnWarnings ?? []).map(warning => `${crew.relieverCrewName}: ${warning}`));
                 succeeded.push(crew.relieverCrewName);
             } catch (err: any) {
                 failed.push({ name: crew.relieverCrewName, reason: err?.message || 'Unknown error' });
@@ -244,7 +246,7 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
         if (succeeded.length > 0) {
             toast({
                 title: 'Success',
-                description: `Signed on: ${succeeded.join(', ')}`,
+                description: `Signed on: ${succeeded.join(', ')}${warnings.length ? `. Follow-up needed: ${warnings.join(" ")}` : ""}`,
             });
         }
         if (failed.length > 0) {

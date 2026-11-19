@@ -16,6 +16,11 @@ import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifec
 import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
 import { validatePersistedCompanyFormStructure } from "./formStructureService";
 import { enrichCompanyVersions, recordReleaseChanges } from "./versionChanges";
+import { supportsInitialStandardDraft } from "../../../../shared/v2/forms-engine/initialStandardDraft";
+import { admFormVersionsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
+import { isLegacyJsonDraftSource } from "./legacyStandardDraft";
+import { isLegacyStandardCategory } from "../../../../shared/v2/forms-engine/legacyStandardConfiguration";
+import { releasedStandardStructureError } from "./releasedStandardStructure";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -388,6 +393,23 @@ export const formsService = {
 
         for (const group of sortedGroups) {
           const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
+          // Briefing/Interview render version-owned structure. A NULL legacy
+          // JSON column is not evidence that their released version is absent.
+          // Keep Appraisal/Promotion and all other JSON consumers unchanged.
+          if ((form.category === "briefing" || form.category === "interview") && releasedVersion) {
+            const structureError = releasedVersion.formId !== form.id || releasedVersion.rankGroupId !== group.id
+              ? "The released form's structure has an incorrect form or rank-group owner. Ask an administrator to review the released version."
+              : await releasedStandardStructureError(form.formUuid, releasedVersion.fvUuid);
+            return {
+              ...form,
+              rankGroupName: group.name,
+              rankGroupConfig: null,
+              formVersionId: structureError ? null : releasedVersion.id,
+              formVersionUuid: structureError ? null : releasedVersion.fvUuid,
+              noReleasedVersion: !!structureError,
+              ...(structureError ? { structureError, noReleasedVersionReason: structureError } : {}),
+            };
+          }
           if (releasedVersion?.configuration) {
             selectedGroup = group;
             latestReleasedVersion = releasedVersion;
@@ -526,19 +548,79 @@ export const formsService = {
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
 
-  async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
+  // Separate from normal creation: opening an editor must never overwrite a draft.
+  async ensureInitialStandardDraft(formId: number, rankGroupId: number, auditUserUuid: string | null = null): Promise<AdmFormVersionV2> {
+    return getDb().transaction(async (tx: any) => {
+      const form = await lockWritableForm(tx, formId);
+      if (!supportsInitialStandardDraft(form.category)) {
+        throw new FormStageValidationError("Initial configuration is not supported for this form type.");
+      }
+      if (form.archivedAt) throw new FormStageValidationError("This form is archived and cannot be configured.");
+      const [group] = await tx.select().from(admRankGroupsV2).where(and(
+        eq(admRankGroupsV2.id, rankGroupId), eq(admRankGroupsV2.formId, form.id),
+        eq(admRankGroupsV2.isDeleted, false),
+      )).for("update");
+      if (!group || group.archivedAt) throw new FormStageValidationError("Select an active rank group belonging to this form.");
+      // Include deleted history: initialization must not recycle historical numbers.
+      const history: AdmFormVersionV2[] = await tx.select().from(admFormVersionsV2).where(and(
+        eq(admFormVersionsV2.formId, form.id), eq(admFormVersionsV2.rankGroupId, rankGroupId),
+      ));
+      const active = history.filter(v => !v.isDeleted);
+      const drafts = active.filter(v => v.status === "draft");
+      if (drafts.length > 1) throw new FormStageValidationError("Multiple drafts exist. Review the form versions before continuing.");
+      if (drafts[0]) return drafts[0];
+      const latest = [...active].sort((a, b) => Number(b.versionNo) - Number(a.versionNo))[0];
+      if (latest) return latest; // Another editor may already have released the initial draft.
+      if (history.length) throw new FormStageValidationError("This rank group has archived version history. Review its versions before creating another draft.");
+      const versionDate = new Date().toLocaleDateString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+      }).replace(/ /g, "-");
+      const created = await formVersionsRepo.create(applyAuditUser({
+        formId: form.id, rankGroupId, versionNo: "01", versionDate, status: "draft",
+        configuration: group.configuration ?? null, releasedAt: null, auditUserUuid,
+      }, true), tx);
+      await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
+      const parts = await tx.select().from(frmFormParts).where(and(
+        eq(frmFormParts.formVersionUuid, created.fvUuid), eq(frmFormParts.isDeleted, false),
+      ));
+      if (!parts.some((part: typeof frmFormParts.$inferSelect) => part.partType === "configurable")) {
+        // Only a fresh target draft may get this minimal part; templates/history stay untouched.
+        await tx.insert(frmFormParts).values({
+          formPartUuid: uuidv4(), formUuid: form.formUuid, formVersionUuid: created.fvUuid,
+          partCode: "MAIN", partTitle: "Form Configuration", partType: "configurable",
+          isOfficeOnly: false, sortOrder: parts.length ? Math.max(...parts.map((p: any) => p.sortOrder)) + 1 : 0,
+          isDeleted: false, isSync: false,
+        });
+      }
+      return created;
+    });
+  },
+
+  async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">,
+    entry?: { draftIntent?: "open"; sourceVersionId?: number }): Promise<AdmFormVersionV2> {
     return getDb().transaction(async (tx: any) => {
       assertNoClientStageSubjectType(data as Record<string, unknown>);
       const form = await lockWritableForm(tx, formId);
       const isCompanyForm = form.category === "dynamic";
+      const legacyStandard = isLegacyStandardCategory(form.category);
+      if (entry?.draftIntent && !legacyStandard) {
+        throw new FormStageValidationError("This draft entry operation is available only for Appraisal and Promotion.");
+      }
       if (isCompanyForm && data.rankGroupId != null) {
         throw new Error("Company Forms cannot have rank-grouped versions.");
       }
       if (!isCompanyForm && !data.rankGroupId) {
         throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
       }
-      validateStoredEffectivenessConfiguration(data.configuration);
+      if (entry?.draftIntent !== "open") validateStoredEffectivenessConfiguration(data.configuration);
       const rankGroupId = isCompanyForm ? null : data.rankGroupId!;
+      if (legacyStandard) {
+        await tx.execute(sql`SELECT id FROM adm_rank_groups_v2 WHERE id = ${rankGroupId} FOR UPDATE`);
+        const group = await rankGroupsRepo.findById(rankGroupId!, tx);
+        if (!group || group.formId !== form.id || group.archivedAt) {
+          throw new FormStageValidationError("Select an active rank group belonging to this form.");
+        }
+      }
       const stageWasSupplied = Object.prototype.hasOwnProperty.call(data, "stageKey");
       const requestedStage = stageWasSupplied ? (data as any).stageKey as string | null : undefined;
       const stagePatch = stageWasSupplied
@@ -557,11 +639,17 @@ export const formsService = {
         ? await formVersionsRepo.findDraftByFormId(form.id, tx)
         : await formVersionsRepo.findDraftByRankGroupId(rankGroupId!, tx);
       if (existingDraft) {
+        if (legacyStandard && existingDraft.formId !== form.id) {
+          throw new FormStageValidationError("The draft does not belong to this form.");
+        }
+        // Entry/retry is a resume, never an implicit overwrite of saved edits.
+        if (entry?.draftIntent === "open") return existingDraft;
+        validateStoredEffectivenessConfiguration(data.configuration);
         const updated = await formVersionsRepo.updateById(
           existingDraft.id,
           applyAuditUser({
-            configuration: data.configuration ?? null,
-            sharedConfig: data.sharedConfig ?? null,
+            configuration: legacyStandard && data.configuration === undefined ? existingDraft.configuration : data.configuration ?? null,
+            sharedConfig: legacyStandard && data.sharedConfig === undefined ? existingDraft.sharedConfig : data.sharedConfig ?? null,
             versionDate: pickedVersionDate,
             ...(stagePatch ?? {}),
             auditUserUuid,
@@ -577,12 +665,25 @@ export const formsService = {
         return isNaN(vNo) ? max : Math.max(max, vNo);
       }, 0);
       const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
-      const sourceVersion = isCompanyForm
+      let sourceVersion = isCompanyForm
         ? await formVersionsRepo.findLatestReleasedByFormId(form.id, tx)
         : await formVersionsRepo.findLatestReleasedByRankGroupId(rankGroupId!, tx);
+      if (entry?.draftIntent === "open" && entry.sourceVersionId !== undefined) {
+        const selected = await formVersionsRepo.findById(entry.sourceVersionId, tx);
+        if (!selected || selected.formId !== form.id || selected.rankGroupId !== rankGroupId || selected.status !== "released") {
+          throw new FormStageValidationError("The selected released version is no longer available in this rank group.");
+        }
+        sourceVersion = selected;
+      }
+      const openingSource = entry?.draftIntent === "open" ? sourceVersion : undefined;
+      const configuration = openingSource ? openingSource.configuration
+        : data.configuration === undefined && legacyStandard ? sourceVersion?.configuration ?? null : data.configuration ?? null;
+      const sharedConfig = openingSource ? openingSource.sharedConfig
+        : data.sharedConfig === undefined && legacyStandard ? sourceVersion?.sharedConfig ?? null : data.sharedConfig ?? null;
+      validateStoredEffectivenessConfiguration(configuration);
       const created = await formVersionsRepo.create(applyAuditUser({
-        configuration: data.configuration ?? null,
-        sharedConfig: data.sharedConfig ?? null,
+        configuration,
+        sharedConfig,
         rankGroupId,
         formId: form.id,
         versionNo: nextVersionNo,
@@ -594,7 +695,19 @@ export const formsService = {
         auditUserUuid,
       } as any, true), tx);
       if (sourceVersion?.fvUuid) {
-        await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+        if (!await isLegacyJsonDraftSource(form, sourceVersion, created, tx)) {
+          try {
+            await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+          } catch (error: any) {
+            if (legacyStandard && error?.message?.includes("no version-owned parts")) {
+              console.error("Standard form draft source failed structure validation", {
+                formId: form.id, sourceVersionId: sourceVersion.id, reason: error.message,
+              });
+              throw Object.assign(new Error("This source version cannot safely create a draft. Refresh and try another released version, or ask an administrator to check its configuration."), { statusCode: 409 });
+            }
+            throw error;
+          }
+        }
         if (isCompanyForm) await copyApplicability(sourceVersion.fvUuid, created.fvUuid, tx);
       } else {
         await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);

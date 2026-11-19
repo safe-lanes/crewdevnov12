@@ -31,8 +31,7 @@ export class RankGroupsRepository {
       .orderBy(desc(admRankGroupsV2.createdAt));
   }
 
-  async findById(id: number): Promise<AdmRankGroupV2 | undefined> {
-    const db = getDb();
+  async findById(id: number, db: any = getDb()): Promise<AdmRankGroupV2 | undefined> {
     const results = await db
       .select()
       .from(admRankGroupsV2)

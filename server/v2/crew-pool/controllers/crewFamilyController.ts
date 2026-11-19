@@ -6,6 +6,7 @@ import {
   insertCrewNextOfKinSchema,
 } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import { assertProfileWrite } from "../services/profileWriteValidation";
 
 export const crewFamilyController = {
   async getFamilyInfo(req: Request, res: Response) {
@@ -27,6 +28,8 @@ export const crewFamilyController = {
       const validatedData = insertCrewFamilyInfoSchema
         .omit({ famUuid: true, crewUuid: true })
         .parse(req.body);
+      const existing = await crewProfileService.getFamilyInfo(crewUuid);
+      await assertProfileWrite('family', validatedData, existing?.familyInfo || {});
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const familyInfo = await crewProfileService.upsertFamilyInfo(
         crewUuid,
@@ -136,6 +139,7 @@ export const crewFamilyController = {
       const validatedData = insertCrewNextOfKinSchema
         .omit({ nokUuid: true, crewUuid: true })
         .parse(req.body);
+      await assertProfileWrite('nok', validatedData, await crewProfileService.getNextOfKin(crewUuid) || {});
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const nextOfKin = await crewProfileService.upsertNextOfKin(
         crewUuid,

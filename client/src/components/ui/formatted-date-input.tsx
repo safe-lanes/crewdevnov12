@@ -18,6 +18,9 @@ interface FormattedDateInputProps {
   min?: string;
   minDateErrorMessage?: string;
   max?: string;
+  maxDateErrorMessage?: string;
+  /** Date-only opt-in; existing consumers keep their current propagation rules. */
+  disableFutureDates?: boolean;
   placeholder?: string;
   disabled?: boolean;
   calendarDisabledPeriods?: readonly string[];
@@ -88,7 +91,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, calendarDisabledPeriods, calendarMonth, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max: providedMax, maxDateErrorMessage, disableFutureDates = false, placeholder, disabled = false, calendarDisabledPeriods, calendarMonth, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const manualInputRef = React.useRef<HTMLInputElement>(null);
     const [calendarOpen, setCalendarOpen] = React.useState(false);
@@ -97,6 +100,12 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       `${String(date.getFullYear()).padStart(4, "0")}-${String(
         date.getMonth() + 1,
       ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = calendarIso(new Date());
+    const currentMax = () => {
+      const localToday = calendarIso(new Date());
+      return disableFutureDates && (!providedMax || providedMax > localToday) ? localToday : providedMax;
+    };
+    const max = currentMax();
 
     const selectedCalendarDate = (() => {
       if (!formatIsoDate(value)) return undefined;
@@ -121,6 +130,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
 
     const calendarDayDisabled = (date: Date) => {
       const iso = calendarIso(date);
+      const max = currentMax();
 
       return (
         disabled ||
@@ -148,6 +158,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
     const isDraftInvalid = (text: string): boolean => {
       if (!text.trim()) return false;
       const canonicalValue = parseManualDate(text);
+      const max = currentMax();
       return !canonicalValue
         || Boolean(min && canonicalValue < min)
         || Boolean(max && canonicalValue > max);
@@ -156,6 +167,9 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
     const parsedDraft = parseManualDate(draft);
     const errorMessage = minDateErrorMessage && min && parsedDraft && parsedDraft < min
       ? minDateErrorMessage
+      : parsedDraft && max && parsedDraft > max
+        ? maxDateErrorMessage || (disableFutureDates && parsedDraft > today
+          ? "Future dates are not allowed." : "Incorrect date/date format")
       : "Incorrect date/date format";
 
     const isVisibleDraftValid = !isDraftInvalid(draft);
@@ -208,7 +222,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
     const handleManualChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const nextDraft = event.target.value;
       setDraft(nextDraft);
-      setIsInvalid((wasInvalid) => wasInvalid && isDraftInvalid(nextDraft));
+      setIsInvalid((wasInvalid) => (disableFutureDates || wasInvalid) && isDraftInvalid(nextDraft));
 
       if (!nextDraft.trim()) {
         emitCanonicalChange("", event);
@@ -217,6 +231,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
 
       const canonicalValue = parseManualDate(nextDraft);
       if (!canonicalValue) return;
+      if (disableFutureDates && isDraftInvalid(nextDraft)) return;
 
       emitCanonicalChange(canonicalValue, event);
     };
@@ -227,7 +242,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       const canonicalValue = parseManualDate(draft);
       const invalidDraft = isDraftInvalid(draft);
       setIsInvalid(invalidDraft);
-      if (retainInvalidDraftOnBlur && invalidDraft) return;
+      if ((disableFutureDates || retainInvalidDraftOnBlur) && invalidDraft) return;
 
       if (canonicalValue) {
         setDraft(formatIsoDate(
@@ -255,6 +270,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
     };
 
     const handleCalendarBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+      if (disableFutureDates) setCalendarOpen(false);
       if (!calendarChangedRef.current) {
         event.currentTarget.value = valueRef.current;
       }
@@ -267,7 +283,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         setDraft(formatIsoDate(valueRef.current));
       }
       calendarChangedRef.current = false;
-      if (retainInvalidDraftOnBlur && invalidDraft) return;
+      if ((disableFutureDates || retainInvalidDraftOnBlur) && invalidDraft) return;
       if (onBlur) {
         const input = event.currentTarget;
         const controlledValue = input.value;
@@ -279,6 +295,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
 
     const openCalendar = () => {
       if (disabled) return;
+      if (disableFutureDates) setCalendarOpen(true);
       if (useCustomCalendar) {
         openingCalendarRef.current = true;
         setCalendarOpen(true);
@@ -303,6 +320,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       event: React.ChangeEvent<HTMLInputElement>,
     ) => {
       const nextValue = event.currentTarget.value;
+      const max = currentMax();
       if (
         disabled ||
         (acceptCalendarInputEvents && event.currentTarget.matches(":disabled")) ||

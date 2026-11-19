@@ -5,6 +5,8 @@ import {
   insertCrewAddressSchema,
 } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import { assertProfileWrite } from "../services/profileWriteValidation";
+import { crewMembersService } from "../services/crewMembersService";
 
 export const crewPersonalController = {
   async getPersonalDetails(req: Request, res: Response) {
@@ -26,6 +28,8 @@ export const crewPersonalController = {
       const validatedData = insertCrewPersonalDetailsSchema
         .omit({ cpdUuid: true, crewUuid: true })
         .parse(req.body);
+      if (Object.prototype.hasOwnProperty.call(req.body, 'dob'))
+        await assertProfileWrite('personal', { dob: req.body.dob }, await crewMembersService.getByUuid(crewUuid));
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const details = await crewProfileService.upsertPersonalDetails(
         crewUuid,
@@ -64,6 +68,7 @@ export const crewPersonalController = {
       const validatedData = insertCrewAddressSchema
         .omit({ addrUuid: true, crewUuid: true })
         .parse(req.body);
+      await assertProfileWrite('address', validatedData, await crewProfileService.getAddress(crewUuid) || {});
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const address = await crewProfileService.upsertAddress(
         crewUuid,

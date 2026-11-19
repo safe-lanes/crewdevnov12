@@ -4,6 +4,7 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import { getDb } from "../../db";
 import { generateNextCrewEmpNo } from "./crewNumbering";
+import { resolveVisaCountryNames } from "./visaCountryNames";
 import { CrewMembersRepository } from "../repositories";
 import {
   crewMembersV2,
@@ -225,6 +226,15 @@ export const crewTransferService = {
       seaServiceRepository.findByCandidateUuid(recCanUuid),
     ]);
 
+    // Resolve before any inserts, so a missing country master cannot leave a
+    // partially transferred crew. Text countries (including historical ones) survive.
+    const visaCountries = await resolveVisaCountryNames(candVisasData.map(visa => ({
+      countryUuid: visa.countryUuid, country: visa.countryUuid,
+    })), db);
+    if (visaCountries.some(country => country.countryUnavailable)) {
+      throw new Error("A visa issuing country cannot be resolved. Check the country master before transferring.");
+    }
+
     return await db.transaction(async (tx: typeof db) => {
       await tx.insert(crewMembersV2).values({
         crewUuid,
@@ -405,13 +415,13 @@ export const crewTransferService = {
         }
       }
 
-      for (const visa of candVisasData) {
+      for (const [visaIndex, visa] of candVisasData.entries()) {
         const newVisaUuid = uuidv4();
         await tx.insert(crewVisas).values({
           visaUuid: newVisaUuid,
           crewUuid,
           countryUuid: visa.countryUuid,
-          country: visa.countryUuid,
+          country: visaCountries[visaIndex].countryName,
           serialNo: visa.serialNo,
           issued: visa.issued,
           expiry: visa.expiry,

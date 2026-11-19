@@ -265,6 +265,26 @@ export const formsController = {
     }
   },
 
+  async ensureInitialStandardDraft(req: Request, res: Response) {
+    const formId = Number(req.params.id);
+    const payload = z.object({ rankGroupId: z.number().int().positive() }).strict().safeParse(req.body);
+    if (!Number.isInteger(formId) || formId < 1 || !payload.success) {
+      return res.status(400).json({ error: "Select a valid form and rank group." });
+    }
+    try {
+      const version = await formsService.ensureInitialStandardDraft(formId, payload.data.rankGroupId, getAuditUserUuid(req));
+      res.json(version);
+    } catch (error: any) {
+      if (error instanceof Error && (error as any).statusCode === 400) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Initial standard form configuration failed", error);
+      res.status(error?.message?.includes("not found") ? 404 : 500).json({
+        error: "Unable to prepare the initial draft. Refresh the form versions before retrying.",
+      });
+    }
+  },
+
   async createVersion(req: Request, res: Response) {
     try {
       const formId = parseInt(req.params.id);
@@ -276,14 +296,22 @@ export const formsController = {
       }
       const result = insertAdmFormVersionV2Schema
         .omit({ fvUuid: true, formId: true, stageSubjectType: true })
-        .extend({ stageKey: z.string().nullable().optional() })
+        .extend({
+          stageKey: z.string().nullable().optional(),
+          draftIntent: z.literal("open").optional(),
+          sourceVersionId: z.number().int().positive().optional(),
+        })
         .safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const payload = { ...result.data, auditUserUuid } as any;
-      const version = await formsService.createVersionByFormId(formId, payload);
+      const { draftIntent, sourceVersionId, ...versionData } = result.data;
+      if (sourceVersionId !== undefined && draftIntent !== "open") {
+        return res.status(400).json({ error: "A source version can be selected only when opening a draft." });
+      }
+      const payload = { ...versionData, auditUserUuid } as any;
+      const version = await formsService.createVersionByFormId(formId, payload, { draftIntent, sourceVersionId });
       res.json(version);
     } catch (error: any) {
       if (error instanceof EffectivenessConfigurationError) {

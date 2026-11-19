@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { resolveVisaCountryNames } from "./visaCountryNames";
 import { certificateUpdateFields } from "../utils/certificateOwnership";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
@@ -58,7 +59,7 @@ const crewVisasRepository = new CrewVisasRepository();
 export const crewVisasService = {
   async getAll(crewUuid: string): Promise<CrewVisaWithAttachments[]> {
     await crewMembersService.getByUuid(crewUuid);
-    return crewVisasRepository.findByCrewUuidWithAttachments(crewUuid);
+    return resolveVisaCountryNames(await crewVisasRepository.findByCrewUuidWithAttachments(crewUuid));
   },
 
   async getByUuid(visaUuid: string): Promise<CrewVisa> {

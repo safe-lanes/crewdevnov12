@@ -17,6 +17,7 @@ import { captureChange } from "../../sync/changeCapture";
 import { secondaryPlanUuid } from "../utils/vesselUuid";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { getSignOnDateError } from "../../../../shared/v2/vessel/signOnValidation";
 
 /**
  * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
@@ -1782,6 +1783,9 @@ export const vesselPlanningService = {
     /** Reliever the caller believes is being signed on; lets a retry be recognised (VS-02). */
     relieverCrewUuid?: string;
   }) {
+    const dateError = getSignOnDateError(data.signOnDate);
+    if (dateError) throw Object.assign(new Error(dateError), { code: "SIGN_ON_VALIDATION" });
+    const signOnDate = data.signOnDate!;
     const db = getDb();
 
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
@@ -1806,7 +1810,6 @@ export const vesselPlanningService = {
     const relieverCrewUuid = planning.relieverCrewUuid;
     const vesselUuid = planning.vesselUuid;
 
-    const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
     const effectiveContractRangeStart = data.contractEndRangeStartMonths ?? planning.relieverContractEndRangeStartMonths;
     const effectiveContractRangeEnd = data.contractEndRangeEndMonths ?? planning.relieverContractEndRangeEndMonths;
@@ -2103,19 +2106,134 @@ export const vesselPlanningService = {
       }
     });
 
-    await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
-    // The rank change is committed with the sign-on. Only the repeatable
-    // sea-service / rest-hours splits run now (best-effort, logged); they need
-    // the sea-service row created by this sign-on, which has committed.
-    if (promotionAfterCommit) {
-      try {
-        await promotionAfterCommit();
-      } catch (splitErr) {
-        console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion splits failed after commit (non-fatal):`, splitErr);
+    const signOnWarnings: string[] = [];
+    try {
+      await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
+    } catch (error) {
+      console.error("[VESSEL-PLANNING-V2] Sign-on committed but joining forms completion failed:", error);
+      signOnWarnings.push("Joining forms follow-up could not finish. Ask the office to review the joining forms; do not repeat sign-on.");
+    }
+    // E1 Sea Service sync: auto-create entry on sign-on
+    try {
+      const db3 = getDb();
+      const finalCrewUuid = relieverCrewUuid;
+      const finalSignOnDate = signOnDate;
+
+      // Resolve vessel info for E1 record
+      const [vesselRow] = await db3
+        .select({ vesselName: masterVessels.vessel, vesselTypeName: masterVessels.vesselType })
+        .from(masterVessels)
+        .where(eq(masterVessels.vesselUuid, vesselUuid))
+        .limit(1);
+
+      const resolvedVesselName = vesselRow?.vesselName || null;
+      const resolvedVesselTypeName = vesselRow?.vesselTypeName || null;
+      let resolvedVesselTypeUuid: string | null = null;
+      if (resolvedVesselTypeName) {
+        resolvedVesselTypeUuid = await resolveVesselTypeUuid(resolvedVesselTypeName);
       }
+
+      // Duplicate check: same crew + vessel + fromDate + company service
+      const existing = await db3
+        .select({ id: crewSeaService.id })
+        .from(crewSeaService)
+        .where(
+          and(
+            eq(crewSeaService.crewUuid, finalCrewUuid),
+            eq(crewSeaService.vesselUuid, vesselUuid),
+            eq(crewSeaService.fromDate, finalSignOnDate),
+            eq(crewSeaService.serviceType, 'company'),
+            eq(crewSeaService.isDeleted, false)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        console.log(`ℹ️ [VESSEL-PLANNING-V2] E1 auto-create skipped: record already exists for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
+      } else {
+        // Overlap check: crew already has an open (no toDate) company sea service record
+        const openRecord = await db3
+          .select({ id: crewSeaService.id })
+          .from(crewSeaService)
+          .where(
+            and(
+              eq(crewSeaService.crewUuid, finalCrewUuid),
+              eq(crewSeaService.serviceType, 'company'),
+              eq(crewSeaService.isDeleted, false),
+              isNull(crewSeaService.toDate)
+            )
+          )
+          .limit(1);
+
+        if (openRecord.length > 0) {
+          console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 auto-create skipped: crew ${finalCrewUuid} already has an open company sea service record (overlapping period)`);
+        } else {
+          const { v4: uuidv4e1 } = await import("uuid");
+          await db3.insert(crewSeaService).values({
+            seaUuid: uuidv4e1(),
+            crewUuid: finalCrewUuid,
+            serviceType: 'company',
+            vesselUuid: vesselUuid,
+            vesselName: resolvedVesselName,
+            vesselTypeUuid: resolvedVesselTypeUuid,
+            rank: planning.rank || null,
+            fromDate: finalSignOnDate,
+            toDate: null,
+            isDeleted: false,
+            isSync: false,
+            createdByUuid: data.auditUserUuid || null,
+            updatedByUuid: data.auditUserUuid || null,
+          });
+          console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service auto-created for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
+        }
+      }
+    } catch (e1Err) {
+      console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
+      signOnWarnings.push("Company sea service could not be synchronized. Ask the office to review the E1 record.");
     }
 
-    return result;
+    // Prior-joining promotion: a prior-joining promotion only takes effect when
+    // the promotee signs on. If this crew has an approved prior-joining review
+    // pending, complete it now so the rank-propagation engine flips the rank as
+    // of the sign-on date. Best-effort — a promotion hiccup must not block the
+    // sign-on, but failures are logged at error level so they stay visible.
+    try {
+      const finalSignOnDate = signOnDate;
+      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+      const crew = await crewMembersService.getByUuid(relieverCrewUuid);
+      const empNo = crew?.empNo;
+
+      if (empNo) {
+        const { PromotionReviewsRepository, ExecutionLedgerRepository } = await import("../../promotions/repositories");
+        const reviewsRepo = new PromotionReviewsRepository();
+        const ledgerRepo = new ExecutionLedgerRepository();
+
+        const reviews = await reviewsRepo.findByCrewMemberId(empNo);
+        const pendingPriorJoining = reviews.find((r) =>
+          (r.status ?? "").trim().toLowerCase() === "approved" &&
+          (r.promotionTiming ?? "").trim().toLowerCase() === "prior-joining"
+        );
+
+        if (pendingPriorJoining) {
+          const alreadyApplied = await ledgerRepo.findByReviewUuid(pendingPriorJoining.reviewUuid);
+          if (!alreadyApplied) {
+            console.log(`🎖️ [VESSEL-PLANNING-V2] Completing prior-joining promotion ${pendingPriorJoining.reviewUuid} for crew ${empNo} on sign-on`);
+            const { PromotionReviewsService } = await import("../../promotions/services");
+            const reviewsService = new PromotionReviewsService();
+            await reviewsService.updateReview(pendingPriorJoining.reviewUuid, {
+              status: "completed",
+              promotionDate: finalSignOnDate,
+              auditUserUuid: data.auditUserUuid,
+            });
+          }
+        }
+      }
+    } catch (promoErr) {
+      console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion completion failed (non-fatal):`, promoErr);
+      signOnWarnings.push("Prior-joining promotion follow-up could not finish. Ask the office to review the promotion.");
+    }
+
+    return { ...result, signOnWarnings };
   },
 
   /**

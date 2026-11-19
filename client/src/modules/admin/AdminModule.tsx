@@ -6,7 +6,7 @@ import TrainingEquivalentsEditor from './TrainingEquivalentsEditor';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
-import { readListVersions, storedStandardVersion, type VersionLoadResult } from "./formsListVersions";
+import { readListVersions, storedStandardVersion, standardInitialVersionLabel, type VersionLoadResult } from "./formsListVersions";
 import { VersionLoadStatus } from "./components/VersionLoadStatus";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8818,7 +8818,7 @@ const AdminModuleInner = (): JSX.Element => {
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       <div className="flex items-center gap-2">
                         {versionState(form.originalFormId) === "loaded"
-                          ? <span>{form.versionNo ? `v${form.versionNo}` : "No versions"}</span>
+                          ? <span>{standardInitialVersionLabel(form.category, form.versionNo || "")}</span>
                           : <VersionLoadStatus state={versionState(form.originalFormId)} retry={() => void retryFormVersions(form.originalFormId)} />}
                         {versionState(form.originalFormId) === "loaded" && form.hasDraft && (
                           <span

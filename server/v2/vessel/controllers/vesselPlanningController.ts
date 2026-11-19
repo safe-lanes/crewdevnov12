@@ -460,6 +460,9 @@ export const vesselPlanningController = {
         return res.status(400).json({ error: error.message });
       }
       console.error("Error signing on reliever:", error);
+      if (error.code === "SIGN_ON_VALIDATION") {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to sign on reliever" });
     }
   },
@@ -516,6 +519,9 @@ export const vesselPlanningController = {
         return res.status(404).json({ error: error.message });
       }
       console.error("Error updating reliever status:", error);
+      if (error.code === "SIGN_ON_VALIDATION") {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to update reliever status" });
     }
   },

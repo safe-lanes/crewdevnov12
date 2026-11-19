@@ -73,6 +73,7 @@ import { OnBoardStatusEditDialog_v2 } from './components/OnBoardStatusEditDialog
 import { ReliefStatusEditDialog_v2 } from './components/ReliefStatusEditDialog_v2';
 import { GroupSignOnDialog_v2 } from './components/GroupSignOnDialog_v2';
 import { VesselTrainingMatrix } from './components/VesselTrainingMatrix';
+import { relieverJoiningDate } from './relieverJoiningDate';
 import { findLatestCrewAppraisal } from './vesselAppraisals';
 
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -986,7 +987,7 @@ export function VesselModule_v2(): JSX.Element {
                 relieverContractPeriodMonths: crew.relieverContractPeriodMonths,
                 relieverContractEndRangeStartMonths: crew.relieverContractEndRangeStartMonths,
                 relieverContractEndRangeEndMonths: crew.relieverContractEndRangeEndMonths,
-                relieverSignOnDate: crew.relieverSignOnDate || crew.signOnDate,
+                relieverSignOnDate: relieverJoiningDate(crew),
                 plannedConfirmedDate: crew.plannedConfirmedDate,
                 travelStartDate: crew.travelStartDate,
                 relieverSignOnPort: crew.relieverSignOnPortUuid || crew.relieverSignOnPort || crew.signOnPortUuid || crew.signOnPort,

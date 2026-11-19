@@ -6,6 +6,7 @@ import type {
   InsertRhNcReportV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
+import { ncReportUpdatePatch } from "../services/ncReportWorkflow";
 
 export class NcReportsRepository {
   async findAll(filters?: {
@@ -68,12 +69,22 @@ export class NcReportsRepository {
     data: Partial<InsertRhNcReportV2>
   ): Promise<RhNcReportV2 | undefined> {
     const db = getDb();
-    const results = await db
-      .update(rhNcReportsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhNcReportsV2.ncReportUuid, ncReportUuid))
-      .returning();
-    return results[0];
+    return db.transaction(async (tx: any) => {
+      const identity = and(
+        eq(rhNcReportsV2.ncReportUuid, ncReportUuid),
+        eq(rhNcReportsV2.isDeleted, false),
+      );
+      // Serialize saves and submissions of this exact report. A prior service
+      // read cannot protect against a submission committed by another tab.
+      const [current] = await tx.select().from(rhNcReportsV2).where(identity).for("update");
+      if (!current) return undefined;
+      const patch = ncReportUpdatePatch(current, data);
+      const [updated] = await tx.update(rhNcReportsV2)
+        .set({ ...patch, updatedAt: new Date() })
+        .where(identity)
+        .returning();
+      return updated;
+    });
   }
 
   async softDelete(ncReportUuid: string): Promise<boolean> {
