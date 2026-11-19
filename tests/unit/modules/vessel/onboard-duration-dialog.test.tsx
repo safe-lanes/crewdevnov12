@@ -2,6 +2,12 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OnBoardStatusEditDialog_v2 } from "../../../../client/src/modules/vessel/components/OnBoardStatusEditDialog_v2";
+vi.mock("@/hooks/use-app-dialog", () => ({
+    useAppDialog: () => ({ ask: vi.fn().mockResolvedValue(true), dialog: null }),
+}));
+vi.mock("@/contexts/PermissionsContext", () => ({
+    usePermissions: () => ({ permissions: [], roleName: "Admin", userType: "Office", canCompanyFormAction: () => false }),
+}));
 
 const mocks = vi.hoisted(() => ({
     update: { mutateAsync: vi.fn() },
@@ -36,7 +42,7 @@ vi.mock("@/components/ui/tooltip", () => ({
 }));
 
 const base = {
-    planUuid: "plan-test", crewUuid: "crew-test", crewStatus: "primary",
+    planUuid: "plan-test", crewUuid: "crew-test", crewAssignUuid: "assign-test", crewStatus: "primary",
     onBoardCrewName: "Test Crew", signOnDate: "2025-01-10",
     signOffDate: "2025-04-22", reliefStatus: "On Board",
     signOffReason: "Contract Completed", signOffPortUuid: "port-test",

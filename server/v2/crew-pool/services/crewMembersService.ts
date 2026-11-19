@@ -2,6 +2,7 @@ import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliased
 import { v4 as uuidv4 } from "uuid";
 import { employmentAfterReactivationOn } from "./employmentStatusSql";
 import { generateNextCrewEmpNo } from "./crewNumbering";
+import { resolveVisaCountryNames } from "./visaCountryNames";
 import { getDb } from "../../db";
 import { CrewMembersRepository, crewTerminationsRepository } from "../repositories";
 import {
@@ -1478,7 +1479,8 @@ export const crewMembersService = {
     }));
 
     // Map attachments to visas
-    const visasWithAttachments = visas.map((visa: any) => ({
+    const namedVisas = await resolveVisaCountryNames(visas, db);
+    const visasWithAttachments = namedVisas.map((visa: any) => ({
       ...visa,
       attachments: visaAttachments.filter((att: any) => att.visaUuid === visa.visaUuid)
     }));

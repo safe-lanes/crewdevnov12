@@ -53,6 +53,9 @@ export async function resolveBriefingCreationTarget(input: {
 
   const formVersionId = formForRank?.formVersionId;
   const formVersionUuid = formForRank?.formVersionUuid;
+  if (formForRank.structureError) {
+    throw new BriefingError(formForRank.structureError, 409);
+  }
   if (
     formForRank.noReleasedVersion ||
     !Number.isInteger(formVersionId) ||

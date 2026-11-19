@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { AlertCircle, ChevronDown, ChevronRight, FileText, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppDialog } from "@/hooks/use-app-dialog";
@@ -477,11 +478,11 @@ export function TrainingMatrixCompliance({ planUuid, assignmentUuid, embeddedRes
                   </ul>
                 </section>
               )}
-              <a
+              <Link
                 href={`/crew-pool?crew=${encodeURIComponent(result.context.crewUuid)}&section=D3`}
                 className="inline-flex rounded text-sm font-medium text-sky-800 underline underline-offset-2 hover:text-sky-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
                 data-testid="training-open-crew-profile"
-              >Open crew profile (D3)</a>
+              >Open crew profile (D3)</Link>
 
               {!embeddedResult && <div className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white px-4 py-3">
                 <label htmlFor="training-only-needs-action" className="text-sm font-medium text-slate-700">Show only items needing action</label>

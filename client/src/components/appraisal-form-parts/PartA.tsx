@@ -249,7 +249,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={lockSection}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={lockSection}>
                       <FormControl>
                         <SelectTrigger className="bg-[#ffffff]" data-testid="select-primary-appraiser">
                           <SelectValue placeholder="Select appraiser" />
@@ -279,7 +279,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={lockSection}>
+                      <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={lockSection}>
                         <FormControl>
                           <SelectTrigger className="bg-[#ffffff]" data-testid="select-pi-category">
                             <SelectValue placeholder="Select category" />

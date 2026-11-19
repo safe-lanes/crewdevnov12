@@ -50,6 +50,7 @@ export async function resolveInterviewCreationTarget(rankAppliedFor: string | nu
   if (!rank) throw new InterviewError("The recruitment candidate has no rank applied for. Set rank applied for before creating a Crew Interview submission.");
   const found = await formsService.getFormForRank(rank, "interview");
   if (!found?.rankGroupName || !found?.formUuid) throw new InterviewError(`No Crew Interview Rank Group assigned from Admin Module for rank ${rank}. Please configure rank groups in Admin > Forms Configuration.`, 404);
+  if (found.structureError) throw new InterviewError(found.structureError, 409);
   if (found.noReleasedVersion || !Number.isInteger(found.formVersionId) || !found.formVersionUuid) throw new InterviewError(`No released Crew Interview form version exists for rank group ${found.rankGroupName} (rank ${rank}). Please release a version in Admin > Forms Configuration.`, 404);
   return { formUuid: found.formUuid, formVersionUuid: found.formVersionUuid, formVersionId: found.formVersionId, rank, rankGroupName: found.rankGroupName };
 }

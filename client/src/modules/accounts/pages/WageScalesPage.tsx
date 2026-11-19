@@ -37,7 +37,6 @@ import WageScaleDateInput from "./WageScaleDateInput";
 import {
   getRevisionDateError,
   getWageScaleDateError,
-  minimumWageStart,
   revisionMinimum,
 } from "@shared/v2/accounts/wageScaleRevisionDates";
 
@@ -485,7 +484,6 @@ export default function WageScalesPage() {
                 resetKey={`from-${dateFormVersion}`}
                 height={36}
                 edge="start"
-                min={minimumWageStart()}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
                 onDraftValidityChange={(valid) => {

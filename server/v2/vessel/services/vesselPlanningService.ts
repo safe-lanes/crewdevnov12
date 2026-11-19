@@ -15,6 +15,7 @@ import { eq, and, sql, desc, or, isNull, aliasedTable, inArray, ne } from "drizz
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { getSignOnDateError } from "../../../../shared/v2/vessel/signOnValidation";
 
 /**
  * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
@@ -1649,6 +1650,9 @@ export const vesselPlanningService = {
     travelStartDate?: string;
     auditUserUuid?: string;
   }) {
+    const dateError = getSignOnDateError(data.signOnDate);
+    if (dateError) throw Object.assign(new Error(dateError), { code: "SIGN_ON_VALIDATION" });
+    const signOnDate = data.signOnDate!;
     const db = getDb();
     
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
@@ -1663,7 +1667,6 @@ export const vesselPlanningService = {
     const relieverCrewUuid = planning.relieverCrewUuid;
     const vesselUuid = planning.vesselUuid;
 
-    const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
     const effectiveContractRangeStart = data.contractEndRangeStartMonths ?? planning.relieverContractEndRangeStartMonths;
     const effectiveContractRangeEnd = data.contractEndRangeEndMonths ?? planning.relieverContractEndRangeEndMonths;
@@ -1880,12 +1883,18 @@ export const vesselPlanningService = {
       }
     });
 
-    await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
+    const signOnWarnings: string[] = [];
+    try {
+      await finishLifecycle(signOnEventUuid, data.auditUserUuid || "system");
+    } catch (error) {
+      console.error("[VESSEL-PLANNING-V2] Sign-on committed but joining forms completion failed:", error);
+      signOnWarnings.push("Joining forms follow-up could not finish. Ask the office to review the joining forms; do not repeat sign-on.");
+    }
     // E1 Sea Service sync: auto-create entry on sign-on
     try {
       const db3 = getDb();
       const finalCrewUuid = relieverCrewUuid;
-      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+      const finalSignOnDate = signOnDate;
 
       // Resolve vessel info for E1 record
       const [vesselRow] = await db3
@@ -1957,6 +1966,7 @@ export const vesselPlanningService = {
       }
     } catch (e1Err) {
       console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
+      signOnWarnings.push("Company sea service could not be synchronized. Ask the office to review the E1 record.");
     }
 
     // Prior-joining promotion: a prior-joining promotion only takes effect when
@@ -1965,7 +1975,7 @@ export const vesselPlanningService = {
     // of the sign-on date. Best-effort — a promotion hiccup must not block the
     // sign-on, but failures are logged at error level so they stay visible.
     try {
-      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+      const finalSignOnDate = signOnDate;
       const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
       const crew = await crewMembersService.getByUuid(relieverCrewUuid);
       const empNo = crew?.empNo;
@@ -1997,9 +2007,10 @@ export const vesselPlanningService = {
       }
     } catch (promoErr) {
       console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion completion failed (non-fatal):`, promoErr);
+      signOnWarnings.push("Prior-joining promotion follow-up could not finish. Ask the office to review the promotion.");
     }
 
-    return result;
+    return { ...result, signOnWarnings };
   },
 
   /**

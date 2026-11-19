@@ -2,10 +2,13 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Router } from "wouter";
+import { memoryLocation } from "wouter/memory-location";
 import { TrainingMatrixCompliance } from "../../client/src/modules/vessel/components/TrainingMatrixCompliance";
 import { apiRequest } from "../../client/src/lib/queryClient";
 import { calculateTrainingCompliance } from "../../server/v2/shared/training-compliance/calculator";
 import { trainingComplianceCases } from "../fixtures/trainingComplianceCases";
+import { rotationAssignmentsForSave } from "../../client/src/modules/rotation/assignmentDates";
 vi.mock("../../client/src/lib/queryClient", () => ({ apiRequest: vi.fn() }));
 let client: QueryClient;
 function value(index: number) {
@@ -33,7 +36,133 @@ beforeEach(() => {
   vi.mocked(apiRequest).mockReset();
 });
 afterEach(() => { cleanup(); client.clear(); });
+describe("crew profile D3 navigation", () => {
+  it.each([
+    { base: "", source: "planning" },
+    { base: "/crewing", source: "planning" },
+    { base: "", source: "matrix" },
+    { base: "/crewing", source: "matrix" },
+  ])("preserves the crew and D3 with base '$base' from $source", async ({ base, source }) => {
+    const data = value(0);
+    data.context.crewUuid = source === "planning" ? "selected-reliever-uuid" : "selected-matrix-crew-uuid";
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));
+    const start = `${base}/vessel`;
+    const location = memoryLocation({ path: start, record: true });
+    render(
+      <Router base={base} hook={location.hook}>
+        <QueryClientProvider client={client}>
+          <TrainingMatrixCompliance open
+            planUuid={source === "planning" ? "plan" : undefined}
+            assignmentUuid={source === "planning" ? "synthetic-assignment" : undefined}
+            embeddedResult={source === "matrix" ? data : undefined} />
+        </QueryClientProvider>
+      </Router>,
+    );
+    if (source === "planning") {
+      fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    }
+    const link = await screen.findByRole("link", { name: "Open crew profile (D3)" });
+    const target = `${base}/crew-pool?crew=${encodeURIComponent(data.context.crewUuid)}&section=D3`;
+    expect(link.getAttribute("href")).toBe(target);
+
+    // Modified clicks keep a real, correctly prefixed href for opening a new tab.
+    expect(fireEvent.click(link, { button: 0, ctrlKey: true })).toBe(true);
+    expect(fireEvent.click(link, { button: 0, metaKey: true })).toBe(true);
+    expect(location.history).toEqual([start]);
+
+    // Ordinary clicks use the router and push history rather than reloading the host.
+    expect(fireEvent.click(link, { button: 0 })).toBe(false);
+    expect(location.history).toEqual([start, target]);
+  });
+
+  it("encodes the crew value without allowing it to replace the D3 parameter", () => {
+    const data = value(0);
+    data.context.crewUuid = "crew/with spaces&section=A1";
+    const location = memoryLocation({ path: "/crewing/vessel", record: true });
+    render(
+      <Router base="/crewing" hook={location.hook}>
+        <QueryClientProvider client={client}>
+          <TrainingMatrixCompliance open embeddedResult={data} />
+        </QueryClientProvider>
+      </Router>,
+    );
+    const link = screen.getByTestId("training-open-crew-profile");
+    const url = new URL(link.getAttribute("href")!, "https://example.test");
+    expect(url.pathname).toBe("/crewing/crew-pool");
+    expect(url.searchParams.get("crew")).toBe(data.context.crewUuid);
+    expect(url.searchParams.getAll("section")).toEqual(["D3"]);
+  });
+});
 describe("read-only Reliever Status training display", () => {
+  it("shows all initial problems, colours and details from Rotation's saved calendar date without a Planning save", async () => {
+    const [assignment] = rotationAssignmentsForSave([{
+      joiningDate: new Date(2026, 10, 16).toISOString(),
+    }]);
+    const seed = trainingComplianceCases[0].input;
+    const calculated = calculateTrainingCompliance({
+      ...seed, plannedJoiningDate: assignment.joiningDate,
+      contractRangeEndMonths: null, contractPeriodMonths: 3, certificates: [],
+      matrix: {
+        revisionUuid: "initial-revision", revision: "R1", equivalents: [],
+        requirements: Array.from({ length: 14 }, (_, index) => ({
+          courseUuid: `initial-${index}`, name: `Required initial course ${index}`,
+          obligation: "mandatory" as const,
+        })),
+      },
+    });
+    const data = {
+      ...value(0), ...calculated,
+      courses: calculated.courses.map(course => ({ ...course, certificates: [] })),
+    };
+    vi.mocked(apiRequest).mockImplementation(async method => new Response(JSON.stringify(
+      method === "GET" ? data : { suggestions: [], canCreate: false },
+    )));
+    mount();
+    expect((await screen.findByText("Mandatory: Action needed (14 problems)")).className).toContain("text-rose-800");
+    expect(screen.getByText("Recommended: None required for this rank").className).toContain("text-emerald-800");
+    expect(screen.queryByText(/Incomplete \(1 problem\)/)).toBeNull();
+    fireEvent.click(screen.getByTestId("training-compliance-see-details"));
+    const dialog = screen.getByRole("dialog", { name: "Training Matrix Compliance" });
+    expect(within(dialog).getByText("16-Nov-2026")).toBeTruthy();
+    expect(within(dialog).getByText("16-Feb-2027")).toBeTruthy();
+    expect(within(dialog).getByText("Mandatory: Action needed (14 problems)")).toBeTruthy();
+    expect(within(dialog).getAllByTestId(/^training-course-row-/)).toHaveLength(14);
+    // Existing suggestion reconciliation is separate; no Planning/assignment
+    // write may be needed to populate the initial compliance summary or details.
+    expect(vi.mocked(apiRequest).mock.calls.every(([method, url]) =>
+      method === "GET" || (method === "POST" && String(url).endsWith("/training-suggestions")),
+    )).toBe(true);
+    expect(vi.mocked(apiRequest).mock.calls.filter(([method]) => method === "GET")).toHaveLength(1);
+  });
+
+  it("hides the previous crew's open details while a different assignment is loading", async () => {
+    const firstData = value(0);
+    vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(firstData)));
+    const view = mount();
+    fireEvent.click(await screen.findByTestId("training-compliance-see-details"));
+    expect(screen.getByText(firstData.context.crewName)).toBeTruthy();
+
+    let finish!: (response: Response) => void;
+    const nextData = {
+      ...value(4), assignmentUuid: "different-assignment",
+      context: { ...firstData.context, crewUuid: "different-crew", crewName: "TEST ONLY Different Reliever" },
+    };
+    vi.mocked(apiRequest).mockImplementation(async method => method === "GET"
+      ? new Promise<Response>(resolve => { finish = resolve; })
+      : new Response(JSON.stringify({ suggestions: [], canCreate: false })));
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <TrainingMatrixCompliance open planUuid="plan" assignmentUuid="different-assignment" />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByText(firstData.context.crewName)).toBeNull();
+    expect(screen.getAllByLabelText("Loading training compliance").length).toBeGreaterThan(0);
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    finish(new Response(JSON.stringify(nextData)));
+    expect(await screen.findByText(nextData.context.crewName)).toBeTruthy();
+    expect(screen.queryByText(firstData.context.crewName)).toBeNull();
+  });
+
   it.each([0, 4, 6, 9, 10])("shows course state explicitly for review row %s", async index => {
     const data = value(index);
     vi.mocked(apiRequest).mockResolvedValue(new Response(JSON.stringify(data)));

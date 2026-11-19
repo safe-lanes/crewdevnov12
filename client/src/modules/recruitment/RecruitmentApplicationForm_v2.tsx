@@ -185,8 +185,8 @@ import { LICENSE_DCE_TEMPLATES } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
-import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 import { masterLabel, masterReference, recruitmentDisplayData, type DisplayCatalogs } from './masterLabels';
+import { recruitmentVisaCountryKeys, recruitmentVisaCountryLabel } from './visaCountryMatching';
 import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
 import { sailApi, buildCrewSailUserPayload } from '@/lib/sailApi';
 import InterviewLiveSubmissionHost, { interviewCreationErrorMessage, isPersistedInterviewItemUuid, openOrCreateInterview, reconcileSavedInterviewItem } from './components/InterviewLiveSubmissionHost';
@@ -980,10 +980,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     vesselTypes: ((externalVesselTypesData as any)?.vesseltypes || (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || []).map((v: any) => ({ id: v.vtUuid || v.uuid, label: v.vesselType || v.name })),
   };
   const visaCountryLabel = (visa: LocalFormData['visas'][number]) => {
-    const legacyName = resolveCountryUuidToName(visa.issuingCountry, masterDataEntries);
-    return masterLabel(visa.issuingCountry, displayCatalogs.countries, 'country',
-      visa.issuingCountry === visa.countryId && visa.countryName ? visa.countryName :
-        legacyName !== visa.issuingCountry ? legacyName : undefined);
+    return recruitmentVisaCountryLabel(visa, displayCatalogs.countries, masterDataEntries);
   };
   const displayFormData = recruitmentDisplayData(formData, displayCatalogs);
   displayFormData.visas = formData.visas.map(visa => ({ ...visa, issuingCountry: visaCountryLabel(visa) }));
@@ -9706,7 +9703,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isVisaDialogOpen}
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
-        existingCountryIds={formData.visas.flatMap(v => [v.countryId, v.issuingCountry]).filter((id): id is string => Boolean(id))}
+        existingCountryIds={recruitmentVisaCountryKeys(formData.visas, displayCatalogs.countries, masterDataEntries)}
       />
       
       <FileAttachmentDialog

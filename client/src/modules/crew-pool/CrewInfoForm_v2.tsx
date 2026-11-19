@@ -36,6 +36,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
+import { validateCrewProfile, validateCrewDob, validateProfileEmail, validateRecruitmentDate, type ProfileSection } from '@shared/v2/crew-pool/profileValidation';
+import { saveProfileDependents, confirmedProfileRejection } from './saveProfileDependents';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
@@ -80,6 +82,8 @@ import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewIn
 import BriefingLiveSubmissionHost from './components/BriefingLiveSubmissionHost';
 import DebriefingLiveSubmissionHost, { debriefingCreationErrorMessage, isPersistedDebriefingUuid, openOrCreateDebriefing } from './components/DebriefingLiveSubmissionHost';
 import { crewPoolApiV2 } from './api/crewPoolApiV2';
+import { visaCountryForSave } from '@shared/v2/crew-pool/visaCountry';
+import { VisaCountryField } from './components/VisaCountryField';
 import { 
   useCreateCrewV2, 
   useUpdateCrewV2, 
@@ -322,6 +326,7 @@ interface FormData {
 }
 
 interface ChildInfo {
+  id?: string; // Stable local identity until create returns childUuid.
   childUuid?: string;
   firstName: string;
   middleName: string;
@@ -346,6 +351,8 @@ interface Visa {
   visaUuid?: string;
   countryId: string;  // Template ID (e.g., USA, SCHENGEN) - empty for manual entries
   issuingCountry: string;
+  country?: string;
+  countryUnavailable?: boolean;
   serialNo: string;
   issued: string;
   expiry: string;
@@ -687,13 +694,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return { dotColor, issueCount: issues.length, issues };
   };
 
-  const validateEmail = (value: string): string => {
-    if (!value) return '';
-    if (/\s/.test(value)) return 'Email must not contain spaces.';
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., user@domain.com).';
-    return '';
-  };
+  const validateEmail = validateProfileEmail;
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -709,16 +710,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return '';
   };
 
-  const validateDob = (dateStr: string): string => {
-    if (!dateStr) return '';
-    const dobDate = new Date(dateStr);
-    const today = new Date();
-    if (dobDate > today) return 'Date of birth cannot be a future date.';
-    const minDob = new Date();
-    minDob.setFullYear(minDob.getFullYear() - 18);
-    if (dobDate > minDob) return 'Crew member must be at least 18 years old.';
-    return '';
-  };
+  const validateDob = validateCrewDob;
 
   // State for issues popup dialog
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
@@ -927,6 +919,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [isNextAvailabilityDraftValid, setIsNextAvailabilityDraftValid] = useState(false);
   const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
   const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
+  const [isRecruitmentDateDraftValid, setIsRecruitmentDateDraftValid] = useState(false);
+  const [isSavingRecruitmentDate, setIsSavingRecruitmentDate] = useState(false);
+  const recruitmentDateSavingRef = useRef(false);
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
@@ -1497,6 +1492,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setSeaServiceDateErrors(newErrors);
     return newErrors;
   }, [formData.currentCompanySeaService, formData.externalSeaService]);
+
+  const profileSaveRef = useRef(false);
+  const profileCreateUncertainRef = useRef<D3Session | null>(null);
+  const profileDependentsRef = useRef({ session: null as D3Session | null, uncertain: new Set<string>() });
+  const profileLatestRef = useRef(formData);
+  profileLatestRef.current = formData;
+
+  // Ignore identity acknowledgments when detecting edits made during an async save.
+  const profileEditKey = (data: FormData) => JSON.stringify([
+    ...(['firstName','middleName','familyName','recruitmentDate','dateOfBirth','gender','nationality','presentRank',
+      'heightCm','weightKg','bmi','placeOfBirthCity','placeOfBirthCountry','nativeLanguage','foreignLanguages',
+      'englishProficiency','manningAgent','crewPool','countryOfResidence','nearestAirport','residentialAddressLine1',
+      'residentialAddressLine2','contactLandline','mobile','email','maritalStatus','numberOfDependentChildren',
+      'fatherName','motherName','spouseFirstName','spouseMiddleName','spouseFamilyName','spouseDateOfBirth',
+      'nokFirstName','nokMiddleName','nokFamilyName','nokRelationship','nokTelephone','nokEmail','nokAddress'] as (keyof FormData)[])
+      .map(key => data[key]),
+    data.vesselType, data.children.map(({ childUuid, ...child }: any) => child),
+  ]);
 
   // E1 Company's Vessel Type is locked to master_vessels (vesselCode is only ever
   // set by the Company vessel dropdown) — a blank value with a vessel already
@@ -2223,19 +2236,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const handleClickOutside = async (e: MouseEvent) => {
       const target = e.target as Element;
-      if (isInsidePortal(target)) return;
+      if (isInsidePortal(target) || profileSaveRef.current || isBatchSavingRef.current) return;
+      const activeSections = Object.entries(editingSections).filter(([, editing]) => editing)
+        .map(([section]) => section as ProfileSection);
 
       const sectionRefs: Record<string, React.RefObject<HTMLDivElement>> = {
         'B1': sectionB1Ref,
         'B2': sectionB2Ref,
         'B3': sectionB3Ref,
       };
+      if (activeSections.some(section => sectionRefs[section]?.current?.contains(target))) return;
+      if (!validateProfileBeforeSave(getEffectiveCrewUuid() ? activeSections : ['B1', 'B2', 'B3'])) return;
 
       for (const [sectionId, isEditing] of Object.entries(editingSections)) {
         if (!isEditing) continue;
         const ref = sectionRefs[sectionId];
         if (ref?.current && !ref.current.contains(target)) {
           let crewUuid = getEffectiveCrewUuid();
+          if (!validateProfileBeforeSave(crewUuid ? [sectionId as ProfileSection] : ['B1', 'B2', 'B3'])) continue;
           if (!crewUuid && (sectionId === 'B1' || sectionId === 'B2')) {
             const trimmedFirstName = (formData.firstName || '').trim();
             if (trimmedFirstName) {
@@ -2280,7 +2298,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             }
           }
           if (crewUuid) {
-            handleSectionAutoSave(sectionId, crewUuid);
+            if (!await handleSectionAutoSave(sectionId, crewUuid)) continue;
           }
           setEditingSections(prev => ({ ...prev, [sectionId]: false }));
         }
@@ -2389,6 +2407,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Child management functions
   const addChild = () => {
     const newChild: ChildInfo = {
+      id: crypto.randomUUID(),
       firstName: '',
       middleName: '',
       familyName: '',
@@ -2520,7 +2539,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setFormData(prev => ({
       ...prev,
       visas: prev.visas.map(visa => 
-        visa.id === id ? { ...visa, [field]: value } : visa
+        visa.id === id ? { ...visa, [field]: value,
+          ...(field === 'issuingCountry' ? { country: value, countryUnavailable: false } : {}),
+        } : visa
       )
     }));
   };
@@ -4255,6 +4276,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <Button
             variant="ghost"
             size="sm"
+            onMouseDown={e => e.stopPropagation()}
             onClick={() => toggleEditSection('B1')}
             className="text-gray-500 hover:text-gray-700"
             data-testid="button-edit-b1"
@@ -4690,6 +4712,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <Button
             variant="ghost"
             size="sm"
+            onMouseDown={e => e.stopPropagation()}
             onClick={() => toggleEditSection('B2')}
             className="text-gray-500 hover:text-gray-700"
             data-testid="button-edit-b2"
@@ -4819,6 +4842,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <Button
             variant="ghost"
             size="sm"
+            onMouseDown={e => e.stopPropagation()}
             onClick={() => toggleEditSection('B3')}
             className="text-gray-500 hover:text-gray-700"
             data-testid="button-edit-b3"
@@ -5351,16 +5375,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} data-visa-uuid={(visa as any).visaUuid || undefined} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {visa.countryId ? (
-                    <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
-                  ) : (
-                    <Input
+                    <VisaCountryField
                       value={visa.issuingCountry}
-                      onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
-                      onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
-                      className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                      countryId={visa.countryId}
+                      unavailable={visa.countryUnavailable}
+                      invalid={!!visaRequiredErrors[visa.id]?.issuingCountry}
+                      onChange={(value) => { updateVisa(visa.id, 'issuingCountry', value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      onBlur={() => { if (!visaCountryForSave(visa).trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
                     />
-                  )}
                   {visaRequiredErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].issuingCountry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -7316,10 +7338,68 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     );
   };
 
+  const persistProfileDependents = async (crewUuid: string, data: FormData) => {
+    const session = d3SessionRef.current;
+    if (profileDependentsRef.current.session !== session)
+      profileDependentsRef.current = { session, uncertain: new Set<string>() };
+    await saveProfileDependents({
+      crewUuid, data, deleted: deletedChildUuids, api: crewPoolApiV2,
+      uncertainCreates: profileDependentsRef.current.uncertain,
+      acknowledgeChild: (id, childUuid) => {
+        if (d3SessionRef.current === session && session?.open)
+          setFormData(prev => ({ ...prev, children: prev.children.map(c => c.id === id ? { ...c, childUuid } : c) }));
+      },
+      acknowledgeDelete: uuid => {
+        if (d3SessionRef.current === session && session?.open) {
+          setDeletedChildUuids(prev => prev.filter(id => id !== uuid));
+          setFormData(prev => ({ ...prev, children: prev.children.map(c =>
+            c.childUuid === uuid ? { ...c, childUuid: undefined } : c) }));
+        }
+      },
+    });
+  };
+
+  const validateProfileBeforeSave = (
+    sections: ProfileSection[], snapshot = profileLatestRef.current,
+    showToast = true,
+  ): boolean => {
+    const errors = validateCrewProfile(snapshot, sections, {
+      requireRecruitmentDate: canEditSection('B'),
+      mobileValidator: validateMobileNumber,
+    });
+    if (sections.includes('B1')) {
+      setFirstNameError(errors.firstName || '');
+      setRecruitmentDateError(errors.recruitmentDate || '');
+      setDobError(errors.dateOfBirth || '');
+    }
+    if (sections.includes('B2')) {
+      setMobileError(errors.mobile || '');
+      setEmailError(errors.email || '');
+    }
+    if (sections.includes('B3')) {
+      setNokEmailError(errors.nokEmail || '');
+      setSpouseFirstNameError(errors.spouseFirstName || '');
+      setSpouseFamilyNameError(errors.spouseFamilyName || '');
+      setSpouseDobError(errors.spouseDateOfBirth || '');
+      setSpouseValidationError('');
+    }
+    if (!Object.keys(errors).length) return true;
+    const invalidSections: ProfileSection[] = [];
+    if (errors.firstName || errors.recruitmentDate || errors.dateOfBirth) invalidSections.push('B1');
+    if (errors.mobile || errors.email) invalidSections.push('B2');
+    if (errors.nokEmail || errors.spouseFirstName || errors.spouseFamilyName || errors.spouseDateOfBirth) invalidSections.push('B3');
+    setEditingSections(prev => ({ ...prev, ...Object.fromEntries(invalidSections.map(s => [s, true])) }));
+    if (showToast) toast({
+      title: 'Validation Error', description: 'Please fix the highlighted errors before saving.',
+      variant: 'destructive',
+    });
+    return false;
+  };
+
   // Save Draft functionality
   const handleSaveDraft = () => {
     if (isCrewTerminated || isD3Blocked()) return;
-    if (isBatchSavingRef.current) return;
+    if (isBatchSavingRef.current || profileSaveRef.current || isCreatingCrewRef.current) return;
 
     if (d3SessionRef.current?.pendingDeletes.size) {
       toast({
@@ -7339,70 +7419,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       canSaveD3Defaults,
     );
 
-    let hasErrors = false;
+    let hasErrors = !validateProfileBeforeSave(['B1', 'B2', 'B3'], profileLatestRef.current, false);
 
-    // B1: First Name
-    const trimmedFirstName = (formData.firstName || '').trim();
-    if (!trimmedFirstName) {
-      setFirstNameError('First name is required.');
-      hasErrors = true;
-    } else {
-      setFirstNameError('');
-    }
-
-    // B1: Present Rank (required — SAIL login role)
-    if (!(formData.presentRank || '').trim()) {
+    // Common Login: Present Rank (B1) and Email (B2) are required — they drive
+    // the SAIL login (role / designation and the credentials email).
+    const saveSnapshot = profileLatestRef.current ?? formData;
+    if (!(saveSnapshot.presentRank || '').trim()) {
       setPresentRankError('Present rank is required.');
       hasErrors = true;
     } else {
       setPresentRankError('');
     }
-
-    // B header: Date of Recruitment (required, mirrors First Name)
-    if (canEditSection('B') && !(formData.recruitmentDate || '').trim()) {
-      setRecruitmentDateError('Date of Recruitment is required.');
+    if (!(saveSnapshot.email || '').trim()) {
+      setEmailError('Email is required.');
       hasErrors = true;
-    } else {
-      setRecruitmentDateError('');
     }
-
-    // B1: DOB
-    if (formData.dateOfBirth) {
-      const dErr = validateDob(formData.dateOfBirth);
-      if (dErr) { setDobError(dErr); hasErrors = true; } else { setDobError(''); }
-    } else { setDobError(''); }
-
-    // B2: Mobile
-    const trimmedMobile = (formData.mobile || '').trim();
-    if (trimmedMobile && formData.countryOfResidence) {
-      const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
-      if (mobileErr) { setMobileError(mobileErr); hasErrors = true; } else { setMobileError(''); }
-    } else { setMobileError(''); }
-
-    // B2: Email (required — SAIL login credentials are sent here)
-    const trimmedEmail = (formData.email || '').trim();
-    if (trimmedEmail) {
-      const emailErr = validateEmail(trimmedEmail);
-      if (emailErr) { setEmailError(emailErr); hasErrors = true; } else { setEmailError(''); }
-    } else { setEmailError('Email is required.'); hasErrors = true; }
-
-    // B3: NOK Email
-    const trimmedNokEmail = (formData.nokEmail || '').trim();
-    if (trimmedNokEmail) {
-      const nokErr = validateEmail(trimmedNokEmail);
-      if (nokErr) { setNokEmailError(nokErr); hasErrors = true; } else { setNokEmailError(''); }
-    } else { setNokEmailError(''); }
-
-    // B3: Spouse validation
-    if (formData.maritalStatus === 'Married') {
-      if (!(formData.spouseFirstName || '').trim()) { setSpouseFirstNameError('Spouse first name is required.'); hasErrors = true; } else { setSpouseFirstNameError(''); }
-      if (!(formData.spouseFamilyName || '').trim()) { setSpouseFamilyNameError('Spouse family name is required.'); hasErrors = true; } else { setSpouseFamilyNameError(''); }
-      if (formData.spouseDateOfBirth && formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
-      else { setSpouseDobError(''); }
-    } else {
-      setSpouseFirstNameError(''); setSpouseFamilyNameError(''); setSpouseDobError('');
-    }
-    setSpouseValidationError('');
 
     // Row blank detection helpers
     const hasAttachments = (atts: any) => Array.isArray(atts) && atts.filter((a: any) => !a.isDeleted).length > 0;
@@ -7434,7 +7465,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     formData.visas.forEach((visa) => {
       if (!isVisaBlank(visa)) {
         const vReq: { issuingCountry?: string; visaType?: string } = {};
-        if (!(visa.issuingCountry || '').trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
+        if (!visaCountryForSave(visa).trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
         if (!(visa.visaType || '').trim()) { vReq.visaType = 'Visa type is required.'; hasErrors = true; }
         if (vReq.issuingCountry || vReq.visaType) newVisaReqErrors[visa.id] = vReq;
         const ie = validateIssuedDate(visa.issued); if (ie) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), issued: ie}; hasErrors = true; }
@@ -7596,6 +7627,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // but createdCrewId holds the UUID of the just-created record
     const crewIdentifier = getEffectiveCrewUuid();
     if (crewIdentifier) {
+      const profileSession = d3SessionRef.current;
+      const profileKey = profileEditKey(profileLatestRef.current);
+      const isCurrentProfile = () => d3SessionRef.current === profileSession && profileSession?.open;
       isBatchSavingRef.current = true;
       setIsBatchSaving(true);
       (async () => {
@@ -7667,75 +7701,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           });
 
           const miscOps: (() => Promise<any>)[] = [];
-          if (deletedChildUuids.length > 0) {
-            for (const childUuid of deletedChildUuids) {
-              miscOps.push(async () => {
-                try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
-              });
-            }
-            setDeletedChildUuids([]);
-          }
-          // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
-          const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
-            (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
-            (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
-            (c.gender ?? '').trim()
-          );
-          // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
-          const blankSavedChildUuids = (formData.children ?? [])
-            .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
-              !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
-              !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
-            .map((c: any) => c.childUuid as string);
-          for (const childUuid of blankSavedChildUuids) {
-            miscOps.push(async () => {
-              try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
-            });
-          }
-          // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
-          if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
-            setFormData(prev => ({ ...prev, children: nonBlankChildren }));
-          }
-          if (nonBlankChildren.length > 0) {
-            nonBlankChildren.forEach((child: any, index: number) => {
-              const childData = {
-                firstName: child.firstName,
-                middleName: child.middleName,
-                familyName: child.familyName,
-                dob: child.dateOfBirth,
-                gender: child.gender,
-                sortOrder: index,
-              };
-              miscOps.push(async () => {
-                if (child.childUuid) {
-                  await crewPoolApiV2.updateChild(crewIdentifier, child.childUuid, childData);
-                } else {
-                  const created = await crewPoolApiV2.createChild(crewIdentifier, childData);
-                  if (created?.childUuid) {
-                    setFormData(prev => ({
-                      ...prev,
-                      children: prev.children.map((c, i) =>
-                        i === index ? { ...c, childUuid: created.childUuid } : c
-                      )
-                    }));
-                  }
-                }
-              });
-            });
-          }
-
-          const nokData = {
-            firstName: formData.nokFirstName,
-            middleName: formData.nokMiddleName,
-            familyName: formData.nokFamilyName,
-            relationship: formData.nokRelationship,
-            telephone: formData.nokTelephone,
-            email: formData.nokEmail,
-            address: formData.nokAddress,
-          };
-          miscOps.push(async () => {
-            await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
-          });
+          miscOps.push(() => persistProfileDependents(crewIdentifier, formData));
 
           if (formData.vesselType && Array.isArray(formData.vesselType)) {
             miscOps.push(async () => {
@@ -7748,6 +7714,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             miscResults.forEach((result, idx) => {
               if (result.status === 'rejected') {
                 console.error(`V2 Error in misc op ${idx + 1}:`, result.reason);
+                batchErrors.push(`Profile: ${result.reason?.message || String(result.reason)}`);
               }
             });
           }
@@ -7825,7 +7792,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               const visaData = {
                 visaUuid: visa.visaUuid,
                 countryId: visa.countryId || '',
-                country: visa.issuingCountry || visa.country || '',
+                country: visaCountryForSave(visa),
                 serialNo: visa.serialNo ?? visa.serialNumber ?? '',
                 issued: visa.issued || '',
                 expiry: visa.expiry || '',
@@ -8495,7 +8462,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits + Briefings + De-briefings', batch4Operations);
 
-          if (uuidUpdates.length > 0) {
+          if (uuidUpdates.length > 0 && isCurrentProfile()) {
             const uuidKeyMap: Record<string, string> = {
               documents: 'docUuid',
               visas: 'visaUuid',
@@ -8523,7 +8490,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (batchErrors.length > 0) {
+          if (batchErrors.length > 0 && isCurrentProfile()) {
             console.error('V2: Batch execution completed with errors:', batchErrors);
             toast({
               title: "Partially Saved",
@@ -8531,7 +8498,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               variant: "destructive",
               duration: 6000,
             });
-          } else {
+          } else if (!batchErrors.length && isCurrentProfile() && profileKey === profileEditKey(profileLatestRef.current)) {
             toast({
               title: "Saved",
               description: defaultsPendingAtSave
@@ -8541,12 +8508,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
-          invalidateCrewData(crewIdentifier);
-          await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
+          if (!batchErrors.length && isCurrentProfile() && profileKey === profileEditKey(profileLatestRef.current)) {
+            queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+            invalidateCrewData(crewIdentifier);
+            await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
+          }
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
-          toast({
+          if (isCurrentProfile()) toast({
             title: "Save Error",
             description: "Some records failed to save. Please try again.",
             variant: "destructive",
@@ -8766,11 +8735,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Auto-save functionality — saves the specific section's data to the backend
   const handleSectionAutoSave = async (sectionId: string, crewUuidOverride?: string) => {
-    if (isCrewTerminated || isD3Blocked()) return;
-    if (isBatchSavingRef.current) return;
+    if (isCrewTerminated || isD3Blocked()) return false;
+    if (isBatchSavingRef.current || profileSaveRef.current) return false;
+    const formData = profileLatestRef.current;
+    if (!validateProfileBeforeSave([sectionId as ProfileSection], formData)) return false;
     const crewUuid = crewUuidOverride || getEffectiveCrewUuid();
-    if (!crewUuid) return;
+    if (!crewUuid) return false;
+    const session = d3SessionRef.current;
+    const savedKey = profileEditKey(profileLatestRef.current);
+    const isCurrent = () => d3SessionRef.current === session && session?.open;
+    profileSaveRef.current = true;
+    isBatchSavingRef.current = true;
+    setIsBatchSaving(true);
 
+    try {
     if (sectionId === 'B1') {
       const personalDetailsData = {
         height: formData.heightCm,
@@ -8786,10 +8764,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: formData.manningAgent,
         crewPool: formData.crewPool,
       };
-      updateCrewMutation.mutate({ id: crewUuid, data: { ...formData, uploadedPhoto: uploadedPhoto || null } });
-      savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData });
+      await updateCrewMutationV2.mutateAsync({ crewUuid, data: { ...formData, uploadedPhoto: uploadedPhoto || undefined } as any });
+      await savePersonalDetailsMutationV2.mutateAsync({ crewUuid, data: personalDetailsData });
       if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
-        saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: formData.vesselType });
+        await saveVesselTypesMutationV2.mutateAsync({ crewUuid, vesselTypeUuids: formData.vesselType });
       }
     } else if (sectionId === 'B2') {
       const addressData = {
@@ -8801,9 +8779,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         mobile: formData.mobile,
         email: formData.email,
       };
-      saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+      await saveAddressMutationV2.mutateAsync({ crewUuid, data: addressData });
     } else if (sectionId === 'B3') {
-      let b3HasErrors = false;
       const familyInfoData = {
         maritalStatus: formData.maritalStatus,
         numberOfDependentChildren: formData.numberOfDependentChildren,
@@ -8814,111 +8791,29 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         spouseFamilyName: formData.spouseFamilyName,
         spouseDateOfBirth: formData.spouseDateOfBirth,
       };
-      try {
-        await crewPoolApiV2.saveFamilyInfo(crewUuid, mapLegacyFamilyInfoToV2(familyInfoData));
-      } catch (e) {
-        console.error('[V2] Failed to save family info:', e);
-        b3HasErrors = true;
-      }
-      const nokData = {
-        firstName: formData.nokFirstName,
-        middleName: formData.nokMiddleName,
-        familyName: formData.nokFamilyName,
-        relationship: formData.nokRelationship,
-        telephone: formData.nokTelephone,
-        email: formData.nokEmail,
-        address: formData.nokAddress,
-      };
-      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-        try {
-          await crewPoolApiV2.saveNextOfKin(crewUuid, nokData);
-        } catch (e) {
-          console.error('[V2] Failed to save next of kin:', e);
-          b3HasErrors = true;
-        }
-      }
-      if (deletedChildUuids.length > 0) {
-        const successfulDeletes: string[] = [];
-        for (const childUuid of deletedChildUuids) {
-          try {
-            await crewPoolApiV2.deleteChild(crewUuid, childUuid);
-            successfulDeletes.push(childUuid);
-          } catch (e) {
-            console.error(`[V2] Failed to delete child ${childUuid}:`, e);
-            b3HasErrors = true;
-          }
-        }
-        setDeletedChildUuids(prev => prev.filter(id => !successfulDeletes.includes(id)));
-      }
-      // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
-      const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
-        (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
-        (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
-        (c.gender ?? '').trim()
-      );
-      // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
-      const blankSavedChildUuids = (formData.children ?? [])
-        .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
-          !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
-          !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
-        .map((c: any) => c.childUuid as string);
-      for (const childUuid of blankSavedChildUuids) {
-        try {
-          await crewPoolApiV2.deleteChild(crewUuid, childUuid);
-        } catch (e) {
-          console.error(`[V2] Failed to delete blank child ${childUuid}:`, e);
-          b3HasErrors = true;
-        }
-      }
-      // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
-      if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
-        setFormData(prev => ({ ...prev, children: nonBlankChildren }));
-      }
-      if (nonBlankChildren.length > 0) {
-        for (let index = 0; index < nonBlankChildren.length; index++) {
-          const child = nonBlankChildren[index] as any;
-          const childData = {
-            firstName: child.firstName, middleName: child.middleName,
-            familyName: child.familyName, dob: child.dateOfBirth,
-            gender: child.gender, sortOrder: index,
-          };
-          try {
-            if (child.childUuid) {
-              await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
-            } else {
-              const created = await crewPoolApiV2.createChild(crewUuid, childData);
-              if (created?.childUuid) {
-                setFormData(prev => ({
-                  ...prev,
-                  children: prev.children.map((c, i) =>
-                    i === index ? { ...c, childUuid: created.childUuid } : c
-                  )
-                }));
-              }
-            }
-          } catch (e) {
-            console.error(`[V2] Failed to save child ${child.firstName}:`, e);
-            b3HasErrors = true;
-          }
-        }
-      }
+      await crewPoolApiV2.saveFamilyInfo(crewUuid, mapLegacyFamilyInfoToV2(familyInfoData));
+      await persistProfileDependents(crewUuid, formData);
       invalidateCrewData(crewUuid);
-      if (b3HasErrors) {
-        toast({
-          title: "Partial save",
-          description: "Some items in Section B3 could not be saved. Please try again.",
-          variant: "destructive",
-          duration: 3000,
-        });
-        return;
-      }
     }
 
-    toast({
+    if (isCurrent() && profileEditKey(profileLatestRef.current) === savedKey) toast({
       title: "Auto-saved",
       description: `Section ${sectionId} has been saved.`,
       duration: 1500,
     });
+    return isCurrent() && profileEditKey(profileLatestRef.current) === savedKey;
+    } catch (error: any) {
+      if (isCurrent()) toast({
+        title: 'Save not completed',
+        description: `Some changes may have been saved. Review this section before retrying. ${error.message || ''}`,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      profileSaveRef.current = false;
+      isBatchSavingRef.current = false;
+      setIsBatchSaving(false);
+    }
   };
 
   // Crew member selection handler
@@ -9047,16 +8942,29 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Ensure crew record exists before allowing section edits
   // This implements the "save-before-edit" pattern for new crew records
   const ensureCrewExists = async (recruitmentDateOverride?: string): Promise<string | null> => {
-    if (isD3Blocked() || firstCreateOwnerRef.current) return null;
+    if (isD3Blocked() || firstCreateOwnerRef.current || isBatchSavingRef.current || profileSaveRef.current) return null;
 
     const existingUuid = getEffectiveCrewUuid();
     if (existingUuid) {
       return existingUuid;
     }
+    if (profileCreateUncertainRef.current === d3SessionRef.current) {
+      toast({ title: 'Creation not confirmed', description: 'Check the crew list and reopen the record before retrying.', variant: 'destructive' });
+      return null;
+    }
 
     if (isCreatingCrewRef.current) {
       return null;
     }
+    const formData = {
+      ...profileLatestRef.current,
+      recruitmentDate: recruitmentDateOverride || profileLatestRef.current.recruitmentDate,
+    };
+    if (!validateProfileBeforeSave(['B1', 'B2', 'B3'], formData)) return null;
+    const session = d3SessionRef.current;
+    if (!session) return null;
+    const operation = { session, ticket: d3FirstCreates.begin() };
+    firstCreateOwnerRef.current = operation;
 
     // Every auto-create path goes through here: never create a crew record
     // without Present Rank and Email.
@@ -9067,6 +8975,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
 
     isCreatingCrewRef.current = true;
+    profileSaveRef.current = true;
+    isBatchSavingRef.current = true;
+    setIsBatchSaving(true);
     setIsCreatingCrew(true);
     try {
       // Create crew record with current form data using V2 mapping pipeline
@@ -9085,11 +8996,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
       const v2Data = mapLegacyCrewToV2(legacyCrewData);
       
+      profileCreateUncertainRef.current = session;
       const result = await crewPoolApiV2.createCrew(v2Data);
       const newCrewUuid = result?.crewUuid;
 
       if (newCrewUuid) {
+        profileCreateUncertainRef.current = null;
+        // Common Login: the crew record now exists on the server, so create the
+        // SAIL login even if this form session has since been switched.
         void createSailLoginForNewCrew(result);
+        if (d3SessionRef.current !== session) return null;
         createdCrewIdOwnerRef.current = d3SessionRef.current;
         createdCrewIdRef.current = newCrewUuid;
         setCreatedCrewId(newCrewUuid);
@@ -9113,9 +9029,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           manningAgent: formData.manningAgent,
           crewPool: formData.crewPool,
         };
-        crewPoolApiV2.savePersonalDetails(newCrewUuid, mapLegacyPersonalDetailsToV2(personalDetailsData)).catch(
-          (err) => console.error('[V2] Personal Details auto-save error:', err)
-        );
+        await crewPoolApiV2.savePersonalDetails(newCrewUuid, mapLegacyPersonalDetailsToV2(personalDetailsData));
         
         const addressData = {
           countryOfResidence: formData.countryOfResidence,
@@ -9126,9 +9040,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           mobile: formData.mobile,
           email: formData.email,
         };
-        crewPoolApiV2.saveAddress(newCrewUuid, mapLegacyAddressToV2(addressData)).catch(
-          (err) => console.error('[V2] Address auto-save error:', err)
-        );
+        await crewPoolApiV2.saveAddress(newCrewUuid, mapLegacyAddressToV2(addressData));
         
         const familyInfoData = {
           maritalStatus: formData.maritalStatus,
@@ -9140,51 +9052,55 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           spouseFamilyName: formData.spouseFamilyName,
           spouseDateOfBirth: formData.spouseDateOfBirth,
         };
-        crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData)).catch(
-          (err) => console.error('[V2] Family Info auto-save error:', err)
-        );
+        await crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData));
+        await persistProfileDependents(newCrewUuid, formData);
 
         if (Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
-          crewPoolApiV2.saveVesselTypesApplied(newCrewUuid, formData.vesselType).catch(
-            (err) => console.error('[V2] Vessel Types auto-save error:', err)
-          );
+          await crewPoolApiV2.saveVesselTypesApplied(newCrewUuid, formData.vesselType);
         }
         
         await queryClient.refetchQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
 
-        if (onCrewMemberChange && result) {
-          onCrewMemberChange(result);
-        }
-        
-        toast({
+        if (d3SessionRef.current === session) toast({
           title: "Record Created",
           description: "Crew record saved. You can now edit sections.",
           duration: 2000,
         });
         
-        return newCrewUuid;
+        return d3SessionRef.current === session ? newCrewUuid : null;
       }
       
       throw new Error('No crewUuid returned from create');
     } catch (error: any) {
+      if (confirmedProfileRejection(error)) profileCreateUncertainRef.current = null;
       console.error('[V2] Failed to auto-create crew:', error);
-      toast({
+      if (d3SessionRef.current === session) toast({
         title: "Error",
-        description: `Failed to create crew record: ${error.message}`,
+        description: createdCrewIdRef.current
+          ? `Crew record was created, but saving did not finish. Review and save again without creating another record. ${error.message}`
+          : `Crew creation was not confirmed. Check the crew list before retrying. ${error.message}`,
         variant: "destructive",
         duration: 5000,
       });
       return null;
     } finally {
+      if (firstCreateOwnerRef.current === operation) firstCreateOwnerRef.current = null;
       isCreatingCrewRef.current = false;
+      profileSaveRef.current = false;
+      isBatchSavingRef.current = false;
+      setIsBatchSaving(false);
       setIsCreatingCrew(false);
+      operation.ticket.finish();
     }
   };
 
   // Toggle edit section with auto-save and ensure crew exists (B2/B3 only)
   const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
-    if (isCrewTerminated) return;
+    if (isCrewTerminated || profileSaveRef.current || isBatchSavingRef.current) return;
     const isCurrentlyEditing = editingSections[sectionId];
+    const activeSections = Object.entries(editingSections).filter(([, editing]) => editing)
+      .map(([section]) => section as ProfileSection);
+    if (activeSections.length && !validateProfileBeforeSave(activeSections)) return;
     
     // For B2 and B3, validate mandatory fields before allowing edit on new crew
     if (!isCurrentlyEditing && sectionId !== 'B1') {
@@ -9216,16 +9132,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     
     // If another section is being edited, auto-save it before switching
-    const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
-    if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
-      handleSectionAutoSave(currentlyEditing);
-      setEditingSections(prev => ({ ...prev, [currentlyEditing]: false }));
-    }
-    
-    setEditingSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }));
+    if (activeSections.length && !getEffectiveCrewUuid() && !await ensureCrewExists()) return;
+    for (const editing of activeSections)
+      if (!await handleSectionAutoSave(editing)) return;
+    setEditingSections({ B1: false, B2: false, B3: false, [sectionId]: !isCurrentlyEditing });
   };
 
   const queryClient = useQueryClient();
@@ -9284,10 +9194,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // After parent record is created, chain saves for personal details, address, and family
   const createCrewMutation = {
     mutate: (data: any, defaultsPendingAtSave = false) => {
-      if (isD3Blocked() || isBatchSavingRef.current) return;
+      if (isD3Blocked() || isBatchSavingRef.current || profileSaveRef.current) return;
+      if (!validateProfileBeforeSave(['B1', 'B2', 'B3'], data)) return;
 
       const session = d3SessionRef.current;
       if (!session?.open) return;
+      const submittedProfileKey = profileEditKey(data);
+      if (profileCreateUncertainRef.current === session) {
+        toast({ title: 'Creation not confirmed', description: 'Check the crew list and reopen the record before retrying.', variant: 'destructive' });
+        return;
+      }
 
       const isCurrentSession = () =>
         d3SessionRef.current === session && session.open;
@@ -9297,10 +9213,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         canSaveD3Defaults,
       ).filter(course => course.matrixDefault && !course.trainUuid);
 
-      const operation: D3FirstCreateOperation | null =
-        pendingDefaults.length
-          ? { session, ticket: d3FirstCreates.begin() }
-          : null;
+      const operation: D3FirstCreateOperation = { session, ticket: d3FirstCreates.begin() };
 
       if (operation) {
         firstCreateOwnerRef.current = operation;
@@ -9313,14 +9226,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         let createdUuid: string | null = null;
 
         try {
+          profileCreateUncertainRef.current = session;
           const responseData: any =
             await createCrewMutationV2.mutateAsync(data);
 
-          parentCreated = true;
-          void createSailLoginForNewCrew(responseData);
-
           const crewUuid = responseData?.crewUuid;
+          if (!crewUuid) throw new Error('Crew creation was not confirmed. Check the crew list before retrying.');
+          parentCreated = true;
+          profileCreateUncertainRef.current = null;
           createdUuid = crewUuid || null;
+          // Common Login: create the SAIL login for the confirmed new crew record.
+          void createSailLoginForNewCrew(responseData);
 
           const generatedEmpNo =
             responseData?.empNo || responseData?.employeeId;
@@ -9362,10 +9278,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               manningAgent: data.manningAgent || formData.manningAgent,
               crewPool: data.crewPool || formData.crewPool,
             };
-            savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
-              onError: (err) => console.error('[V2] Personal Details chain save error:', err),
-              onSuccess: () => {},
-            });
+            await savePersonalDetailsMutationV2.mutateAsync({ crewUuid, data: personalDetailsData });
             
             // Address (A1.2 fields)
             const addressData = {
@@ -9377,10 +9290,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               mobile: data.mobile || formData.mobile,
               email: data.email || formData.email,
             };
-            saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
-              onError: (err) => console.error('[V2] Address chain save error:', err),
-              onSuccess: () => {},
-            });
+            await saveAddressMutationV2.mutateAsync({ crewUuid, data: addressData });
             
             // Family Info (A1.3 fields)
             const familyInfoData = {
@@ -9393,17 +9303,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               spouseFamilyName: data.spouseFamilyName || formData.spouseFamilyName,
               spouseDateOfBirth: data.spouseDateOfBirth || formData.spouseDateOfBirth,
             };
-            saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData }, {
-              onError: (err) => console.error('[V2] Family Info chain save error:', err),
-              onSuccess: () => {},
-            });
+            await saveFamilyInfoMutationV2.mutateAsync({ crewUuid, data: familyInfoData });
+            await persistProfileDependents(crewUuid, data);
 
             const vesselTypes = data.vesselType || formData.vesselType;
             if (Array.isArray(vesselTypes) && vesselTypes.length > 0) {
-              saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: vesselTypes }, {
-                onError: (err) => console.error('[V2] Vessel Types chain save error:', err),
-                onSuccess: () => {},
-              });
+              await saveVesselTypesMutationV2.mutateAsync({ crewUuid, vesselTypeUuids: vesselTypes });
             }
           }
           let failedDefaults = 0;
@@ -9448,7 +9353,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             }
           }
 
-          if (isCurrentSession()) {
+          if (isCurrentSession() && submittedProfileKey === profileEditKey(profileLatestRef.current)) {
             toast({
               title: failedDefaults ? 'Partially Saved' : 'Saved',
               description: failedDefaults
@@ -9461,6 +9366,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
         } catch (error: any) {
+          if (confirmedProfileRejection(error)) profileCreateUncertainRef.current = null;
           console.error('[V2] Crew Save failed:', error);
 
           if (isCurrentSession()) {
@@ -9468,7 +9374,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               title: 'Error',
               description: parentCreated
                 ? 'Crew member was created, but saving did not finish. Please review and retry Save.'
-                : `Failed to create crew member: ${error.message}`,
+                : `Crew creation was not confirmed. Check the crew list before retrying. ${error.message}`,
               variant: 'destructive',
               duration: 5000,
             });
@@ -9498,29 +9404,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     isPending: createCrewMutationV2.isPending,
   };
 
-  // Wrapper for update mutation with UI feedback
-  const updateCrewMutation = {
-    mutate: ({ id, data }: { id: string; data: any }) => {
-      updateCrewMutationV2.mutate({ crewUuid: id, data }, {
-        onSuccess: () => {
-          toast({
-            title: "Saved", 
-            description: "Crew member updated successfully. You can continue editing.",
-            duration: 3000,
-          });
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Error",
-            description: `Failed to update crew member: ${error.message}`,
-            variant: "destructive",
-            duration: 5000,
-          });
-        },
-      });
-    },
-    isPending: updateCrewMutationV2.isPending,
-  };
 
   // V2: Status update mutation (for isActive toggle and nextAvailability)
   const statusUpdateMutation = useMutation({
@@ -9632,136 +9515,90 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setTempNextAvailability('');
   };
 
-  // Handle updating date of recruitment (mirrors Next Availability pattern)
+  // Validate the visible draft AND accepted value before any write.
   const handleUpdateRecruitmentDate = async () => {
-    if (!tempRecruitmentDate) return;
-    // V2: Use crewUuid as the primary identifier. For manually added crew that
-    // have not been persisted yet, hold the date locally; create the crew only
-    // when both First Name and Date of Recruitment are present.
-    let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
-    if (!crewId) {
-      // New unsaved crew: keep the date in the form (header now shows it)
-      updateFormData('recruitmentDate', tempRecruitmentDate);
-      setRecruitmentDateError('');
-      if ((formData.firstName || '').trim()) {
-        // Create now only if Rank and Email are already filled; otherwise the
-        // date is kept and the record is created once they are.
-        if (getMissingCrewCreateFields().length === 0) {
-          await ensureCrewExists(tempRecruitmentDate);
-        }
-      } else {
-        setFirstNameError('First name is required.');
-        toast({
-          title: "Validation Error",
-          description: "Fill the First Name to create the crew record.",
-          variant: "destructive",
-        });
-      }
-      setIsRecruitmentDateEditOpen(false);
-      setTempRecruitmentDate('');
+    if (recruitmentDateSavingRef.current || profileSaveRef.current ||
+        isBatchSavingRef.current || isCreatingCrewRef.current ||
+        isD3Blocked() || firstCreateOwnerRef.current) return;
+    const error = !tempRecruitmentDate ? 'Date of Recruitment is required.' :
+      validateRecruitmentDate(tempRecruitmentDate);
+    if (error || !isRecruitmentDateDraftValid) {
+      if (error) setRecruitmentDateError(error);
       return;
     }
-    // Existing saved crew: save the date to the server, but WITHOUT triggering
-    // the full-profile refetch that would overwrite unsaved local edits.
-    updateFormData('recruitmentDate', tempRecruitmentDate);   // date visible in header + validation passes
-    setRecruitmentDateError('');
-    try {
-      const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${crewId}`, { recruitmentDate: tempRecruitmentDate });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const session = d3SessionRef.current;
+    const submittedDate = tempRecruitmentDate;
+    let crewId = getEffectiveCrewUuid();
+    const existingCrew = Boolean(crewId);
+    if (!existingCrew) {
+      if (profileCreateUncertainRef.current === session) {
+        toast({ title: 'Creation not confirmed', description: 'Check the crew list and reopen the record before retrying.', variant: 'destructive' });
+        return;
       }
+      const readinessErrors = validateCrewProfile({
+        ...profileLatestRef.current, recruitmentDate: submittedDate,
+      }, ['B1', 'B2', 'B3'], {
+        requireRecruitmentDate: canEditSection('B'),
+        mobileValidator: validateMobileNumber,
+      });
+      // Common Login: Rank and Email are also required before the record (and
+      // its SAIL login) can be created.
+      if (Object.keys(readinessErrors).length || getMissingCrewCreateFields().length > 0) {
+        // Selecting a date in an incomplete new form is a local edit, not a
+        // failed database save. Do not run creation or clear unrelated errors.
+        updateFormData('recruitmentDate', submittedDate);
+        setRecruitmentDateError('');
+        setIsRecruitmentDateEditOpen(false);
+        setTempRecruitmentDate('');
+        return;
+      }
+    }
+    recruitmentDateSavingRef.current = true;
+    setIsSavingRecruitmentDate(true);
+    // Creation manages its own profile lock. Existing-crew PATCH shares that
+    // lock with profile saves so neither can overwrite the other's date.
+    if (existingCrew) profileSaveRef.current = true;
+    try {
+      if (!crewId) {
+        crewId = await ensureCrewExists(submittedDate);
+        if (!crewId) return;
+      } else {
+        const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${crewId}`, { recruitmentDate: submittedDate });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      if (d3SessionRef.current !== session) return;
+      updateFormData('recruitmentDate', submittedDate);
+      setRecruitmentDateError('');
+      setIsRecruitmentDateEditOpen(false);
+      setTempRecruitmentDate('');
+      toast({ title: "Saved", description: "Date of Recruitment updated successfully.", duration: 3000 });
       // Refresh the crew list grid (safe — doesn't touch the open form)
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
+      // Refresh failures must not turn a confirmed write into a failed save.
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] }).catch(console.error);
       // Mark the profile cache stale WITHOUT refetching now — fresh data loads
       // next time the form is opened; no reload = no wipe of unsaved edits
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId, 'full-profile'], refetchType: 'none' });
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId, 'full-profile'], refetchType: 'none' }).catch(console.error);
       // Also mark the crew's broader caches (single crew, documents, visas, etc.)
       // stale without refetching now — same coverage as the old broad invalidation
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId], refetchType: 'none' });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'assignments'] });
-      toast({
-        title: "Status Updated",
-        description: "Crew member status has been updated.",
-        duration: 3000,
-      });
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId], refetchType: 'none' }).catch(console.error);
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'dashboard'] }).catch(console.error);
+      void queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'assignments'] }).catch(console.error);
     } catch (error: any) {
+      if (d3SessionRef.current !== session) return;
       toast({
         title: "Error",
-        description: `Failed to update status: ${error.message}`,
+        description: `Date of Recruitment save was not confirmed. ${error.message}`,
         variant: "destructive",
         duration: 5000,
       });
-    }
-    setIsRecruitmentDateEditOpen(false);
-    setTempRecruitmentDate('');
-  };
-
-  const handleSave = () => {
-    if (isD3Blocked() || isBatchSavingRef.current) return;
-
-    // Include the uploaded photo in the data to be saved
-    const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
-    
-    // V2 uses crewUuid, fallback to id for compatibility
-    const existingUuid = getEffectiveCrewUuid();
-    
-    if (existingUuid) {
-      // Update existing crew member via V2 API
-      updateCrewMutation.mutate({ id: existingUuid, data: dataWithPhoto });
-      
-      // V2: Also save section data to their respective tables
-      // Personal Details (A1.1 fields like height, weight, DOB, languages, etc.)
-      const personalDetailsData = {
-        height: formData.heightCm,
-        weight: formData.weightKg,
-        bmi: formData.bmi,
-        dob: formData.dateOfBirth,
-        ageInYears: formData.ageInYears,
-        placeOfBirthCity: formData.placeOfBirthCity,
-        placeOfBirthCountry: formData.placeOfBirthCountry,
-        nativeLanguage: formData.nativeLanguage,
-        foreignLanguages: formData.foreignLanguages,
-        englishProficiency: formData.englishProficiency,
-        manningAgent: formData.manningAgent,
-        crewPool: formData.crewPool,
-      };
-      savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData }, {
-        onError: (err) => console.error('Personal Details Save Error:', err),
-        onSuccess: () => {},
-      });
-      
-      // Address (A1.2 fields)
-      const addressData = {
-        countryOfResidence: formData.countryOfResidence,
-        nearestAirport: formData.nearestAirport,
-        residentialAddressLine1: formData.residentialAddressLine1,
-        residentialAddressLine2: formData.residentialAddressLine2,
-        contactLandline: formData.contactLandline,
-        mobile: formData.mobile,
-        email: formData.email,
-      };
-      saveAddressMutationV2.mutate({ crewUuid: existingUuid, data: addressData });
-      
-      // Family Info (A1.3 fields)
-      const familyInfoData = {
-        maritalStatus: formData.maritalStatus,
-        numberOfDependentChildren: formData.numberOfDependentChildren,
-        fatherName: formData.fatherName,
-        motherName: formData.motherName,
-        spouseFirstName: formData.spouseFirstName,
-        spouseMiddleName: formData.spouseMiddleName,
-        spouseFamilyName: formData.spouseFamilyName,
-        spouseDateOfBirth: formData.spouseDateOfBirth,
-      };
-      saveFamilyInfoMutationV2.mutate({ crewUuid: existingUuid, data: familyInfoData });
-    } else {
-      // Create new crew member via V2 API
-      createCrewMutation.mutate(dataWithPhoto);
+    } finally {
+      if (existingCrew) profileSaveRef.current = false;
+      recruitmentDateSavingRef.current = false;
+      setIsSavingRecruitmentDate(false);
     }
   };
 
-  const isSaving = isBatchSaving || isCreatingCrew || createCrewMutation.isPending || updateCrewMutation.isPending || 
+  const isSaving = isSavingRecruitmentDate || isBatchSaving || isCreatingCrew || createCrewMutation.isPending || updateCrewMutationV2.isPending ||
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
@@ -10687,7 +10524,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={setIsRecruitmentDateEditOpen}>
+      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={(open) => {
+        if (!recruitmentDateSavingRef.current) setIsRecruitmentDateEditOpen(open);
+      }}>
         <DialogContent className="sm:max-w-[350px]">
           <DialogHeader>
             <DialogTitle>Set Date of Recruitment</DialogTitle>
@@ -10698,15 +10537,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               value={tempRecruitmentDate}
               onChange={(e) => setTempRecruitmentDate(e.target.value)}
               className="mt-1"
-              max={todayStr}
+              disableFutureDates
+              maxDateErrorMessage="Date of Recruitment cannot be a future date."
+              onDraftValidityChange={setIsRecruitmentDateDraftValid}
+              disabled={isSavingRecruitmentDate}
               data-testid="input-recruitment-date"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRecruitmentDateEditOpen(false)}>
+            <Button variant="outline" disabled={isSavingRecruitmentDate} onClick={() => setIsRecruitmentDateEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate}>
+            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate || !isRecruitmentDateDraftValid || isSavingRecruitmentDate || isSaving}>
               Save
             </Button>
           </DialogFooter>
