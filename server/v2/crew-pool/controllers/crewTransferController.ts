@@ -25,7 +25,7 @@ export const crewTransferController = {
       if (error.message?.includes("already exists")) {
         return res.status(409).json({ success: false, error: error.message });
       }
-      if (error.message?.includes("status must be")) {
+      if (error.message?.includes("status must be") || error.message?.includes("required for transfer")) {
         return res.status(400).json({ success: false, error: error.message });
       }
       console.error("Error transferring from recruitment:", error);

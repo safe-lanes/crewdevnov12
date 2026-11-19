@@ -188,6 +188,7 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 import { masterLabel, masterReference, recruitmentDisplayData, type DisplayCatalogs } from './masterLabels';
 import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
+import { sailApi, buildCrewSailUserPayload } from '@/lib/sailApi';
 import InterviewLiveSubmissionHost, { interviewCreationErrorMessage, isPersistedInterviewItemUuid, openOrCreateInterview, reconcileSavedInterviewItem } from './components/InterviewLiveSubmissionHost';
 
 interface RecruitmentApplicationFormV2Props {
@@ -659,6 +660,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [spouseErrors, setSpouseErrors] = useState<Record<string, string>>({});
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
   const [firstNameError, setFirstNameError] = useState('');
+  // Email and Present Rank are required: they drive the SAIL login (credentials email, role).
+  const [presentRankError, setPresentRankError] = useState('');
   const [dobError, setDobError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [visaDateErrors, setVisaDateErrors] = useState<Record<string, Record<string, string>>>({});
@@ -2537,8 +2540,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   };
 
-  const handleSaveAndContinue = async () => {
+  // Also used directly as an onClick handler (receives the click event), so the
+  // draft flag is read defensively. Drafts skip the SAIL-required fields.
+  const handleSaveAndContinue = async (options?: unknown) => {
     if (isSavingPartA) return;
+    const isDraft = (options as { isDraft?: boolean } | undefined)?.isDraft === true;
 
     let hasErrors = false;
     const firstErrorTestIds: string[] = [];
@@ -2550,6 +2556,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       hasErrors = true;
     } else {
       setFirstNameError('');
+    }
+
+    if (!isDraft && !(formData.presentRank || '').trim()) {
+      setPresentRankError('Present rank is required.');
+      firstErrorTestIds.push('select-present-rank');
+      hasErrors = true;
+    } else {
+      setPresentRankError('');
     }
 
     if (formData.dateOfBirth) {
@@ -2580,7 +2594,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
 
     const trimmedEmail = (formData.email || '').trim();
-    if (trimmedEmail) {
+    if (!trimmedEmail) {
+      if (isDraft) {
+        setEmailError('');
+      } else {
+        setEmailError('Email is required.');
+        firstErrorTestIds.push('input-email');
+        hasErrors = true;
+      }
+    } else {
       const emailErr = validateEmail(trimmedEmail);
       if (emailErr) {
         setEmailError(emailErr);
@@ -2707,6 +2729,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (Object.keys(overlapErrors).length > 0) hasErrors = true;
 
     if (hasErrors) {
+      toast({
+        title: "Please fix the highlighted fields",
+        description: "Some required fields are missing or invalid.",
+        variant: "destructive",
+      });
       setTimeout(() => {
         if (firstErrorTestIds.length > 0) {
           const el = document.querySelector(`[data-testid="${firstErrorTestIds[0]}"]`);
@@ -2716,7 +2743,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           if (errorEl) errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
-      return;
+      return false;
     }
 
     const nameFieldsToValidate = [
@@ -3317,8 +3344,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     // C3.3 Date is mandatory when a C3.1 status is selected (Approval screen only)
     if (activeSection === 'C' && !validateC3RecruitmentDate()) return;
 
-    await handleSaveAndContinue();
-    
+    const saved = await handleSaveAndContinue({ isDraft: true });
+    if (saved === false) return;
+
     // If on Section B or C, also save screening/approval data
     if ((activeSection === 'B' || activeSection === 'C') && recCanUuid) {
       await handleSaveScreening(true); // skipToasts=true to avoid duplicate notifications
@@ -3371,8 +3399,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const handleA5SubmitForScreening = async () => {
     try {
-      // Always save all form data first (including additional info)
-      await handleSaveAndContinue();
+      // Always save all form data first (including additional info).
+      // Stop if validation failed, so a candidate can't be submitted with missing required fields.
+      const saved = await handleSaveAndContinue();
+      if (saved === false) return;
       
       const currentUuid = recCanUuid;
       
@@ -3469,6 +3499,23 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         variant: "destructive",
       });
       return;
+    }
+
+    // Recruiting ("Yes") transfers the candidate to Crew Pool and creates the SAIL
+    // login, which needs the email (credentials) and present rank.
+    if (formData.c3RecruitmentStatus === 'Yes') {
+      const missing = [
+        !(formData.email || '').trim() && 'Email',
+        !(formData.presentRank || '').trim() && 'Present Rank',
+      ].filter(Boolean);
+      if (missing.length > 0) {
+        toast({
+          title: "Cannot recruit candidate",
+          description: `${missing.join(' and ')} required in A1 Seafarer's Particulars before recruiting.`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     let screeningHasErrors = false;
@@ -4181,6 +4228,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   title: "Crew Pool Transfer",
                   description: `Candidate transferred to Crew Pool with Employee No: ${transferResult.data.empNo}`,
                 });
+
+                // Common Login: create the SAIL user with empNo as username.
+                // A SAIL failure must not undo or block the completed transfer.
+                try {
+                  const sailUser = await sailApi.createUser(buildCrewSailUserPayload({
+                    empNo: transferResult.data.empNo,
+                    firstName: formData.firstName,
+                    lastName: formData.familyName,
+                    email: formData.email,
+                    rankName: formData.presentRank,
+                  }));
+                  console.log('[Common Login] SAIL user created', { crewUuid: transferResult.data.crewUuid, sailUserId: sailUser?.id });
+                  toast({
+                    title: "SAIL Login Created",
+                    description: `Login created with username ${transferResult.data.empNo}`,
+                  });
+                } catch (sailError) {
+                  console.error('[Common Login] Failed to create SAIL user:', sailError);
+                  toast({
+                    title: "SAIL Login Not Created",
+                    description: sailError instanceof Error ? sailError.message : "Failed to create SAIL user",
+                    variant: "destructive",
+                  });
+                }
               } else if (transferResult.error?.includes('already been transferred')) {
                 toast({
                   title: "Crew Pool",
@@ -4188,6 +4259,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 });
               } else if (transferResult.error) {
                 console.error('Transfer error:', transferResult.error);
+                toast({
+                  title: "Crew Pool Transfer Failed",
+                  description: transferResult.error,
+                  variant: "destructive",
+                });
               }
             } catch (transferError) {
               console.error('Failed to transfer to crew pool:', transferError);
@@ -4502,10 +4578,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Present Rank</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Present Rank <span className="text-red-500">*</span></Label>
               {isEditing ? (
-                <Select value={formData.presentRank} onValueChange={(value) => updateFormData('presentRank', value)}>
-                  <SelectTrigger className="mt-1" data-testid="select-present-rank">
+                <>
+                <Select value={formData.presentRank} onValueChange={(value) => { updateFormData('presentRank', value); if (presentRankError) setPresentRankError(''); }}>
+                  <SelectTrigger className={`mt-1 ${presentRankError ? 'border-red-500' : ''}`} data-testid="select-present-rank">
                     <SelectValue placeholder="Select rank" />
                   </SelectTrigger>
                   <SelectContent>
@@ -4518,6 +4595,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     )}
                   </SelectContent>
                 </Select>
+                {presentRankError && <p className="text-xs text-red-500 mt-1" data-testid="text-present-rank-error">{presentRankError}</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-present-rank">{formData.presentRank}</div>
               )}
@@ -4833,14 +4912,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             )}
           </div>
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Email <span className="text-red-500">*</span></Label>
             {isEditing ? (
               <>
                 <Input
                   type="email"
                   value={formData.email}
                   onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
-                  onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
+                  onBlur={(e) => { const v = e.target.value.trim(); setEmailError(v ? validateEmail(v) : 'Email is required.'); }}
                   className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                   data-testid="input-email"
                   maxLength={100}
@@ -9482,7 +9561,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <Button 
               variant="outline" 
               size="sm"
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-white shadow hover:bg-[#3B82F6] h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
               onClick={handleSaveOnly}
               disabled={savingInProgress}
               data-testid="button-save-draft"

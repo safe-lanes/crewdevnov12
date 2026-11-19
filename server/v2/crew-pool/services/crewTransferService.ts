@@ -158,6 +158,16 @@ export const crewTransferService = {
       );
     }
 
+    // Common Login: the SAIL user is created from the transferred crew, so the
+    // credentials email and present rank must exist before a crew record is made.
+    const missingFields: string[] = [];
+    if (!(candidate.presentRank || "").trim()) missingFields.push("Present Rank");
+    const candidateAddress = await addressRepository.findByCandidateUuid(recCanUuid);
+    if (!(candidateAddress?.email || "").trim()) missingFields.push("Email");
+    if (missingFields.length > 0) {
+      throw new Error(`${missingFields.join(" and ")} required for transfer`);
+    }
+
     const existingCrew = await db
       .select()
       .from(crewMembersV2)

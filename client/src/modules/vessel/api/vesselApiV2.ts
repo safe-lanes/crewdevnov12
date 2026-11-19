@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/queryClient';
+import { syncSailVesselSignOn } from '@/lib/sailApi';
 
 const V2_BASE = '/api/v2/vessel';
 
@@ -261,7 +262,10 @@ export const vesselApiV2 = {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to sign on reliever');
     }
-    return response.json();
+    const planning: VesselPlanningV2 = await response.json();
+    // Common Login: give the crew member's SAIL login access to this vessel.
+    void syncSailVesselSignOn(planning?.crewUuid, planning?.vesselUuid);
+    return planning;
   },
 
   /**

@@ -202,6 +202,7 @@ interface CrewInfoFormProps {
   highlightVisaUuid?: string | null;
 }
 
+import { sailApi, buildCrewSailUserPayload } from '@/lib/sailApi';
 import {
   TERMINATION_INITIATED_BY,
   TERMINATION_REASONS,
@@ -956,6 +957,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
   const [firstNameError, setFirstNameError] = useState('');
+  // Present Rank (B1) and Email (B2) are required to create a crew record:
+  // they drive the SAIL login created with it (role, credentials email).
+  const [presentRankError, setPresentRankError] = useState('');
   const [recruitmentDateError, setRecruitmentDateError] = useState('');
   const [dobError, setDobError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
@@ -2232,11 +2236,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const ref = sectionRefs[sectionId];
         if (ref?.current && !ref.current.contains(target)) {
           let crewUuid = getEffectiveCrewUuid();
-          if (!crewUuid && sectionId === 'B1') {
+          if (!crewUuid && (sectionId === 'B1' || sectionId === 'B2')) {
             const trimmedFirstName = (formData.firstName || '').trim();
             if (trimmedFirstName) {
               if ((formData.recruitmentDate || '').trim()) {
-                crewUuid = await ensureCrewExists();
+                // Create only once Rank and Email are filled; until then keep the
+                // entered data in the form (no error spam while still filling B1/B2).
+                if (getMissingCrewCreateFields().length === 0) {
+                  crewUuid = await ensureCrewExists();
+                }
               } else {
                 setRecruitmentDateError('Date of Recruitment is required.');
                 toast({
@@ -4319,10 +4327,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Rank</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Rank <span className="text-red-500">*</span></Label>
             {isEditing ? (
-              <Select value={formData.presentRank} onValueChange={(value) => updateFormData('presentRank', value)}>
-                <SelectTrigger className="mt-1">
+              <Select value={formData.presentRank} onValueChange={(value) => { updateFormData('presentRank', value); if (presentRankError) setPresentRankError(''); }}>
+                <SelectTrigger className={`mt-1 ${presentRankError ? 'border-red-500' : ''}`} data-testid="select-present-rank">
                   <SelectValue placeholder="Select rank" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -4342,6 +4350,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ) : (
               <div className="mt-1 text-sm text-gray-900">{normalizeRank(formData.presentRank || '') || formData.presentRank}</div>
             )}
+            {presentRankError && <p className="text-xs text-red-500 mt-1" data-testid="text-present-rank-error">{presentRankError}</p>}
           </div>
           
           <div>
@@ -4778,13 +4787,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Email <span className="text-red-500">*</span></Label>
             {isEditing ? (
               <Input
                 type="email"
                 value={formData.email}
                 onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(''); }}
-                onBlur={() => { setEmailError(validateEmail(formData.email || '')); }}
+                onBlur={() => { const v = (formData.email || '').trim(); setEmailError(v ? validateEmail(v) : 'Email is required.'); }}
                 className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                 data-testid="input-email"
               />
@@ -7341,6 +7350,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       setFirstNameError('');
     }
 
+    // B1: Present Rank (required — SAIL login role)
+    if (!(formData.presentRank || '').trim()) {
+      setPresentRankError('Present rank is required.');
+      hasErrors = true;
+    } else {
+      setPresentRankError('');
+    }
+
     // B header: Date of Recruitment (required, mirrors First Name)
     if (canEditSection('B') && !(formData.recruitmentDate || '').trim()) {
       setRecruitmentDateError('Date of Recruitment is required.');
@@ -7362,12 +7379,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (mobileErr) { setMobileError(mobileErr); hasErrors = true; } else { setMobileError(''); }
     } else { setMobileError(''); }
 
-    // B2: Email
+    // B2: Email (required — SAIL login credentials are sent here)
     const trimmedEmail = (formData.email || '').trim();
     if (trimmedEmail) {
       const emailErr = validateEmail(trimmedEmail);
       if (emailErr) { setEmailError(emailErr); hasErrors = true; } else { setEmailError(''); }
-    } else { setEmailError(''); }
+    } else { setEmailError('Email is required.'); hasErrors = true; }
 
     // B3: NOK Email
     const trimmedNokEmail = (formData.nokEmail || '').trim();
@@ -8961,6 +8978,72 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return createdCrewId || createdCrewIdRef.current || null;
   };
 
+  // Fields required (besides First Name / Date of Recruitment) before a crew
+  // record may be created.
+  const getMissingCrewCreateFields = (): string[] => {
+    const missing: string[] = [];
+    if (!(formData.presentRank || '').trim()) missing.push('Present Rank');
+    const email = (formData.email || '').trim();
+    if (!email) missing.push('Email');
+    else if (validateEmail(email)) missing.push('a valid Email');
+    return missing;
+  };
+
+  const showMissingCrewCreateFields = (missing: string[]) => {
+    if (missing.includes('Present Rank')) setPresentRankError('Present rank is required.');
+    if (missing.includes('Email')) setEmailError('Email is required.');
+    else if (missing.includes('a valid Email')) setEmailError(validateEmail((formData.email || '').trim()));
+    toast({
+      title: "Missing Required Fields",
+      description: `${missing.join(' and ')} required to create the crew record (Rank in B1, Email in B2).`,
+      variant: "destructive",
+    });
+  };
+
+  // Common Login: create the SAIL user for a newly created crew record (empNo = username).
+  // A SAIL failure must not undo the crew record that was just saved.
+  const createSailLoginForNewCrew = async (created: any) => {
+    const empNo = created?.empNo || created?.employeeId;
+    if (!empNo) return;
+    try {
+      const sailUser = await sailApi.createUser(buildCrewSailUserPayload({
+        empNo,
+        firstName: formData.firstName,
+        lastName: formData.familyName,
+        email: formData.email,
+        rankName: formData.presentRank,
+      }));
+      console.log('[Common Login] SAIL user created', { crewUuid: created?.crewUuid, sailUserId: sailUser?.id });
+      toast({ title: "SAIL Login Created", description: `Login created with username ${empNo}` });
+    } catch (sailError) {
+      console.error('[Common Login] Failed to create SAIL user:', sailError);
+      toast({
+        title: "SAIL Login Not Created",
+        description: sailError instanceof Error ? sailError.message : "Failed to create SAIL user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Common Login: on termination, delete the crew member's SAIL user (soft delete)
+  // and end their SAIL sessions.
+  const revokeSailLoginForTerminatedCrew = async (empNo: string) => {
+    try {
+      const result = await sailApi.deleteCrewUser(empNo);
+      console.log('[Common Login] SAIL user delete on termination', { empNo, result });
+      if ((result as { deleted?: boolean })?.deleted) {
+        toast({ title: "SAIL Login Removed", description: `SAIL login ${empNo} has been deactivated.` });
+      }
+    } catch (sailError) {
+      console.error('[Common Login] Failed to delete SAIL user on termination:', sailError);
+      toast({
+        title: "SAIL Login Not Removed",
+        description: sailError instanceof Error ? sailError.message : "Failed to delete SAIL user",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Ensure crew record exists before allowing section edits
   // This implements the "save-before-edit" pattern for new crew records
   const ensureCrewExists = async (recruitmentDateOverride?: string): Promise<string | null> => {
@@ -8972,6 +9055,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
 
     if (isCreatingCrewRef.current) {
+      return null;
+    }
+
+    // Every auto-create path goes through here: never create a crew record
+    // without Present Rank and Email.
+    const missingForCreate = getMissingCrewCreateFields();
+    if (missingForCreate.length > 0) {
+      showMissingCrewCreateFields(missingForCreate);
       return null;
     }
 
@@ -8996,8 +9087,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       
       const result = await crewPoolApiV2.createCrew(v2Data);
       const newCrewUuid = result?.crewUuid;
-      
+
       if (newCrewUuid) {
+        void createSailLoginForNewCrew(result);
         createdCrewIdOwnerRef.current = d3SessionRef.current;
         createdCrewIdRef.current = newCrewUuid;
         setCreatedCrewId(newCrewUuid);
@@ -9113,9 +9205,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         });
         return;
       }
-      const crewUuidResult = await ensureCrewExists();
-      if (!crewUuidResult) {
-        return;
+      // B2 holds the Email, which is required to create the record, so a new
+      // crew can open B2 before the record exists (it is created on leaving B2).
+      if (!(sectionId === 'B2' && !getEffectiveCrewUuid())) {
+        const crewUuidResult = await ensureCrewExists();
+        if (!crewUuidResult) {
+          return;
+        }
       }
     }
     
@@ -9221,6 +9317,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             await createCrewMutationV2.mutateAsync(data);
 
           parentCreated = true;
+          void createSailLoginForNewCrew(responseData);
 
           const crewUuid = responseData?.crewUuid;
           createdUuid = crewUuid || null;
@@ -9547,7 +9644,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       updateFormData('recruitmentDate', tempRecruitmentDate);
       setRecruitmentDateError('');
       if ((formData.firstName || '').trim()) {
-        await ensureCrewExists(tempRecruitmentDate);
+        // Create now only if Rank and Email are already filled; otherwise the
+        // date is kept and the record is created once they are.
+        if (getMissingCrewCreateFields().length === 0) {
+          await ensureCrewExists(tempRecruitmentDate);
+        }
       } else {
         setFirstNameError('First name is required.');
         toast({
@@ -10532,6 +10633,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     description: "Crew member moved to Terminated tab.",
                     duration: 3000,
                   });
+                  // Common Login: remove the crew member's SAIL login. A SAIL
+                  // failure must not undo the completed termination.
+                  if (formData.employeeId) {
+                    void revokeSailLoginForTerminatedCrew(formData.employeeId);
+                  }
                   setIsTerminateOpen(false);
                   setTerminationDraft(initialTerminationDraft);
                   handleD3Close();

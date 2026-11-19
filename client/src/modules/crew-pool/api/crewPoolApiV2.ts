@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/queryClient';
+import { syncSailProfile, syncSailVesselSignOff } from '@/lib/sailApi';
 import { getAuthToken } from '@/lib/authToken';
 import { getTenantId } from '@/lib/tenantStorage';
 
@@ -69,6 +70,12 @@ export const crewPoolApiV2 = {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to update crew member');
     }
+    // Common Login: push name / rank changes to the crew member's SAIL login.
+    void syncSailProfile(crewUuid, {
+      firstName: data?.firstName,
+      familyName: data?.familyName,
+      presentRank: data?.presentRank,
+    });
     return response.json();
   },
 
@@ -102,6 +109,8 @@ export const crewPoolApiV2 = {
   async saveAddress(crewUuid: string, data: any) {
     const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/address`, data);
     if (!response.ok) throw new Error('Failed to save address');
+    // Common Login: push email changes to the crew member's SAIL login.
+    void syncSailProfile(crewUuid, { email: data?.email });
     return response.json();
   },
 
@@ -483,6 +492,8 @@ export const crewPoolApiV2 = {
 
   async signOff(crewUuid: string, data: any) {
     const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sign-off`, data);
+    // Common Login: remove vessel access from the crew member's SAIL login.
+    if (response.ok) void syncSailVesselSignOff(crewUuid);
     return response.json();
   },
 

@@ -29,6 +29,7 @@ import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignoffCompanyForms } from "./SignoffCompanyForms";
 import { stageCheckBlocksActions, useAssignmentFormRequirements } from "@/modules/crew-pool/components/assignmentFormRequirementsQuery";
+import { syncSailVesselSignOff } from "@/lib/sailApi";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -459,6 +460,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     signOffPortUuid: cleanFormData.signOffPort,
                     travelEndDate: data.travelEndDate || undefined,
                 });
+                // Common Login: remove vessel access from the crew member's SAIL login.
+                void syncSailVesselSignOff(planningData.crewUuid);
             } else if (isTakeover && planningData?.crewStatus === "secondary") {
                 let primaryCrew = allPlanning.find((p: any) => 
                     p.rankId === rankId && 
@@ -484,6 +487,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             signOffReason: primaryCrew.signOffReason,
                             signOffPortUuid: primaryCrew.signOffPortUuid,
                         });
+                        // Common Login: remove vessel access from the relieved crew member's SAIL login.
+                        void syncSailVesselSignOff(primaryCrew.crewUuid);
                     } else {
                         await vesselApiV2.updatePlanning(primaryCrew.planUuid, {
                             crewStatus: "secondary",
