@@ -22,12 +22,23 @@ import {
     Menu,
     X,
     PanelLeft,
+    FolderOpen,
     LogOut,
     UsersRound,
     ClipboardList
 } from "lucide-react";
 
 const navItems = [
+    {
+        label: "My Files",
+        href: "/my-files",
+        menuName: "My Files",
+        icon: FolderOpen,
+        activeBg: "#5DADE2",
+        activeText: "white",
+        inactiveBg: "#f1f1f1",
+        inactiveText: "#4f5863",
+    },
     {
         label: "Dashboard",
         href: "/dashboard",

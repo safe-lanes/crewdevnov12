@@ -1,0 +1,482 @@
+[
+ {
+  "id": "P11",
+  "turn": 1,
+  "cat": "rotation (B4)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which rotation plans are waiting for approval?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 7516,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18917,
+   "completion_tokens": 204
+  },
+  "toolsUsed": [
+   "crewing_query_rotation_approvals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rotation_approvals",
+    "args": {
+     "mode": "list",
+     "sort": "proposed_desc",
+     "limit": 10,
+     "offset": 0,
+     "status": "waiting"
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "plans": 2,
+     "people": 0
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 335
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Plan | Status | Vessel | Period | Waiting entries |\n|---|---|---|---|---:|\n| RP-2026-02 | Partially Approved | MV Alpha Trader | 1 Dec 2026–28 Feb 2027 | 1 |\n| RP-2026-01 | Proposed | MV Alpha Star / MV Beta Ocean | 1 Nov 2026–31 Jan 2027 | 2 |\n\n**2 rotation plans** are waiting for approval. One additional plan is still in draft and is not included. Crewing records company-wide pending plans; it does not identify an individual approver.\n\nFilters: waiting rotation plans, company-wide.\n\nShowing all 2 matching plans."
+ },
+ {
+  "id": "P12",
+  "turn": 1,
+  "cat": "rotation for me (B4)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which rotation plans are waiting for my approval?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5562,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18970,
+   "completion_tokens": 221
+  },
+  "toolsUsed": [
+   "crewing_query_rotation_approvals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rotation_approvals",
+    "args": {
+     "mode": "list",
+     "sort": "proposed_desc",
+     "limit": 10,
+     "offset": 0,
+     "status": "waiting",
+     "forMe": true
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "plans": 2,
+     "people": 0
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 39
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nCrewing does not record individual approvers, so these are all company-wide rotation plans waiting for approval:\n\n| Plan | Status | Vessels | Period | Waiting entries |\n|---|---|---|---|---:|\n| RP-2026-02 | Partially Approved | MV Alpha Trader | 1 Dec 2026–28 Feb 2027 | 1 |\n| RP-2026-01 | Proposed | MV Alpha Star / MV Beta Ocean | 1 Nov 2026–31 Jan 2027 | 2 |\n\nThere are **2 plans** waiting for approval. One additional plan is still in draft and is listed separately.\n\nFilters: waiting rotation plans, company-wide, requested as “my approval”.\n\nCrewing does not record an individual approver for rotation plans, so a personal approval queue cannot be identified. The plans shown are all plans waiting for approval in your company.\n\nShowing all 2 matching plans."
+ },
+ {
+  "id": "P15",
+  "turn": 1,
+  "cat": "appraisals pending (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which appraisals are pending?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6372,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19255,
+   "completion_tokens": 282
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "statusClass": "pending"
+    },
+    "ok": true,
+    "total": 5,
+    "totals": {
+     "appraisals": 5,
+     "people": 5
+    },
+    "returned": 5,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 49
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **5 pending appraisals** for **5 crew members**:\n\n| Crew member | Rank | Vessel | Type | Appraisal date | Status |\n|---|---|---|---|---|---|\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | Annual | 2026-10-10 | Pending review |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | Annual | 2026-10-05 | Preliminary |\n| Faustin Kelderwick | Third Engineer | MV Alpha Star | Annual | 2026-10-01 | Submitted |\n| Petra Wintermarsh | Second Engineer | Not recorded | Annual | 2026-09-20 | Preliminary |\n| Ulric Penhallow | Chief Officer | MV Alpha Star | Sign-off | 2026-07-01 | Submitted |\n\nOne appraisal could not be tied to a vessel because its vessel is missing.\n\nFilters: pending appraisals; all vessels; newest first; unit: people/appraisals.\n\nShowing all 5 matching appraisals."
+ },
+ {
+  "id": "P16",
+  "turn": 1,
+  "cat": "appraisal score permitted (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What was Orrin Haverlock's score in his last completed appraisal?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6797,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28459,
+   "completion_tokens": 147
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Orrin Haverlock"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 18
+   },
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "statusClass": "completed",
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000015"
+     ],
+     "includeScores": true
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "appraisals": 1,
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 58
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nOrrin Haverlock’s last completed appraisal was dated **1 August 2026**, with an overall score of **A**.\n\nFilters: person Orrin Haverlock, completed appraisals, latest first, overall score included.\n\nShowing all 1 matching appraisals."
+ },
+ {
+  "id": "P17",
+  "turn": 1,
+  "cat": "appraisal score refused (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What score did Aldric Vexmoor get in his appraisal?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3424,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18513,
+   "completion_tokens": 53
+  },
+  "toolsUsed": [
+   "crewing_find_crew"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Aldric Vexmoor"
+    },
+    "ok": false,
+    "code": "not_allowed",
+    "ms": 0
+   }
+  ],
+  "answer": "I can’t access Aldric Vexmoor’s appraisal score because your role does not have permission to view this live data."
+ },
+ {
+  "id": "P18",
+  "turn": 1,
+  "cat": "own appraisal (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What is my own appraisal score?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3824,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18556,
+   "completion_tokens": 67
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "own": true,
+     "includeScores": true
+    },
+    "ok": false,
+    "code": "identity_not_linked",
+    "ms": 20
+   }
+  ],
+  "answer": "I can’t identify your own appraisal because your login is not linked to a crew record in Crewing. Which crew member do you mean?"
+ },
+ {
+  "id": "P19",
+  "turn": 1,
+  "cat": "appraisal draft score hidden (B6)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Show me Corvina Tallowind's appraisal score",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6936,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28359,
+   "completion_tokens": 131
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Corvina Tallowind"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 27
+   },
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000003"
+     ],
+     "statusClass": "completed",
+     "includeScores": true
+    },
+    "ok": true,
+    "total": 0,
+    "totals": {
+     "appraisals": 0,
+     "people": 0
+    },
+    "returned": 0,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 53
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nCorvina Tallowind has no completed appraisal with a score recorded.\n\n**Filters:** crew member Corvina Tallowind, completed appraisals, overall score requested.\n\nShowing 0 matching appraisals."
+ },
+ {
+  "id": "P22",
+  "turn": 1,
+  "cat": "appraisal historical vessel (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which appraisals were done on MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5099,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19429,
+   "completion_tokens": 290
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "statusClass": "any",
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 6,
+    "totals": {
+     "appraisals": 6,
+     "people": 6
+    },
+    "returned": 6,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 77
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n6 appraisals were done on **MV Alpha Star**:\n\n| Crew member | Rank | Type | Date | Status |\n|---|---|---|---|---|\n| Corvina Tallowind | Second Officer | Annual | 2026-10-20 | Draft |\n| Benedek Quorrlyn | Chief Officer | Annual | 2026-10-10 | Pending review |\n| Faustin Kelderwick | Third Engineer | Annual | 2026-10-01 | Submitted |\n| Aldric Vexmoor | Master | Annual | 2026-09-15 | Completed |\n| Ulric Penhallow | Chief Officer | Sign-off | 2026-07-01 | Submitted |\n| Tamsin Ebberline | Chief Engineer | Sign-off | 2026-05-01 | Completed |\n\nSummary: **3 pending, 1 draft and 2 completed**. Two other appraisals could not be tied to a vessel and were excluded.\n\nFilters: vessel MV Alpha Star, all appraisal statuses, unit appraisals.\n\nShowing all 6 matching appraisals."
+ },
+ {
+  "id": "P23",
+  "turn": 1,
+  "cat": "appraisal score by vessel (B6)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Show the overall scores of completed appraisals done on MV Alpha Star",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5079,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19119,
+   "completion_tokens": 178
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "statusClass": "completed",
+     "vessels": [
+      "MV Alpha Star"
+     ],
+     "includeScores": true
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "appraisals": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 22
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Person | Rank | Appraisal type | Appraisal date | Overall score |\n|---|---|---|---|---|\n| Aldric Vexmoor | Master | Annual | 2026-09-15 | B |\n| Tamsin Ebberline | Chief Engineer | Sign-off | 2026-05-01 | A |\n\n**Total:** 2 completed appraisals for MV Alpha Star.\n\nFilters: vessel MV Alpha Star, completed appraisals, overall scores included.\n\nShowing all 2 matching appraisals."
+ }
+]

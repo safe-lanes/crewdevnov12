@@ -529,10 +529,15 @@ export const crewPoolApiV2 = {
   uploadAttachmentsZip(
     fileBuffer: ArrayBuffer,
     onProgress?: (percent: number) => void,
+    options?: { preview?: boolean; replaceExisting?: boolean },
   ): Promise<any> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${V2_BASE}/import/attachments`);
+      const query = new URLSearchParams();
+      if (options?.preview) query.set('preview', '1');
+      if (options?.replaceExisting) query.set('replaceExisting', '1');
+      const queryString = query.toString();
+      xhr.open('POST', `${V2_BASE}/import/attachments${queryString ? `?${queryString}` : ''}`);
       xhr.setRequestHeader('Content-Type', 'application/zip');
 
       const tenantId = getTenantId();
@@ -571,4 +576,149 @@ export const crewPoolApiV2 = {
       xhr.send(fileBuffer);
     });
   },
+
+  async listAttachmentConverterProfiles() {
+    const response = await fetch(`${V2_BASE}/attachment-converter/profiles`);
+    if (!response.ok) throw new Error('Failed to load attachment converter profiles');
+    return response.json();
+  },
+
+  async analyzeAttachmentConversion(
+    fileBuffer: ArrayBuffer,
+    profileId: string,
+    resolutions: unknown[] = [],
+    onProgress?: (progress: { completed: number; total: number; percent: number; stage: string }) => void,
+    onUploadProgress?: (percent: number) => void,
+  ) {
+    const hasResolutions = resolutions.length > 0;
+    if (!hasResolutions) {
+      return postAttachmentConverterZip(
+        `${V2_BASE}/attachment-converter/analyze?profileId=${encodeURIComponent(profileId)}&stream=1`,
+        fileBuffer,
+        onProgress,
+        onUploadProgress,
+      );
+    }
+    const response = await fetch(`${V2_BASE}/attachment-converter/analyze?profileId=${encodeURIComponent(profileId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': hasResolutions ? 'application/json' : 'application/zip' },
+      body: hasResolutions
+        ? JSON.stringify({ fileData: arrayBufferToBase64(fileBuffer), resolutions })
+        : fileBuffer,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Attachment conversion analysis failed');
+    }
+    return response.json();
+  },
+
+  async convertAttachmentConversion(
+    fileBuffer: ArrayBuffer,
+    profileId: string,
+    resolutions: unknown[] = [],
+    onProgress?: (progress: { completed: number; total: number; percent: number; stage: string }) => void,
+    onUploadProgress?: (percent: number) => void,
+  ) {
+    const hasResolutions = resolutions.length > 0;
+    if (!hasResolutions) {
+      return postAttachmentConverterZip(
+        `${V2_BASE}/attachment-converter/convert?profileId=${encodeURIComponent(profileId)}&stream=1`,
+        fileBuffer,
+        onProgress,
+        onUploadProgress,
+      );
+    }
+    const response = await fetch(`${V2_BASE}/attachment-converter/convert?profileId=${encodeURIComponent(profileId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': hasResolutions ? 'application/json' : 'application/zip' },
+      body: hasResolutions
+        ? JSON.stringify({ fileData: arrayBufferToBase64(fileBuffer), resolutions })
+        : fileBuffer,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Attachment conversion failed');
+    }
+    return response.json();
+  },
 };
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+function postAttachmentConverterZip(
+  url: string,
+  fileBuffer: ArrayBuffer,
+  onProgress?: (progress: { completed: number; total: number; percent: number; stage: string }) => void,
+  onUploadProgress?: (percent: number) => void,
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Content-Type', 'application/zip');
+
+    const tenantId = getTenantId();
+    if (tenantId) xhr.setRequestHeader('x-tenant-id', tenantId);
+    const token = getAuthToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onUploadProgress) {
+        onUploadProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    let responseOffset = 0;
+    let pendingLine = '';
+    let streamedResult: any = null;
+    const consumeProgressEvents = () => {
+      const newText = xhr.responseText.slice(responseOffset);
+      responseOffset = xhr.responseText.length;
+      pendingLine += newText;
+      const lines = pendingLine.split(/\r?\n/);
+      pendingLine = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const event = JSON.parse(line);
+          if (event.type === 'progress') onProgress?.(event.progress);
+          if (event.type === 'result') streamedResult = event.result;
+          if (event.type === 'error') throw new Error(event.message || 'Attachment converter request failed');
+        } catch (error) {
+          if (error instanceof Error && error.message !== 'Unexpected end of JSON input') throw error;
+        }
+      }
+    };
+    xhr.onprogress = consumeProgressEvents;
+    xhr.onload = () => {
+      try { consumeProgressEvents(); } catch (error) { reject(error); return; }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.message || error.error || 'Attachment converter request failed'));
+        } catch {
+          reject(new Error(xhr.statusText || 'Attachment converter request failed'));
+        }
+        return;
+      }
+      try {
+        if (streamedResult !== null) {
+          resolve(streamedResult);
+        } else {
+          resolve(JSON.parse(xhr.responseText));
+        }
+      } catch {
+        reject(new Error('Invalid response from attachment converter'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during attachment converter request'));
+    xhr.send(fileBuffer);
+  });
+}

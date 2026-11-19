@@ -152,7 +152,9 @@ export const crewImportController = {
         });
       }
 
-      const result = await importAttachmentsZip(buffer);
+      const previewOnly = req.query.preview === "1" || req.query.preview === "true";
+      const replaceExisting = req.query.replaceExisting === "1" || req.query.replaceExisting === "true";
+      const result = await importAttachmentsZip(buffer, { previewOnly, replaceExisting });
       res.json(result);
     } catch (error: any) {
       console.error("Error importing attachments:", error);

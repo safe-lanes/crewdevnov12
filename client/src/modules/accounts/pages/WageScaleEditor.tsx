@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  getEffectivePeriodReason,
+  scaleCellKey,
+} from "@shared/v2/accounts/payElementEffectivePeriod";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -38,6 +42,9 @@ import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV
 import { formatDate, formatMoney, yearStepToMonths } from "../accountsFormat";
 import {
   getRevisionDateError,
+  getWageScaleDateError,
+  revisionMinimum,
+  type PredecessorAdjustment,
   shiftIsoDate,
 } from "@shared/v2/accounts/wageScaleRevisionDates";
 
@@ -114,39 +121,33 @@ export default function WageScaleEditor({
       effTo !== (scale.effectiveTo ?? "") ||
       !dateValidity.from || !dateValidity.to);
 
-  const revisionDateLimit = useMemo<{
-    min: string | undefined;
-    error: string | null;
-  }>(() => {
-    if (!supersedes?.effectiveFrom) {
+  const revisionDateLimit = (() => {
+    if (!supersedes) {
       return { min: undefined, error: null };
     }
-    const boundary =
-      supersedes.effectiveTo || supersedes.effectiveFrom;
     try {
-      return {
-        min: shiftIsoDate(boundary, 1),
-        error: null,
-      };
-    } catch {
+      return { min: revisionMinimum(supersedes), error: null };
+    } catch (error) {
       return {
         min: undefined,
-        error:
-          "The superseded wage scale's date boundary is invalid or outside the supported calendar range. Correct its effective dates before continuing.",
+        error: error instanceof Error ? error.message : "Invalid predecessor date.",
       };
     }
-  }, [supersedes?.effectiveFrom, supersedes?.effectiveTo]);
+  })();
   const validateRevisionDates = (
     requireSavedDates = false,
   ): boolean => {
-    if (!supersedes) return true;
     const dateError =
-      getRevisionDateError(supersedes, effFrom) ||
+      (!dateValidity.from || !dateValidity.to ? "Correct or clear the invalid month." : null) ||
+      getWageScaleDateError(effFrom, effTo, {
+        revision: !!supersedes,
+        activation: requireSavedDates,
+      }) ||
       revisionDateLimit.error ||
-      (!dateValidity.from ? "Enter a valid Effective From date for the revision." : null);
+      (supersedes && effFrom ? getRevisionDateError(supersedes, effFrom) : null);
     if (dateError) {
       toast({
-        title: "Invalid revision date",
+        title: "Invalid effective months",
         description: dateError,
         variant: "destructive",
       });
@@ -156,7 +157,7 @@ export default function WageScaleEditor({
       toast({
         title: "Save dates first",
         description:
-          "Save the revision's effective dates before continuing.",
+          "Save the effective months before activating.",
         variant: "destructive",
       });
       return false;
@@ -182,6 +183,32 @@ export default function WageScaleEditor({
         variant: "destructive",
       });
       return;
+    }
+    const periodChanged =
+      (effFrom || null) !== (scale.effectiveFrom || null) ||
+      (effTo || null) !== (scale.effectiveTo || null);
+
+    if (periodChanged) {
+      const invalidLine = (detail?.lines ?? []).find((line: any) => {
+        const element = elementByUuid.get(line.payElementUuid);
+        return element &&
+          COLUMN_METHODS.includes(element.calcMethod) &&
+          getEffectivePeriodReason(element, {
+            effectiveFrom: effFrom,
+            effectiveTo: effTo,
+          });
+      });
+
+      if (invalidLine) {
+        toast({
+          title: "Cannot save effective dates",
+          description:
+            "An existing element is not effective for the selected period. " +
+            "Remove it and save the scale before changing these dates.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setDatesSaving(true);
     try {
@@ -395,6 +422,21 @@ export default function WageScaleEditor({
   const addColumn = (uuid: string) => {
     const el = elementByUuid.get(uuid);
     if (!el || columns.some((c) => c.uuid === uuid)) return;
+    const periodReason = COLUMN_METHODS.includes(el.calcMethod)
+      ? getEffectivePeriodReason(el, {
+          effectiveFrom: effFrom,
+          effectiveTo: effTo,
+        })
+      : null;
+
+    if (periodReason) {
+      toast({
+        title: "Cannot add element",
+        description: periodReason,
+        variant: "destructive",
+      });
+      return;
+    }
     setColumns((c) => [
       ...c,
       {
@@ -500,9 +542,42 @@ export default function WageScaleEditor({
 
   const handleSave = async () => {
     if (!validateRevisionDates()) return;
+    const lines = buildLines();
+    const savedKeys = new Set(
+      (detail?.lines ?? []).map((line: any) => scaleCellKey(line)),
+    );
+    const addedLines = lines.filter(
+      (line) => !savedKeys.has(scaleCellKey(line)),
+    );
+
+    if (addedLines.length > 0 && datesDirty) {
+      toast({
+        title: "Save effective dates first",
+        description:
+          "Save the selected effective dates before saving newly added elements.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const invalidLine = addedLines.find((line) => {
+      const element = elementByUuid.get(line.payElementUuid);
+      return element &&
+        COLUMN_METHODS.includes(element.calcMethod) &&
+        getEffectivePeriodReason(element, scale);
+    });
+
+    if (invalidLine) {
+      toast({
+        title: "Cannot save element",
+        description: "Not effective for the selected period",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
-      await accountsApiV2.wageScales.replaceLines(scaleUuid, buildLines());
+      await accountsApiV2.wageScales.replaceLines(scaleUuid, lines);
       await queryClient.invalidateQueries({ queryKey: detailKey });
       builtForRef.current = "";
       setDirty(false);
@@ -523,15 +598,40 @@ export default function WageScaleEditor({
   const [violations, setViolations] = useState<any[]>([]);
   const [acknowledge, setAcknowledge] = useState(false);
   const [activating, setActivating] = useState(false);
+  const [pendingActivation, setPendingActivation] = useState<{
+    acknowledge: boolean;
+    adjustment: PredecessorAdjustment;
+  } | null>(null);
 
-  const runActivate = async (ack: boolean) => {
+  const runActivate = async (ack: boolean, confirmedAdjustment?: PredecessorAdjustment) => {
     if (!validateRevisionDates(true)) return;
+    if (supersedes && !confirmedAdjustment) {
+      setPendingActivation({
+        acknowledge: ack,
+        adjustment: {
+          predecessorUuid: supersedes.scaleUuid,
+          previousEffectiveTo: supersedes.effectiveTo ?? null,
+          revisionEffectiveFrom: effFrom,
+          nextEffectiveTo: shiftIsoDate(effFrom, -1),
+        },
+      });
+      return;
+    }
     setActivating(true);
     try {
-      await accountsApiV2.wageScales.activate(scaleUuid, ack);
+      await accountsApiV2.wageScales.activate(scaleUuid, ack, confirmedAdjustment);
       await queryClient.invalidateQueries({ queryKey: detailKey });
       await queryClient.invalidateQueries({
         queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
+      });
+      await queryClient.invalidateQueries({
+        predicate: ({ queryKey }) => {
+          const key = String(queryKey[0] ?? "");
+          return key.startsWith(`${ACCOUNTS_BASE}/vessel-portage/`) ||
+            key.startsWith(`${ACCOUNTS_BASE}/monthly-transactions?`) ||
+            key.startsWith(`${ACCOUNTS_BASE}/engagements/review?`) ||
+            key.startsWith(`${ACCOUNTS_BASE}/portage?`);
+        },
       });
       builtForRef.current = "";
       setFloorDialogOpen(false);
@@ -543,9 +643,14 @@ export default function WageScaleEditor({
         setAcknowledge(false);
         setFloorDialogOpen(true);
       } else {
+        const blockers = info.data?.blockers as Array<{
+          crewUuid: string; period: string; reason: string;
+        }> | undefined;
         toast({
           title: "Activation failed",
-          description: info.message,
+          description: blockers?.length
+            ? blockers.map(item => `${item.crewUuid}, ${item.period}: ${item.reason}`).join("\n")
+            : info.message,
           variant: "destructive",
         });
       }
@@ -676,12 +781,8 @@ export default function WageScaleEditor({
           <span>
             This scale supersedes <b>{supersedes.scaleName}</b> but has no
             Effective From date, so wage calculation will never switch to it.
-            Set Effective From below
-            {supersedes.effectiveTo
-              ? ` (typically the day after ${formatDate(supersedes.effectiveTo)},`
-              : " (typically the day after the superseded scale's Effective To,"}
-            {" "}or match the superseded scale's Effective From to replace it
-            for all periods).
+            Select a valid start month below. Revisions start next month or later;
+            activation will align the predecessor's end date after confirmation.
           </span>
         </div>
       )}
@@ -694,6 +795,7 @@ export default function WageScaleEditor({
             </Label>
             <WageScaleDateInput
               key={`from-${scaleUuid}`}
+              edge="start"
               savedValue={scale.effectiveFrom ?? ""}
               resetKey={JSON.stringify([scale.effectiveFrom, scale.effectiveTo])}
               value={effFrom}
@@ -710,6 +812,7 @@ export default function WageScaleEditor({
             </Label>
             <WageScaleDateInput
               key={`to-${scaleUuid}`}
+              edge="end"
               savedValue={scale.effectiveTo ?? ""}
               resetKey={JSON.stringify([scale.effectiveFrom, scale.effectiveTo])}
               value={effTo}
@@ -772,18 +875,29 @@ export default function WageScaleEditor({
               <SelectContent>
                 {columnCandidates.map((e: any) => {
                   const eligible = COLUMN_METHODS.includes(e.calcMethod);
+                  const periodReason = eligible
+                    ? getEffectivePeriodReason(e, {
+                        effectiveFrom: effFrom,
+                        effectiveTo: effTo,
+                      })
+                    : null;
                   return (
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={!eligible || e.status === "inactive"}
-                      className={eligible ? "" : "opacity-50"}
+                      disabled={!eligible || e.status === "inactive" || !!periodReason}
+                      className={eligible && !periodReason ? "" : "opacity-50"}
                       data-testid={`option-add-column-${e.code}`}
                     >
                       {e.code} — {e.name}
                       {!eligible && (
                         <span className="ml-1 text-muted-foreground">
                           ({INELIGIBLE_HINTS[e.calcMethod] ?? "Not a scale column"})
+                        </span>
+                      )}
+                      {eligible && periodReason && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({periodReason})
                         </span>
                       )}
                     </SelectItem>
@@ -968,6 +1082,35 @@ export default function WageScaleEditor({
       </Dialog>
 
       {/* Floor-check dialog */}
+      <Dialog open={pendingActivation !== null} onOpenChange={(open) => {
+        if (!open) setPendingActivation(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm predecessor end date</DialogTitle>
+          </DialogHeader>
+          {pendingActivation && (
+            <div className="space-y-2 text-sm">
+              <p>Revision starts: {formatDate(pendingActivation.adjustment.revisionEffectiveFrom)}</p>
+              <p>Existing predecessor end: {pendingActivation.adjustment.previousEffectiveTo
+                ? formatDate(pendingActivation.adjustment.previousEffectiveTo) : "Open-ended"}</p>
+              <p>New predecessor end: {formatDate(pendingActivation.adjustment.nextEffectiveTo)}</p>
+              <p>Activation will apply this change so the scales remain continuous.
+                This can shorten or extend the predecessor, including extending its validity
+                into earlier months. Locked payroll and frozen settlements will not be rewritten.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingActivation(null)}>Cancel</Button>
+            <Button onClick={() => {
+              const pending = pendingActivation;
+              if (!pending) return;
+              setPendingActivation(null);
+              void runActivate(pending.acknowledge, pending.adjustment);
+            }}>Confirm and activate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={floorDialogOpen} onOpenChange={setFloorDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

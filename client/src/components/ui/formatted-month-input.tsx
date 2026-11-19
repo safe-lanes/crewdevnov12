@@ -10,6 +10,9 @@ interface MonthOnlyInputProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  min?: string;
+  max?: string;
+  onDraftValidityChange?: (valid: boolean) => void;
   initialMonthDraft?: MonthDraft;
   onMonthDraftChange?: (draft: MonthDraft) => void;
   "data-testid"?: string;
@@ -38,6 +41,7 @@ function parseMonth(text: string): string | null {
 // parsing, formatting, events, and styles are intentionally not shared here.
 export const MonthOnlyInput = React.forwardRef<HTMLDivElement, MonthOnlyInputProps>(
   ({ value, onChange, className, placeholder = "MMM-YYYY", disabled = false,
+     min, max, onDraftValidityChange,
      initialMonthDraft, onMonthDraftChange, "data-testid": testId }, ref) => {
     const [draft, setDraft] = React.useState(() => initialMonthDraft?.text ?? formatMonth(value));
     const [manual, setManual] = React.useState(initialMonthDraft?.manual ?? false);
@@ -45,7 +49,14 @@ export const MonthOnlyInput = React.forwardRef<HTMLDivElement, MonthOnlyInputPro
     const pickerRef = React.useRef<HTMLInputElement>(null);
     // An unchanged accepted picker value is valid even for a legacy year that
     // cannot be entered through the new four-digit manual formats.
-    const valid = !draft.trim() || parseMonth(draft) !== null || (!manual && draft === formatMonth(value));
+    const canonicalDraft = !draft.trim() ? "" : parseMonth(draft) ??
+      (!manual && draft === formatMonth(value) ? value : null);
+    const valid = canonicalDraft !== null && (canonicalDraft === "" ||
+      ((!min || canonicalDraft >= min) && (!max || canonicalDraft <= max)));
+
+    React.useLayoutEffect(() => {
+      onDraftValidityChange?.(valid);
+    }, [valid, onDraftValidityChange]);
 
     React.useLayoutEffect(() => { onMonthDraftChange?.({ text: draft, manual }); }, [draft, manual, onMonthDraftChange]);
     React.useEffect(() => {
@@ -125,6 +136,8 @@ export const MonthOnlyInput = React.forwardRef<HTMLDivElement, MonthOnlyInputPro
             <input
               ref={pickerRef}
               type="month"
+              min={min}
+              max={max}
               // A bad draft must not prevent selecting the previous month again.
               value={valid ? value : ""}
               disabled={disabled}

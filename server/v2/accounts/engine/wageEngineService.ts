@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 import { EngineReads, type PromotionEvent } from "./engineReads";
 import { LedgerRepository } from "./ledgerRepository";
 import { BalanceService } from "./balanceService";
+import { protectedTxnUuids } from "../repositories/wageRevisionProtectionRepository";
+import type { ContractSetupSlice } from "../../../../shared/v2/accounts/contractPayItemRules";
 import {
   monthInfo,
   type MonthInfo,
@@ -54,6 +56,7 @@ interface EngineConfig {
 }
 
 interface CalcContext {
+  rateProtectedTxnUuids: Set<string>;
   config: EngineConfig;
 
   month: MonthInfo;
@@ -201,6 +204,122 @@ class EngineError extends Error {
 const reads = new EngineReads();
 const ledgerRepo = new LedgerRepository();
 const balanceService = new BalanceService();
+
+export interface ApplicableWageValues {
+  engagementUuid: string;
+  scaleUuid: string | null;
+  serviceTo: string | null;
+  entries: Record<string, { rate: string | null; amount: string | null }>;
+  errors: string[];
+  suppressedElementUuids: string[];
+}
+
+export async function readApplicableWageValues(
+  period: string,
+  engagements: AccEngagementV2[],
+): Promise<Map<string, ApplicableWageValues>> {
+  const ctx = await buildContext(
+    toEngineConfig(await reads.getConfig()), monthInfo(period), engagements,
+  );
+  const values = new Map<string, ApplicableWageValues>();
+  for (const engagement of engagements) {
+    const value: ApplicableWageValues = {
+      engagementUuid: engagement.engagementUuid, scaleUuid: null,
+      serviceTo: null, entries: {}, errors: [],
+      suppressedElementUuids: [],
+    };
+    const result = calcEngagement(ctx, engagement, (state, entries) => {
+      value.scaleUuid = state.scaleUuid;
+      value.serviceTo = state.to;
+      value.suppressedElementUuids = Array.from(ctx.elements.keys()).filter(uuid =>
+        isPaymentSuppressed(
+          ctx.overridesByEngagement.get(engagement.engagementUuid) ?? [],
+          uuid, state.from, state.to,
+        ));
+      for (const [uuid, entry] of entries) {
+        value.entries[uuid] = {
+          rate: entry.rateE4 == null ? null : formatScaled(entry.rateE4, 4),
+          amount: entry.amountE2 == null ? null : centsToString(entry.amountE2),
+        };
+      }
+    });
+    value.errors = result.errors;
+    values.set(engagement.engagementUuid, value);
+  }
+  return values;
+}
+
+/** Read every known setup boundary; never substitute a last-month payroll result. */
+export async function readContractPayItemSetup(
+  engagement: AccEngagementV2,
+  additionalDates: Array<string | null | undefined> = [],
+): Promise<{ slices: ContractSetupSlice[]; nationalityUuid: string | null }> {
+  const invalid = (message: string) => Object.assign(new Error(message), { code: "VALIDATION" });
+  if (!engagement.startDate || !parseIsoDate(engagement.startDate) ||
+      !engagement.rankIdAtStart || !engagement.wageScaleUuid) {
+    throw invalid("The contract needs a valid start date, rank and wage scale.");
+  }
+  const config = toEngineConfig(await reads.getConfig());
+  const ctx = await buildContext(config, monthInfo(engagement.startDate.slice(0, 7)), [engagement]);
+  if (!ctx.scaleByUuid.has(engagement.wageScaleUuid)) {
+    throw invalid("The contract's wage scale is unavailable.");
+  }
+  const from = engagement.startDate;
+  const to = engagement.endDate
+    ? (config.dayInclusionRule === "exclude_sign_off_day"
+      ? addDays(engagement.endDate, -1) : engagement.endDate)
+    : "9999-12-31";
+  const nationalityUuid = ctx.nationalityByCrew.get(engagement.crewUuid) ?? null;
+  if (from > to) return { slices: [], nationalityUuid };
+  const promos = (ctx.promosByCrew.get(engagement.crewUuid) ?? [])
+    .filter(p => parseIsoDate(p.effectiveDate))
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+  const anniversaries = anniversaryDates(engagement, to);
+  const phases = ctx.phasesByEngagement.get(engagement.engagementUuid) ?? [];
+  const boundaries = new Set<string>([from]);
+  const add = (date?: string | null) => {
+    if (date && date > from && date <= to && parseIsoDate(date)) boundaries.add(date);
+  };
+  promos.forEach(p => add(p.effectiveDate));
+  anniversaries.forEach(add);
+  phases.forEach(p => add(p.fromDate));
+  scaleVersionBoundaries(ctx, engagement.wageScaleUuid, from, to).forEach(add);
+  for (const item of ctx.overridesByEngagement.get(engagement.engagementUuid) ?? []) {
+    add(item.effectiveFrom);
+    if (item.effectiveTo && item.effectiveTo < to) add(addDays(item.effectiveTo, 1));
+  }
+  additionalDates.forEach(add);
+  const dates = [...boundaries].sort();
+  const slices = dates.map((date, index): ContractSetupSlice => {
+    const state: SegmentState = {
+      from: date, to: date, days: 1, daysCalendar: 1,
+      rankId: rankAt(engagement, promos, date),
+      scaleYear: scaleYearAt(engagement, anniversaries, date),
+      scaleUuid: resolveScaleAt(ctx, engagement.wageScaleUuid!, date),
+      phaseType: phaseAt(phases, date),
+    };
+    const entries = resolveEntries(ctx, engagement, state, nationalityUuid, [], [], []);
+    return {
+      from: date, to: index + 1 < dates.length ? addDays(dates[index + 1], -1) : to,
+      baseElementUuids: [...entries.keys()],
+    };
+  });
+  return { slices, nationalityUuid };
+}
+
+function isPaymentSuppressed(
+  overrides: AccEngagementPayElementV2[],
+  elementUuid: string,
+  from: string,
+  to: string,
+): boolean {
+  return overrides.some(o =>
+    o.eligibilityRulesVersion === 1 &&
+    o.overrideMode === "suppress_element" &&
+    o.payElementUuid === elementUuid &&
+    (o.effectiveFrom == null || o.effectiveFrom <= to) &&
+    (o.effectiveTo == null || o.effectiveTo >= from));
+}
 
 /** Inclusive date-range overlap; a null end date means open-ended. */
 function rangesOverlap(
@@ -1117,6 +1236,7 @@ async function buildContext(
   return {
     config,
     month,
+    rateProtectedTxnUuids: await protectedTxnUuids(txns),
     elements: elementsMap,
     elementsByCategory,
     scaleByUuid,
@@ -1175,6 +1295,7 @@ function buildInputSnapshot(
 function calcEngagement(
   ctx: CalcContext,
   engagement: AccEngagementV2,
+  selectionOnly?: (state: SegmentState, entries: Map<string, ResolvedEntry>) => void,
 ): EngagementResult {
   const errors: string[] = [];
   const warnings: EngagementWarning[] = [];
@@ -1322,6 +1443,11 @@ function calcEngagement(
   // Track non-prorated elements posted once per month.
   const nonProratedPosted = new Set<string>();
   const lastState = states[states.length - 1];
+  if (selectionOnly) {
+    const entries = resolveEntries(ctx, engagement, lastState, crewNat, overrides, errors, warnings);
+    selectionOnly(lastState, entries);
+    return { engagement, lines: [], errors, warnings };
+  }
 
   for (const state of states) {
     if (state.days <= 0) continue; // zero-day segment: no lines
@@ -1454,6 +1580,10 @@ function calcEngagement(
       errors.push(`monthly txn ${txn.txnUuid}: unknown pay element`);
       continue;
     }
+    if (el.calcMethod === "rate_times_qty" &&
+        isPaymentSuppressed(overrides, el.payElementUuid, svcFrom, svcTo)) {
+      continue;
+    }
     const rule = el.roundingRule as RoundingRule;
     const unit = precisionToUnitCents(el.roundingPrecision);
     let amountCents: number;
@@ -1474,7 +1604,9 @@ function calcEngagement(
         el.payElementUuid,
       );
       const effectiveRateE4 =
-        rateE4 ?? (txn.rate != null ? parseScaled(txn.rate, 4) : null);
+        ctx.rateProtectedTxnUuids.has(txn.txnUuid)
+          ? (txn.rate != null ? parseScaled(txn.rate, 4) : null)
+          : rateE4 ?? (txn.rate != null ? parseScaled(txn.rate, 4) : null);
       if (effectiveRateE4 == null) {
         errors.push(
           `monthly txn ${txn.txnUuid}: no rate on scale/override/txn for ${el.code}`,
@@ -2061,7 +2193,12 @@ function resolveEntries(
       (o.effectiveFrom == null || o.effectiveFrom <= state.to) &&
       (o.effectiveTo == null || o.effectiveTo >= state.from),
   );
-  for (const o of active) {
+  const ordered = [
+    ...active.filter(o => o.eligibilityRulesVersion === 1 && o.overrideMode === "add_element"),
+    ...active.filter(o => o.eligibilityRulesVersion !== 1),
+    ...active.filter(o => o.eligibilityRulesVersion === 1 && o.overrideMode !== "add_element"),
+  ];
+  for (const o of ordered) {
     const element = ctx.elements.get(o.payElementUuid);
     if (!element) {
       errors.push(`override ${o.epeUuid}: unknown pay element`);
@@ -2079,6 +2216,8 @@ function resolveEntries(
           existing.sourceUuid = o.epeUuid;
           existing.epeUuid = o.epeUuid;
         }
+      } else if (o.eligibilityRulesVersion === 1) {
+        errors.push("The element is no longer present for replacement");
       } else if (o.amount != null || o.rate != null) {
         // Fix (c): replace_scale_value with no base scale line for this
         // rank — apply the override value directly instead of silently

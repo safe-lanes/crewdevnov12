@@ -480,6 +480,7 @@ export class EngagementsRepository {
     engagementUuid: string;
     payElementUuid: string;
     overrideMode: string;
+    eligibilityRulesVersion?: number;
     amount?: string | null;
     rate?: string | null;
     paymentTimingOverride?: string | null;
@@ -496,6 +497,7 @@ export class EngagementsRepository {
         engagementUuid: data.engagementUuid,
         payElementUuid: data.payElementUuid,
         overrideMode: data.overrideMode,
+        eligibilityRulesVersion: data.eligibilityRulesVersion ?? 0,
         amount: data.amount ?? null,
         rate: data.rate ?? null,
         paymentTimingOverride: data.paymentTimingOverride ?? null,
@@ -513,6 +515,7 @@ export class EngagementsRepository {
     data: Partial<{
       payElementUuid: string;
       overrideMode: string;
+      eligibilityRulesVersion: number;
       amount: string | null;
       rate: string | null;
       paymentTimingOverride: string | null;
@@ -535,10 +538,10 @@ export class EngagementsRepository {
   /** Periods (of the given set) whose portage bill for the vessel is locked. */
   async findLockedPeriods(
     vesselUuid: string,
-    periods: string[],
+    periods?: string[],
   ): Promise<Set<string>> {
     const set = new Set<string>();
-    if (periods.length === 0) return set;
+    if (periods?.length === 0) return set;
     const db = getDb();
     const rows = await db
       .select({
@@ -550,7 +553,9 @@ export class EngagementsRepository {
       .where(
         and(
           eq(accPortageBillsV2.vesselUuid, vesselUuid),
-          inArray(accPortageBillsV2.period, periods),
+          periods
+            ? inArray(accPortageBillsV2.period, periods)
+            : undefined,
           eq(accPortageBillsV2.isDeleted, false),
         ),
       );

@@ -1,0 +1,232 @@
+{
+  "at": "2026-10-30T12:31:57.082Z",
+  "db": "crew_trial_v",
+  "cases": [
+    {
+      "label": "assignments fleet count",
+      "tool": "crewing_query_assignments",
+      "ok": true,
+      "total": 1440,
+      "totals": {
+        "assignments": 1440,
+        "people": 1440
+      },
+      "msMedian": 37,
+      "msMax": 518
+    },
+    {
+      "label": "assignments group by vessel",
+      "tool": "crewing_query_assignments",
+      "ok": true,
+      "total": 1440,
+      "totals": {
+        "assignments": 1440,
+        "people": 1440
+      },
+      "msMedian": 166,
+      "msMax": 209
+    },
+    {
+      "label": "assignments engineers list",
+      "tool": "crewing_query_assignments",
+      "ok": true,
+      "total": 300,
+      "totals": {
+        "assignments": 300,
+        "people": 300
+      },
+      "msMedian": 204,
+      "msMax": 243
+    },
+    {
+      "label": "assignments + hasDocument 60d",
+      "tool": "crewing_query_assignments",
+      "ok": true,
+      "total": 800,
+      "totals": {
+        "assignments": 800,
+        "people": 800
+      },
+      "msMedian": 761,
+      "msMax": 1058
+    },
+    {
+      "label": "documents expiring 60d",
+      "tool": "crewing_query_documents",
+      "ok": true,
+      "total": 4627,
+      "totals": {
+        "documents": 4627,
+        "people": 2175
+      },
+      "msMedian": 803,
+      "msMax": 1107
+    },
+    {
+      "label": "documents list people 60d",
+      "tool": "crewing_query_documents",
+      "ok": true,
+      "total": 2175,
+      "totals": {
+        "documents": 4627,
+        "people": 2175
+      },
+      "msMedian": 1133,
+      "msMax": 1152
+    },
+    {
+      "label": "documents group by vessel on board",
+      "tool": "crewing_query_documents",
+      "ok": true,
+      "total": 1437,
+      "totals": {
+        "documents": 1437,
+        "people": 732
+      },
+      "msMedian": 830,
+      "msMax": 831
+    },
+    {
+      "label": "availability next 2 months",
+      "tool": "crewing_query_availability",
+      "ok": true,
+      "total": 887,
+      "totals": {
+        "people": 887
+      },
+      "msMedian": 381,
+      "msMax": 390
+    },
+    {
+      "label": "availability group by rank",
+      "tool": "crewing_query_availability",
+      "ok": true,
+      "total": 887,
+      "totals": {
+        "people": 887
+      },
+      "msMedian": 290,
+      "msMax": 310
+    },
+    {
+      "label": "relief due 1 month",
+      "tool": "crewing_query_relief_due",
+      "ok": true,
+      "total": 466,
+      "totals": {
+        "assignments": 466,
+        "people": 466
+      },
+      "msMedian": 284,
+      "msMax": 292
+    },
+    {
+      "label": "relief overdue by vessel",
+      "tool": "crewing_query_relief_due",
+      "ok": true,
+      "total": 239,
+      "totals": {
+        "assignments": 239,
+        "people": 239
+      },
+      "msMedian": 314,
+      "msMax": 315
+    },
+    {
+      "label": "rest hours Oct fleet",
+      "tool": "crewing_query_rest_hours",
+      "ok": true,
+      "total": 172,
+      "totals": {
+        "records": 172,
+        "people": 172,
+        "violations": 325,
+        "ncs": 57
+      },
+      "msMedian": 151,
+      "msMax": 158
+    },
+    {
+      "label": "rest hours 3 months by vessel",
+      "tool": "crewing_query_rest_hours",
+      "ok": true,
+      "total": 514,
+      "totals": {
+        "records": 514,
+        "people": 514,
+        "violations": 971,
+        "ncs": 171
+      },
+      "msMedian": 499,
+      "msMax": 521
+    },
+    {
+      "label": "rotation waiting",
+      "tool": "crewing_query_rotation_approvals",
+      "ok": true,
+      "total": 150,
+      "totals": {
+        "plans": 150,
+        "people": 0
+      },
+      "summary": {
+        "waiting": 150,
+        "drafts": 75
+      },
+      "msMedian": 28,
+      "msMax": 128
+    },
+    {
+      "label": "manning summary",
+      "tool": "crewing_query_manning",
+      "ok": true,
+      "total": 1560,
+      "totals": {
+        "positions": 1560,
+        "people": 1440
+      },
+      "summary": {
+        "positions": 1560,
+        "filled": 1440,
+        "vacant": 120,
+        "vacantNotSignedOn": 0
+      },
+      "msMedian": 135,
+      "msMax": 148
+    },
+    {
+      "label": "appraisals pending",
+      "tool": "crewing_query_appraisals",
+      "ok": true,
+      "total": 990,
+      "totals": {
+        "appraisals": 990,
+        "people": 990
+      },
+      "summary": {
+        "pending": 990,
+        "drafts": 0,
+        "completed": 0
+      },
+      "msMedian": 145,
+      "msMax": 187
+    },
+    {
+      "label": "appraisals completed scores",
+      "tool": "crewing_query_appraisals",
+      "ok": true,
+      "total": 495,
+      "totals": {
+        "appraisals": 495,
+        "people": 495
+      },
+      "summary": {
+        "pending": 0,
+        "drafts": 0,
+        "completed": 495
+      },
+      "msMedian": 97,
+      "msMax": 98
+    }
+  ]
+}

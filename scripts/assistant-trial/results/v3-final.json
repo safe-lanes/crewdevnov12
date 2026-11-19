@@ -1,0 +1,1229 @@
+[
+ {
+  "id": "P01",
+  "turn": 1,
+  "cat": "availability (B1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who is available to join right now?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5836,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18754,
+   "completion_tokens": 137
+  },
+  "toolsUsed": [
+   "crewing_query_availability"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_availability",
+    "args": {
+     "mode": "list",
+     "sort": "available_asc",
+     "limit": 10
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "noAvailabilityDate": 1,
+     "unreadableAvailabilityDate": 0,
+     "availableLaterThanAsked": 4
+    },
+    "ms": 152
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**1 crew member** is available to join right now:\n\n| Name | Rank | Available from |\n|---|---|---|\n| Ulric Penhallow | Chief Officer | 2026-10-20 |\n\n1 record has no availability date and is not included. Four others become available later.\n\nFilters: available by today; not terminated; not-for-rehire crew excluded; unit: people.\n\nShowing all 1 matching crew members."
+ },
+ {
+  "id": "P02",
+  "turn": 1,
+  "cat": "availability (B1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which Chief Officers are available to join by the end of December?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6202,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18895,
+   "completion_tokens": 203
+  },
+  "toolsUsed": [
+   "crewing_query_availability"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_availability",
+    "args": {
+     "mode": "list",
+     "sort": "available_asc",
+     "limit": 10,
+     "ranks": [
+      "Chief Officer"
+     ],
+     "availableBy": "2026-12-31"
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "people": 3
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "excluded": {
+     "noAvailabilityDate": 0,
+     "unreadableAvailabilityDate": 0,
+     "availableLaterThanAsked": 0
+    },
+    "ms": 109
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThree Chief Officers are available to join by 31 December 2026:\n\n| Name | Status | Available from | Nationality |\n|---|---|---:|---|\n| Ulric Penhallow | On leave | 20 Oct 2026 | India |\n| Nadira Sklemmon | On board — MV Beta Ocean | 5 Dec 2026 | India |\n| Jorund Talmace | On leave | 10 Dec 2026 | Croatia |\n\nNo crew records were excluded for a missing or unreadable availability date.\n\nFilters: rank Chief Officer; available by 31 December 2026; unit people.\n\nShowing all 3 matching crew members."
+ },
+ {
+  "id": "P03",
+  "turn": 1,
+  "cat": "availability (B1)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "How many crew can join a vessel next month?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6205,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18711,
+   "completion_tokens": 106
+  },
+  "toolsUsed": [
+   "crewing_query_availability"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_availability",
+    "args": {
+     "mode": "count",
+     "availableWithin": {
+      "direction": "next",
+      "amount": 1,
+      "unit": "months"
+     }
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "people": 3
+    },
+    "excluded": {
+     "noAvailabilityDate": 1,
+     "unreadableAvailabilityDate": 0,
+     "availableLaterThanAsked": 2
+    },
+    "ms": 54
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**3 crew members** are available to join a vessel by **1 December 2026**.\n\n1 crew member has no availability date and is excluded.\n\nFilters: available by 1 December 2026; unit: people."
+ },
+ {
+  "id": "P04",
+  "turn": 1,
+  "cat": "availability on board (B1)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Is Nadira Sklemmon available to join another vessel in December?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6469,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28167,
+   "completion_tokens": 150
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_availability"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Nadira Sklemmon"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 27
+   },
+   {
+    "tool": "crewing_query_availability",
+    "args": {
+     "mode": "list",
+     "limit": 10,
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000014"
+     ],
+     "availableBy": "2026-12-31"
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "noAvailabilityDate": 0,
+     "unreadableAvailabilityDate": 0,
+     "availableLaterThanAsked": 0
+    },
+    "ms": 55
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nYes. **Nadira Sklemmon**, Chief Officer on **MV Beta Ocean**, is available to join another vessel from **5 December 2026**.\n\n**Filters:** person Nadira Sklemmon; available by 31 December 2026; unit: people.\n\nShowing all 1 matching crew members."
+ },
+ {
+  "id": "P05",
+  "turn": 1,
+  "cat": "relief (B2)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Whose relief is overdue?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5630,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18970,
+   "completion_tokens": 221
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "list",
+     "sort": "relief_due_asc",
+     "limit": 10,
+     "dueState": "overdue"
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "excluded": {
+     "noDueDate": 1,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 1
+    },
+    "ms": 31
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n| Crew member | Rank | Vessel | Contract end | Relief due |\n|---|---|---|---|---|\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-10-01 | 2026-10-01 |\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-10-01 | **2026-10-20** |\n\n**2 crew members** have overdue relief. The second relief-due date differs from the contract end date.  \n**1 record** has no relief-due date and is not included; **1 record** has an unreadable sign-on date and is not included.\n\nFilters: overdue relief, all vessels and ranks, unit: assignments.\n\nShowing all 2 matching assignments."
+ },
+ {
+  "id": "P06",
+  "turn": 1,
+  "cat": "relief (B2)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which crew are due for relief in the next 3 months?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 8573,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19861,
+   "completion_tokens": 478
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "list",
+     "sort": "relief_due_asc",
+     "limit": 10,
+     "dueWithin": {
+      "direction": "next",
+      "amount": 3,
+      "unit": "months"
+     },
+     "dueState": "due"
+    },
+    "ok": true,
+    "total": 9,
+    "totals": {
+     "assignments": 9,
+     "people": 9
+    },
+    "returned": 9,
+    "nextOffset": null,
+    "excluded": {
+     "noDueDate": 1,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 1
+    },
+    "ms": 63
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**9 crew assignments** are due for relief within the next 3 months, including **2 already overdue**:\n\n| Crew member | Rank | Vessel | Recorded relief due | Status |\n|---|---|---|---|---|\n| Marek Oldenvaal | Master | MV Beta Ocean | 2026-10-01 | **Overdue** |\n| Aldric Vexmoor | Master | MV Alpha Star | 2026-10-20 | **Overdue**; contract end: 2026-10-01 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2026-11-10 | Due |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | 2026-11-20 | Due |\n| Gisla Marrowfen | Bosun | MV Alpha Star | 2026-12-15 | Due |\n| Rasmine Thornquay | Oiler | MV Beta Ocean | 2026-12-20 | Due |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 2027-01-01 | Due |\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | 2027-01-15 | Due |\n| Corvina Tallowind | 2nd Officer | MV Alpha Star | 2027-02-01 | Due; reliever signed on 2026-11-05 |\n\nOne additional assignment has no due date and is not included. One assignment has an unreadable sign-on date. For the two differing records, both the contract-end and recorded relief-due dates are shown above.\n\nFilters: due within the next 3 months (2026-11-01 to 2027-02-01), due or overdue, all vessels and ranks, unit: assignments.\n\nShowing all 9 matching assignments."
+ },
+ {
+  "id": "P07",
+  "turn": 1,
+  "cat": "relief follow-up (B2)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Who is due for relief within one month on MV Alpha Star?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5404,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19063,
+   "completion_tokens": 245
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "list",
+     "sort": "relief_due_asc",
+     "limit": 10,
+     "dueWithin": {
+      "direction": "next",
+      "amount": 1,
+      "unit": "months"
+     },
+     "vessels": [
+      "MV Alpha Star"
+     ]
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "excluded": {
+     "noDueDate": 1,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 1
+    },
+    "ms": 26
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nTwo crew members are due for relief within one month on MV Alpha Star:\n\n| Name | Rank | Contract end | Recorded relief due | Status |\n|---|---|---:|---:|---|\n| Aldric Vexmoor | Master | 2026-10-01 | 2026-10-20 | **Overdue** |\n| Dagny Brisketh | Chief Engineer | 2026-11-10 | 2026-11-10 | Due |\n\nThe recorded relief date for Aldric Vexmoor differs from the contract end date. One record has no due date and one has an unreadable sign-on date, so they are not included.\n\nFilters: vessel MV Alpha Star, relief due within the next 1 month, unit: assignments.\n\nShowing all 2 matching assignments."
+ },
+ {
+  "id": "P07",
+  "turn": 2,
+  "cat": "relief follow-up (B2)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "and on MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5270,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 19448,
+   "completion_tokens": 210
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "list",
+     "sort": "relief_due_asc",
+     "limit": 10,
+     "dueState": "due",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "dueWithin": {
+      "direction": "next",
+      "amount": 1,
+      "unit": "months"
+     }
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "excluded": {
+     "noDueDate": 0,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 0
+    },
+    "ms": 17
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nTwo crew members are due for relief within one month on MV Beta Ocean:\n\n| Name | Rank | Contract end | Recorded relief due | Status |\n|---|---|---:|---:|---|\n| Marek Oldenvaal | Master | 2026-10-01 | 2026-10-01 | **Overdue** |\n| Nadira Sklemmon | Chief Officer | 2026-11-20 | 2026-11-20 | Due |\n\nFilters: vessel MV Beta Ocean, relief due within the next 1 month, due or overdue, unit: assignments.\n\nShowing all 2 matching assignments."
+ },
+ {
+  "id": "P08",
+  "turn": 1,
+  "cat": "rest hours (B3)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Who had rest hour violations in October 2026?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5210,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18900,
+   "completion_tokens": 260
+  },
+  "toolsUsed": [
+   "crewing_query_rest_hours"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rest_hours",
+    "args": {
+     "mode": "list",
+     "sort": "violations_desc",
+     "limit": 10,
+     "months": [
+      "2026-10"
+     ],
+     "violationsOnly": true
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "records": 4,
+     "people": 4,
+     "violations": 7,
+     "ncs": 2
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "ms": 15
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nFour crew members had rest-hour violations in **October 2026**, totalling **7 violations** and **2 non-conformities**. OPA limits were not applied.\n\n| Crew member | Rank | Vessel | Violations | NCs |\n|---|---|---|---:|---:|\n| Marek Oldenvaal | Master | MV Beta Ocean | 3 | 1 |\n| Dagny Brisketh | Chief Engineer | MV Alpha Star | 2 | 0 |\n| Orrin Haverlock | Chief Engineer | MV Beta Ocean | 1 | 1 |\n| Rasmine Thornquay | Oiler | MV Beta Ocean | 1 | 0 |\n\nRecords were last updated on **2026-10-31**.\n\nFilters: October 2026; violations only; all vessels and ranks; OPA not applied; people/records.\n\nShowing all 4 matching records."
+ },
+ {
+  "id": "P09",
+  "turn": 1,
+  "cat": "rest hours OPA (B3)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Rest hour violations on MV Beta Ocean in October 2026 with OPA",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5516,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18944,
+   "completion_tokens": 274
+  },
+  "toolsUsed": [
+   "crewing_query_rest_hours"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rest_hours",
+    "args": {
+     "mode": "list",
+     "sort": "violations_desc",
+     "limit": 10,
+     "months": [
+      "2026-10"
+     ],
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "opa": true,
+     "violationsOnly": true
+    },
+    "ok": true,
+    "total": 4,
+    "totals": {
+     "records": 4,
+     "people": 4,
+     "violations": 6,
+     "ncs": 2
+    },
+    "returned": 4,
+    "nextOffset": null,
+    "ms": 13
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nRest-hour violations for **MV Beta Ocean** in **October 2026**, with **OPA applied**:\n\n| Crew member | Rank | Violations | Non-conformities | Days counted |\n|---|---|---:|---:|---|\n| Marek Oldenvaal | Master | 3 | 1 | 1–31 |\n| Orrin Haverlock | Chief Engineer | 1 | 1 | 1–31 |\n| Petra Wintermarsh | Second Engineer | 1 | 0 | 15–31 |\n| Rasmine Thornquay | Oiler | 1 | 0 | 1–31 |\n\n**Total:** 4 people with **6 violations** and **2 non-conformities**. Records were last updated on **2026-10-31**.\n\nFilters: vessel MV Beta Ocean, October 2026, violations only, OPA applied.\n\nShowing all 4 matching records."
+ },
+ {
+  "id": "P10",
+  "turn": 1,
+  "cat": "rest hours NC (B3)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "How many non-conformities did we have in October on MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4487,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18611,
+   "completion_tokens": 139
+  },
+  "toolsUsed": [
+   "crewing_query_rest_hours"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rest_hours",
+    "args": {
+     "mode": "count",
+     "months": [
+      "2026-10"
+     ],
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "violationsOnly": false
+    },
+    "ok": true,
+    "total": 5,
+    "totals": {
+     "records": 5,
+     "people": 5,
+     "violations": 5,
+     "ncs": 2
+    },
+    "ms": 12
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nWe had **2 non-conformities** on **MV Beta Ocean** in **October 2026**. The records were last updated on **31 October 2026**. OPA limits were **not applied**.\n\nFilters: vessel MV Beta Ocean, October 2026, rest-hours records, OPA not applied."
+ },
+ {
+  "id": "P11",
+  "turn": 1,
+  "cat": "rotation (B4)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which rotation plans are waiting for approval?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 4630,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18788,
+   "completion_tokens": 213
+  },
+  "toolsUsed": [
+   "crewing_query_rotation_approvals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rotation_approvals",
+    "args": {
+     "mode": "list",
+     "limit": 10,
+     "sort": "proposed_desc",
+     "status": "waiting"
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "plans": 2,
+     "people": 0
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 31
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**2 rotation plans are waiting for approval:**\n\n| Plan | Status | Vessel | Period | Waiting | Approved | Rejected |\n|---|---|---|---|---:|---:|---:|\n| RP-2026-02 | Partially Approved | MV Alpha Trader | 1 Dec 2026–28 Feb 2027 | 1 | 1 | 1 |\n| RP-2026-01 | Proposed | MV Alpha Star / MV Beta Ocean | 1 Nov 2026–31 Jan 2027 | 2 | 1 | 0 |\n\nThere is also **1 draft plan**, listed separately and not included above.\n\nFilters: waiting approval; company-wide; sorted by proposal date.\n\nShowing all 2 matching plans."
+ },
+ {
+  "id": "P12",
+  "turn": 1,
+  "cat": "rotation for me (B4)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which rotation plans are waiting for my approval?",
+  "status": 200,
+  "pass": false,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": false,
+  "missing": [
+   "(rotation permission|no approver|every user with)"
+  ],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6051,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18825,
+   "completion_tokens": 198
+  },
+  "toolsUsed": [
+   "crewing_query_rotation_approvals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_rotation_approvals",
+    "args": {
+     "mode": "list",
+     "limit": 10,
+     "offset": 0,
+     "status": "waiting",
+     "forMe": true
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "plans": 2,
+     "people": 0
+    },
+    "returned": 2,
+    "nextOffset": null,
+    "ms": 18
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nYou have **2 rotation plans** waiting for your approval:\n\n| Plan | Status | Vessel | Rotation period | Waiting entries |\n|---|---|---|---|---:|\n| RP-2026-02 | Partially Approved | MV Alpha Trader | 1 Dec 2026–28 Feb 2027 | 1 |\n| RP-2026-01 | Proposed | MV Alpha Star / MV Beta Ocean | 1 Nov 2026–31 Jan 2027 | 2 |\n\nThere is also **1 draft plan**, which is not included because it has not been proposed.\n\nFilters: waiting rotation plans, awaiting my approval.\n\nShowing all 2 matching plans."
+ },
+ {
+  "id": "P13",
+  "turn": 1,
+  "cat": "manning (B5)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which positions are vacant across the fleet?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5166,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18794,
+   "completion_tokens": 174
+  },
+  "toolsUsed": [
+   "crewing_query_manning"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_manning",
+    "args": {
+     "mode": "list",
+     "sort": "vessel",
+     "limit": 10,
+     "state": "vacant"
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "positions": 3,
+     "people": 1
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "ms": 15
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **3 vacant positions across the fleet**:\n\n| Vessel | Position | Status |\n|---|---|---|\n| MV Alpha Star | 3rd Officer | Planned crew member has not signed on |\n| MV Alpha Star | 4th Engineer | Vacant |\n| MV Gamma Bay | Master | Vacant |\n\nFleet summary: **22 positions**, **19 filled**, **2 vacant**, and **1 vacant because the planned person has not signed on**.\n\nFilters: fleet-wide; vacant positions; unit: positions.\n\nShowing all 3 matching positions."
+ },
+ {
+  "id": "P14",
+  "turn": 1,
+  "cat": "manning (B5)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "How many positions are filled on MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3850,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18657,
+   "completion_tokens": 81
+  },
+  "toolsUsed": [
+   "crewing_query_manning"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_manning",
+    "args": {
+     "mode": "count",
+     "state": "filled",
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": true,
+    "total": 6,
+    "totals": {
+     "positions": 6,
+     "people": 6
+    },
+    "ms": 12
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\n**6 filled positions** on MV Beta Ocean.\n\nFilters: vessel MV Beta Ocean, filled positions."
+ },
+ {
+  "id": "P15",
+  "turn": 1,
+  "cat": "appraisals pending (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "Which appraisals are pending?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5033,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18909,
+   "completion_tokens": 216
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 10,
+     "statusClass": "pending"
+    },
+    "ok": true,
+    "total": 3,
+    "totals": {
+     "appraisals": 3,
+     "people": 3
+    },
+    "returned": 3,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 19
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nThere are **3 pending appraisals for 3 people**:\n\n| Person | Rank | Vessel | Type | Date | Status |\n|---|---|---|---|---|---|\n| Benedek Quorrlyn | Chief Officer | MV Alpha Star | Annual | 2026-10-10 | Pending review |\n| Nadira Sklemmon | Chief Officer | MV Beta Ocean | Annual | 2026-10-05 | Preliminary |\n| Ulric Penhallow | Chief Officer | — | Sign-off | 2026-07-01 | Submitted |\n\nArchived and terminated crew are excluded. No records had unreadable appraisal dates.\n\nFilters: pending appraisals; all vessels, ranks and dates; scores not included.\n\nShowing all 3 matching appraisals."
+ },
+ {
+  "id": "P16",
+  "turn": 1,
+  "cat": "appraisal score permitted (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What was Orrin Haverlock's score in his last completed appraisal?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 6802,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28215,
+   "completion_tokens": 150
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Orrin Haverlock"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 4
+   },
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "sort": "date_desc",
+     "limit": 1,
+     "statusClass": "completed",
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000015"
+     ],
+     "includeScores": true
+    },
+    "ok": true,
+    "total": 1,
+    "totals": {
+     "appraisals": 1,
+     "people": 1
+    },
+    "returned": 1,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 16
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): Orrin Haverlock's last completed appraisal was an **Annual appraisal dated 1 August 2026**, with an overall score of **A**.\n\nFilters: completed appraisals for Orrin Haverlock, sorted newest first; unit: people.\n\nShowing all 1 matching appraisals."
+ },
+ {
+  "id": "P17",
+  "turn": 1,
+  "cat": "appraisal score refused (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What score did Aldric Vexmoor get in his appraisal?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3457,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18394,
+   "completion_tokens": 49
+  },
+  "toolsUsed": [
+   "crewing_find_crew"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Aldric Vexmoor"
+    },
+    "ok": false,
+    "code": "not_allowed",
+    "ms": 9
+   }
+  ],
+  "answer": "Your role cannot view crew details, so I can’t retrieve Aldric Vexmoor’s appraisal score."
+ },
+ {
+  "id": "P18",
+  "turn": 1,
+  "cat": "own appraisal (B6)",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What is my own appraisal score?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3909,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18426,
+   "completion_tokens": 78
+  },
+  "toolsUsed": [
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "limit": 10,
+     "own": true,
+     "includeScores": true
+    },
+    "ok": false,
+    "code": "identity_mapping_unavailable",
+    "ms": 8
+   }
+  ],
+  "answer": "I can’t look up your own appraisal score because Crewing has no verified link between your login and a crew record, and I won’t guess which record is yours."
+ },
+ {
+  "id": "P19",
+  "turn": 1,
+  "cat": "appraisal draft score hidden (B6)",
+  "heldOut": true,
+  "instance": "single",
+  "q": "Show me Corvina Tallowind's appraisal score",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 5502,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 28116,
+   "completion_tokens": 124
+  },
+  "toolsUsed": [
+   "crewing_find_crew",
+   "crewing_query_appraisals"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_find_crew",
+    "args": {
+     "name": "Corvina Tallowind"
+    },
+    "ok": true,
+    "total": 1,
+    "returned": 1,
+    "ms": 7
+   },
+   {
+    "tool": "crewing_query_appraisals",
+    "args": {
+     "mode": "list",
+     "limit": 10,
+     "statusClass": "completed",
+     "crewIds": [
+      "00000000-0000-4000-a200-000000000003"
+     ],
+     "includeScores": true
+    },
+    "ok": true,
+    "total": 0,
+    "totals": {
+     "appraisals": 0,
+     "people": 0
+    },
+    "returned": 0,
+    "nextOffset": null,
+    "excluded": {
+     "unreadableAppraisalDate": 0
+    },
+    "ms": 12
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01):\n\nNo completed appraisal with a score was found for Corvina Tallowind.\n\nFilters: Corvina Tallowind, completed appraisals, overall score requested.\n\nShowing 0 matching appraisals."
+ },
+ {
+  "id": "P20",
+  "turn": 1,
+  "cat": "cross-area follow-up",
+  "heldOut": false,
+  "instance": "single",
+  "q": "How many crew are on board MV Beta Ocean?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3704,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18597,
+   "completion_tokens": 90
+  },
+  "toolsUsed": [
+   "crewing_query_assignments"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_assignments",
+    "args": {
+     "mode": "count",
+     "unit": "people",
+     "vessels": [
+      "MV Beta Ocean"
+     ]
+    },
+    "ok": true,
+    "total": 7,
+    "totals": {
+     "assignments": 7,
+     "people": 7
+    },
+    "ms": 8
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **7 crew members** are on board **MV Beta Ocean**.\n\nFilters: vessel MV Beta Ocean, on-board crew, unit people."
+ },
+ {
+  "id": "P20",
+  "turn": 2,
+  "cat": "cross-area follow-up",
+  "heldOut": false,
+  "instance": "single",
+  "q": "and how many of them are due for relief within a month?",
+  "status": 200,
+  "pass": true,
+  "queryOk": true,
+  "dataOk": true,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 3974,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 18906,
+   "completion_tokens": 125
+  },
+  "toolsUsed": [
+   "crewing_query_relief_due"
+  ],
+  "partial": false,
+  "gate": "answer",
+  "calls": [
+   {
+    "tool": "crewing_query_relief_due",
+    "args": {
+     "mode": "count",
+     "vessels": [
+      "MV Beta Ocean"
+     ],
+     "dueWithin": {
+      "direction": "next",
+      "amount": 1,
+      "unit": "months"
+     }
+    },
+    "ok": true,
+    "total": 2,
+    "totals": {
+     "assignments": 2,
+     "people": 2
+    },
+    "excluded": {
+     "noDueDate": 0,
+     "unreadableReliefDueDate": 0,
+     "unreadableSignOnDate": 0
+    },
+    "ms": 24
+   }
+  ],
+  "answer": "From Crewing data (as of 2026-11-01): **2 crew members** on **MV Beta Ocean** are due for relief within one month, including any already overdue.\n\nFilters: vessel MV Beta Ocean, on-board crew, relief due within the next 1 month, unit people."
+ },
+ {
+  "id": "P21",
+  "turn": 1,
+  "cat": "unsupported",
+  "heldOut": false,
+  "instance": "single",
+  "q": "What is Petra's passport number?",
+  "status": 200,
+  "pass": true,
+  "queryOk": null,
+  "dataOk": null,
+  "answerOk": true,
+  "missing": [],
+  "forbidden": [],
+  "unrequested": [],
+  "latencyMs": 2454,
+  "transportRetries": 0,
+  "modelCalls": null,
+  "usage": {
+   "prompt_tokens": 9161,
+   "completion_tokens": 57
+  },
+  "toolsUsed": [],
+  "partial": false,
+  "gate": "answer",
+  "calls": [],
+  "answer": "I can’t access passport data. I can answer live crewing questions about crew on board, licences/certificates and training expiry, availability, relief due, rest hours, rotation approvals, manning, and appraisals—or help with SAIL how-to questions."
+ }
+]

@@ -1,0 +1,251 @@
+{
+ "_about": "Astra round 2 (21-Oct-2026): vessel-context regression, written BEFORE running. After switching vessel, 'show them' / 'show more' must keep the NEW vessel and every active filter, also when the result is zero. Same scoring rules as test-set.json.",
+ "cases": [
+  {
+   "id": "K01",
+   "cat": "context-switch-zero",
+   "turns": [
+    {
+     "q": "How many engineers on MV Beta Ocean have certificates expiring in the next 60 days?",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "beta ocean",
+        "expiryWithin.amount": 60
+       },
+       "result": {
+        "totals.people": 2,
+        "totals.documents": 5
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b2\\b",
+      "\\b5\\b"
+     ]
+    },
+    {
+     "q": "same for MV Alpha Star",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "alpha star",
+        "expiryWithin.amount": 60,
+        "rankGroups": "engine"
+       },
+       "result": {
+        "totals.documents": 0
+       }
+      }
+     ],
+     "answerAll": [
+      "(no |none|\\b0\\b|zero)"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra"
+     ]
+    },
+    {
+     "q": "show them as a list",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "alpha star",
+        "expiryWithin.amount": 60,
+        "rankGroups": "engine"
+       },
+       "result": {
+        "totals.documents": 0
+       }
+      }
+     ],
+     "answerAll": [
+      "(no |none|nothing|\\b0\\b|zero)"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra",
+      "haverlock",
+      "wintermarsh"
+     ]
+    },
+    {
+     "q": "show more",
+     "answerAll": [
+      "(no |none|nothing|\\b0\\b|zero)"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra",
+      "haverlock",
+      "wintermarsh"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "K02",
+   "cat": "context-switch-nonzero",
+   "turns": [
+    {
+     "q": "Which crew on board MV Beta Ocean have certificates expiring in the next 60 days?",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "beta ocean",
+        "expiryWithin.amount": 60
+       },
+       "result": {
+        "totals.people": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "orrin",
+      "petra"
+     ]
+    },
+    {
+     "q": "same for MV Alpha Star",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "alpha star",
+        "expiryWithin.amount": 60
+       },
+       "result": {
+        "totals.people": 2,
+        "totals.documents": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "(aldric|vexmoor|\\b2\\b)"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra"
+     ]
+    },
+    {
+     "q": "show them as a list",
+     "calls": [
+      {
+       "tool": "crewing_query_documents",
+       "args": {
+        "vessels": "alpha star",
+        "expiryWithin.amount": 60
+       },
+       "result": {
+        "totals.documents": 2
+       }
+      }
+     ],
+     "answerAll": [
+      "aldric",
+      "benedek"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra",
+      "haverlock",
+      "wintermarsh"
+     ]
+    },
+    {
+     "q": "show more",
+     "answerAll": [
+      "(no more|all|that.s all|nothing more|no further|no additional|only 2|both|complete)"
+     ],
+     "answerNone": [
+      "orrin",
+      "petra",
+      "haverlock",
+      "wintermarsh"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "K03",
+   "cat": "context-switch-paging",
+   "turns": [
+    {
+     "q": "List the crew on board MV Beta Ocean, 5 at a time",
+     "calls": [
+      {
+       "tool": "crewing_query_assignments",
+       "args": {
+        "vessels": "beta ocean",
+        "limit": 5
+       },
+       "result": {
+        "totals.people": 7,
+        "returned": 5
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b7\\b"
+     ]
+    },
+    {
+     "q": "same for MV Alpha Star",
+     "calls": [
+      {
+       "tool": "crewing_query_assignments",
+       "args": {
+        "vessels": "alpha star",
+        "limit": 5
+       },
+       "result": {
+        "totals.people": 8,
+        "returned": 5
+       }
+      }
+     ],
+     "answerAll": [
+      "\\b8\\b"
+     ],
+     "answerNone": [
+      "marek",
+      "nadira",
+      "orrin",
+      "quillon",
+      "rasmine"
+     ]
+    },
+    {
+     "q": "show more",
+     "calls": [
+      {
+       "tool": "crewing_query_assignments",
+       "args": {
+        "vessels": "alpha star",
+        "offset": 5
+       },
+       "result": {
+        "totals.people": 8,
+        "returned": 3
+       }
+      }
+     ],
+     "answerNone": [
+      "marek",
+      "nadira",
+      "orrin",
+      "quillon",
+      "rasmine",
+      "petra"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -97,6 +97,8 @@ export interface AdvanceEnriched extends AccAdvanceV2 {
   displayStatus: string;
   vesselUuid: string | null;
   vesselName: string | null;
+  validFrom: string | null;
+  validTo: string | null;
 }
 
 export interface AdvanceDetail {
@@ -130,6 +132,55 @@ function projectSchedule(
 /** Portage-attached recovery lines = recoveries actually posted. */
 function portageLineCount(lines: AdvanceRecoveryLine[]): number {
   return lines.filter((l) => l.portageUuid != null).length;
+}
+
+function isRecoveryPeriod(
+  value: string | null | undefined,
+): value is string {
+  return (
+    typeof value === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(value) &&
+    Number(value.slice(0, 4)) > 0
+  );
+}
+
+function recoveryRange(
+  advance: AccAdvanceV2,
+): { validFrom: string | null; validTo: string | null } {
+  const validFrom = isRecoveryPeriod(advance.period)
+    ? advance.period
+    : null;
+
+  const total = toCents(advance.amount);
+  const monthly = toCents(advance.recoveryAmount);
+  let validTo: string | null = null;
+
+  if (validFrom && total > 0 && monthly > 0) {
+    const [year, month] = validFrom.split("-").map(Number);
+    const lastMonth =
+      year * 12 + month - 1 + Math.ceil(total / monthly) - 1;
+    const lastYear = Math.floor(lastMonth / 12);
+
+    if (Number.isSafeInteger(lastMonth) && lastYear <= 9999) {
+      validTo =
+        String(lastYear).padStart(4, "0") +
+        "-" +
+        String(lastMonth % 12 + 1).padStart(2, "0");
+    }
+  }
+
+  const stop =
+    advance.status === "cancelled"
+      ? advance.cancelledPeriod
+      : advance.status === "closed"
+        ? advance.writeOffPeriod
+        : null;
+
+  if (isRecoveryPeriod(stop) && (!validTo || stop < validTo)) {
+    validTo = stop;
+  }
+
+  return { validFrom, validTo };
 }
 
 export const advancesService = {
@@ -170,6 +221,7 @@ export const advancesService = {
       const vesselUuid = engagement?.vesselUuid ?? null;
       return {
         ...advance,
+        ...recoveryRange(advance),
         recoveredToDate: centsToString(recovered),
         outstanding: centsToString(outstanding),
         displayStatus: displayStatus(advance, outstanding),
@@ -294,8 +346,15 @@ export const advancesService = {
   /** Cancel: allowed only while NO recovery has been posted. */
   async cancel(
     advanceUuid: string,
+    cancelledPeriod: string,
     auditUserUuid?: string,
   ): Promise<AccAdvanceV2> {
+    if (!isRecoveryPeriod(cancelledPeriod)) {
+      throw coded(
+        "VALIDATION",
+        "A valid cancellation period (YYYY-MM) is required",
+      );
+    }
     const existing = await this.getByUuid(advanceUuid);
     if (existing.status === "cancelled" || existing.status === "closed") {
       throw coded("CONFLICT", `Advance is already ${existing.status}`);
@@ -309,7 +368,10 @@ export const advancesService = {
     }
     const updated = await advancesRepository.update(
       advanceUuid,
-      applyAuditUser({ status: "cancelled", auditUserUuid }, false),
+      applyAuditUser(
+        { status: "cancelled", cancelledPeriod, auditUserUuid },
+        false,
+      ),
     );
     return updated!;
   },

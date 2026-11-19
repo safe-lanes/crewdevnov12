@@ -3,8 +3,12 @@ import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Bell, Loader2, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { Bell, Loader2, Check, AlertCircle, RefreshCw, ClipboardCheck } from "lucide-react";
 import { type AlertEventV2 } from "@shared/v2/alerts/schema";
+
+// In-app approval notifications: personal (only the signed-in user's own), from the approval engine.
+type ApprovalNotification = { anuuid: string; kind: string; title: string; message: string; link: string | null; createdAt: string };
+const APPROVAL_NOTIFICATIONS_KEY = ["/api/v2/approvals/notifications?unreadOnly=true"];
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,6 +26,30 @@ export default function NotificationBell() {
     },
     enabled: !!userType,
     refetchInterval: 30000, // Poll every 30 seconds
+  });
+
+  // Personal approval notifications. Fails soft: no approval access = no approval section.
+  const { data: approvalData } = useQuery<{ unread: number; items: ApprovalNotification[] }>({
+    queryKey: APPROVAL_NOTIFICATIONS_KEY,
+    queryFn: async () => {
+      const res = await fetch(APPROVAL_NOTIFICATIONS_KEY[0]);
+      if (!res.ok) return { unread: 0, items: [] };
+      return res.json();
+    },
+    enabled: !!userType,
+    retry: false,
+    refetchInterval: 30000,
+  });
+  const approvalItems = approvalData?.items ?? [];
+
+  const markApprovalReadMutation = useMutation({
+    mutationFn: async (anuuid: string) => {
+      const res = await fetch(`/api/v2/approvals/notifications/${encodeURIComponent(anuuid)}/read`, { method: "POST" });
+      return res.ok ? res.json() : null;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: APPROVAL_NOTIFICATIONS_KEY });
+    },
   });
 
   // Acknowledge alert mutation
@@ -56,7 +84,7 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const unreadCount = alerts.length;
+  const unreadCount = alerts.length + approvalItems.length;
 
   const getPriorityStyles = (priority: string) => {
     switch (priority.toLowerCase()) {
@@ -123,6 +151,45 @@ export default function NotificationBell() {
             </button>
           </div>
 
+          {/* Approval notifications (personal) */}
+          {approvalItems.length > 0 && (
+            <div className="border-b border-gray-200 dark:border-gray-700" data-testid="approval-notifications">
+              <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Approvals</div>
+              <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+                {approvalItems.map((n) => (
+                  <div key={n.anuuid} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors flex gap-3" data-testid={`approval-notification-${n.kind}`}>
+                    <ClipboardCheck size={16} className="mt-0.5 text-blue-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{n.title}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{n.message}</p>
+                      <span className="text-[10px] text-gray-400">{new Date(n.createdAt).toLocaleString()}</span>
+                      {n.link && (
+                        <Link
+                          href={n.link}
+                          onClick={() => { markApprovalReadMutation.mutate(n.anuuid); setIsOpen(false); }}
+                          className="block mt-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          Open
+                        </Link>
+                      )}
+                    </div>
+                    <div className="flex items-start">
+                      <button
+                        onClick={() => markApprovalReadMutation.mutate(n.anuuid)}
+                        disabled={markApprovalReadMutation.isPending}
+                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors"
+                        title="Mark as read"
+                        data-testid={`approval-read-button-${n.anuuid}`}
+                      >
+                        <Check size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Alert List */}
           <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
             {isLoading ? (
@@ -130,7 +197,7 @@ export default function NotificationBell() {
                 <Loader2 size={20} className="animate-spin mr-2" />
                 Loading alerts...
               </div>
-            ) : alerts.length === 0 ? (
+            ) : alerts.length === 0 && approvalItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-gray-500">
                 <AlertCircle size={28} className="mb-2 text-gray-400" />
                 <span className="text-sm">No pending alerts.</span>

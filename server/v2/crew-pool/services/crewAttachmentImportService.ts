@@ -62,27 +62,39 @@ type EntityConfig = {
   recordTable: any;
   recordUuidColumn: any;
   attachTable: any;
+  attachUuidColumn: any;
   attachParentKey: string;
   attachParentColumn: any; // Drizzle column reference on attachTable — used for pre-load dedup query
   folder: string;
 };
 
 const ENTITY_CONFIGS: EntityConfig[] = [
-  { recordTable: crewDocuments, recordUuidColumn: crewDocuments.docUuid, attachTable: crewDocumentsAttachments, attachParentKey: "docUuid", attachParentColumn: crewDocumentsAttachments.docUuid, folder: "documents" },
-  { recordTable: crewVisas, recordUuidColumn: crewVisas.visaUuid, attachTable: crewVisasAttachments, attachParentKey: "visaUuid", attachParentColumn: crewVisasAttachments.visaUuid, folder: "visas" },
-  { recordTable: crewLicenses, recordUuidColumn: crewLicenses.licUuid, attachTable: crewLicensesAttachments, attachParentKey: "licUuid", attachParentColumn: crewLicensesAttachments.licUuid, folder: "licenses" },
-  { recordTable: crewTrainingCourses, recordUuidColumn: crewTrainingCourses.trainUuid, attachTable: crewTrainingAttachments, attachParentKey: "trainUuid", attachParentColumn: crewTrainingAttachments.trainUuid, folder: "training" },
-  { recordTable: crewSeaService, recordUuidColumn: crewSeaService.seaUuid, attachTable: crewSeaServiceAttachments, attachParentKey: "seaUuid", attachParentColumn: crewSeaServiceAttachments.seaUuid, folder: "sea-service" },
-  { recordTable: crewEducation, recordUuidColumn: crewEducation.eduUuid, attachTable: crewEducationAttachments, attachParentKey: "eduUuid", attachParentColumn: crewEducationAttachments.eduUuid, folder: "education" },
-  { recordTable: crewPreJoiningMedicals, recordUuidColumn: crewPreJoiningMedicals.medUuid, attachTable: crewMedicalAttachments, attachParentKey: "medUuid", attachParentColumn: crewMedicalAttachments.medUuid, folder: "medical" },
-  { recordTable: crewDoctorVisits, recordUuidColumn: crewDoctorVisits.visitUuid, attachTable: crewDoctorVisitsAttachments, attachParentKey: "visitUuid", attachParentColumn: crewDoctorVisitsAttachments.visitUuid, folder: "medical" },
-  { recordTable: crewBriefings, recordUuidColumn: crewBriefings.briefingUuid, attachTable: crewBriefingAttachments, attachParentKey: "briefingUuid", attachParentColumn: crewBriefingAttachments.briefingUuid, folder: "briefing" },
-  { recordTable: crewDebriefings, recordUuidColumn: crewDebriefings.debriefingUuid, attachTable: crewDebriefingAttachments, attachParentKey: "debriefingUuid", attachParentColumn: crewDebriefingAttachments.debriefingUuid, folder: "debriefing" },
+  { recordTable: crewDocuments, recordUuidColumn: crewDocuments.docUuid, attachTable: crewDocumentsAttachments, attachUuidColumn: crewDocumentsAttachments.attUuid, attachParentKey: "docUuid", attachParentColumn: crewDocumentsAttachments.docUuid, folder: "documents" },
+  { recordTable: crewVisas, recordUuidColumn: crewVisas.visaUuid, attachTable: crewVisasAttachments, attachUuidColumn: crewVisasAttachments.attUuid, attachParentKey: "visaUuid", attachParentColumn: crewVisasAttachments.visaUuid, folder: "visas" },
+  { recordTable: crewLicenses, recordUuidColumn: crewLicenses.licUuid, attachTable: crewLicensesAttachments, attachUuidColumn: crewLicensesAttachments.attUuid, attachParentKey: "licUuid", attachParentColumn: crewLicensesAttachments.licUuid, folder: "licenses" },
+  { recordTable: crewTrainingCourses, recordUuidColumn: crewTrainingCourses.trainUuid, attachTable: crewTrainingAttachments, attachUuidColumn: crewTrainingAttachments.attUuid, attachParentKey: "trainUuid", attachParentColumn: crewTrainingAttachments.trainUuid, folder: "training" },
+  { recordTable: crewSeaService, recordUuidColumn: crewSeaService.seaUuid, attachTable: crewSeaServiceAttachments, attachUuidColumn: crewSeaServiceAttachments.attUuid, attachParentKey: "seaUuid", attachParentColumn: crewSeaServiceAttachments.seaUuid, folder: "sea-service" },
+  { recordTable: crewEducation, recordUuidColumn: crewEducation.eduUuid, attachTable: crewEducationAttachments, attachUuidColumn: crewEducationAttachments.attUuid, attachParentKey: "eduUuid", attachParentColumn: crewEducationAttachments.eduUuid, folder: "education" },
+  { recordTable: crewPreJoiningMedicals, recordUuidColumn: crewPreJoiningMedicals.medUuid, attachTable: crewMedicalAttachments, attachUuidColumn: crewMedicalAttachments.attUuid, attachParentKey: "medUuid", attachParentColumn: crewMedicalAttachments.medUuid, folder: "medical" },
+  { recordTable: crewDoctorVisits, recordUuidColumn: crewDoctorVisits.visitUuid, attachTable: crewDoctorVisitsAttachments, attachUuidColumn: crewDoctorVisitsAttachments.attUuid, attachParentKey: "visitUuid", attachParentColumn: crewDoctorVisitsAttachments.visitUuid, folder: "medical" },
+  { recordTable: crewBriefings, recordUuidColumn: crewBriefings.briefingUuid, attachTable: crewBriefingAttachments, attachUuidColumn: crewBriefingAttachments.attUuid, attachParentKey: "briefingUuid", attachParentColumn: crewBriefingAttachments.briefingUuid, folder: "briefing" },
+  { recordTable: crewDebriefings, recordUuidColumn: crewDebriefings.debriefingUuid, attachTable: crewDebriefingAttachments, attachUuidColumn: crewDebriefingAttachments.attUuid, attachParentKey: "debriefingUuid", attachParentColumn: crewDebriefingAttachments.debriefingUuid, folder: "debriefing" },
 ];
 
 type ResolvedRecord = {
   parentUuid: string;
   config: EntityConfig;
+};
+
+type ExistingAttachment = {
+  attUuid: string;
+  filePath: string | null;
+  config: EntityConfig;
+};
+
+type AttachmentImportOptions = {
+  previewOnly?: boolean;
+  replaceExisting?: boolean;
 };
 
 export type SkipCategory =
@@ -98,11 +110,17 @@ export type SkipCategory =
 export interface AttachmentImportResult {
   success: boolean;
   imported: number;
+  replaced: number;
   duplicates: number;
+  replacementCandidates: number;
+  requiresReplacement: boolean;
+  previewOnly: boolean;
+  readyToImport: number;
   recordsCovered: number;
   crewCovered: number;
   skippedCount: number;
   skipped: { path: string; reason: string; category: SkipCategory }[];
+  processed: { path: string; status: "ready" | "imported" | "replaced"; reason?: string }[];
 }
 
 /**
@@ -112,7 +130,10 @@ export interface AttachmentImportResult {
  */
 export async function importAttachmentsZip(
   zipBuffer: Buffer,
+  options: AttachmentImportOptions = {},
 ): Promise<AttachmentImportResult> {
+  const previewOnly = options.previewOnly === true;
+  const replaceExisting = options.replaceExisting === true;
   const db = getDb();
 
   let zip: JSZip;
@@ -168,25 +189,36 @@ export async function importAttachmentsZip(
     }
   }
 
-  // ---- Pre-load existing (parentUuid, fileName) pairs to prevent duplicates ----
-  const existingAttachments = new Set<string>();
+  // ---- Pre-load existing (parentUuid, fileName) pairs to detect replacements ----
+  const existingAttachments = new Map<string, ExistingAttachment>();
   for (const config of ENTITY_CONFIGS) {
     const rows = await db
       .select({
         parentUuid: config.attachParentColumn,
+        attUuid: config.attachUuidColumn,
         fileName: config.attachTable.fileName,
+        filePath: config.attachTable.filePath,
       })
       .from(config.attachTable);
     for (const row of rows) {
       if (row.parentUuid && row.fileName) {
-        existingAttachments.add(`${row.parentUuid}::${normalizeKey(row.fileName)}`);
+        existingAttachments.set(`${row.parentUuid}::${normalizeKey(row.fileName)}`, {
+          attUuid: row.attUuid,
+          filePath: row.filePath,
+          config,
+        });
       }
     }
   }
 
   const skipped: { path: string; reason: string; category: SkipCategory }[] = [];
+  const processed: { path: string; status: "ready" | "imported" | "replaced"; reason?: string }[] = [];
+  const processedUploadKeys = new Set<string>();
   let imported = 0;
+  let replaced = 0;
   let duplicates = 0;
+  let replacementCandidates = 0;
+  let readyToImport = 0;
   // Distinct parent records and crew that received at least one attachment.
   const recordsCovered = new Set<string>();
   const crewCovered = new Set<string>();
@@ -234,12 +266,21 @@ export async function importAttachmentsZip(
       continue;
     }
 
-    // ---- Duplicate check: skip if this (parentUuid, fileName) already exists ----
+    // ---- Duplicate check: matching files are replacement candidates ----
     const dupKey = `${record.parentUuid}::${normalizeKey(fileName)}`;
-    if (existingAttachments.has(dupKey)) {
-      skipped.push({ path: rawPath, reason: `A file named "${fileName}" is already attached to this record (Attachment Ref: "${refRaw}").`, category: "Duplicate" });
+    const existing = existingAttachments.get(dupKey);
+    if (processedUploadKeys.has(dupKey)) {
+      skipped.push({ path: rawPath, reason: `A matching file already appeared earlier in this ZIP for Attachment Ref "${refRaw}".`, category: "Duplicate" });
       duplicates++;
       continue;
+    }
+    if (existing) {
+      duplicates++;
+      replacementCandidates++;
+      if (!previewOnly && !replaceExisting) {
+        skipped.push({ path: rawPath, reason: `A file named "${fileName}" already exists and replacement was not confirmed (Attachment Ref: "${refRaw}").`, category: "Duplicate" });
+        continue;
+      }
     }
 
     let buffer: Buffer;
@@ -261,6 +302,21 @@ export async function importAttachmentsZip(
       continue;
     }
 
+    if (previewOnly) {
+      processedUploadKeys.add(dupKey);
+      readyToImport++;
+      recordsCovered.add(record.parentUuid);
+      crewCovered.add(crew.crewUuid);
+      processed.push({
+        path: rawPath,
+        status: "ready",
+        reason: existing
+          ? `Ready to replace the existing file named "${fileName}".`
+          : "Ready to import.",
+      });
+      continue;
+    }
+
     let filePath: string;
     try {
       filePath = await fileStorageService.writeAttachment(
@@ -274,15 +330,28 @@ export async function importAttachmentsZip(
     }
 
     try {
-      await db.insert(record.config.attachTable).values({
-        attUuid: uuidv4(),
-        [record.config.attachParentKey]: record.parentUuid,
-        fileName,
-        fileType,
-        fileSize: String(buffer.length),
-        filePath,
-        fileData: null,
-      });
+      if (existing) {
+        await db
+          .update(record.config.attachTable)
+          .set({
+            fileName,
+            fileType,
+            fileSize: String(buffer.length),
+            filePath,
+            fileData: null,
+          })
+          .where(eq(record.config.attachUuidColumn, existing.attUuid));
+      } else {
+        await db.insert(record.config.attachTable).values({
+          attUuid: uuidv4(),
+          [record.config.attachParentKey]: record.parentUuid,
+          fileName,
+          fileType,
+          fileSize: String(buffer.length),
+          filePath,
+          fileData: null,
+        });
+      }
     } catch (err: any) {
       // Roll back the just-written file so a failed insert does not leave an
       // orphaned artifact on disk; keep processing the rest of the ZIP.
@@ -290,10 +359,18 @@ export async function importAttachmentsZip(
       skipped.push({ path: rawPath, reason: err?.message || "Failed to save attachment record.", category: "Store Error" });
       continue;
     }
-    // Mark this (parentUuid, fileName) as now existing so a second occurrence of
-    // the same file within this ZIP batch is also caught as a duplicate.
-    existingAttachments.add(dupKey);
-    imported++;
+    // The new database path is committed before removing the old physical file.
+    if (existing) {
+      await fileStorageService.deleteAttachment(existing.filePath).catch((err) => {
+        console.warn("Failed to remove replaced attachment file:", err);
+      });
+      replaced++;
+      processed.push({ path: rawPath, status: "replaced", reason: `Replaced the existing file named "${fileName}".` });
+    } else {
+      imported++;
+      processed.push({ path: rawPath, status: "imported" });
+    }
+    processedUploadKeys.add(dupKey);
     recordsCovered.add(record.parentUuid);
     crewCovered.add(crew.crewUuid);
   }
@@ -301,10 +378,16 @@ export async function importAttachmentsZip(
   return {
     success: true,
     imported,
+    replaced,
     duplicates,
+    replacementCandidates,
+    requiresReplacement: previewOnly && replacementCandidates > 0,
+    previewOnly,
     recordsCovered: recordsCovered.size,
     crewCovered: crewCovered.size,
     skippedCount: skipped.length,
     skipped,
+    readyToImport,
+    processed,
   };
 }

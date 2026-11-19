@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { and, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { employmentAfterReactivationOn } from "../crew-pool/services/employmentStatusSql";
 import {
   crewMembersV2,
   crewTerminations,
@@ -111,7 +112,7 @@ router.get("/retention", async (req: Request, res: Response) => {
         // NULLIF treats empty-string dates the same as NULL (legacy rows
         // store '' instead of NULL).
         sql`NULLIF(${crewMembersV2.recruitmentDate}, '') IS NOT NULL AND ${crewMembersV2.recruitmentDate} <= ${boundaryDate}`,
-        sql`(NULLIF(${crewMembersV2.lastTerminationDate}, '') IS NULL OR ${crewMembersV2.lastTerminationDate} >= ${boundaryDate} OR ${crewMembersV2.lastTerminationDate} < ${crewMembersV2.recruitmentDate})`,
+        sql`COALESCE(${employmentAfterReactivationOn(boundaryDate, true)}, (NULLIF(${crewMembersV2.lastTerminationDate}, '') IS NULL OR ${crewMembersV2.lastTerminationDate} >= ${boundaryDate} OR ${crewMembersV2.lastTerminationDate} < ${crewMembersV2.recruitmentDate}))`,
       ];
       if (rankIds.length > 0) conds.push(inArray(crewMembersV2.presentRank, rankIds));
       if (nationalityIds.length > 0) conds.push(inArray(crewMembersV2.nationalityUuid, nationalityIds));

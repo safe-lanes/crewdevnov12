@@ -6,6 +6,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { crewPoolApiV2 } from "./api/crewPoolApiV2";
@@ -56,9 +66,10 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   // Attachment ZIP upload (second step of the import flow)
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const [zipFile, setZipFile] = useState<File | null>(null);
-  const [attachStatus, setAttachStatus] = useState<"idle" | "uploading" | "done">("idle");
+  const [attachStatus, setAttachStatus] = useState<"idle" | "uploading" | "preview-ready" | "awaiting-replacement" | "done">("idle");
   const [attachResult, setAttachResult] = useState<any>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -76,6 +87,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setAttachStatus("idle");
     setAttachResult(null);
     setUploadProgress(0);
+    setReplaceConfirmOpen(false);
     onClose();
   };
 
@@ -95,10 +107,10 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setZipFile(selectedFile);
     setAttachStatus("idle");
     setAttachResult(null);
+    setReplaceConfirmOpen(false);
   };
 
-  // Upload the attachment ZIP
-  const handleUploadAttachments = async () => {
+  const finishAttachmentImport = async (replaceExisting: boolean) => {
     if (!zipFile) return;
     setAttachStatus("uploading");
     setUploadProgress(0);
@@ -106,14 +118,13 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       const buffer = await zipFile.arrayBuffer();
       const res = await crewPoolApiV2.uploadAttachmentsZip(buffer, (pct) => {
         setUploadProgress(pct);
-      });
+      }, { replaceExisting });
       setUploadProgress(100);
       setAttachResult(res);
       setAttachStatus("done");
-      const dupNote = res.duplicates > 0 ? `, ${res.duplicates} duplicate(s)` : "";
       toast({
         title: "Attachments processed",
-        description: `${res.imported} file(s) attached, ${res.skippedCount} skipped${dupNote}.`,
+        description: `${res.imported} imported, ${res.replaced} replaced, ${res.skippedCount} skipped.`,
       });
     } catch (err: any) {
       setAttachStatus("idle");
@@ -124,6 +135,55 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         description: err.message || "Failed to upload attachments",
       });
     }
+  };
+
+  // Preview first so replacement is always explicitly confirmed before files change.
+  const handleUploadAttachments = async () => {
+    if (!zipFile) return;
+    setAttachStatus("uploading");
+    setUploadProgress(0);
+    try {
+      const buffer = await zipFile.arrayBuffer();
+      const preview = await crewPoolApiV2.uploadAttachmentsZip(buffer, (pct) => {
+        setUploadProgress(pct);
+      }, { preview: true });
+      setUploadProgress(100);
+      setAttachResult(preview);
+      setAttachStatus("preview-ready");
+    } catch (err: any) {
+      setAttachStatus("idle");
+      setUploadProgress(0);
+      toast({
+        variant: "destructive",
+        title: "Attachment upload failed",
+        description: err.message || "Failed to analyze attachments",
+      });
+    }
+  };
+
+  // Start the actual import only after the analysis counts are visible.
+  const handleImportAttachments = async () => {
+    if (!attachResult) return;
+    if (attachResult.requiresReplacement) {
+      setAttachStatus("awaiting-replacement");
+      setReplaceConfirmOpen(true);
+      return;
+    }
+    await finishAttachmentImport(false);
+  };
+
+  const handleConfirmReplacement = async () => {
+    setReplaceConfirmOpen(false);
+    await finishAttachmentImport(true);
+  };
+
+  const handleCancelReplacement = () => {
+    setReplaceConfirmOpen(false);
+    setAttachStatus("preview-ready");
+    toast({
+      title: "Upload cancelled",
+      description: "No existing attachments were replaced.",
+    });
   };
 
   // Trigger file dialog
@@ -239,22 +299,29 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     }
   };
 
-  // Download skipped-attachments report as a CSV
+  // Download the attachment import report as a CSV.
   const handleDownloadSkippedReport = () => {
-    if (!attachResult?.skipped?.length) return;
-    const rows: string[] = ["Category,File Path,Reason"];
+    if (!attachResult) return;
+    const rows: string[] = ["Status,Category,File Path,Reason"];
+    for (const item of (attachResult.processed ?? []) as { path: string; status: string; reason?: string }[]) {
+      const escapedStatus = `"${item.status.replace(/"/g, '""')}"`;
+      const escapedPath = `"${item.path.replace(/"/g, '""')}"`;
+      const escapedReason = `"${(item.reason ?? "").replace(/"/g, '""')}"`;
+      rows.push(`${escapedStatus},"",${escapedPath},${escapedReason}`);
+    }
     for (const s of attachResult.skipped as { path: string; reason: string; category?: string }[]) {
+      const escapedStatus = '"skipped"';
       const escapedCategory = `"${(s.category ?? "").replace(/"/g, '""')}"`;
       const escapedPath = `"${s.path.replace(/"/g, '""')}"`;
       const escapedReason = `"${s.reason.replace(/"/g, '""')}"`;
-      rows.push(`${escapedCategory},${escapedPath},${escapedReason}`);
+      rows.push(`${escapedStatus},${escapedCategory},${escapedPath},${escapedReason}`);
     }
     const csv = rows.join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `attachment-skip-report-${Date.now()}.csv`;
+    a.download = `attachment-import-report-${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -610,7 +677,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-gray-700 flex items-center gap-1.5">
                     <Loader2 className="h-3.5 w-3.5 text-[#5dc86f] animate-spin" />
-                    Uploading & attaching files…
+                    Uploading and processing files…
                   </span>
                   <span className="text-gray-500 tabular-nums" data-testid="text-upload-percent">
                     {uploadProgress}%
@@ -631,13 +698,32 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
               </div>
             )}
 
-            {attachStatus === "done" && attachResult && (
+            {(attachStatus === "preview-ready" || attachStatus === "done") && attachResult && (
               <div className="space-y-2.5">
-                <div className="grid grid-cols-4 gap-1.5 text-xs">
+                {attachResult.previewOnly && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800">
+                    Analysis complete. No files have been changed. Review the counts, then click Import Attachments.
+                  </div>
+                )}
+                <div className="grid grid-cols-6 gap-1.5 text-xs">
                   <div className="bg-emerald-50 p-1.5 px-2 rounded border border-emerald-100">
-                    <span className="text-[11px] text-gray-500 block truncate">Files Attached</span>
+                    <span className="text-[11px] text-gray-500 block truncate">
+                      {attachResult.previewOnly ? "Ready" : "Files Attached"}
+                    </span>
                     <span className="font-semibold text-emerald-700 text-xs" data-testid="text-attached-count">
-                      {attachResult.imported}
+                      {attachResult.previewOnly ? attachResult.readyToImport : attachResult.imported}
+                    </span>
+                  </div>
+                  <div className="bg-blue-50 p-1.5 px-2 rounded border border-blue-100">
+                    <span className="text-[11px] text-gray-500 block truncate">Replaced</span>
+                    <span className="font-semibold text-blue-700 text-xs" data-testid="text-replaced-count">
+                      {attachResult.replaced ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-indigo-50 p-1.5 px-2 rounded border border-indigo-100">
+                    <span className="text-[11px] text-gray-500 block truncate">Duplicates</span>
+                    <span className="font-semibold text-indigo-700 text-xs" data-testid="text-duplicate-count">
+                      {attachResult.duplicates ?? 0}
                     </span>
                   </div>
                   <div className="bg-amber-50 p-1.5 px-2 rounded border border-amber-100">
@@ -660,11 +746,13 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                   </div>
                 </div>
 
-                {attachResult.skipped?.length > 0 && (
+                {(attachResult.skipped?.length > 0 || attachResult.processed?.length > 0) && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-amber-700 font-medium">
-                        {attachResult.skipped.length} file{attachResult.skipped.length !== 1 ? "s" : ""} skipped
+                        {attachResult.skipped?.length
+                          ? `${attachResult.skipped.length} file${attachResult.skipped.length !== 1 ? "s" : ""} skipped`
+                          : "Attachment import report"}
                       </p>
                       <Button
                         variant="outline"
@@ -678,7 +766,23 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                       </Button>
                     </div>
                     <div className="max-h-36 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
-                      {attachResult.skipped.map((s: { path: string; reason: string; category?: string }, i: number) => (
+                      {(attachResult.processed ?? []).map((item: { path: string; status: string; reason?: string }, i: number) => (
+                        <div key={`processed-${i}`} className="p-2 text-xs" data-testid={`row-processed-${i}`}>
+                          <div className="flex items-start space-x-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-emerald-500" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                                  {item.status}
+                                </span>
+                                <p className="font-mono text-[11px] text-gray-700 truncate">{item.path}</p>
+                              </div>
+                              {item.reason && <p className="text-[11px] text-gray-500">{item.reason}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {(attachResult.skipped ?? []).map((s: { path: string; reason: string; category?: string }, i: number) => (
                         <div key={i} className="p-2 text-xs" data-testid={`row-skipped-${i}`}>
                           <div className="flex items-start space-x-1.5">
                             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
@@ -742,24 +846,53 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
         {mode === "attachments" && (
           <DialogFooter className="gap-2 sm:gap-0 mt-3 border-t pt-3">
-            <Button variant="outline" size="sm" onClick={handleClose} disabled={attachStatus === "uploading"}>
+            <Button variant="outline" size="sm" onClick={handleClose} disabled={attachStatus === "uploading" || attachStatus === "awaiting-replacement"}>
               {attachStatus === "done" ? "Close" : "Cancel"}
             </Button>
 
-            {zipFile && attachStatus !== "done" && (
+            {zipFile && attachStatus === "idle" && (
               <Button
                 size="sm"
                 className="bg-[#5dc86f] text-white hover:bg-[#218838]"
                 onClick={handleUploadAttachments}
-                disabled={attachStatus === "uploading"}
+                disabled={attachStatus !== "idle"}
                 data-testid="button-upload-attachments"
               >
-                Upload Attachments
+                Upload and Analyze
+              </Button>
+            )}
+            {zipFile && attachStatus === "preview-ready" && (
+              <Button
+                size="sm"
+                className="bg-[#5dc86f] text-white hover:bg-[#218838]"
+                onClick={handleImportAttachments}
+                data-testid="button-import-attachments"
+              >
+                Import Attachments
               </Button>
             )}
           </DialogFooter>
         )}
       </DialogContent>
+      <AlertDialog open={replaceConfirmOpen} onOpenChange={(open) => {
+        if (!open) handleCancelReplacement();
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing attachments?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This ZIP contains {attachResult?.replacementCandidates ?? 0} existing attachment{attachResult?.replacementCandidates === 1 ? "" : "s"}.
+              The current uploaded files will replace the existing versions. No changes have been made yet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplacement}>
+              Replace and Import
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

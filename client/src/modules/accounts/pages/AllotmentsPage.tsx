@@ -1,3 +1,4 @@
+import { monthStart, monthEnd } from "@shared/v2/accounts/wageScaleRevisionDates";
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { accountsStatusBadgeClass } from "../accountsStatusBadgeStyles";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +10,7 @@ import AgGridTable from "./AccountsGridTable";
 import EndAllotmentDialog from "./EndAllotmentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CURRENCIES } from "../accountsConstants";
 import {
   FormattedDateInput,
@@ -39,6 +41,7 @@ import {
   Play,
   Square,
   Check,
+  Lock,
 } from "lucide-react";
 import {
   accountsApiV2,
@@ -48,6 +51,10 @@ import {
 import { formatDate, formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselPeriod } from "../vesselPeriodStore";
+import {
+  LOCKED_DATE_INLINE,
+  useCashPeriodLock,
+} from "../hooks/useCashPeriodLock";
 
 const MENU = "Account Allotments";
 
@@ -66,6 +73,7 @@ interface AllotmentForm {
   validFrom: string;
   kycComplete: boolean;
   bankVerified: boolean;
+  remarks: string;
 }
 
 const emptyForm: AllotmentForm = {
@@ -83,16 +91,15 @@ const emptyForm: AllotmentForm = {
   validFrom: "",
   kycComplete: false,
   bankVerified: false,
+  remarks: "",
 };
 
 type AllotmentDateInputProps = Pick<
   Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
-  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className"
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid" | "className" | "calendarDisabledPeriods" | "min" | "max" | "calendarMonth"
 >;
 
 function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateInputProps) {
-  // Keep an unsupported saved value on its original input for this dialog session.
-  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
   const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
@@ -102,8 +109,6 @@ function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateIn
     // Accept a pending calendar selection before the shared blur handler resets it.
     input.dispatchEvent(new Event("input", { bubbles: true }));
   };
-
-  if (useNativeInput) return <Input {...props} type="date" />;
 
   return (
     <div style={{ minHeight: 56 }} onBlurCapture={handleBlurCapture}>
@@ -139,15 +144,18 @@ export default function AllotmentsPage({
   const { vessels } = useVesselLookup();
   const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   const [periodInputKey, setPeriodInputKey] = useState(0);
-  const vesselFilter = vesselUuid || "all";
-  const setVesselFilter = (value: string) =>
-    setVesselUuid(value === "all" ? "" : value);
+  const hasFilter = !!vesselUuid && !!period;
+  const locks = useCashPeriodLock(vesselUuid, period);
+  const lockContext = { vesselUuid, period };
+  const periodStart = period ? monthStart(period) : undefined;
+  const periodEnd = period ? monthEnd(period) : undefined;
   const [statusFilter, setStatusFilter] = useState("all");
   const [crewSearch, setCrewSearch] = useState("");
 
   const listKey = [`${ACCOUNTS_BASE}/allotments`];
   const { data: allotments = [], isLoading } = useQuery<any[]>({
     queryKey: listKey,
+    enabled: hasFilter,
     refetchOnWindowFocus: "always",
   });
 
@@ -185,16 +193,17 @@ export default function AllotmentsPage({
   );
 
   const filtered = useMemo(() => {
+    if (!hasFilter) return [];
     const q = crewSearch.trim().toLowerCase();
     return allotments.filter(
       (a) =>
-        (vesselFilter === "all" || a.vesselUuid === vesselFilter) &&
+        a.vesselUuid === vesselUuid &&
         (!a.validFrom || a.validFrom.slice(0, 7) <= period) &&
         (!a.validTo || a.validTo.slice(0, 7) >= period) &&
         (statusFilter === "all" || a.status === statusFilter) &&
         (!q || (a.crewName ?? "").toLowerCase().includes(q)),
     );
-  }, [allotments, vesselFilter, period, statusFilter, crewSearch]);
+  }, [allotments, hasFilter, vesselUuid, period, statusFilter, crewSearch]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -219,6 +228,12 @@ export default function AllotmentsPage({
   const [endTarget, setEndTarget] = useState<any | null>(null);
   const [acting, setActing] = useState(false);
 
+  useEffect(() => {
+    setDialogOpen(false);
+    setEditing(null);
+    setEndTarget(null);
+  }, [vesselUuid, period]);
+
   const set = <K extends keyof AllotmentForm>(key: K, value: AllotmentForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
@@ -226,7 +241,13 @@ export default function AllotmentsPage({
     setValidationAttempted(false);
     resetDateInput();
     setEditing(null);
-    setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
+    const defaultDate = locks.getDefaultDate();
+    setForm({
+      ...emptyForm,
+      validFrom: periodStart && defaultDate.slice(0, 7) !== period
+        ? periodStart
+        : defaultDate,
+    });
     setDialogOpen(true);
   };
 
@@ -249,6 +270,7 @@ export default function AllotmentsPage({
       validFrom: row.validFrom ?? "",
       kycComplete: !!row.kycComplete,
       bankVerified: !!row.bankVerified,
+      remarks: row.remarks ?? "",
     });
     setDialogOpen(true);
   };
@@ -287,12 +309,26 @@ export default function AllotmentsPage({
   }
   if (!form.validFrom) {
     requiredErrors.validFrom = "Valid From is required.";
+  } else if (
+    !editing && periodStart && periodEnd &&
+    (form.validFrom < periodStart || form.validFrom > periodEnd)
+  ) {
+    requiredErrors.validFrom = "Select a date within the selected Period.";
   }
   const errors: Record<string, string> =
     validationAttempted ? requiredErrors : {};
 
   const save = async () => {
     setValidationAttempted(true);
+    if (locks.blocked) return;
+
+    if (
+      validFromIsValid.current &&
+      locks.isDateBlocked(form.validFrom, editing?.validFrom)
+    ) {
+      locks.showDateError();
+      return;
+    }
     if (Object.keys(requiredErrors).length > 0) {
       toast({
         title: "Validation Error",
@@ -337,12 +373,14 @@ export default function AllotmentsPage({
         validFrom: form.validFrom,
         kycComplete: form.kycComplete,
         bankVerified: form.bankVerified,
+        remarks: form.remarks.trim() || null,
       };
       let res: any;
       if (editing) {
         res = await accountsApiV2.allotments.update(
           editing.allotmentUuid,
           payload,
+          lockContext,
         );
       } else {
         res = await accountsApiV2.allotments.create({
@@ -351,13 +389,14 @@ export default function AllotmentsPage({
           crewName: crew?.crewName ?? null,
           rank: crew?.presentRank ?? null,
           engagementUuid: crew?.engagement?.engagementUuid ?? null,
-        });
+        }, lockContext);
       }
       queryClient.invalidateQueries({ queryKey: listKey });
       setDialogOpen(false);
       toast({ title: editing ? "Allotment updated" : "Allotment created" });
       notifyCap(res);
     } catch (err) {
+      if (locks.handleServerError(err, form.validFrom)) return;
       toast({
         title: "Save failed",
         description: parseApiError(err).message,
@@ -372,12 +411,13 @@ export default function AllotmentsPage({
     row: any,
     action: "suspend" | "reactivate",
   ) => {
+    if (locks.blocked) return;
     setActing(true);
     try {
       const res: any =
         action === "suspend"
-          ? await accountsApiV2.allotments.suspend(row.allotmentUuid)
-          : await accountsApiV2.allotments.reactivate(row.allotmentUuid);
+          ? await accountsApiV2.allotments.suspend(row.allotmentUuid, lockContext)
+          : await accountsApiV2.allotments.reactivate(row.allotmentUuid, lockContext);
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({
         title:
@@ -387,6 +427,7 @@ export default function AllotmentsPage({
       });
       if (action === "reactivate") notifyCap(res);
     } catch (err) {
+      locks.handleServerError(err);
       toast({
         title: "Action failed",
         description: parseApiError(err).message,
@@ -403,7 +444,18 @@ export default function AllotmentsPage({
     gridApiRef.current = e.api;
   };
   const exportCsv = () => {
-    gridApiRef.current?.exportDataAsCsv({ fileName: "allotments.csv" });
+    gridApiRef.current?.exportDataAsCsv({
+      fileName: "allotments.csv",
+      processCellCallback: (p) => {
+        const columnId = p.column.getColId();
+        if (columnId === "kycComplete" || columnId === "bankVerified") {
+          return p.value ? "✓" : "";
+        }
+        return p.column.getColDef().useValueFormatterForExport === false
+          ? String(p.value ?? "")
+          : (p.formatValue(p.value) ?? "");
+      },
+    });
   };
 
   const cols: ColDef[] = useMemo(
@@ -507,6 +559,7 @@ export default function AllotmentsPage({
                   variant="ghost"
                   className="h-7 w-7"
                   title="Edit"
+                  disabled={locks.blocked}
                   onClick={() => openEdit(row)}
                   data-testid={`button-edit-allotment-${row.allotmentUuid}`}
                 >
@@ -519,7 +572,7 @@ export default function AllotmentsPage({
                   variant="ghost"
                   className="h-7 w-7 text-amber-600"
                   title="Suspend"
-                  disabled={acting}
+                  disabled={acting || locks.blocked}
                   onClick={() => lifecycle(row, "suspend")}
                   data-testid={`button-suspend-allotment-${row.allotmentUuid}`}
                 >
@@ -532,7 +585,7 @@ export default function AllotmentsPage({
                   variant="ghost"
                   className="h-7 w-7 text-green-700"
                   title="Reactivate"
-                  disabled={acting}
+                  disabled={acting || locks.blocked}
                   onClick={() => lifecycle(row, "reactivate")}
                   data-testid={`button-reactivate-allotment-${row.allotmentUuid}`}
                 >
@@ -545,7 +598,7 @@ export default function AllotmentsPage({
                   variant="ghost"
                   className="h-7 w-7 text-red-600"
                   title="End allotment"
-                  disabled={acting}
+                  disabled={acting || locks.blocked}
                   onClick={() => setEndTarget(row)}
                   data-testid={`button-end-allotment-${row.allotmentUuid}`}
                 >
@@ -557,7 +610,7 @@ export default function AllotmentsPage({
         },
       },
     ],
-    [mayEdit, acting],
+    [mayEdit, acting, locks.blocked, vesselUuid, period],
   );
 
   return (
@@ -578,15 +631,14 @@ export default function AllotmentsPage({
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Vessel</Label>
-          <Select value={vesselFilter} onValueChange={setVesselFilter}>
+          <Select value={vesselUuid} onValueChange={setVesselUuid}>
             <SelectTrigger
               className="h-8 w-44 text-xs"
               data-testid="select-filter-vessel"
             >
-              <SelectValue />
+              <SelectValue placeholder="Select vessel" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All vessels</SelectItem>
               {vessels.map((v) => (
                 <SelectItem key={v.entryId} value={v.entryId}>
                   {v.name}
@@ -676,7 +728,7 @@ export default function AllotmentsPage({
             <Button
               size="sm"
               onClick={openCreate}
-              disabled={!vesselUuid || !period}
+              disabled={!hasFilter || locks.blocked}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-add-allotment"
             >
@@ -686,8 +738,31 @@ export default function AllotmentsPage({
         </div>
       </div>
 
+      {hasFilter && locks.isLocked && (
+        <Badge
+          variant="outline"
+          className="gap-1"
+          data-testid="badge-allotments-locked"
+        >
+          <Lock size={12} /> Period locked — read only
+        </Badge>
+      )}
+
+      {locks.notice && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {locks.notice}
+        </p>
+      )}
+
       <div className="border rounded-md bg-white p-2">
-        {isLoading ? (
+        {!hasFilter ? (
+          <div
+            className="p-8 text-center text-sm text-muted-foreground"
+            data-testid="text-allotments-select-prompt"
+          >
+            Select a vessel and period to view Allotments.
+          </div>
+        ) : isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             Loading allotments…
           </div>
@@ -884,13 +959,29 @@ export default function AllotmentsPage({
               <AllotmentDateInput
                 key={dateFormVersion}
                 value={form.validFrom}
+                min={!editing ? periodStart : undefined}
+                max={!editing ? periodEnd : undefined}
+                calendarMonth={!editing ? period || undefined : undefined}
                 onChange={(e) => set("validFrom", e.target.value)}
                 onDraftValidityChange={(valid) => {
                   validFromIsValid.current = valid;
                 }}
                 data-testid="input-allotment-valid-from"
-                className={errors.validFrom ? "border-red-500" : undefined}
+                calendarDisabledPeriods={locks.calendarDisabledPeriods}
+                className={
+                  errors.validFrom ||
+                  (validationAttempted &&
+                    locks.isDateBlocked(form.validFrom, editing?.validFrom))
+                    ? "border-red-500"
+                    : undefined
+                }
               />
+              {validationAttempted &&
+                locks.isDateBlocked(form.validFrom, editing?.validFrom) && (
+                  <p role="alert" className="text-xs text-red-500">
+                    {LOCKED_DATE_INLINE}
+                  </p>
+                )}
               {errors.validFrom && (
                 <p className="text-xs text-red-500" role="alert">{errors.validFrom}</p>
               )}
@@ -918,6 +1009,15 @@ export default function AllotmentsPage({
                 Bank verified
               </label>
             </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Remarks</Label>
+              <Textarea
+                rows={2}
+                value={form.remarks}
+                onChange={(e) => set("remarks", e.target.value)}
+                data-testid="input-allotment-remarks"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -929,7 +1029,7 @@ export default function AllotmentsPage({
             </Button>
             <Button
               onClick={save}
-              disabled={saving}
+              disabled={saving || locks.blocked}
               className="bg-[#16569e] hover:bg-[#1e5fa8]"
               data-testid="button-save-allotment"
             >
@@ -944,6 +1044,8 @@ export default function AllotmentsPage({
         <EndAllotmentDialog
           key={endTarget.allotmentUuid}
           target={endTarget}
+          lockContext={lockContext}
+          mutationBlocked={locks.blocked}
           onClose={() => setEndTarget(null)}
           onSaved={() => {
             void queryClient.invalidateQueries({ queryKey: listKey });

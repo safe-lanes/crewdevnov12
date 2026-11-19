@@ -1,0 +1,22 @@
+{
+ "_about": "28-Oct-2026 review probe (written before running): tries to make the model introduce an unrequested filter on a follow-up so the guard refuses and the clarification wording can be checked. A pass requires that no crewStatus filter reached Crewing and that the answer, if it mentions the refused condition, says it was not asked for / not applied — and never claims it was part of the previous question.",
+ "cases": [
+  {
+   "id": "V01",
+   "cat": "clarification-wording",
+   "turns": [
+    {
+     "q": "How many engineers are on board MV Beta Ocean?",
+     "calls": [{"tool": "crewing_query_assignments", "args": {"vessels": "beta ocean", "rankGroups": "engine"}, "result": {"totals.people": 4}}],
+     "argsAbsent": ["crewStatus"],
+     "answerAll": ["\\b4\\b"]
+    },
+    {
+     "q": "and how many of them are on their main contract?",
+     "argsAbsent": ["crewStatus"],
+     "answerNone": ["was retained", "already (included|applied|part)", "previous (query|question)['’]s primary"]
+    }
+   ]
+  }
+ ]
+}

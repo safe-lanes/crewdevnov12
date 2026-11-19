@@ -1,0 +1,1198 @@
+{
+  "label": "partb2",
+  "at": "2026-10-30T11:08:28.123Z",
+  "pass": 81,
+  "total": 81,
+  "report": [
+    {
+      "db": "crew_trial_a",
+      "id": "Q01",
+      "text": "Fleet on board: people and assignments",
+      "pass": true,
+      "expected": {
+        "people": 20,
+        "assignments": 20
+      },
+      "got": {
+        "people": 20,
+        "assignments": 20
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q02",
+      "text": "On board per vessel (people)",
+      "pass": true,
+      "expected": {
+        "per_vessel": {
+          "MV Alpha Star": 8,
+          "MV Beta Ocean": 7,
+          "MV Alpha Trader": 5
+        }
+      },
+      "got": {
+        "per_vessel": {
+          "MV Alpha Star": 8,
+          "MV Beta Ocean": 7,
+          "MV Alpha Trader": 5
+        }
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q03",
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "pass": true,
+      "expected": {
+        "secondary": 1
+      },
+      "got": {
+        "secondary": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q04",
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "pass": true,
+      "expected": {
+        "engineers": 7,
+        "unclassified_people": 2
+      },
+      "got": {
+        "engineers": 7,
+        "unclassified_people": 2
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q06",
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "pass": true,
+      "expected": {
+        "people": 4,
+        "unreadable": 1
+      },
+      "got": {
+        "people": 4,
+        "unreadable": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q07",
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "pass": true,
+      "expected": {
+        "documents": 24,
+        "people": 18
+      },
+      "got": {
+        "documents": 24,
+        "people": 18
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q09",
+      "text": "Expired documents (any age)",
+      "pass": true,
+      "expected": {
+        "documents": 3,
+        "people": 3
+      },
+      "got": {
+        "documents": 3,
+        "people": 3
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q10",
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "pass": true,
+      "expected": {
+        "documents": 13,
+        "people": 12,
+        "expired_docs": 3,
+        "upcoming_docs": 10,
+        "upcoming_people": 10
+      },
+      "got": {
+        "documents": 13,
+        "people": 12,
+        "expired_docs": 3,
+        "upcoming_docs": 10,
+        "upcoming_people": 10
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q11",
+      "text": "Upcoming only, 30 days",
+      "pass": true,
+      "expected": {
+        "documents": 10,
+        "people": 10
+      },
+      "got": {
+        "documents": 10,
+        "people": 10
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q12",
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "pass": true,
+      "expected": {
+        "documents": 18,
+        "people": 14,
+        "upcoming_docs": 15
+      },
+      "got": {
+        "documents": 18,
+        "people": 14,
+        "upcoming_docs": 15
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q13",
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "pass": true,
+      "expected": {
+        "documents": 19
+      },
+      "got": {
+        "documents": 19
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q14",
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "pass": true,
+      "expected": {
+        "documents": 14,
+        "people": 11,
+        "expired_docs": 2,
+        "per_vessel": {
+          "MV Alpha Star": 4,
+          "MV Beta Ocean": 7,
+          "MV Alpha Trader": 3
+        }
+      },
+      "got": {
+        "documents": 14,
+        "people": 11,
+        "expired_docs": 2,
+        "per_vessel": {
+          "MV Beta Ocean": 7,
+          "MV Alpha Star": 4,
+          "MV Alpha Trader": 3
+        }
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q15",
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "pass": true,
+      "expected": {
+        "documents": 7,
+        "people": 4,
+        "unclassified_people": 2
+      },
+      "got": {
+        "documents": 7,
+        "people": 4,
+        "unclassified_people": 2
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "Q16",
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "pass": true,
+      "expected": {
+        "on_as_of_day": 1
+      },
+      "got": {
+        "on_as_of_day": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P01",
+      "text": "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+      "pass": true,
+      "expected": {
+        "people": 1
+      },
+      "got": {
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P02",
+      "text": "B1 available by 2026-11-30",
+      "pass": true,
+      "expected": {
+        "people": 3
+      },
+      "got": {
+        "people": 3
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P03",
+      "text": "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+      "pass": true,
+      "expected": {
+        "people": 5,
+        "per_status": {
+          "on_board": 1,
+          "on_leave": 4
+        }
+      },
+      "got": {
+        "people": 5,
+        "per_status": {
+          "on_leave": 4,
+          "on_board": 1
+        }
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P04",
+      "text": "B1 crew not on board without any availability date (excluded, reported)",
+      "pass": true,
+      "expected": {
+        "no_date": 1
+      },
+      "got": {
+        "no_date": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P05",
+      "text": "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+      "pass": true,
+      "expected": {
+        "people": 3
+      },
+      "got": {
+        "people": 3
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P06",
+      "text": "B2 overdue (range end before as-of) on-board assignments",
+      "pass": true,
+      "expected": {
+        "assignments": 2
+      },
+      "got": {
+        "assignments": 2
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P07",
+      "text": "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+      "pass": true,
+      "expected": {
+        "assignments": 4
+      },
+      "got": {
+        "assignments": 4
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P08",
+      "text": "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+      "pass": true,
+      "expected": {
+        "assignments": 9
+      },
+      "got": {
+        "assignments": 9
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P09",
+      "text": "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+      "pass": true,
+      "expected": {
+        "positions": 22,
+        "filled": 19,
+        "vacant": 2,
+        "vacant_not_signed_on": 1
+      },
+      "got": {
+        "positions": 22,
+        "filled": 19,
+        "vacant": 2,
+        "vacant_not_signed_on": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P10",
+      "text": "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+      "pass": true,
+      "expected": {
+        "waiting": 2,
+        "drafts": 1
+      },
+      "got": {
+        "waiting": 2,
+        "drafts": 1
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P12",
+      "text": "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+      "pass": true,
+      "expected": {
+        "records": 4,
+        "violations": 7,
+        "ncs": 2
+      },
+      "got": {
+        "records": 4,
+        "violations": 7,
+        "ncs": 2
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P13",
+      "text": "B3 same month WITH OPA (codes H/I count too)",
+      "pass": true,
+      "expected": {
+        "records": 5,
+        "violations": 8,
+        "ncs": 2
+      },
+      "got": {
+        "records": 5,
+        "violations": 8,
+        "ncs": 2
+      }
+    },
+    {
+      "db": "crew_trial_a",
+      "id": "P14",
+      "text": "B6 appraisals by status class, archived/terminated crew excluded",
+      "pass": true,
+      "expected": {
+        "pending": 3,
+        "drafts": 1,
+        "completed": 2
+      },
+      "got": {
+        "pending": 3,
+        "drafts": 1,
+        "completed": 2
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q01",
+      "text": "Fleet on board: people and assignments",
+      "pass": true,
+      "expected": {
+        "people": 8,
+        "assignments": 9
+      },
+      "got": {
+        "people": 8,
+        "assignments": 9
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q02",
+      "text": "On board per vessel (people)",
+      "pass": true,
+      "expected": {
+        "per_vessel": {
+          "MV Delta Sky": 4,
+          "MV Alpha Star": 5
+        }
+      },
+      "got": {
+        "per_vessel": {
+          "MV Alpha Star": 5,
+          "MV Delta Sky": 4
+        }
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q03",
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "pass": true,
+      "expected": {
+        "secondary": 1
+      },
+      "got": {
+        "secondary": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q04",
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "pass": true,
+      "expected": {
+        "engineers": 3,
+        "unclassified_people": 0
+      },
+      "got": {
+        "engineers": 3,
+        "unclassified_people": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q06",
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "pass": true,
+      "expected": {
+        "people": 1,
+        "unreadable": 0
+      },
+      "got": {
+        "people": 1,
+        "unreadable": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q07",
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "pass": true,
+      "expected": {
+        "documents": 2,
+        "people": 2
+      },
+      "got": {
+        "documents": 2,
+        "people": 2
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q09",
+      "text": "Expired documents (any age)",
+      "pass": true,
+      "expected": {
+        "documents": 0,
+        "people": 0
+      },
+      "got": {
+        "documents": 0,
+        "people": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q10",
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "pass": true,
+      "expected": {
+        "documents": 1,
+        "people": 1,
+        "expired_docs": 0,
+        "upcoming_docs": 1,
+        "upcoming_people": 1
+      },
+      "got": {
+        "documents": 1,
+        "people": 1,
+        "expired_docs": 0,
+        "upcoming_docs": 1,
+        "upcoming_people": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q11",
+      "text": "Upcoming only, 30 days",
+      "pass": true,
+      "expected": {
+        "documents": 1,
+        "people": 1
+      },
+      "got": {
+        "documents": 1,
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q12",
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "pass": true,
+      "expected": {
+        "documents": 2,
+        "people": 2,
+        "upcoming_docs": 2
+      },
+      "got": {
+        "documents": 2,
+        "people": 2,
+        "upcoming_docs": 2
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q13",
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "pass": true,
+      "expected": {
+        "documents": 2
+      },
+      "got": {
+        "documents": 2
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q14",
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "pass": true,
+      "expected": {
+        "documents": 2,
+        "people": 2,
+        "expired_docs": 0,
+        "per_vessel": {
+          "MV Delta Sky": 1,
+          "MV Alpha Star": 1
+        }
+      },
+      "got": {
+        "documents": 2,
+        "people": 2,
+        "expired_docs": 0,
+        "per_vessel": {
+          "MV Alpha Star": 1,
+          "MV Delta Sky": 1
+        }
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q15",
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "pass": true,
+      "expected": {
+        "documents": 2,
+        "people": 2,
+        "unclassified_people": 0
+      },
+      "got": {
+        "documents": 2,
+        "people": 2,
+        "unclassified_people": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "Q16",
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "pass": true,
+      "expected": {
+        "on_as_of_day": 0
+      },
+      "got": {
+        "on_as_of_day": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P01",
+      "text": "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+      "pass": true,
+      "expected": {
+        "people": 0
+      },
+      "got": {
+        "people": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P02",
+      "text": "B1 available by 2026-11-30",
+      "pass": true,
+      "expected": {
+        "people": 1
+      },
+      "got": {
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P03",
+      "text": "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+      "pass": true,
+      "expected": {
+        "people": 1,
+        "per_status": {
+          "on_leave": 1
+        }
+      },
+      "got": {
+        "people": 1,
+        "per_status": {
+          "on_leave": 1
+        }
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P04",
+      "text": "B1 crew not on board without any availability date (excluded, reported)",
+      "pass": true,
+      "expected": {
+        "no_date": 0
+      },
+      "got": {
+        "no_date": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P05",
+      "text": "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+      "pass": true,
+      "expected": {
+        "people": 1
+      },
+      "got": {
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P06",
+      "text": "B2 overdue (range end before as-of) on-board assignments",
+      "pass": true,
+      "expected": {
+        "assignments": 0
+      },
+      "got": {
+        "assignments": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P07",
+      "text": "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+      "pass": true,
+      "expected": {
+        "assignments": 1
+      },
+      "got": {
+        "assignments": 1
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P08",
+      "text": "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+      "pass": true,
+      "expected": {
+        "assignments": 4
+      },
+      "got": {
+        "assignments": 4
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P09",
+      "text": "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+      "pass": true,
+      "expected": {
+        "positions": 9,
+        "filled": 8,
+        "vacant": 1,
+        "vacant_not_signed_on": 0
+      },
+      "got": {
+        "positions": 9,
+        "filled": 8,
+        "vacant": 1,
+        "vacant_not_signed_on": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P10",
+      "text": "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+      "pass": true,
+      "expected": {
+        "waiting": 1,
+        "drafts": 0
+      },
+      "got": {
+        "waiting": 1,
+        "drafts": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P12",
+      "text": "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+      "pass": true,
+      "expected": {
+        "records": 1,
+        "violations": 1,
+        "ncs": 0
+      },
+      "got": {
+        "records": 1,
+        "violations": 1,
+        "ncs": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P13",
+      "text": "B3 same month WITH OPA (codes H/I count too)",
+      "pass": true,
+      "expected": {
+        "records": 1,
+        "violations": 1,
+        "ncs": 0
+      },
+      "got": {
+        "records": 1,
+        "violations": 1,
+        "ncs": 0
+      }
+    },
+    {
+      "db": "crew_trial_b",
+      "id": "P14",
+      "text": "B6 appraisals by status class, archived/terminated crew excluded",
+      "pass": true,
+      "expected": {
+        "pending": 1,
+        "drafts": 0,
+        "completed": 1
+      },
+      "got": {
+        "pending": 1,
+        "drafts": 0,
+        "completed": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q01",
+      "text": "Fleet on board: people and assignments",
+      "pass": true,
+      "expected": {
+        "people": 22,
+        "assignments": 22
+      },
+      "got": {
+        "people": 22,
+        "assignments": 22
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q02",
+      "text": "On board per vessel (people)",
+      "pass": true,
+      "expected": {
+        "per_vessel": {
+          "Prime Fortune": 22
+        }
+      },
+      "got": {
+        "per_vessel": {
+          "Prime Fortune": 22
+        }
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q03",
+      "text": "Secondary (signed-on relievers in handover) on board",
+      "pass": true,
+      "expected": {
+        "secondary": 1
+      },
+      "got": {
+        "secondary": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q04",
+      "text": "Engineers on board (Eng Officer flag) + unclassified ranks on board",
+      "pass": true,
+      "expected": {
+        "engineers": 5,
+        "unclassified_people": 2
+      },
+      "got": {
+        "engineers": 5,
+        "unclassified_people": 2
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q06",
+      "text": "Signed on in the last 30 days (people) + unreadable sign-on dates",
+      "pass": true,
+      "expected": {
+        "people": 1,
+        "unreadable": 0
+      },
+      "got": {
+        "people": 1,
+        "unreadable": 0
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q07",
+      "text": "All documents (terminated/archived excluded): documents, people, inactive-crew documents, missing/unreadable dates",
+      "pass": true,
+      "expected": {
+        "documents": 271,
+        "people": 120
+      },
+      "got": {
+        "documents": 271,
+        "people": 120
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q09",
+      "text": "Expired documents (any age)",
+      "pass": true,
+      "expected": {
+        "documents": 18,
+        "people": 18
+      },
+      "got": {
+        "documents": 18,
+        "people": 18
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q10",
+      "text": "Expiring in 30 days = expired + upcoming by 2026-12-01 (documents, people, split)",
+      "pass": true,
+      "expected": {
+        "documents": 25,
+        "people": 21,
+        "expired_docs": 18,
+        "upcoming_docs": 7,
+        "upcoming_people": 5
+      },
+      "got": {
+        "documents": 25,
+        "people": 21,
+        "expired_docs": 18,
+        "upcoming_docs": 7,
+        "upcoming_people": 5
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q11",
+      "text": "Upcoming only, 30 days",
+      "pass": true,
+      "expected": {
+        "documents": 7,
+        "people": 5
+      },
+      "got": {
+        "documents": 7,
+        "people": 5
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q12",
+      "text": "Expiring in 60 days (expired + upcoming by 2026-12-31)",
+      "pass": true,
+      "expected": {
+        "documents": 29,
+        "people": 24,
+        "upcoming_docs": 11
+      },
+      "got": {
+        "documents": 29,
+        "people": 24,
+        "upcoming_docs": 11
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q13",
+      "text": "Expiring in 2 calendar months (by 2027-01-01) — differs from 60 days",
+      "pass": true,
+      "expected": {
+        "documents": 30
+      },
+      "got": {
+        "documents": 30
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q14",
+      "text": "On-board crew: expiring in 60 days (expired + upcoming), documents and people, per vessel",
+      "pass": true,
+      "expected": {
+        "documents": 9,
+        "people": 5,
+        "expired_docs": 1,
+        "per_vessel": {
+          "Prime Fortune": 9
+        }
+      },
+      "got": {
+        "documents": 9,
+        "people": 5,
+        "expired_docs": 1,
+        "per_vessel": {
+          "Prime Fortune": 9
+        }
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q15",
+      "text": "Engineers' documents expiring in 60 days (expired + upcoming) + unclassified people in the population",
+      "pass": true,
+      "expected": {
+        "documents": 6,
+        "people": 6,
+        "unclassified_people": 5
+      },
+      "got": {
+        "documents": 6,
+        "people": 6,
+        "unclassified_people": 5
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "Q16",
+      "text": "Boundary: documents expiring exactly on the as-of day count as upcoming",
+      "pass": true,
+      "expected": {
+        "on_as_of_day": 1
+      },
+      "got": {
+        "on_as_of_day": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P01",
+      "text": "B1 available to join NOW (as-of): active, not terminated, not for rehire excluded; on leave with a date ≤ as-of, or on board with Next Availability ≤ as-of",
+      "pass": true,
+      "expected": {
+        "people": 0
+      },
+      "got": {
+        "people": 0
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P02",
+      "text": "B1 available by 2026-11-30",
+      "pass": true,
+      "expected": {
+        "people": 1
+      },
+      "got": {
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P03",
+      "text": "B1 available within the next 2 months (by 2027-01-01) incl. the on-board person with a Next Availability date",
+      "pass": true,
+      "expected": {
+        "people": 1,
+        "per_status": {
+          "on_leave": 1
+        }
+      },
+      "got": {
+        "people": 1,
+        "per_status": {
+          "on_leave": 1
+        }
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P04",
+      "text": "B1 crew not on board without any availability date (excluded, reported)",
+      "pass": true,
+      "expected": {
+        "no_date": 100
+      },
+      "got": {
+        "no_date": 100
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P05",
+      "text": "B1 Chief Officers available by 2026-12-31 (rank filter on present rank)",
+      "pass": true,
+      "expected": {
+        "people": 1
+      },
+      "got": {
+        "people": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P06",
+      "text": "B2 overdue (range end before as-of) on-board assignments",
+      "pass": true,
+      "expected": {
+        "assignments": 9
+      },
+      "got": {
+        "assignments": 9
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P07",
+      "text": "B2 due within 1 month (recorded relief-due in [as-of, as-of+1 month] or overdue)",
+      "pass": true,
+      "expected": {
+        "assignments": 19
+      },
+      "got": {
+        "assignments": 19
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P08",
+      "text": "B2 due within 3 months + assignments whose recorded relief-due differs from the contract end",
+      "pass": true,
+      "expected": {
+        "assignments": 19
+      },
+      "got": {
+        "assignments": 19
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P09",
+      "text": "B5 positions on active vessels: filled (signed on, or signed-on reliever) / vacant (empty) / vacant_not_signed_on",
+      "pass": true,
+      "expected": {
+        "positions": 22,
+        "filled": 21,
+        "vacant": 1,
+        "vacant_not_signed_on": 0
+      },
+      "got": {
+        "positions": 22,
+        "filled": 21,
+        "vacant": 1,
+        "vacant_not_signed_on": 0
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P10",
+      "text": "B4 rotation plans waiting (Proposed / Partially Approved) and drafts (In Draft)",
+      "pass": true,
+      "expected": {
+        "waiting": 3,
+        "drafts": 0
+      },
+      "got": {
+        "waiting": 3,
+        "drafts": 0
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P12",
+      "text": "B3 rest mode, month 2026-10: person-months with ≥1 violation day, violation days, NCs (≥3 days or a code C) — from the stored per-day codes, applicable window honoured",
+      "pass": true,
+      "expected": {
+        "records": 1,
+        "violations": 3,
+        "ncs": 1
+      },
+      "got": {
+        "records": 1,
+        "violations": 3,
+        "ncs": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P13",
+      "text": "B3 same month WITH OPA (codes H/I count too)",
+      "pass": true,
+      "expected": {
+        "records": 1,
+        "violations": 4,
+        "ncs": 1
+      },
+      "got": {
+        "records": 1,
+        "violations": 4,
+        "ncs": 1
+      }
+    },
+    {
+      "db": "crew_trial_c",
+      "id": "P14",
+      "text": "B6 appraisals by status class, archived/terminated crew excluded",
+      "pass": true,
+      "expected": {
+        "pending": 1,
+        "drafts": 1,
+        "completed": 1
+      },
+      "got": {
+        "pending": 1,
+        "drafts": 1,
+        "completed": 1
+      }
+    }
+  ]
+}

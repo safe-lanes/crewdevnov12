@@ -37,6 +37,11 @@ export const crewMembersController = {
   async getAllWithDetails(req: Request, res: Response) {
     try {
       const { rank, nationality, status, search, vesselUuid, limit, offset, view } = req.query;
+      const parsedDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+        const date = new Date(value + "T00:00:00Z");
+        return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+      }).optional().safeParse(req.query.employmentDate);
+      if (!parsedDate.success) return res.status(400).json({ error: "Invalid employmentDate" });
       if (view === "terminated") {
         const data = await crewMembersService.getTerminated();
         return res.json({ data, pagination: { total: data.length, limit: data.length, offset: 0, pages: 1, currentPage: 1 } });
@@ -50,6 +55,7 @@ export const crewMembersController = {
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
         view: view === "all" ? "all" : "active",
+        employmentDate: parsedDate.data,
       });
       res.json(result);
     } catch (error) {

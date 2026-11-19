@@ -2,6 +2,12 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getActor } from "./controllers/_auth";
 import { SHIP_ALLOWED_ROUTES } from "./shipAccessPolicy";
 import {
+  cashLockedPeriods,
+  cashPeriodLock,
+} from "./middleware/cashPeriodLock";
+import * as rawControllers from "./controllers";
+import { coordinatedControllers } from "./controllers/coordinatedControllers";
+const {
   payElementsController,
   allotmentsController,
   advancesController,
@@ -17,7 +23,7 @@ import {
   ctmController,
   vesselPortageController,
   reportsController,
-} from "./controllers";
+} = coordinatedControllers(rawControllers);
 
 const router = Router();
 
@@ -101,13 +107,13 @@ router.delete("/cba-reference/:uuid", cbaReferenceController.delete);
 router.get("/allotments", allotmentsController.getAll);
 router.get("/allotments/crew/:crewUuid", allotmentsController.getByCrew);
 router.get("/allotments/:uuid", allotmentsController.getByUuid);
-router.post("/allotments", allotmentsController.create);
-router.put("/allotments/:uuid", allotmentsController.update);
-router.patch("/allotments/:uuid", allotmentsController.update);
-router.post("/allotments/:uuid/suspend", allotmentsController.suspend);
-router.post("/allotments/:uuid/reactivate", allotmentsController.reactivate);
-router.post("/allotments/:uuid/end", allotmentsController.end);
-router.delete("/allotments/:uuid", allotmentsController.delete);
+router.post("/allotments", cashPeriodLock("allotment", "create"), allotmentsController.create);
+router.put("/allotments/:uuid", cashPeriodLock("allotment", "update"), allotmentsController.update);
+router.patch("/allotments/:uuid", cashPeriodLock("allotment", "update"), allotmentsController.update);
+router.post("/allotments/:uuid/suspend", cashPeriodLock("allotment", "suspend"), allotmentsController.suspend);
+router.post("/allotments/:uuid/reactivate", cashPeriodLock("allotment", "reactivate"), allotmentsController.reactivate);
+router.post("/allotments/:uuid/end", cashPeriodLock("allotment", "end"), allotmentsController.end);
+router.delete("/allotments/:uuid", cashPeriodLock("allotment", "delete"), allotmentsController.delete);
 
 // ============================================
 // CASH ADVANCES
@@ -116,18 +122,19 @@ router.get("/advances", advancesController.getAll);
 router.get("/advances/crew/:crewUuid", advancesController.getByCrew);
 router.get("/advances/:uuid/detail", advancesController.getDetail);
 router.get("/advances/:uuid", advancesController.getByUuid);
-router.post("/advances", advancesController.create);
-router.put("/advances/:uuid", advancesController.update);
-router.patch("/advances/:uuid", advancesController.update);
-router.post("/advances/:uuid/cancel", advancesController.cancel);
-router.post("/advances/:uuid/close", advancesController.close);
-router.delete("/advances/:uuid", advancesController.delete);
+router.post("/advances", cashPeriodLock("advance", "create"), advancesController.create);
+router.put("/advances/:uuid", cashPeriodLock("advance", "update"), advancesController.update);
+router.patch("/advances/:uuid", cashPeriodLock("advance", "update"), advancesController.update);
+router.post("/advances/:uuid/cancel", cashPeriodLock("advance", "cancel"), advancesController.cancel);
+router.post("/advances/:uuid/close", cashPeriodLock("advance", "close"), advancesController.close);
+router.delete("/advances/:uuid", cashPeriodLock("advance", "delete"), advancesController.delete);
 
 // ============================================
 // ENGAGEMENTS (sync + manual seniority anchor)
 // ============================================
 router.get("/engagements", engagementsController.list);
 router.get("/engagements/:uuid/detail", engagementsController.detail);
+router.get("/engagements/:uuid/pay-item-options", engagementsController.payItemOptions);
 router.post("/engagements/:uuid/pay-items", engagementsController.createPayItem);
 router.patch(
   "/engagements/pay-items/:epeUuid",
@@ -155,7 +162,7 @@ router.patch("/engagements/:uuid", engagementsController.update);
 // ============================================
 // PORTAGE BILL LIFECYCLE (workspace + approvals)
 // ============================================
-router.get("/portage", portageController.getWorkspace);
+router.get("/portage", cashLockedPeriods, portageController.getWorkspace);
 router.post("/portage/:uuid/submit", portageController.submit);
 router.post(
   "/portage/approvals/:approvalUuid/decision",
@@ -235,6 +242,10 @@ router.post(
 router.get(
   "/vessel-portage/:vesselUuid/:period/status",
   vesselPortageController.getStatus,
+);
+router.get(
+  "/vessel-portage/:vesselUuid/:period/wage-values",
+  vesselPortageController.getWageValues,
 );
 router.post(
   "/vessel-portage/:vesselUuid/:period/submit",

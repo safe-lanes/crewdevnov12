@@ -47,6 +47,9 @@ export const cbaReferenceController = {
       });
       res.status(201).json(record);
     } catch (error: any) {
+      if (error?.code === "VALIDATION") {
+        return res.status(400).json({ error: error.message });
+      }
       if (error.message?.includes("required")) {
         return res.status(400).json({ error: error.message });
       }
@@ -69,6 +72,9 @@ export const cbaReferenceController = {
       });
       res.json(record);
     } catch (error: any) {
+      if (error?.code === "VALIDATION") {
+        return res.status(400).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }

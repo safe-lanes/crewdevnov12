@@ -109,6 +109,14 @@ export async function parseWorkbook(buffer: Buffer, catalogs: Catalogs): Promise
           raw = derived.value ?? null;
           derivedDefault = true;
         }
+        if (field.key === "email" && raw && typeof raw === "object" &&
+          "text" in raw && typeof raw.text === "string" &&
+          "hyperlink" in raw && typeof raw.hyperlink === "string" &&
+          /^mailto:/i.test(raw.hyperlink) &&
+          raw.hyperlink.slice(7) === raw.text.trim() &&
+          !/[?#]/.test(raw.hyperlink.slice(7))) {
+          raw = raw.text;
+        }
         if (raw === null || raw === undefined || (typeof raw === "string" && !raw.trim())) continue;
         if (typeof raw === "object" && !(raw instanceof Date)) { report(field.key, "Use a plain value, not a formula, link or formatted object."); continue; }
         if (raw instanceof Date && Number.isNaN(raw.getTime())) { report(field.key, "Enter a valid date as YYYY-MM-DD or DD-MMM-YYYY."); continue; }
