@@ -269,29 +269,38 @@ type QuestionCommentState = {
   finishEditing: () => void;
 };
 
-function useQuestionComment(initial = ""): QuestionCommentState {
+function useQuestionComment(initial = "", readOnly = false): QuestionCommentState {
   const [text, setText] = useState(initial);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const hasComment = text.trim().length > 0;
   const hydrated = useRef(initial);
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   useEffect(() => {
-    if (!isEditing && initial !== hydrated.current) {
+    if (readOnly) {
+      setIsEditing(false);
+      hydrated.current = initial;
+      setText(initial);
+    } else if (!isEditing && initial !== hydrated.current) {
       hydrated.current = initial;
       setText(initial);
     }
-  }, [initial, isEditing]);
+  }, [initial, isEditing, readOnly]);
 
   return {
-    text,
+    // Locked views use supplied data, never an unacknowledged local edit.
+    text: readOnly ? initial : text,
     isExpanded,
     isEditing,
-    setText,
+    setText: (value) => { if (!readOnlyRef.current) setText(value); },
     open: () => {
+      if (readOnlyRef.current) return;
       setIsExpanded(true);
       setIsEditing(!hasComment);
     },
     edit: () => {
+      if (readOnlyRef.current) return;
       setIsExpanded(true);
       setIsEditing(true);
     },
@@ -514,21 +523,33 @@ function QuestionCommentRow({
   colSpan,
   comment,
   onChange,
+  readOnly = false,
+  showSaved = false,
 }: {
   questionId: string;
   colSpan: number;
   comment: QuestionCommentState;
   onChange?: (value: string) => void;
+  readOnly?: boolean;
+  showSaved?: boolean;
 }) {
-  if (!comment.isExpanded) return null;
+  const hasComment = comment.text.trim().length > 0;
+  if (readOnly ? !hasComment : !comment.isExpanded && !(showSaved && hasComment)) return null;
 
   return (
     <tr className={getTableClasses().row} data-testid={`preview-comment-row-${questionId}`}>
-      <td colSpan={colSpan} className={getTableClasses().cell}>
-        {comment.isEditing ? (
+      <td colSpan={colSpan} className={`${getTableClasses().cell} max-w-0`}>
+        {readOnly ? (
+          <p
+            className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] p-2 text-[13px] italic text-blue-600"
+            data-testid={`preview-comment-display-${questionId}`}
+          >
+            {comment.text}
+          </p>
+        ) : comment.isEditing ? (
           <Textarea
             value={comment.text}
-            onChange={(event) => { comment.setText(event.target.value); onChange?.(event.target.value); }}
+            onChange={(event) => { if (!readOnly) { comment.setText(event.target.value); onChange?.(event.target.value); } }}
             onBlur={comment.finishEditing}
             placeholder="Comment: Add your observations here..."
             className="text-blue-600 italic border-blue-200"
@@ -539,7 +560,7 @@ function QuestionCommentRow({
         ) : (
           <button
             type="button"
-            className="w-full rounded p-2 text-left text-[13px] italic text-blue-600 hover:bg-gray-50"
+            className="w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded p-2 text-left text-[13px] italic text-blue-600 hover:bg-gray-50"
             onClick={comment.edit}
             data-testid={`preview-comment-display-${questionId}`}
           >
@@ -628,14 +649,14 @@ function ConfiguredPoint({
   subjectType?: string | null;
   readOnly?: boolean;
 }) {
-  const comment = useQuestionComment(live?.answerComments?.[questionId] || "");
+  const readOnly = !!live?.isLocked || !!sectionReadOnly;
+  const comment = useQuestionComment(live?.answerComments?.[questionId] || "", readOnly);
   const answer = answers[questionId];
   const hasText = question.question_text.trim().length > 0;
   const labels = question.response_type === "yes_no_na" ? ["Yes", "No", "NA"] : ["Yes", "No"];
   const options = question.options || [];
   const selectedOptions = Array.isArray(answer) ? answer : [];
   const tableClasses = getTableClasses();
-  const readOnly = !!live?.isLocked || !!sectionReadOnly;
 
   if (question.response_type === "content") {
     return <tr className={tableClasses.row} data-testid={`preview-point-${questionId}`}>
@@ -806,7 +827,7 @@ function ConfiguredPoint({
           )}
         </td>
       </tr>
-      {question.comment_enabled && <QuestionCommentRow questionId={questionId} colSpan={3} comment={comment} onChange={(value) => live?.onAnswerCommentChange?.(questionId, value)} />}
+      {question.comment_enabled && <QuestionCommentRow questionId={questionId} colSpan={3} comment={comment} readOnly={readOnly} showSaved={!!live} onChange={(value) => { if (!readOnly) live?.onAnswerCommentChange?.(questionId, value); }} />}
     </>
   );
 }
@@ -830,7 +851,8 @@ function ConfiguredMatrixPoint({
   live?: ConfiguredFormLiveProps;
   readOnly?: boolean;
 }) {
-  const comment = useQuestionComment(live?.answerComments?.[questionId] || "");
+  const commentReadOnly = !!live?.isLocked || !!readOnly;
+  const comment = useQuestionComment(live?.answerComments?.[questionId] || "", commentReadOnly);
   const answer = answers[questionId];
   const selectedOptions = Array.isArray(answer) ? answer : [];
   const tableClasses = getTableClasses();
@@ -876,7 +898,7 @@ function ConfiguredMatrixPoint({
         </td>
       </tr>
       {question.comment_enabled && (
-        <QuestionCommentRow questionId={questionId} colSpan={options.length + 2} comment={comment} onChange={(value) => live?.onAnswerCommentChange?.(questionId, value)} />
+        <QuestionCommentRow questionId={questionId} colSpan={options.length + 2} comment={comment} readOnly={commentReadOnly} showSaved={!!live} onChange={(value) => { if (!commentReadOnly) live?.onAnswerCommentChange?.(questionId, value); }} />
       )}
     </>
   );
