@@ -127,6 +127,9 @@ export type CompanyFormSubmissionSectionState = {
   submittedByUuid: string | null;
   submittedByName: string | null;
   submittedAt: string | null;
+  lastDraftSavedAt?: string | null;
+  lastDraftSavedByUuid?: string | null;
+  lastDraftSavedByName?: string | null;
   signatures: CompanyFormSubmissionSignature[];
 };
 

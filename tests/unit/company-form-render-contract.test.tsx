@@ -737,9 +737,11 @@ describe("Company Form submission renderer contract", () => {
           headers: { "content-type": "application/json" },
         });
       }
-      if (putCount === 5) {
+      if (putCount >= 5) {
         persistBody(body);
-        return new Response(null, { status: 204 });
+        return body?.explicitDraftSave
+          ? Response.json({ lastDraftSavedAt: "2026-11-20T10:00:00.000Z", lastDraftSavedByUuid: "actor", lastDraftSavedByName: "Test Saver" })
+          : new Response(null, { status: 204 });
       }
       return new Promise<Response>((resolve) => deferredResolvers.push(resolve));
     }));
@@ -778,6 +780,7 @@ describe("Company Form submission renderer contract", () => {
     deferredResolvers[1](new Response(null, { status: 204 }));
     await waitFor(() => expect(calls).toHaveLength(5));
     expect(calls[4].body).toEqual({
+      explicitDraftSave: true,
       answers: [{ questionUuid: "single-question", value: "b", comment: "Signed after review" }, {
         questionUuid: "free-text-question",
         value: "latest value",
@@ -800,6 +803,10 @@ describe("Company Form submission renderer contract", () => {
     const currentInput = activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')!;
     fireEvent.change(currentInput, { target: { value: "recovered latest value" } });
     await waitFor(() => expect(calls).toHaveLength(6));
+    // A failed explicit save remains unconfirmed until the user retries it;
+    // a later autosave must not silently impersonate that explicit save.
+    fireEvent.click(saveDraftButton!);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Draft saved successfully"));
     await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')).toBeNull());
     expect(calls[5].body).toEqual({
       answers: [{ questionUuid: "free-text-question", value: "recovered latest value" }],
@@ -1463,6 +1470,7 @@ describe("Company Form submission renderer contract", () => {
       .find((button) => button.textContent?.trim() === "Save draft")!);
     await waitFor(() => expect(sectionBWrites).toHaveLength(6));
     expect(sectionBWrites[5]).toEqual({
+      explicitDraftSave: true,
       answers: [
         { questionUuid: "second-part-question", value: "Newest B answer", comment: "" },
         { questionUuid: "cleared-answer-question", value: "" },

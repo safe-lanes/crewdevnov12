@@ -60,6 +60,7 @@ let stored;
 let matrix;
 let family;
 let writes;
+let draftReceipt;
 const server = createServer(async (req, res) => {
   if (req.url === "/bundle.js") {
     res.setHeader("content-type", "application/javascript");
@@ -69,6 +70,11 @@ const server = createServer(async (req, res) => {
     res.setHeader("content-type", "application/json");
     if (req.method === "GET") {
       const fixture = family === "company" ? companyFixture(stored, matrix) : legacyFixture(stored, matrix);
+      if (draftReceipt) Object.assign((fixture.states || fixture.section_states)[0], family === "company" ? draftReceipt : {
+        last_draft_saved_at: draftReceipt.lastDraftSavedAt,
+        last_draft_saved_by_uuid: draftReceipt.lastDraftSavedByUuid,
+        last_draft_saved_by_name: draftReceipt.lastDraftSavedByName,
+      });
       return res.end(JSON.stringify(fixture));
     }
     let raw = ""; for await (const chunk of req) raw += chunk;
@@ -78,6 +84,12 @@ const server = createServer(async (req, res) => {
       for (const answer of body.answers) {
         stored.value = answer.value;
         if (answer.comment !== undefined) stored.comment = answer.comment;
+      }
+      if (body.explicitDraftSave) {
+        // Delay the acknowledgement so Saving… and disabled actions are visible.
+        await new Promise(resolve => setTimeout(resolve, 180));
+        draftReceipt = { lastDraftSavedAt: new Date().toISOString(), lastDraftSavedByUuid: "fixture-saver", lastDraftSavedByName: "Fixture Saver" };
+        return res.end(JSON.stringify(draftReceipt));
       }
     } else if (req.url.endsWith("/submit")) stored.submitted = true;
     else { res.statusCode = 400; return res.end(JSON.stringify({ error: "Unexpected fixture write" })); }
@@ -95,6 +107,7 @@ try {
     for (family of formFamilies) {
       for (matrix of [false, true]) {
         stored = { comment: longComment, value: "yes", submitted: true };
+        draftReceipt = null;
         writes = [];
         const page = await browser.newPage({ viewport });
         const errors = [];
@@ -132,10 +145,25 @@ try {
         const editor = page.getByTestId("preview-comment-point");
         await editor.fill("New submitted observation");
         await editor.blur();
+        await page.getByRole("button", { name: "Save draft", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Saving…" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Submit", exact: true })).toBeDisabled();
+        await expect(page.getByText("Draft saved successfully", { exact: true })).toBeVisible();
+        await expect(page.getByText("Last Saved by: Fixture Saver", { exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeEnabled();
+        if (family === "briefing" && !matrix) {
+          await page.getByText("Last Saved by: Fixture Saver", { exact: true }).scrollIntoViewIfNeeded();
+          await page.screenshot({ path: `/tmp/draft-saved-${viewport.width}.png` });
+        }
+        await page.reload();
+        await expect(page.getByText("Draft", { exact: true })).toBeVisible();
+        await expect(page.getByText("Last Saved by: Fixture Saver", { exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Submit", exact: true }).click();
         await page.getByRole("alertdialog").getByRole("button", { name: "Submit", exact: true }).click();
         await expect.poll(() => stored.submitted).toBe(true);
         await expect(page.getByTestId("button-preview-comment-point")).toHaveCount(0);
+        await expect(page.getByText("Last Saved by: Fixture Saver", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
         expect(stored.comment).toBe("New submitted observation");
         expect(stored.value).toBe("yes");
         const count = writes.length;

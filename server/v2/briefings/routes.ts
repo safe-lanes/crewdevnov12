@@ -28,6 +28,7 @@ const answers = z.object({
     }).strict()),
   ]),
   sectionComment: z.string().max(10000).nullable().optional(),
+  explicitDraftSave: z.boolean().optional(),
 }).strict();
 const signature = z.object({
   type: z.enum(["officer", "seafarer"]),

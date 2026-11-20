@@ -274,6 +274,9 @@ export const frmSectionStates = pgTable(
     submittedByUuid: text("submitted_by_uuid"),
     submittedByName: text("submitted_by_name"),
     submittedAt: timestamp("submitted_at"),
+    lastDraftSavedAt: timestamp("last_draft_saved_at"),
+    lastDraftSavedByUuid: text("last_draft_saved_by_uuid"),
+    lastDraftSavedByName: text("last_draft_saved_by_name"),
     ...auditColumns,
   },
   (table) => ({

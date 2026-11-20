@@ -136,8 +136,9 @@ const draftAnswerSchema = z.object({
 const draftBodySchema = z.object({
   answers: z.array(draftAnswerSchema).max(300),
   sectionComment: z.string().max(20000).nullable().optional(),
+  explicitDraftSave: z.boolean().optional(),
 }).strict().superRefine((body, context) => {
-  if (body.answers.length === 0 && body.sectionComment === undefined) {
+  if (body.answers.length === 0 && body.sectionComment === undefined && !body.explicitDraftSave) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Provide at least one answer or a section comment to save.",
@@ -248,14 +249,15 @@ router.put("/:submissionUuid/sections/:sectionUuid/answers", async (req, res) =>
     return;
   }
   try {
-    await companyFormSubmissionsService.updateDraftAnswers({
+    const saved = await companyFormSubmissionsService.updateDraftAnswers({
       req,
       submissionUuid: params.submissionUuid,
       sectionUuid: params.sectionUuid,
       answers: body.data.answers,
       sectionComment: body.data.sectionComment,
+      explicitDraftSave: body.data.explicitDraftSave,
     });
-    res.status(204).end();
+    if (saved) res.json(saved); else res.status(204).end();
   } catch (error) {
     sendError(res, error);
   }

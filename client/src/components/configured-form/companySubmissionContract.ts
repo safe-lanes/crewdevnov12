@@ -11,6 +11,8 @@ import type {
 } from "@shared/v2/forms-engine/submissionRenderContract";
 import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { readDraftSaveReceipt, explicitDraftRequest } from "./draftSave";
+import type { DraftSaveReceipt } from "@shared/v2/forms-engine/draftSave";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel,
@@ -40,6 +42,7 @@ export interface CompanySubmissionDraftAnswer {
 export interface CompanySubmissionDraftInput {
   answers: readonly CompanySubmissionDraftAnswer[];
   sectionComment?: string;
+  explicitDraftSave?: boolean;
 }
 
 export interface CompanySubmissionRendererModel {
@@ -63,6 +66,8 @@ export interface CompanySubmissionRendererModel {
     sectionComment?: string | null;
     submittedByName?: string | null;
     submittedAt?: string | null;
+    lastDraftSavedAt?: string | null;
+    lastDraftSavedByName?: string | null;
     signatures?: Record<string, {
       signatureAttUuid: string;
       signatureName?: string | null;
@@ -85,7 +90,7 @@ export function saveCompanySubmissionDraft(
   sectionUuid: string,
   draft: CompanySubmissionDraftInput,
   context?: CompanySubmissionRequestContext,
-): Promise<void> {
+): Promise<DraftSaveReceipt | void> {
   const answers = draft.answers.map((answer) => ({
     questionUuid: answer.questionUuid,
     value: answer.value,
@@ -95,16 +100,20 @@ export function saveCompanySubmissionDraft(
   const previous = companySubmissionDraftQueues.get(key) ?? Promise.resolve();
   const scheduled = previous
     .catch(() => undefined)
-    .then(() => apiRequest(
+    .then(() => draft.explicitDraftSave ? explicitDraftRequest(
+      `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/answers${contextSuffix(context)}`,
+      { answers, ...(draft.sectionComment !== undefined ? { sectionComment: draft.sectionComment } : {}), explicitDraftSave: true },
+    ) : apiRequest(
       "PUT",
       `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/answers${contextSuffix(context)}`,
       {
         answers,
         ...(draft.sectionComment !== undefined ? { sectionComment: draft.sectionComment } : {}),
+        ...(draft.explicitDraftSave ? { explicitDraftSave: true } : {}),
       },
     ))
-    .then(() => undefined);
-  const queueTail = scheduled.catch(() => undefined);
+    .then(response => draft.explicitDraftSave ? readDraftSaveReceipt(response) : undefined);
+  const queueTail = scheduled.then(() => undefined, () => undefined);
   companySubmissionDraftQueues.set(key, queueTail);
   void queueTail.then(() => {
     if (companySubmissionDraftQueues.get(key) === queueTail) {
@@ -330,6 +339,8 @@ export function mapCompanySubmissionForm(contract: CompanySubmissionRenderView):
       sectionComment: state.sectionComment,
       submittedByName: state.submittedByName,
       submittedAt: state.submittedAt,
+      lastDraftSavedAt: state.lastDraftSavedAt,
+      lastDraftSavedByName: state.lastDraftSavedByName,
       signatures: mapSignatureState(state),
     };
   }
@@ -618,7 +629,7 @@ export function CompanySubmissionRenderer({
   const save = (
     sectionUuid: string,
     draft: CompanySubmissionDraftInput,
-    purpose: "autosave" | "explicit" = "autosave",
+    purpose: "autosave" | "explicit" | "user" = "autosave",
   ): Promise<void> => {
     const key = draftQueueKey(activeSubmissionUuid, sectionUuid);
     const saveSubmissionUuid = activeSubmissionUuid;
@@ -637,8 +648,16 @@ export function CompanySubmissionRenderer({
     const sectionCommentRevision = draft.sectionComment === undefined
       ? undefined
       : sectionCommentRevisionsRef.current[sectionUuid];
-    return saveCompanySubmissionDraft(activeSubmissionUuid, sectionUuid, draft, requestContext).then(
-      () => {
+    return saveCompanySubmissionDraft(activeSubmissionUuid, sectionUuid, {
+      ...draft, ...(purpose === "user" ? { explicitDraftSave: true } : {}),
+    }, requestContext).then(
+      (receipt) => {
+        if (receipt) {
+          queryClient.setQueryData(["company-form-submission-form", saveSubmissionUuid, requestContext],
+            (current: CompanySubmissionRenderView | undefined) => current ? {
+              ...current, states: current.states.map(state => state.sectionUuid === sectionUuid ? { ...state, ...receipt } : state),
+            } : current);
+        }
         if (activeSubmissionUuidRef.current === saveSubmissionUuid
           && activeSubmissionStatusRef.current === "in_progress"
           && !lockedSectionUuidsRef.current.has(sectionUuid)) {
@@ -726,7 +745,7 @@ export function CompanySubmissionRenderer({
     setDraftSectionComments((current) => ({ ...current, [sectionUuid]: comment }));
     if (!rendererModel.readOnly) void save(sectionUuid, { answers: [], sectionComment: comment }).catch(() => undefined);
   };
-  const handleSaveDraft = async (sectionUuid: string) => {
+  const handleSaveDraft = async (sectionUuid: string, userInitiated = false) => {
     const section = Object.values(rendererModel.structures)
       .flat()
       .find((candidate) => candidate.section_uuid === sectionUuid);
@@ -750,7 +769,7 @@ export function CompanySubmissionRenderer({
           }];
         }),
         sectionComment: draftSectionCommentsRef.current[sectionUuid] ?? "",
-      }, "explicit");
+      }, userInitiated ? "user" : "explicit");
     } finally {
       explicitDraftSaveKeysRef.current.delete(queueKey);
     }
@@ -1056,6 +1075,7 @@ export function CompanySubmissionRenderer({
         answerComments: draftAnswerComments,
         sectionComments: draftSectionComments,
         sectionStates: rendererModel.sectionStates,
+        draftSaveScope: activeSubmissionUuid,
         submissionStatus,
         signatureMethodOptions: lifecycleForm?.signatureMethodOptions,
         sectionSubmitting,
@@ -1064,7 +1084,7 @@ export function CompanySubmissionRenderer({
         onAnswerChange: handleAnswerChange,
         onAnswerCommentChange: handleAnswerCommentChange,
         onSectionCommentChange: handleSectionCommentChange,
-        onSaveDraft: handleSaveDraft,
+        onSaveDraft: sectionUuid => handleSaveDraft(sectionUuid, true),
         onSubmitSection: handleSubmitSection,
         onSignatureChange: handleSignatureChange,
         onDeleteSignature: handleDeleteSignature,

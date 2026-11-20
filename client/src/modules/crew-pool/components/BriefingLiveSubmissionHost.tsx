@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useToast } from "@/hooks/use-toast";
 import { briefingFixedParts } from "./BriefingFixedParts";
+import { useStandardSectionDraftSave } from "@/components/configured-form/draftSave";
 
 const BASE = "/api/v2/briefings";
 const getJson = async (url: string) => { const r = await fetch(url); const b = await r.json().catch(() => null); if (!r.ok) throw new Error(b?.error || `Request failed (${r.status})`); return b; };
@@ -81,9 +82,21 @@ export default function BriefingLiveSubmissionHost({ submissionUuid, onBack }: {
     await flushActive.current;
   };
   const queue = (q: string, value: ConfiguredFormAnswerValue, comment: string | null) => { const section = read.data?.structure.questions.find((x: any) => x.question_uuid === q)?.section_uuid; if (!section) return; const item = pending.current.get(section) || { answers: {}, sectionComment: sectionCommentsRef.current[section] || null }; item.answers[q] = { value, comment }; pending.current.set(section, item); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => void flush(), 600); };
+  const draft = useStandardSectionDraftSave(BASE, submissionUuid, model?.states, read.data, flush);
   if (read.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading briefing…</div>;
-  if (read.error || !model) return <div className="p-8 text-sm text-destructive">{read.error instanceof Error ? read.error.message : "Briefing unavailable"}</div>;
+  if (!model) return <div className="p-8 text-sm text-destructive">{read.error instanceof Error ? read.error.message : "Briefing unavailable"}</div>;
   const completed = ["complete", "completed"].includes(String(model.submission?.status || "").toLowerCase());
   const refresh = () => { void qc.invalidateQueries({ queryKey: [BASE, submissionUuid] }); };
-  return <ConfiguredFormRenderer mode="live" formTitle="Briefing" parts={model.parts} structures={model.structures} selectedVesselTypeUuid={model.submission?.vessel_type_uuid || "all"} onBack={onBack} fixedParts={briefingFixedParts(submissionUuid, read.data, completed, refresh)} live={{ answers, answerComments: comments, sectionComments, sectionStates: model.states, sectionOwnership: model.ownership, signatureDefaults: model.signatureDefaults, onDeleteSignature: async (s, t) => { await flush(); await apiRequest("DELETE", `${BASE}/submissions/${submissionUuid}/sections/${s}/signature/${t}`); refresh(); }, onSectionCommentChange: (s, c) => { setSectionComments(v => ({ ...v, [s]: c })); const i = pending.current.get(s) || { answers: {}, sectionComment: null }; i.sectionComment = c; pending.current.set(s, i); }, onAnswerChange: (q, v) => { setAnswers(a => ({ ...a, [q]: v })); queue(q, v, commentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, c) => { setComments(a => ({ ...a, [q]: c })); queue(q, answersRef.current[q] ?? "", c); }, onSaveDraft: flush, onSubmitSection: async (s, c) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${s}/submit`, { comment: c || null }); refresh(); }, onSignatureChange: async (s, t: ConfiguredSignatureType, data, signerName, signerRank) => { await flush(); try { await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${s}/signature`, { type: t, data, ...(signerName ? { signerName } : {}), ...(signerRank ? { signerRank } : {}) }); refresh(); toast({ title: "Signature saved", description: "The signature and signing date have been recorded." }); } catch (e) { toast({ title: "Signature save failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" }); throw e; } } }} />;
+  return <ConfiguredFormRenderer mode="live" formTitle="Briefing" parts={model.parts} structures={model.structures} selectedVesselTypeUuid={model.submission?.vessel_type_uuid || "all"} onBack={onBack} fixedParts={briefingFixedParts(submissionUuid, read.data, completed, refresh)} live={{
+    draftSaveScope: submissionUuid, submissionStatus: model.submission?.status,
+    sectionSubmitting: draft.sectionSubmitting,
+    answers, answerComments: comments, sectionComments, sectionStates: draft.sectionStates, sectionOwnership: model.ownership, signatureDefaults: model.signatureDefaults,
+    onDeleteSignature: async (s, t) => { await flush(); await apiRequest("DELETE", `${BASE}/submissions/${submissionUuid}/sections/${s}/signature/${t}`); refresh(); },
+    onSectionCommentChange: (s, c) => { setSectionComments(v => ({ ...v, [s]: c })); const i = pending.current.get(s) || { answers: {}, sectionComment: null }; i.sectionComment = c; pending.current.set(s, i); },
+    onAnswerChange: (q, v) => { setAnswers(a => ({ ...a, [q]: v })); queue(q, v, commentsRef.current[q] ?? null); },
+    onAnswerCommentChange: (q, c) => { setComments(a => ({ ...a, [q]: c })); queue(q, answersRef.current[q] ?? "", c); },
+    onSaveDraft: draft.save,
+    onSubmitSection: (s, c) => draft.submit(s, async () => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${s}/submit`, { comment: c || null }); refresh(); }),
+    onSignatureChange: async (s, t: ConfiguredSignatureType, data, signerName, signerRank) => { await flush(); try { await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${s}/signature`, { type: t, data, ...(signerName ? { signerName } : {}), ...(signerRank ? { signerRank } : {}) }); refresh(); toast({ title: "Signature saved", description: "The signature and signing date have been recorded." }); } catch (e) { toast({ title: "Signature save failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" }); throw e; } },
+  }} />;
 }

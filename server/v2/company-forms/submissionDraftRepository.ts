@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { masterUsers } from "../../../shared/schema";
+import { draftSaveMetadata, draftSaveReceipt } from "../shared/draftSave";
+import type { DraftSaveReceipt } from "../../../shared/v2/forms-engine/draftSave";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   admFormVersionsV2,
@@ -15,7 +18,7 @@ import {
 } from "../../../shared/v2/forms-engine/schema";
 import { frmCompanySubmissions } from "../../../shared/v2/forms-engine/submissions";
 import { getDb } from "../db";
-import { CompanyFormConflictError, CompanyFormNotFoundError, CompanyFormValidationError } from "./errors";
+import { CompanyFormConflictError, CompanyFormNotFoundError, CompanyFormValidationError, CompanyFormPermissionError } from "./errors";
 
 type Executor = any;
 type AnswerValue = string | string[] | boolean | null;
@@ -42,6 +45,7 @@ type WriteDraftInput<Context> = {
     stageKey: string | null;
   };
   actorUserId: number;
+  explicitDraftSave?: boolean;
   answers: CompanyFormDraftAnswerInput[];
   sectionComment?: string | null;
   lockSubject: (subjectRef: string, executor: Executor) => Promise<SubjectLock<Context> | undefined>;
@@ -162,11 +166,11 @@ export class CompanyFormSubmissionDraftRepository {
   async updateDraft<Context>(
     input: WriteDraftInput<Context>,
     executor: Executor = getDb(),
-  ): Promise<void> {
-    if (input.answers.length === 0 && input.sectionComment === undefined) {
+  ): Promise<DraftSaveReceipt | void> {
+    if (input.answers.length === 0 && input.sectionComment === undefined && !input.explicitDraftSave) {
       throw new CompanyFormValidationError("Provide at least one answer or a section comment to save.");
     }
-    await executor.transaction(async (tx: Executor) => {
+    return executor.transaction(async (tx: Executor) => {
       // Match start, void and lifecycle writes: subject first, then generic
       // submission parent, then section. Revalidate the expected pin under
       // the parent lock before making any authorization or mutation decision.
@@ -370,6 +374,13 @@ export class CompanyFormSubmissionDraftRepository {
       if (input.sectionComment !== undefined) stateAudit.sectionComment = input.sectionComment;
       await tx.update(frmSectionStates).set(stateAudit)
         .where(eq(frmSectionStates.sectionStateUuid, state.sectionStateUuid));
+      if (input.explicitDraftSave) {
+        const actor = (await tx.select().from(masterUsers).where(eq(masterUsers.id, input.actorUserId)).limit(1))[0];
+        if (!actor) throw new CompanyFormPermissionError("Authenticated user not found");
+        const metadata = draftSaveMetadata(actor);
+        await tx.update(frmSectionStates).set(metadata).where(eq(frmSectionStates.sectionStateUuid, state.sectionStateUuid));
+        return draftSaveReceipt(metadata);
+      }
     });
   }
 }
