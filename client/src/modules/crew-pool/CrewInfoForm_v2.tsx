@@ -4349,7 +4349,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Rank <span className="text-red-500">*</span></Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Rank {!getEffectiveCrewUuid() && <span className="text-red-500">*</span>}</Label>
             {isEditing ? (
               <Select value={formData.presentRank} onValueChange={(value) => { updateFormData('presentRank', value); if (presentRankError) setPresentRankError(''); }}>
                 <SelectTrigger className={`mt-1 ${presentRankError ? 'border-red-500' : ''}`} data-testid="select-present-rank">
@@ -4810,13 +4810,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Email <span className="text-red-500">*</span></Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Email {!getEffectiveCrewUuid() && <span className="text-red-500">*</span>}</Label>
             {isEditing ? (
               <Input
                 type="email"
                 value={formData.email}
                 onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(''); }}
-                onBlur={() => { const v = (formData.email || '').trim(); setEmailError(v ? validateEmail(v) : 'Email is required.'); }}
+                onBlur={() => { const v = (formData.email || '').trim(); setEmailError(v ? validateEmail(v) : (!getEffectiveCrewUuid() ? 'Email is required.' : '')); }}
                 className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                 data-testid="input-email"
               />
@@ -7421,18 +7421,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     let hasErrors = !validateProfileBeforeSave(['B1', 'B2', 'B3'], profileLatestRef.current, false);
 
-    // Common Login: Present Rank (B1) and Email (B2) are required — they drive
-    // the SAIL login (role / designation and the credentials email).
-    const saveSnapshot = profileLatestRef.current ?? formData;
-    if (!(saveSnapshot.presentRank || '').trim()) {
-      setPresentRankError('Present rank is required.');
-      hasErrors = true;
+    // Common Login: Present Rank (B1) and Email (B2) are required only to CREATE a
+    // crew record — they drive the SAIL login created with it (role / designation
+    // and the credentials email). Existing crew can be saved without them; an
+    // entered email is still format-checked by validateProfileBeforeSave.
+    if (!getEffectiveCrewUuid()) {
+      const saveSnapshot = profileLatestRef.current ?? formData;
+      if (!(saveSnapshot.presentRank || '').trim()) {
+        setPresentRankError('Present rank is required.');
+        hasErrors = true;
+      } else {
+        setPresentRankError('');
+      }
+      if (!(saveSnapshot.email || '').trim()) {
+        setEmailError('Email is required.');
+        hasErrors = true;
+      }
     } else {
       setPresentRankError('');
-    }
-    if (!(saveSnapshot.email || '').trim()) {
-      setEmailError('Email is required.');
-      hasErrors = true;
     }
 
     // Row blank detection helpers
@@ -8961,18 +8967,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       recruitmentDate: recruitmentDateOverride || profileLatestRef.current.recruitmentDate,
     };
     if (!validateProfileBeforeSave(['B1', 'B2', 'B3'], formData)) return null;
-    const session = d3SessionRef.current;
-    if (!session) return null;
-    const operation = { session, ticket: d3FirstCreates.begin() };
-    firstCreateOwnerRef.current = operation;
 
-    // Every auto-create path goes through here: never create a crew record
-    // without Present Rank and Email.
+    // Common Login: every auto-create path goes through here, so never create a
+    // crew record without Present Rank and Email. Must run BEFORE the first-create
+    // ticket below is taken: returning after begin() would leave the ticket and
+    // firstCreateOwnerRef pending forever (form stuck on "Finishing the previous Save").
     const missingForCreate = getMissingCrewCreateFields();
     if (missingForCreate.length > 0) {
       showMissingCrewCreateFields(missingForCreate);
       return null;
     }
+
+    const session = d3SessionRef.current;
+    if (!session) return null;
+    const operation = { session, ticket: d3FirstCreates.begin() };
+    firstCreateOwnerRef.current = operation;
 
     isCreatingCrewRef.current = true;
     profileSaveRef.current = true;

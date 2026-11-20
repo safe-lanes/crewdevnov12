@@ -2537,11 +2537,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   };
 
-  // Also used directly as an onClick handler (receives the click event), so the
-  // draft flag is read defensively. Drafts skip the SAIL-required fields.
-  const handleSaveAndContinue = async (options?: unknown) => {
+  // Also used directly as an onClick handler (receives the click event); the
+  // optional { isDraft } argument from Save Draft is accepted but no longer
+  // changes validation: Email / Present Rank are required only when recruiting
+  // (decision "Yes" → transfer), not on Save / Save & Continue / Submit.
+  // Returns false when validation blocks the save.
+  const handleSaveAndContinue = async (_options?: unknown) => {
     if (isSavingPartA) return;
-    const isDraft = (options as { isDraft?: boolean } | undefined)?.isDraft === true;
 
     let hasErrors = false;
     const firstErrorTestIds: string[] = [];
@@ -2555,13 +2557,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFirstNameError('');
     }
 
-    if (!isDraft && !(formData.presentRank || '').trim()) {
-      setPresentRankError('Present rank is required.');
-      firstErrorTestIds.push('select-present-rank');
-      hasErrors = true;
-    } else {
-      setPresentRankError('');
-    }
+    // Present Rank is optional here (required only at recruit / transfer).
+    setPresentRankError('');
 
     if (formData.dateOfBirth) {
       const dobErr = validateDob(formData.dateOfBirth);
@@ -2590,15 +2587,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setMobileError('');
     }
 
+    // Email is optional here (required only at recruit / transfer); an entered
+    // email is still format-checked.
     const trimmedEmail = (formData.email || '').trim();
     if (!trimmedEmail) {
-      if (isDraft) {
-        setEmailError('');
-      } else {
-        setEmailError('Email is required.');
-        firstErrorTestIds.push('input-email');
-        hasErrors = true;
-      }
+      setEmailError('');
     } else {
       const emailErr = validateEmail(trimmedEmail);
       if (emailErr) {
@@ -4575,7 +4568,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Present Rank <span className="text-red-500">*</span></Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Present Rank <span className="text-gray-400 normal-case">(required to recruit)</span></Label>
               {isEditing ? (
                 <>
                 <Select value={formData.presentRank} onValueChange={(value) => { updateFormData('presentRank', value); if (presentRankError) setPresentRankError(''); }}>
@@ -4909,14 +4902,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             )}
           </div>
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Email <span className="text-red-500">*</span></Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Email <span className="text-gray-400 normal-case">(required to recruit)</span></Label>
             {isEditing ? (
               <>
                 <Input
                   type="email"
                   value={formData.email}
                   onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
-                  onBlur={(e) => { const v = e.target.value.trim(); setEmailError(v ? validateEmail(v) : 'Email is required.'); }}
+                  onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
                   className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                   data-testid="input-email"
                   maxLength={100}
