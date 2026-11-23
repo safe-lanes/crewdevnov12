@@ -60,7 +60,7 @@ export const dailyRecordsController = {
       const record = await dailyRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(record);
     } catch (error: any) {
-      if (error.message?.includes("required")) {
+      if (error.message?.includes("required") || error.name === "InvalidDailyBlobError") {
         return res.status(400).json({ error: error.message });
       }
       console.error("Error creating daily record:", error);
@@ -75,6 +75,9 @@ export const dailyRecordsController = {
       const record = await dailyRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
+      if (error.name === "InvalidDailyBlobError") {
+        return res.status(400).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }

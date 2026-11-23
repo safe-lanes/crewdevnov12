@@ -13,6 +13,7 @@ import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull, lte, gte, sql } from "drizzle-orm";
 import { rankResolutionService } from "./rankResolutionService";
+import { canonicalizeDailyRecords } from "../utils/dailyBlob";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
@@ -640,6 +641,9 @@ export const dailyRecordsService = {
     }
 
     const dataWithAudit = applyAuditUser(data, true);
+    if (typeof dataWithAudit.dailyRecords === "string") {
+      dataWithAudit.dailyRecords = canonicalizeDailyRecords(dataWithAudit.dailyRecords);
+    }
 
     // Stamp the rank actually held during the saved month rather than trusting
     // the client payload (which sends the crew's CURRENT present_rank). Editing a
@@ -692,6 +696,9 @@ export const dailyRecordsService = {
     // record. Strip these columns so an update only ever modifies the data.
     const { crewMemberId, vesselId, monthYear, rank, ...mutableData } = data;
     const dataWithAudit = applyAuditUser(mutableData, false);
+    if (typeof dataWithAudit.dailyRecords === "string") {
+      dataWithAudit.dailyRecords = canonicalizeDailyRecords(dataWithAudit.dailyRecords);
+    }
     const existing = await this.getByUuid(rhDailyUuid);
     return getDb().transaction(async (tx: any) => {
       await lockVesselMonth(tx, existing.vesselId, existing.monthYear);
