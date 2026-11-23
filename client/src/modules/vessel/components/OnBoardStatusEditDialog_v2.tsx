@@ -112,7 +112,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const signoffFormsReady = signoffRequirements.isSuccess &&
         !stageCheckBlocksActions(signoffRequirements.data, "at_sign_off");
     const isAdmin = userType?.toLowerCase() === 'admin';
+    // VS-04: the office owns the whole planning row; the ship sees it read-only.
+    const isShipUser = userType?.toLowerCase() === 'ship';
     const canDeferRelief = Boolean(
+        !isShipUser &&
         planningData?.planUuid &&
         planningData?.crewAssignUuid &&
         planningData?.reliefStatus !== 'Deferred' &&
@@ -746,13 +749,18 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         type="button"
                         variant="outline"
                         data-testid="button-open-signoff-forms"
-                        disabled={!signoffFormsReady}
+                        disabled={!isShipUser || !signoffFormsReady}
                         onClick={() => setSignoffFormsOpen(true)}
                     >
                         Sign-off forms
                     </Button>
                 )}
-                {isOnboardCrewAssigned && !signoffFormsReady && (
+                {isOnboardCrewAssigned && !isShipUser && (
+                    <p className="text-sm text-amber-900" data-testid="text-signoff-forms-ship-only">
+                        Sign-off forms are completed by the vessel.
+                    </p>
+                )}
+                {isOnboardCrewAssigned && isShipUser && !signoffFormsReady && (
                     <p className="text-sm text-amber-900" role={signoffRequirements.isError ? "alert" : "status"}>
                         Available once Relief Status is Planned or Confirmed.
                     </p>
@@ -882,7 +890,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         )}
 
                         {showEditableTakeover && isOnboardCrewAssigned && (
-                            <>
+                            <fieldset disabled={isShipUser} className="contents">
                                 <FormField
                                     control={form.control}
                                     name="takeOverDate"
@@ -939,9 +947,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                         </FormItem>
                                     )}
                                 />
-                            </>
+                            </fieldset>
                         )}
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <div className="border border-[#16569e] rounded-md p-4 space-y-4">
                             <FormField
                                 control={form.control}
@@ -1018,6 +1027,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 )}
                             />
                         </div>
+                        </fieldset>
 
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Relief Due:</span>
@@ -1028,6 +1038,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </span>
                         </div>
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <FormField
                             control={form.control}
                             name="reliefStatus"
@@ -1173,7 +1184,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 </FormItem>
                             )}
                         />
+                        </fieldset>
 
+                        {!isShipUser && (
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
@@ -1184,6 +1197,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                 Submit
                             </Button>
                         </div>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

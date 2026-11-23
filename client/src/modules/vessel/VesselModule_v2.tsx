@@ -355,6 +355,9 @@ const V2_QUERY_KEY = '/api/v2/vessel';
 // Adapted from the Drugs & Alcohol PlannedDateCellEditor pattern (native date input + showPicker).
 const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) => {
     const { toast } = useToast();
+    // VS-04: planning is office-owned; ship sees the date read-only.
+    const { userType: cellUserType } = usePermissions();
+    const readOnly = cellUserType === 'Ship';
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const inputRef = useRef<HTMLDivElement>(null);
@@ -430,7 +433,7 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
                 type="button"
                 className="text-xs text-gray-700 hover:underline cursor-pointer text-left w-full"
                 onClick={() => setEditing(true)}
-                disabled={saving}
+                disabled={saving || readOnly}
                 data-testid="button-travel-end-date-archived"
             >
                 {saving ? 'Saving...' : (
@@ -1466,7 +1469,7 @@ export function VesselModule_v2(): JSX.Element {
 
                     {/* Right: Group Sign On (Planning tab only) + Back Button (hidden for Ship users) */}
                     <div className="flex-shrink-0 flex items-center gap-2">
-                        {activeTab === 'planning' && (
+                        {activeTab === 'planning' && !isShipUser && (
                             <Button
                                 onClick={() => setGroupSignOnOpen(true)}
                                 className="h-8 bg-[#16569e] hover:bg-[#16569e]/90 text-white flex items-center gap-2"

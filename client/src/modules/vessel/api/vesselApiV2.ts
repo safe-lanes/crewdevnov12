@@ -104,6 +104,17 @@ export interface CreatePlanningInput {
   relieverContractEndRangeEndMonths?: number | null;
 }
 
+export const PLANNING_UPDATE_KEYS = new Set<string>([
+  'crewUuid', 'crewStatus', 'signOnDate', 'reliefDue', 'signOffDate', 'signOffPortUuid',
+  'signOffReason', 'reliefStatus', 'takeOverDate', 'takeOverConfirmation', 'handOverDate',
+  'relieverCrewUuid', 'relieverSignOnDate', 'joiningPortUuid', 'joiningStatus',
+  'plannedConfirmedDate', 'travelStartDate', 'travelEndDate', 'contractPeriodMonths',
+  'contractEndRangeStartMonths', 'contractEndRangeEndMonths', 'relieverContractPeriodMonths',
+  'relieverContractEndRangeStartMonths', 'relieverContractEndRangeEndMonths',
+  'deploymentChecklistCompleted', 'applicableDocsChecked', 'adminAccept',
+  'checklistOverride', 'trainingOverride',
+]);
+
 export interface UpdatePlanningInput {
   crewUuid?: string | null;
   crewStatus?: string | null;
@@ -192,7 +203,12 @@ export const vesselApiV2 = {
   },
 
   async updatePlanning(planUuid: string, data: UpdatePlanningInput): Promise<VesselPlanningV2> {
-    const response = await apiRequest('PATCH', `${V2_BASE}/planning/${planUuid}`, data);
+    // The server refuses unknown fields, and the edit dialogs spread whole form
+    // objects, so send only the columns the planning row actually has.
+    const body = Object.fromEntries(
+      Object.entries(data as Record<string, unknown>).filter(([k]) => PLANNING_UPDATE_KEYS.has(k)),
+    );
+    const response = await apiRequest('PATCH', `${V2_BASE}/planning/${planUuid}`, body);
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to update planning');

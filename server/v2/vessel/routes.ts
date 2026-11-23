@@ -11,6 +11,7 @@ import {
   vesselImportController,
 } from "./controllers";
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
+import { denyShipPlanningWrites } from "./middleware/denyShipPlanningWrites";
 import { getOnboardTrainingCompliance } from "./controllers/onboardTrainingComplianceController";
 import { requirePermission } from "../../middleware/requirePermission";
 import { checkTrainingSuggestions } from "../training-needs/complianceSuggestionController";
@@ -61,28 +62,28 @@ router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
 router.get("/planning/:planUuid/unlinked-reliever-clear-audit",
   requirePermission("Vessel", "delete"), vesselPlanningController.getUnlinkedRelieverClearAudit);
 router.post("/planning/:planUuid/clear-unlinked-reliever",
-  requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
+  denyShipPlanningWrites, requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid/training-compliance", getRelieverTrainingCompliance);
 router.get("/:vesselUuid/training-compliance", getOnboardTrainingCompliance);
 router.post("/planning/:planUuid/reliever-assignment/:assignUuid/training-suggestions", checkTrainingSuggestions);
 router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
-router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
-router.post("/:vesselUuid/planning", vesselPlanningController.create);
+router.post("/planning/:planUuid/incumbent-reconciliation", denyShipPlanningWrites, vesselPlanningController.reconcileIncumbentAssignment);
+router.post("/:vesselUuid/planning", denyShipPlanningWrites, vesselPlanningController.create);
 router.patch("/planning/:planUuid", vesselPlanningController.update);
-router.post("/planning/:planUuid/defer-relief", requirePermission("Vessel", "edit"), vesselPlanningController.deferRelief);
-router.post("/planning/:planUuid/archive", vesselPlanningController.archive);
+router.post("/planning/:planUuid/defer-relief", denyShipPlanningWrites, requirePermission("Vessel", "edit"), vesselPlanningController.deferRelief);
+router.post("/planning/:planUuid/archive", denyShipPlanningWrites, vesselPlanningController.archive);
 router.get("/planning/attachments/:attUuid/raw", vesselPlanningController.serveAttachment);
 router.get("/planning/:planUuid/attachments", vesselPlanningController.getAttachments);
 router.post("/planning/:planUuid/attachments", vesselPlanningController.addAttachment);
 router.delete("/planning/:planUuid/attachments/:attUuid", vesselPlanningController.deleteAttachment);
 
 // Reliever sign-on and status update endpoints
-router.post("/planning/:planUuid/sign-on", vesselPlanningController.signOnReliever);
-router.patch("/planning/:planUuid/reliever-status", vesselPlanningController.updateRelieverStatus);
+router.post("/planning/:planUuid/sign-on", denyShipPlanningWrites, vesselPlanningController.signOnReliever);
+router.patch("/planning/:planUuid/reliever-status", denyShipPlanningWrites, vesselPlanningController.updateRelieverStatus);
 
 // Sign-off endpoint - updates both vessel_planning_v2 and crew_assignments
-router.post("/planning/:planUuid/sign-off", vesselPlanningController.signOffCrew);
+router.post("/planning/:planUuid/sign-off", denyShipPlanningWrites, vesselPlanningController.signOffCrew);
 
 // Officer Matrix data endpoint
 router.get("/officer-matrix/:crewUuid", vesselPlanningController.getOfficerMatrixData);

@@ -139,6 +139,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
     const [blockerForm, setBlockerForm] = useState<{ subjectRef: string; requirementUuid: string; name: string } | null>(null);
     const { permissions, roleName, userType, canCompanyFormAction } = usePermissions();
+    // VS-04: the office owns the whole planning row; the ship sees it read-only.
+    const isShipUser = userType?.trim().toLowerCase() === 'ship';
     const canOverrideChecklist = canCompanyFormAction("override_checklist");
     const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
     const [overrideReason, setOverrideReason] = useState("");
@@ -967,6 +969,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             )}
                         />
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <FormField
                             control={form.control}
                             name="signOnStatus"
@@ -1006,7 +1009,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+                        </fieldset>
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <FormField
                             control={form.control}
                             name="relieverContractPeriodMonths"
@@ -1094,7 +1099,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+                        </fieldset>
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <FormField
                             control={form.control}
                             name="travelStartDate"
@@ -1153,7 +1160,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+                        </fieldset>
 
+                        <fieldset disabled={isShipUser} className="contents">
                         <FormField
                             control={form.control}
                             name="deploymentChecklistCompleted"
@@ -1220,6 +1229,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 </FormItem>
                             )}
                         />
+                        </fieldset>
 
                         {planningData?.relieverCrewUuid && (
                             <TrainingMatrixCompliance
@@ -1230,7 +1240,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         )}
                         <AcceptedChecklistHistory planUuid={planningData?.planUuid} open={historyOpen} onOpenChange={setHistoryOpen} />
 
-                        {isRelieverAssigned && !isUnlinkedReliever && (
+                        {!isShipUser && isRelieverAssigned && !isUnlinkedReliever && (
                             <div className="flex items-center gap-2 pt-2 border-t">
                                 <Checkbox
                                     id="unassign-reliever-checkbox"
@@ -1247,7 +1257,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             </div>
                         )}
 
-                        {isUnlinkedReliever && canClearUnlinked && (
+                        {!isShipUser && isUnlinkedReliever && canClearUnlinked && (
                             <div className="space-y-2 border-t pt-3">
                                 <Label htmlFor="unlinked-clear-reason">Reason for clearing this unlinked reliever</Label>
                                 <Textarea id="unlinked-clear-reason" value={clearReason}
@@ -1263,6 +1273,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             </div>
                         )}
 
+                        {!isShipUser && (
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
@@ -1273,6 +1284,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 {isCheckingConflict ? "Checking..." : isSaving ? "Saving…" : unassignChecked ? "Unassign" : "Save"}
                             </Button>
                         </div>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

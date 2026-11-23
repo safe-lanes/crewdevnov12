@@ -12,7 +12,9 @@ import {
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
 import { resolveVesselFolderFromPlanUuid } from "../../shared/attachmentScope.js";
-import { getAuditUserUuid } from "../../accounts/controllers/_auth";
+import { getAuditUserUuid, getActor } from "../../accounts/controllers/_auth";
+import { checkPlanningFieldOwnership, SHIP_READ_ONLY_ERROR } from "../utils/planningFieldOwnership";
+import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
 import { getDb } from "../../db";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
@@ -271,6 +273,20 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { relieverAssignUuid: _ignored, crewAssignUuid: _ignoredCrew, ...updateBody } = req.body || {};
+      // VS-04: each field has one writer. Unknown fields and fields the caller
+      // does not own are refused before anything is written.
+      const current = await vesselPlanningRepository.findByPlanUuid(planUuid);
+      if (!current) return res.status(404).json({ error: `Planning record not found: ${planUuid}` });
+      const check = checkPlanningFieldOwnership(updateBody, current, getActor(req).vesselUser);
+      if (check.unknown.length || check.foreign.length) {
+        return res.status(400).json({
+          error: check.unknown.length
+            ? `Unknown planning field: ${check.unknown.join(", ")}`
+            : SHIP_READ_ONLY_ERROR,
+          unknownFields: check.unknown,
+          foreignFields: check.foreign,
+        });
+      }
       const planning = await vesselPlanningService.update(planUuid, {
         ...updateBody,
         // Audit identity is server-derived and cannot be spoofed by the client.
