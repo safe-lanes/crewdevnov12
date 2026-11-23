@@ -10,6 +10,7 @@ export default defineConfig({
     environment: "happy-dom",
     setupFiles: ["./tests/helpers/forbid-database-connections.ts", "@testing-library/jest-dom/vitest"],
     include: [
+      "tests/unit/training-matrix-multi-vessel.test.tsx",
       "tests/unit/rotation-assignment-dates.test.ts",
       "tests/unit/reliever-status-save.test.tsx",
       "tests/unit/training-compliance-ui.test.tsx",

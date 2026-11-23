@@ -392,7 +392,12 @@ interface AppraisalFormProps {
   onClose: () => void;
 }
 
-export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalUuid: propAppraisalUuid, initialStatus = 'draft', onClose }) => {
+// A different record/crew must never inherit a previous save's presentation.
+export const AppraisalForm: React.FC<AppraisalFormProps> = (props) => (
+  <AppraisalFormContent key={JSON.stringify([props.crewMember?.id, props.crewMember?.rank, props.appraisalUuid])} {...props} />
+);
+
+const AppraisalFormContent: React.FC<AppraisalFormProps> = ({ crewMember, appraisalUuid: propAppraisalUuid, initialStatus = 'draft', onClose }) => {
   const { permissions, canView, userType } = usePermissions();
   // Part G is office-owned: a ship user's save never sends it.
   const isShipUser = userType === 'Ship';
@@ -648,6 +653,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     | { status: "error"; message: string }
     | { status: "ready"; options: EffectivenessOption[] | null; expectedVersionId?: number };
   type ReadyRatingConfig = Extract<RatingConfigState, { status: "ready" }>;
+  // Display-only snapshot for this save's latest -> pinned configuration handoff.
+  // Never supply it to a query cache or to requireRatingConfiguration.
+  const [savePresentation, setSavePresentation] = useState<{
+    appraisalUuid: string;
+    versionId: number;
+    versionUuid: string | null;
+    options: EffectivenessOption[] | null;
+    isLockForm: boolean;
+  } | null>(null);
+  const writeStartedRef = useRef(false);
 
   const historicalDraftHasNoForm = isEditing
     && !pinnedFormVersionId
@@ -699,6 +714,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         }
         return { status: "ready", options, expectedVersionId: id };
       }
+      if (pinnedFormConfig?.formVersionId !== pinnedFormVersionId
+        || (existingAppraisal?.formVersionUuid
+          && pinnedFormConfig?.formVersionUuid !== existingAppraisal.formVersionUuid)) {
+        return { status: "error", message: "The form configuration does not match this appraisal's saved version. Close and reopen the appraisal." };
+      }
       return { status: "ready", options, expectedVersionId: pinnedFormVersionId ?? undefined };
     } catch (error) {
       return {
@@ -708,8 +728,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   })();
 
-  const effectivenessOptions =
-    ratingConfigState.status === "ready" ? ratingConfigState.options : null;
+  const retainingSavePresentation = !!savePresentation
+    && savePresentation.appraisalUuid === appraisalUuid
+    && savePresentation.versionId === pinnedFormVersionId
+    && savePresentation.versionUuid === (existingAppraisal?.formVersionUuid ?? null)
+    && ratingConfigState.status !== "ready";
+  const effectivenessOptions = ratingConfigState.status === "ready"
+    ? ratingConfigState.options
+    : retainingSavePresentation ? savePresentation!.options : null;
+  useEffect(() => {
+    if (savePresentation && ratingConfigState.status === "ready") setSavePresentation(null);
+  }, [savePresentation, ratingConfigState.status]);
 
   const requireRatingConfiguration = (data: EffectivenessSelections) => {
     if (ratingConfigState.status !== "ready") {
@@ -727,7 +756,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // snapshot stored on the appraisal record; before that we read the live
   // setting from the form config (pinned for re-opened drafts, latest for
   // brand-new appraisals).
-  const isLockForm: boolean = isPostStage2
+  const isLockForm: boolean = retainingSavePresentation ? savePresentation!.isLockForm : isPostStage2
     ? !!(existingAppraisal as { isLockForm?: boolean } | undefined)?.isLockForm
     : !!(formConfig as { isLockForm?: boolean } | undefined)?.isLockForm
       || !!(pinnedFormConfig as { isLockForm?: boolean } | undefined)?.isLockForm;
@@ -1189,6 +1218,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         return;
       }
       if (data && data.appraisalUuid) {
+        if (!variables.closeAfter && ratingConfigState.status === "ready"
+          && Number.isInteger(data.formVersionId) && data.formVersionId > 0
+          && (!appraisalUuid || appraisalUuid === data.appraisalUuid)) {
+          setSavePresentation({
+            appraisalUuid: data.appraisalUuid, versionId: data.formVersionId,
+            versionUuid: data.formVersionUuid ?? null,
+            options: ratingConfigState.options, isLockForm,
+          });
+        }
         setAppraisalUuid(data.appraisalUuid);
         queryClient.setQueryData([`/api/v2/appraisals/${data.appraisalUuid}`], data);
       }
@@ -1213,6 +1251,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         description: error.message || 'Failed to save appraisal. Please try again.',
         variant: 'destructive',
       });
+    },
+    onSettled: (_data, _error, variables) => {
+      // A stage's internal draft save is only the first part of that operation.
+      if (!variables.silent) writeStartedRef.current = false;
     },
   });
 
@@ -1244,6 +1286,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message || 'Failed to submit Stage 1', variant: 'destructive' });
     },
+    onSettled: () => { writeStartedRef.current = false; },
   });
 
   // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence.
@@ -1299,6 +1342,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message || 'Failed to submit Stage 2', variant: 'destructive' });
     },
+    onSettled: () => { writeStartedRef.current = false; },
   });
 
   // Stage 3 mutation (Part G) - accepts synced form data to ensure comment persistence
@@ -1337,6 +1381,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message || 'Failed to submit Stage 3', variant: 'destructive' });
     },
+    onSettled: () => { writeStartedRef.current = false; },
   });
 
   // Hydrate form and status when editing existing appraisal
@@ -1435,6 +1480,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     stage: 'stage1' | 'stage2' | 'stage3',
     options?: { skipLockConfirm?: boolean },
   ) => {
+    if (writeStartedRef.current || ratingConfigState.status !== "ready") return;
     // Draft creation switches to the pinned-config query. Keep the validated
     // configuration for this submission while that query loads.
     let ratingConfig: ReadyRatingConfig;
@@ -1598,6 +1644,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return;
     }
     
+    writeStartedRef.current = true;
     // One click is one request, saved by the server in one transaction
     // (APD-30). A form that was never saved sends its create body with the
     // stage, so a failed submit leaves nothing behind; a retry re-sends the
@@ -1619,6 +1666,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   };
 
   const onSubmit = (data: AppraisalFormData) => {
+    if (writeStartedRef.current || ratingConfigState.status !== "ready") return;
+    writeStartedRef.current = true;
     console.log('🔵 onSubmit called with data:', data);
     console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
     // Get form data with synced comments from useState hooks
@@ -1628,6 +1677,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   };
 
   const handleSaveDraft = () => {
+    if (writeStartedRef.current || ratingConfigState.status !== "ready") return;
     console.log('💾 handleSaveDraft called - bypassing validation');
     // Get form data with synced comments from useState hooks
     // (this also drops completely-blank G2 follow-up rows)
@@ -1651,6 +1701,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
     console.log('💾 Preserving status:', statusToSave);
+    writeStartedRef.current = true;
     saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false, isDraftAction: true });
   };
 
@@ -1658,6 +1709,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     console.log('🟢 onSubmitAppraisal called');
     console.log('🟢 Form errors:', form.formState.errors);
     form.handleSubmit(() => {
+      if (writeStartedRef.current || ratingConfigState.status !== "ready") return;
+      writeStartedRef.current = true;
       // Get form data with synced comments from useState hooks
       const syncedData = getFormDataWithSyncedComments();
       console.log('🟢 Submit handler called with synced data:', syncedData);
@@ -2760,7 +2813,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   }
 
-  if (ratingConfigState.status !== "ready") {
+  if (ratingConfigState.status !== "ready" && !retainingSavePresentation) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
         <div
@@ -2782,13 +2835,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   }
 
+  const interactionsBlocked = ratingConfigState.status !== "ready"
+    || saveAppraisalMutation.isPending || stage1Mutation.isPending
+    || stage2Mutation.isPending || stage3Mutation.isPending;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4"
+      aria-busy={interactionsBlocked}
+      onClickCapture={event => {
+        if (interactionsBlocked && !(event.target as HTMLElement).closest("[data-appraisal-close]")) {
+          event.preventDefault(); event.stopPropagation();
+        }
+      }}
+      onKeyDownCapture={event => {
+        if (interactionsBlocked && event.key !== "Tab" && event.key !== "Escape"
+          && !(event.target as HTMLElement).closest("[data-appraisal-close]")) {
+          event.preventDefault(); event.stopPropagation();
+        }
+      }}>
       <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button type="button" variant="ghost" size="icon" onClick={onClose} data-appraisal-close aria-label="Close appraisal">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
@@ -2798,7 +2866,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
-                  disabled={saveAppraisalMutation.isPending || isPostStage3}
+                  disabled={saveAppraisalMutation.isPending || isPostStage3 || interactionsBlocked}
                   className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
                   data-testid="button-save-draft-header"
                 >
@@ -2809,7 +2877,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
-                  disabled={saveAppraisalMutation.isPending || isPostStage3}
+                  disabled={saveAppraisalMutation.isPending || isPostStage3 || interactionsBlocked}
                   className="sm:hidden"
                   data-testid="button-save-draft-header-mobile"
                 >
@@ -2818,6 +2886,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           </div>
         </div>
 
+        <div hidden={!retainingSavePresentation}
+          role={ratingConfigState.status === "error" ? "alert" : "status"}
+          data-testid="appraisal-configuration-status"
+          className="shrink-0 border-b bg-slate-50 px-4 py-2 text-sm text-slate-700">
+          {ratingConfigState.status === "error"
+            ? `The appraisal was saved, but its configuration could not be verified. ${ratingConfigState.message}`
+            : "Checking the saved appraisal's form configuration. Please wait before editing or saving again."}
+        </div>
+        <div className="contents" {...(interactionsBlocked ? { inert: "" } : {})}>
         {/* Mobile Horizontal Stepper */}
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
@@ -2950,7 +3027,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   return (
                     <>
                       {(['A', 'B'].includes(activeSection)) && (
-                        <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                      <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto" data-testid="container-continuous-ab">
                           {renderContinuousSections1()}
                         </div>
                       )}
@@ -4681,6 +4758,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         </div>
         </div>
         
+        </div>
         {/* Confirmation Dialog */}
         <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => { if (!open) closeConfirmDialog(); }}>
         <AlertDialogContent>

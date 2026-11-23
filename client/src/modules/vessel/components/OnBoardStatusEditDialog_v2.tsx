@@ -104,6 +104,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const [reconciling, setReconciling] = useState(false);
     const [verifiedAssignUuid, setVerifiedAssignUuid] = useState<string | null>(null);
     const [deferReason, setDeferReason] = useState('');
+    const [deferReliefOpen, setDeferReliefOpen] = useState(false);
+    const deferReliefPanelId = React.useId();
     const [deferringRelief, setDeferringRelief] = useState(false);
     const [deferReliefError, setDeferReliefError] = useState('');
     const [reliefDeferred, setReliefDeferred] = useState(false);
@@ -156,6 +158,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         setDeferReliefError('');
         setReliefDeferred(false);
     }, [planningData?.planUuid, open]);
+    React.useEffect(() => {
+        setDeferReliefOpen(false);
+    }, [open, planningData?.planUuid, planningData?.crewAssignUuid, planningData?.crewUuid, vesselUuid]);
     React.useEffect(() => {
         setSignoffFormsOpen(false);
     }, [open, planningData?.planUuid, planningData?.crewAssignUuid, planningData?.crewUuid, vesselUuid, verifiedAssignUuid]);
@@ -773,7 +778,19 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 )}
 
                 {canDeferRelief && (
-                    <section className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4" data-testid="defer-relief-action">
+                    <>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        data-testid="button-toggle-defer-relief"
+                        aria-expanded={deferReliefOpen}
+                        aria-controls={deferReliefPanelId}
+                        disabled={deferringRelief}
+                        onClick={() => setDeferReliefOpen(current => !current)}
+                    >
+                        {deferReliefOpen ? 'Hide defer relief' : 'Defer relief'}
+                    </Button>
+                    <section id={deferReliefPanelId} hidden={!deferReliefOpen} className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4" data-testid="defer-relief-action">
                         <div>
                             <h3 className="font-semibold text-amber-950">Defer relief</h3>
                             <p className="mt-1 text-sm text-amber-900">Record why this incumbent crew member is not ready to be relieved. This does not unassign the reliever.</p>
@@ -808,6 +825,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </>
                         )}
                     </section>
+                    </>
                 )}
 
                 {needsIncumbentLink && (

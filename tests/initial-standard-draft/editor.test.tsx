@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GenericFormEditor } from "../../client/src/components/GenericFormEditor";
 import { FormEditorFactory } from "../../client/src/components/FormEditorFactory";
 import { standardInitialVersionLabel } from "../../client/src/modules/admin/formsListVersions";
+import { StandardVersionCell } from "../../client/src/modules/admin/components/StandardVersionCell";
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), invalidate: vi.fn(), toast: vi.fn() }));
 vi.mock("@/lib/queryClient", () => ({
@@ -82,6 +83,110 @@ async function ready() {
   await waitFor(() => expect(saveButton()).not.toBeDisabled());
 }
 describe("complete production editor first-time workflow", () => {
+  it.each(["briefing", "debriefing", "interview"])("opens the explicitly requested %s release instead of a newer draft", async category => {
+    versions = [{ ...version, id: 41, fvUuid: "release-41", status: "released" },
+      { ...version, versionNo: "02" }];
+    open(category, { initialVersionId: 41 });
+    await screen.findByTestId("button-edit-as-new-draft");
+    expect(screen.queryByTestId("button-save-form-structure")).not.toBeInTheDocument();
+    expect(initialCalls()).toHaveLength(0);
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it.each(["briefing", "debriefing", "interview"])("opens the %s draft selected from the version cell through the real factory", async category => {
+    versions = [{ ...version, id: 41, fvUuid: "release-41", status: "released" }, { ...version }];
+    function List() {
+      const [selected, setSelected] = React.useState<number>();
+      return selected === undefined
+        ? <StandardVersionCell versions={versions} rankGroupId={7} onOpenDraft={v => setSelected(v.id)} />
+        : <FormEditorFactory form={{ id: 99, name: "Fixture", category } as any} formName="Fixture"
+          rankGroupId={7} rankGroupName="Deck" standardOpening={{ versionId: selected, rankGroupId: 7 }}
+          onSave={vi.fn()} onClose={vi.fn()} />;
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    clients.push(client);
+    render(<QueryClientProvider client={client}><List /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Open Draft" }));
+    await ready();
+    expect(screen.getByTestId("select-form-version").textContent).toContain("Draft");
+    expect(initialCalls()).toHaveLength(0);
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it.each([
+    { versions: [], versionId: 41 },
+    { versions: [{ ...version, rankGroupId: 8 }], versionId: 42 },
+    { versions: [{ ...version, formId: 100 }], versionId: 42 },
+    { versions: [{ ...version }], versionId: null },
+  ])("blocks stale or wrong-owner factory navigation without writes %#", async fixture => {
+    versions = fixture.versions;
+    open("briefing", { standardOpening: { versionId: fixture.versionId, rankGroupId: 7 } }, true);
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it("recovers a failed factory lookup using Retry without initializing a draft", async () => {
+    versions = [{ ...version, status: "released" }];
+    queryFailure = true;
+    open("briefing", { standardOpening: { versionId: 42, rankGroupId: 7 } }, true);
+    await screen.findByRole("alert");
+    queryFailure = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByTestId("button-edit-as-new-draft");
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it("preserves resumable first-draft initialization through versionless factory navigation", async () => {
+    open("briefing", { standardOpening: { versionId: null, rankGroupId: 7 } }, true);
+    await ready();
+    expect(initialCalls()).toHaveLength(1);
+  });
+  it("retains an explicit released selection when a newer version arrives", async () => {
+    versions = [{ ...version, id: 41, fvUuid: "release-41", status: "released" }];
+    const view = open("briefing", { initialVersionId: 41 });
+    await screen.findByTestId("button-edit-as-new-draft");
+    versions.push({ ...version, versionNo: "02" });
+    await view.client.invalidateQueries({ queryKey: ["/api/v2/admin/forms/99/versions"] });
+    expect(screen.getByTestId("select-form-version").textContent).toContain("Released");
+    expect(screen.queryByTestId("button-save-form-structure")).not.toBeInTheDocument();
+  });
+  it("rejects removal of the selected version rather than falling back to a newer draft", async () => {
+    versions = [{ ...version, id: 41, fvUuid: "release-41", status: "released" }];
+    const view = open("briefing", { initialVersionId: 41 });
+    await screen.findByTestId("button-edit-as-new-draft");
+    versions = [{ ...version, versionNo: "02" }];
+    await view.client.invalidateQueries({ queryKey: ["/api/v2/admin/forms/99/versions"] });
+    await screen.findByRole("alert");
+    expect(screen.queryByTestId("button-save-form-structure")).not.toBeInTheDocument();
+    expect(initialCalls()).toHaveLength(0);
+  });
+  it("does not make an explicitly opened draft editable in read-only mode", async () => {
+    versions = [{ ...version }];
+    open("briefing", { initialVersionId: 42, readOnly: true });
+    await screen.findByTestId("select-form-version");
+    expect(screen.queryByTestId("button-save-form-structure")).not.toBeInTheDocument();
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it("keeps Company Form navigation outside the new Standard Form opening gate", async () => {
+    versions = [{ ...version }];
+    open("dynamic", { standardOpening: { versionId: 999, rankGroupId: 7 } }, true);
+    await screen.findByTestId("select-form-version");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+  });
+  it("waits for delayed opening verification and ignores it after the editor closes", async () => {
+    versions = [{ ...version }];
+    let unlock!: () => void;
+    const normal = mocks.api.getMockImplementation()!;
+    mocks.api.mockImplementation(async (method, url, data) => {
+      if (method === "GET" && url.endsWith("/versions")) await new Promise<void>(resolve => { unlock = resolve; });
+      return normal(method, url, data);
+    });
+    const view = open("briefing", { standardOpening: { versionId: 42, rankGroupId: 7 } }, true);
+    await screen.findByText("Loading form version…");
+    await waitFor(() => expect(unlock).toBeTypeOf("function"));
+    view.unmount(); unlock();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(mocks.api.mock.calls.filter(c => c[0] !== "GET")).toHaveLength(0);
+    expect(view.props.onSave).not.toHaveBeenCalled();
+  });
   it.each(["briefing", "debriefing", "interview"])("configures %s through the factory without templates, saves, reopens and releases", async category => {
     const view = open(category, {}, true);
     await ready();

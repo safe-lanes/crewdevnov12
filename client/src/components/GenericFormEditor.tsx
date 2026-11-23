@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { supportsInitialStandardDraft } from "@shared/v2/forms-engine/initialStandardDraft";
 import { readInitialStandardVersions, useInitialStandardDraft, type InitialStandardVersion } from "@/hooks/useInitialStandardDraft";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
+import { VersionOpeningProblem } from "./StandardVersionOpening";
 import type { CompanyFormValidationContext } from "@/lib/companyFormValidation";
 import { CompanyFormProblems } from "@/components/company-forms/CompanyFormProblems";
 import { getCrewUserId } from "@/lib/crewUser";
@@ -93,6 +94,7 @@ interface GenericFormEditorProps {
   configurableParts?: ConfigurableFormPart[];
   readOnly?: boolean;
   initialPreview?: boolean;
+  initialVersionId?: number | null;
   onClose: () => void;
   onSave: (data: unknown) => void;
 }
@@ -608,6 +610,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   rankGroupConfig,
   readOnly = false,
   initialPreview = false,
+  initialVersionId,
   onClose,
   onSave,
 }) => {
@@ -745,6 +748,11 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     },
     enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
   });
+  const refreshVersions = useCallback(async () => {
+    const result = await refetchVersions();
+    if (initialVersionId !== undefined && result.isSuccess) setAuthoritativeVersion(null);
+    return result;
+  }, [refetchVersions, initialVersionId]);
 
   const {
     data: subjectStages = [],
@@ -805,18 +813,21 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     [availableVersions],
   );
   const selectedVersion = useMemo(
-    () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
-    [availableVersions, selectedVersionUuid, sortedVersions],
+    () => initialVersionId !== undefined
+      ? availableVersions.find(version => selectedVersionUuid
+        ? version.fvUuid === selectedVersionUuid : version.id === initialVersionId)
+      : availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
+    [availableVersions, selectedVersionUuid, sortedVersions, initialVersionId],
   );
   const acceptInitialDraft = useCallback((version: InitialStandardVersion) => {
     setAuthoritativeVersion(version);
     setSelectedVersionUuid(version.fvUuid);
     setIsEditing(version.status === "draft");
-    void refetchVersions();
-  }, [refetchVersions]);
+    void refreshVersions();
+  }, [refreshVersions]);
   const initialDraft = useInitialStandardDraft({
     enabled: isInitialStandard && !!versionsLoaded && !versionsFetching && !versionsError && versions.length === 0
-      && !selectedVersion && !readOnly && !(form as Form & { archivedAt?: unknown }).archivedAt
+      && initialVersionId == null && !selectedVersion && !readOnly && !(form as Form & { archivedAt?: unknown }).archivedAt
       && viewMode === "configure",
     formId: realFormId, rankGroupId, onReady: acceptInitialDraft,
   });
@@ -943,13 +954,20 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   useEffect(() => {
     if (selectedVersionUuid) return;
+    if (initialVersionId !== undefined) {
+      if (selectedVersion) {
+        setSelectedVersionUuid(selectedVersion.fvUuid);
+        setIsEditing(selectedVersion.status === "draft");
+      }
+      return;
+    }
     if (sortedVersions[0]) {
       setSelectedVersionUuid(sortedVersions[0].fvUuid);
       setIsEditing(sortedVersions[0].status === "draft");
     } else if (!isInitialStandard && !isLoadingVersions && (form.category === "dynamic" || rankGroupId !== null)) {
       setIsEditing(true);
     }
-  }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions]);
+  }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions, initialVersionId, selectedVersion]);
 
   useEffect(() => {
     if (saveTransitionRef.current) return;
@@ -1617,7 +1635,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         durationMs: Math.round(performance.now() - startedAt),
       });
       toast({ title: "Draft saved", description: "The complete form structure has been saved." });
-      await refetchVersions();
+      await refreshVersions();
       return draft;
     } catch (error: any) {
       const message = editorErrorMessage(error, "editorSave", isCompanyForm, validationContext());
@@ -1669,7 +1687,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setAuthoritativeVersion(released);
       setSelectedVersionUuid(released.fvUuid);
       setIsEditing(false);
-      await refetchVersions();
+      await refreshVersions();
       toast({
         title: "Version released",
         description: "The version has been released successfully.",
@@ -1697,7 +1715,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       });
       const updated = await response.json() as VersionRow;
       setAuthoritativeVersion((current) => current?.fvUuid === updated.fvUuid ? updated : current);
-      await refetchVersions();
+      await refreshVersions();
       toast({ title: "Stage saved", description: "The draft's subject stage has been saved." });
     } catch (error: any) {
       setStageSelection((current) => current?.versionUuid === version.fvUuid
@@ -1926,7 +1944,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setAuthoritativeVersion(draft);
       setSelectedVersionUuid(draft.fvUuid);
       setIsEditing(true);
-      await refetchVersions();
+      await refreshVersions();
       toast({ title: "Draft ready", description: "You can now edit this form version." });
     } catch (error: any) {
       toast({ title: "Unable to create draft", description: editorErrorMessage(error, "manageVersion", isCompanyForm), variant: "destructive" });
@@ -2234,6 +2252,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   );
   const tableClasses = getTableClasses();
 
+  if (initialVersionId !== undefined && (versionsError || (versionsLoaded && !versionsFetching
+    && !selectedVersion && (initialVersionId !== null || versions.length > 0)))) {
+    return <VersionOpeningProblem
+      message="The selected form version is unavailable. Retry or close and refresh the forms list."
+      onRetry={() => void refetchVersions()} onClose={onClose} />;
+  }
   return (
     <>
       {typeof document !== "undefined" && createPortal(
