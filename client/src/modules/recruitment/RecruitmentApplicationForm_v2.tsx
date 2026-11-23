@@ -1,3 +1,4 @@
+import { useFormSectionHighlight } from '@/hooks/useFormSectionHighlight';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { hasCertificateDatabaseId } from './certificateBinding';
 import { StandardFormPopup } from '@/components/ui/form-popup';
@@ -1065,43 +1066,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return options;
   }, [externalVesselsData, externalFleetGroupsData]);
 
-  useEffect(() => {
-    const observerOptions = {
-      root: null,
-      rootMargin: '-20% 0px -60% 0px',
-      threshold: 0
-    };
+  const continuousSections = useMemo(() => [
+    { id: 'A1', ref: a1Ref },
+    { id: 'A2', ref: a2Ref },
+    { id: 'A3', ref: a3Ref },
+    { id: 'A4', ref: a4Ref },
+    { id: 'A5', ref: a5Ref },
+  ] as const, []);
 
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      let topmostId: SectionType | null = null;
-      let topmostTop = Infinity;
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const sectionId = entry.target.getAttribute('data-section-id') as SectionType;
-          if (sectionId && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(sectionId)) {
-            const top = entry.boundingClientRect.top;
-            if (top < topmostTop) {
-              topmostId = sectionId;
-              topmostTop = top;
-            }
-          }
-        }
-      });
-      if (topmostId) {
-        setActiveContinuousSection(topmostId);
-      }
-    };
-
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
-
-    [a1Ref, a2Ref, a3Ref, a4Ref, a5Ref].forEach(ref => {
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-    });
-
-    return () => observer.disconnect();
-  }, []);
+  useFormSectionHighlight(
+    contentAreaRef,
+    continuousSections,
+    setActiveContinuousSection,
+    ['A1', 'A2', 'A3', 'A4', 'A5'].includes(activeSection) && !activeInterviewSubmissionUuid,
+  );
 
   useEffect(() => {
     if (candidateData) {

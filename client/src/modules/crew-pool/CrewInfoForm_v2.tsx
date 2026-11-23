@@ -1,3 +1,4 @@
+import { useFormSectionHighlight } from '@/hooks/useFormSectionHighlight';
 import React, {
   useState,
   useCallback,
@@ -1120,6 +1121,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   );
 
   // Refs for scroll detection
+  const sectionScrollContainerRef = useRef<HTMLDivElement>(null);
   const sectionARef = useRef<HTMLDivElement>(null);
   const sectionBRef = useRef<HTMLDivElement>(null);
   const sectionCRef = useRef<HTMLDivElement>(null);
@@ -9497,54 +9499,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     handleD3Close();
   };
 
-  // Enhanced scroll detection for continuous scroll layout
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const observerOptions = {
-      root: null,
-      rootMargin: '-10% 0px -60% 0px', // More sensitive detection
-      threshold: [0.1, 0.3, 0.5, 0.7] // Multiple thresholds for better detection
-    };
-
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      // Find the section with the highest intersection ratio
-      let maxRatio = 0;
-      let mostVisibleSection = '';
-      
-      entries.forEach((entry) => {
-        if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-          maxRatio = entry.intersectionRatio;
-          const targetId = entry.target.getAttribute('data-section');
-          if (targetId) {
-            mostVisibleSection = targetId;
-          }
-        }
-      });
-      
-      // Update active section only if we found a more visible section
-      if (mostVisibleSection && mostVisibleSection !== activeSection) {
-        setActiveSection(mostVisibleSection);
-      }
-    };
-
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
-
+  const scrollSections = useMemo(() => {
     const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
       D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
     };
-    sections.forEach((s) => {
-      const ref = sectionRefMap[s.id];
-      if (ref?.current) {
-        observer.observe(ref.current);
-      }
-    });
+    return sections.map(section => ({ id: section.id, ref: sectionRefMap[section.id] }));
+  }, [sections]);
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [isOpen, activeSection, sections]);
+  useFormSectionHighlight(sectionScrollContainerRef, scrollSections, setActiveSection, isOpen);
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
@@ -9580,6 +9543,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     
     if (targetRef.current) {
+      setActiveSection(sectionId);
       targetRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
@@ -9955,7 +9919,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </aside>
           
           {/* Main Content Area - Continuous Scroll */}
-          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
+          <div ref={sectionScrollContainerRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
             <div className="space-y-6">
             {/* A - Dashboard */}
             {canViewSection('A') && (
