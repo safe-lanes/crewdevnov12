@@ -2237,6 +2237,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const handleClickOutside = async (e: MouseEvent) => {
       const target = e.target as Element;
       if (isInsidePortal(target) || profileSaveRef.current || isBatchSavingRef.current) return;
+      // Opening the Date of Recruitment dialog is part of filling the profile, not
+      // leaving the section - do not validate (the date it sets is still empty).
+      if (target.closest?.('[data-testid="button-edit-recruitment-date"]')) return;
       const activeSections = Object.entries(editingSections).filter(([, editing]) => editing)
         .map(([section]) => section as ProfileSection);
 
@@ -9140,10 +9143,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
     }
     
+    // New crew moving between B1 (Rank) and B2 (Email): the record cannot be
+    // created yet, so just switch sections. The values stay in the form and are
+    // saved when the record is created (all of B1/B2/B3 go with the create).
+    const switchingRequiredSectionsOfNewCrew =
+      !isCurrentlyEditing && (sectionId === 'B1' || sectionId === 'B2') && !getEffectiveCrewUuid();
+
     // If another section is being edited, auto-save it before switching
-    if (activeSections.length && !getEffectiveCrewUuid() && !await ensureCrewExists()) return;
-    for (const editing of activeSections)
-      if (!await handleSectionAutoSave(editing)) return;
+    if (!switchingRequiredSectionsOfNewCrew) {
+      if (activeSections.length && !getEffectiveCrewUuid() && !await ensureCrewExists()) return;
+      for (const editing of activeSections)
+        if (!await handleSectionAutoSave(editing)) return;
+    }
     setEditingSections({ B1: false, B2: false, B3: false, [sectionId]: !isCurrentlyEditing });
   };
 

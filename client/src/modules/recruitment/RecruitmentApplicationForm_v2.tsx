@@ -3506,6 +3506,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
         return;
       }
+      const recruitEmailError = validateEmail((formData.email || '').trim());
+      if (recruitEmailError) {
+        toast({
+          title: "Cannot recruit candidate",
+          description: `Email in A1 Seafarer's Particulars: ${recruitEmailError}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     let screeningHasErrors = false;
@@ -4177,6 +4186,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           fleetGroups: formData.c2FleetGroups.map(fg => ({ fleetGroupUuid: fg })),
         } as any,
       });
+
+      // Recruiting ("Yes") transfers the saved candidate data to Crew Pool, so
+      // persist the Present Rank and Email shown on screen first - they may have
+      // been typed in A1 without saving Part A. Both are partial updates.
+      if (formData.c3RecruitmentStatus === 'Yes') {
+        await updateCandidateMutation.mutateAsync({
+          recCanUuid,
+          data: { presentRank: (formData.presentRank || '').trim() },
+        });
+        await saveAddressMutation.mutateAsync({
+          recCanUuid,
+          data: { email: (formData.email || '').trim() },
+        });
+      }
 
       // Part C - Save decision (C3)
       if (formData.c3RecruitmentStatus) {
