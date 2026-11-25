@@ -44,6 +44,9 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { seaServiceRankLabel, type SeaServiceRankMaster } from "./seaServicePresentation";
 import { CrewCompanyFormsHistory } from './components/CrewCompanyFormsHistory';
+import { crewCompanyFormStatusLabel } from './components/CrewCompanyFormsHome';
+import { sailDate, sailUtcTimestamp } from '@shared/v2/forms-engine/displayFormatting';
+import type { CompanyFormSubmissionHome } from '@shared/v2/forms-engine/submissionRenderContract';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
@@ -8585,6 +8588,72 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     try {
       const crewName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Crew'}`;
       
+      let companyForms: NonNullable<CrewInfoFormData['companyForms']> = [];
+      let companyFormsLoadFailed = false;
+      if (crewUuid) {
+        try {
+          const home = await Promise.race([
+            (async () => {
+              const response = await apiRequest('GET', `/api/v2/company-form-submissions/subjects/crew_assignment/home/${encodeURIComponent(crewUuid)}/submissions`);
+              return (await response.json()) as CompanyFormSubmissionHome;
+            })(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timed out loading company forms')), 15000)),
+          ]);
+          const assignments = (crewAssignmentsData ?? []) as Array<{ assignUuid: string; signOnDate?: string | null; signOffDate?: string | null; assignmentType?: string }>;
+          const assignmentOrder = new Map(assignments.map((a, index) => [a.assignUuid, index]));
+          const groups = [...(home.groups ?? [])].sort((a, b) => {
+            const aOrder = assignmentOrder.get(a.subjectRef);
+            const bOrder = assignmentOrder.get(b.subjectRef);
+            if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+            if (aOrder !== undefined) return -1;
+            if (bOrder !== undefined) return 1;
+            return 0;
+          });
+          for (const group of groups) {
+            const assignment = assignments.find(a => a.assignUuid === group.subjectRef);
+            const heading = group.display?.label?.trim()
+              || (assignment ? (assignment.assignmentType?.trim() || 'Crew assignment') : 'Historical assignment');
+            const assignmentText = assignment
+              ? `${heading} · Sign-on ${sailDate(assignment.signOnDate)} · Sign-off ${sailDate(assignment.signOffDate)}`
+              : heading;
+            if (group.submissions.length === 0) {
+              companyForms.push({ assignment: assignmentText, formName: 'No saved forms for this assignment', version: '', stage: '', type: '', status: '', dateRecorded: '', remarks: '' });
+              continue;
+            }
+            for (const submission of group.submissions) {
+              const remarks: string[] = [];
+              if (submission.status === 'voided') {
+                remarks.push(`Voided by ${submission.voidedByName?.trim() || 'Unavailable'}${submission.voidedByDesignation ? ` · ${submission.voidedByDesignation}` : ''}${submission.voidedAt ? ` · ${sailDate(submission.voidedAt)}` : ' · void date unavailable'}`);
+                const handovers = submission.handovers ?? [];
+                const originalHandover = handovers.find(h => (h.copyKind ?? 'original') === 'original');
+                const currentNoticeHandover = handovers.find(h => h.copyKind === 'void_notice' && h.currentNotice === true);
+                if (originalHandover && !currentNoticeHandover) {
+                  remarks.push(`A copy was handed to the seafarer on ${sailDate(originalHandover.recordedAt)}. The void notice has not been handed over.`);
+                }
+              }
+              for (const handover of submission.handovers ?? []) {
+                remarks.push(`${handover.copyKind === 'void_notice' ? 'Void notice copy' : 'Original copy'} handed to seafarer by ${handover.actorName || 'A user'} · ${sailUtcTimestamp(handover.recordedAt)}${handover.copyKind === 'void_notice' && handover.currentNotice ? ' · Current notice' : ''}`);
+              }
+              companyForms.push({
+                assignment: assignmentText,
+                formName: submission.formName || '',
+                version: submission.versionNo || '',
+                stage: submission.stageLabel || '',
+                type: submission.origin === 'REQUIRED' ? 'Required' : submission.origin === 'MANUAL' ? 'Manual' : '',
+                status: crewCompanyFormStatusLabel(submission.status) || '',
+                dateRecorded: submission.systemSnapshotAt
+                  ? sailDate(submission.systemSnapshotAt)
+                  : `Unavailable · Created ${sailDate(submission.createdAt)}`,
+                remarks: remarks.join('; '),
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load company forms for PDF:', error);
+          companyForms = [];
+          companyFormsLoadFailed = true;
+        }
+      }
       const pdfFormData: CrewInfoFormData = {
         firstName: formData.firstName,
         middleName: formData.middleName,
@@ -8738,6 +8807,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           complaint: v.complaint,
           doctorComments: v.doctorComments,
         })),
+        briefings: formData.briefings.map(b => ({
+          id: b.id,
+          vessel: b.vessel,
+          joiningRank: b.joiningRank,
+          dateSignOn: b.dateSignOn,
+        })),
+        debriefings: formData.debriefings.map(d => ({
+          id: d.id,
+          vessel: d.vessel,
+          rankServed: d.rankServed,
+          dateSignOn: d.dateSignOn,
+          dateSignedOff: d.dateSignedOff,
+          reasonForSignOff: d.reasonForSignOff,
+        })),
+        companyForms,
+        companyFormsLoadFailed,
       };
 
       const nokInfoStr = formData.nokFirstName 
