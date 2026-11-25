@@ -9500,7 +9500,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const scrollSections = useMemo(() => {
-    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
+    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
       D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
     };
