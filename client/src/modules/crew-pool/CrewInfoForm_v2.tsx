@@ -2485,6 +2485,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const doc = formData.documents.find(d => d.id === id);
     const docUuid = (doc as any)?.docUuid;
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const newCrewIdentifier = crewIdentifier ? null : getEffectiveCrewUuid();
     
     if (docUuid && crewIdentifier) {
       markDeletingForCrew(crewIdentifier);
@@ -2500,6 +2501,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           },
           onError: (error) => {
             clearDeletingForCrew();
+            console.error('Failed to delete document:', error);
+            toast({ title: 'Failed to delete document', variant: 'destructive' });
+          }
+        }
+      );
+    } else if (docUuid && newCrewIdentifier) {
+      const session = d3SessionRef.current;
+      deleteDocumentMutationV2.mutate(
+        { crewUuid: newCrewIdentifier, docUuid },
+        {
+          onSuccess: () => {
+            if (d3SessionRef.current === session) {
+              setFormData(prev => ({
+                ...prev,
+                documents: prev.documents.filter(d => d.id !== id)
+              }));
+            }
+            invalidateCrewDashboard(newCrewIdentifier);
+          },
+          onError: (error) => {
             console.error('Failed to delete document:', error);
             toast({ title: 'Failed to delete document', variant: 'destructive' });
           }
@@ -2544,6 +2565,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const visa = formData.visas.find(v => v.id === id);
     const visaUuid = (visa as any)?.visaUuid;
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const newCrewIdentifier = crewIdentifier ? null : getEffectiveCrewUuid();
     
     if (visaUuid && crewIdentifier) {
       markDeletingForCrew(crewIdentifier);
@@ -2559,6 +2581,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           },
           onError: (error) => {
             clearDeletingForCrew();
+            console.error('Failed to delete visa:', error);
+            toast({ title: 'Failed to delete visa', variant: 'destructive' });
+          }
+        }
+      );
+    } else if (visaUuid && newCrewIdentifier) {
+      const session = d3SessionRef.current;
+      deleteVisaMutationV2.mutate(
+        { crewUuid: newCrewIdentifier, visaUuid },
+        {
+          onSuccess: () => {
+            if (d3SessionRef.current === session) {
+              setFormData(prev => ({
+                ...prev,
+                visas: prev.visas.filter(v => v.id !== id)
+              }));
+            }
+            invalidateCrewDashboard(newCrewIdentifier);
+          },
+          onError: (error) => {
             console.error('Failed to delete visa:', error);
             toast({ title: 'Failed to delete visa', variant: 'destructive' });
           }
@@ -7614,6 +7656,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       (async () => {
         const batchErrors: string[] = [];
         const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
+        const isNewCrewSave = !(crewMember?.crewUuid || crewMember?.id);
+        const attachmentUpdates: { section: 'documents' | 'visas'; localId: string; attId: string; attUuid?: string; removed?: boolean }[] = [];
         try {
 
           const nonBatchOps: (() => Promise<any>)[] = [];
@@ -7753,9 +7797,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
                 for (const att of capturedDeletedAttachments) {
                   await crewPoolApiV2.removeDocumentAttachment(crewIdentifier, savedDocUuid, att.attUuid);
+                  if (isNewCrewSave) attachmentUpdates.push({ section: 'documents', localId: capturedLocalId, attId: att.id, removed: true });
                 }
                 for (const att of capturedNewAttachments) {
-                  await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  const savedAtt = await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  if (isNewCrewSave && savedAtt?.attUuid) attachmentUpdates.push({ section: 'documents', localId: capturedLocalId, attId: att.id, attUuid: savedAtt.attUuid });
                 }
                 return savedDoc;
               });
@@ -7795,9 +7841,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
                 for (const att of capturedDeletedAttachments) {
                   await crewPoolApiV2.removeVisaAttachment(crewIdentifier, savedVisaUuid, att.attUuid);
+                  if (isNewCrewSave) attachmentUpdates.push({ section: 'visas', localId: capturedVisaLocalId, attId: att.id, removed: true });
                 }
                 for (const att of capturedNewAttachments) {
-                  await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  const savedAtt = await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  if (isNewCrewSave && savedAtt?.attUuid) attachmentUpdates.push({ section: 'visas', localId: capturedVisaLocalId, attId: att.id, attUuid: savedAtt.attUuid });
                 }
                 return savedVisa;
               });
@@ -8464,6 +8512,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     item.id === localId ? { ...item, [uuidField]: uuid } : item
                   );
                 }
+              }
+              return updated;
+            });
+          }
+
+          if (attachmentUpdates.length > 0 && isCurrentProfile()) {
+            setFormData(prev => {
+              const updated = { ...prev };
+              for (const { section, localId, attId, attUuid, removed } of attachmentUpdates) {
+                (updated as any)[section] = (updated as any)[section].map((item: any) =>
+                  item.id === localId && Array.isArray(item.attachments)
+                    ? {
+                        ...item,
+                        attachments: removed
+                          ? item.attachments.filter((a: any) => a.id !== attId)
+                          : item.attachments.map((a: any) => a.id === attId ? { ...a, attUuid, isNew: false } : a),
+                      }
+                    : item
+                );
               }
               return updated;
             });
