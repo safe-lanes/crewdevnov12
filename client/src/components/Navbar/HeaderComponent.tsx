@@ -4,6 +4,7 @@ import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useMyFilesAccess } from '@/hooks/useMyFilesAccess';
 import NotificationBell from '../NotificationBell';
 import DevPersonaSwitcher from './DevPersonaSwitcher';
 import { 
@@ -27,6 +28,19 @@ import {
     UsersRound,
     ClipboardList
 } from "lucide-react";
+
+// My Files is not in navItems: it is always the LAST entry and is shown only when the My Files server says this
+// role may view it for Crewing (see filteredNavItems).
+const myFilesNavItem = {
+    label: "My Files",
+    href: "/my-files",
+    menuName: "My Files",
+    icon: FolderOpen,
+    activeBg: "#5DADE2",
+    activeText: "white",
+    inactiveBg: "#f1f1f1",
+    inactiveText: "#4f5863",
+};
 
 const navItems = [
     {
@@ -150,16 +164,6 @@ const navItems = [
         inactiveText: "#4f5863",
     },
     {
-        label: "My Files",
-        href: "/my-files",
-        menuName: "My Files",
-        icon: FolderOpen,
-        activeBg: "#5DADE2",
-        activeText: "white",
-        inactiveBg: "#f1f1f1",
-        inactiveText: "#4f5863",
-    },
-    {
         label: "Admin",
         href: "/admin",
         menuName: "Admin",
@@ -202,10 +206,14 @@ export default function HeaderComponent({
     const layoutConfig = getLayoutConfig(viewport);
     const { canView, canCompanyFormAction, permissions } = usePermissions();
 
+    const canViewMyFiles = useMyFilesAccess("Crewing"); // exact sails auditmodules.shortname
+
     const filteredNavItems = useMemo(() => {
-        if (permissions.length === 0) return navItems;
-        return navItems.filter(item => canView(item.menuName) || (item.menuName === "Reports" && canCompanyFormAction("view")));
-    }, [permissions, canView, canCompanyFormAction]);
+        const own = permissions.length === 0
+            ? navItems
+            : navItems.filter(item => canView(item.menuName) || (item.menuName === "Reports" && canCompanyFormAction("view")));
+        return canViewMyFiles ? [...own, myFilesNavItem] : own;
+    }, [permissions, canView, canCompanyFormAction, canViewMyFiles]);
 
     const extractStringValue = (val: any): string => {
         if (!val) return '';
