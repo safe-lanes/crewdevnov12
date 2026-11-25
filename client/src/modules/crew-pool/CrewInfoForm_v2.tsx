@@ -8745,7 +8745,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           archivedAt: l.archivedAt,
           archivedReason: l.archivedReason,
         })),
-        trainingCourses: formData.trainingCourses.map(t => ({
+        trainingCourses: sortedTrainingCourses.map(t => ({
           id: t.id,
           courseId: t.courseId,
           companyId: t.companyId,
