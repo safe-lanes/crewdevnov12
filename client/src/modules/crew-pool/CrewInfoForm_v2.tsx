@@ -9507,7 +9507,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return sections.map(section => ({ id: section.id, ref: sectionRefMap[section.id] }));
   }, [sections]);
 
-  useFormSectionHighlight(sectionScrollContainerRef, scrollSections, setActiveSection, isOpen);
+  useFormSectionHighlight(sectionScrollContainerRef, scrollSections, setActiveSection, isOpen && !briefingSubmissionUuid && !debriefingSubmissionUuid && !isD3Blocked());
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
