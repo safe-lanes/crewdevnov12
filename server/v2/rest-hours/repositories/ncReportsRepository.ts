@@ -7,6 +7,7 @@ import type {
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
 import { ncReportUpdatePatch } from "../services/ncReportWorkflow";
+import { captureChange } from "../../sync/changeCapture";
 
 export class NcReportsRepository {
   async findAll(filters?: {
@@ -54,14 +55,20 @@ export class NcReportsRepository {
     data: Omit<InsertRhNcReportV2, "ncReportUuid">
   ): Promise<RhNcReportV2> {
     const db = getDb();
-    const results = await db
-      .insert(rhNcReportsV2)
-      .values({
-        ...data,
-        ncReportUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    return db.transaction(async (tx: any) => {
+      const [row] = await tx
+        .insert(rhNcReportsV2)
+        .values({
+          ...data,
+          ncReportUuid: uuidv4(),
+        })
+        .returning();
+      await captureChange(tx, {
+        table: rhNcReportsV2, rowUuid: row.ncReportUuid, oldRow: null, newRow: row,
+        actorUuid: (data as any).createdByUuid ?? null,
+      });
+      return row;
+    });
   }
 
   async update(
@@ -83,20 +90,31 @@ export class NcReportsRepository {
         .set({ ...patch, updatedAt: new Date() })
         .where(identity)
         .returning();
+      await captureChange(tx, {
+        table: rhNcReportsV2, rowUuid: ncReportUuid, oldRow: current, newRow: updated,
+        actorUuid: (data as any).updatedByUuid ?? null,
+      });
       return updated;
     });
   }
 
   async softDelete(ncReportUuid: string): Promise<boolean> {
     const db = getDb();
-    const results = await db
-      .update(rhNcReportsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhNcReportsV2.ncReportUuid, ncReportUuid))
-      .returning();
-    return results.length > 0;
+    return db.transaction(async (tx: any) => {
+      const [old] = await tx.select().from(rhNcReportsV2)
+        .where(eq(rhNcReportsV2.ncReportUuid, ncReportUuid)).for("update");
+      const results = await tx
+        .update(rhNcReportsV2)
+        .set({
+          isDeleted: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(rhNcReportsV2.ncReportUuid, ncReportUuid))
+        .returning();
+      await captureChange(tx, {
+        table: rhNcReportsV2, rowUuid: ncReportUuid, oldRow: old ?? null, newRow: results[0], actorUuid: null,
+      });
+      return results.length > 0;
+    });
   }
 }

@@ -10,6 +10,8 @@ import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
 import assistantServiceRoutes from "./v2/assistant/serviceRoutes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
+import { initSyncCapture } from "./v2/sync/initSyncCapture";
+import { getBaseDb } from "./v2/db";
 
 const app = express();
 if (process.env.TEST_BACKEND === "true") {
@@ -79,6 +81,9 @@ app.use((req, res, next) => {
 
   // Initialize multi-tenant connection manager (no-op if MASTER_DATABASE_URL not set)
   await tenantConnectionManager.init();
+
+  // Ship-office sync: start recording field changes (SYN-01)
+  await initSyncCapture(getBaseDb);
 
   // Assistant live data (service-to-service, stage 2): authenticated by service secret + signed identity in
   // its own service; mounted before the browser-token middlewares (see server/v2/assistant/serviceRoutes.ts)
