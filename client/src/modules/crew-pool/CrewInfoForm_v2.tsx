@@ -1,3 +1,4 @@
+import { useFormSectionHighlight } from '@/hooks/useFormSectionHighlight';
 import React, {
   useState,
   useCallback,
@@ -43,6 +44,9 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { seaServiceRankLabel, type SeaServiceRankMaster } from "./seaServicePresentation";
 import { CrewCompanyFormsHistory } from './components/CrewCompanyFormsHistory';
+import { crewCompanyFormStatusLabel } from './components/CrewCompanyFormsHome';
+import { sailDate, sailUtcTimestamp } from '@shared/v2/forms-engine/displayFormatting';
+import type { CompanyFormSubmissionHome } from '@shared/v2/forms-engine/submissionRenderContract';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
@@ -1120,6 +1124,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   );
 
   // Refs for scroll detection
+  const sectionScrollContainerRef = useRef<HTMLDivElement>(null);
   const sectionARef = useRef<HTMLDivElement>(null);
   const sectionBRef = useRef<HTMLDivElement>(null);
   const sectionCRef = useRef<HTMLDivElement>(null);
@@ -2483,6 +2488,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const doc = formData.documents.find(d => d.id === id);
     const docUuid = (doc as any)?.docUuid;
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const newCrewIdentifier = crewIdentifier ? null : getEffectiveCrewUuid();
     
     if (docUuid && crewIdentifier) {
       markDeletingForCrew(crewIdentifier);
@@ -2498,6 +2504,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           },
           onError: (error) => {
             clearDeletingForCrew();
+            console.error('Failed to delete document:', error);
+            toast({ title: 'Failed to delete document', variant: 'destructive' });
+          }
+        }
+      );
+    } else if (docUuid && newCrewIdentifier) {
+      const session = d3SessionRef.current;
+      deleteDocumentMutationV2.mutate(
+        { crewUuid: newCrewIdentifier, docUuid },
+        {
+          onSuccess: () => {
+            if (d3SessionRef.current === session) {
+              setFormData(prev => ({
+                ...prev,
+                documents: prev.documents.filter(d => d.id !== id)
+              }));
+            }
+            invalidateCrewDashboard(newCrewIdentifier);
+          },
+          onError: (error) => {
             console.error('Failed to delete document:', error);
             toast({ title: 'Failed to delete document', variant: 'destructive' });
           }
@@ -2542,6 +2568,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const visa = formData.visas.find(v => v.id === id);
     const visaUuid = (visa as any)?.visaUuid;
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const newCrewIdentifier = crewIdentifier ? null : getEffectiveCrewUuid();
     
     if (visaUuid && crewIdentifier) {
       markDeletingForCrew(crewIdentifier);
@@ -2557,6 +2584,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           },
           onError: (error) => {
             clearDeletingForCrew();
+            console.error('Failed to delete visa:', error);
+            toast({ title: 'Failed to delete visa', variant: 'destructive' });
+          }
+        }
+      );
+    } else if (visaUuid && newCrewIdentifier) {
+      const session = d3SessionRef.current;
+      deleteVisaMutationV2.mutate(
+        { crewUuid: newCrewIdentifier, visaUuid },
+        {
+          onSuccess: () => {
+            if (d3SessionRef.current === session) {
+              setFormData(prev => ({
+                ...prev,
+                visas: prev.visas.filter(v => v.id !== id)
+              }));
+            }
+            invalidateCrewDashboard(newCrewIdentifier);
+          },
+          onError: (error) => {
             console.error('Failed to delete visa:', error);
             toast({ title: 'Failed to delete visa', variant: 'destructive' });
           }
@@ -7612,6 +7659,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       (async () => {
         const batchErrors: string[] = [];
         const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
+        const isNewCrewSave = !(crewMember?.crewUuid || crewMember?.id);
+        const attachmentUpdates: { section: 'documents' | 'visas'; localId: string; attId: string; attUuid?: string; removed?: boolean }[] = [];
         try {
 
           const nonBatchOps: (() => Promise<any>)[] = [];
@@ -7751,9 +7800,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
                 for (const att of capturedDeletedAttachments) {
                   await crewPoolApiV2.removeDocumentAttachment(crewIdentifier, savedDocUuid, att.attUuid);
+                  if (isNewCrewSave) attachmentUpdates.push({ section: 'documents', localId: capturedLocalId, attId: att.id, removed: true });
                 }
                 for (const att of capturedNewAttachments) {
-                  await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  const savedAtt = await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  if (isNewCrewSave && savedAtt?.attUuid) attachmentUpdates.push({ section: 'documents', localId: capturedLocalId, attId: att.id, attUuid: savedAtt.attUuid });
                 }
                 return savedDoc;
               });
@@ -7793,9 +7844,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
                 for (const att of capturedDeletedAttachments) {
                   await crewPoolApiV2.removeVisaAttachment(crewIdentifier, savedVisaUuid, att.attUuid);
+                  if (isNewCrewSave) attachmentUpdates.push({ section: 'visas', localId: capturedVisaLocalId, attId: att.id, removed: true });
                 }
                 for (const att of capturedNewAttachments) {
-                  await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  const savedAtt = await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                  if (isNewCrewSave && savedAtt?.attUuid) attachmentUpdates.push({ section: 'visas', localId: capturedVisaLocalId, attId: att.id, attUuid: savedAtt.attUuid });
                 }
                 return savedVisa;
               });
@@ -8467,6 +8520,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
+          if (attachmentUpdates.length > 0 && isCurrentProfile()) {
+            setFormData(prev => {
+              const updated = { ...prev };
+              for (const { section, localId, attId, attUuid, removed } of attachmentUpdates) {
+                (updated as any)[section] = (updated as any)[section].map((item: any) =>
+                  item.id === localId && Array.isArray(item.attachments)
+                    ? {
+                        ...item,
+                        attachments: removed
+                          ? item.attachments.filter((a: any) => a.id !== attId)
+                          : item.attachments.map((a: any) => a.id === attId ? { ...a, attUuid, isNew: false } : a),
+                      }
+                    : item
+                );
+              }
+              return updated;
+            });
+          }
+
           if (batchErrors.length > 0 && isCurrentProfile()) {
             console.error('V2: Batch execution completed with errors:', batchErrors);
             toast({
@@ -8516,6 +8588,72 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     try {
       const crewName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Crew'}`;
       
+      let companyForms: NonNullable<CrewInfoFormData['companyForms']> = [];
+      let companyFormsLoadFailed = false;
+      if (crewUuid) {
+        try {
+          const home = await Promise.race([
+            (async () => {
+              const response = await apiRequest('GET', `/api/v2/company-form-submissions/subjects/crew_assignment/home/${encodeURIComponent(crewUuid)}/submissions`);
+              return (await response.json()) as CompanyFormSubmissionHome;
+            })(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timed out loading company forms')), 15000)),
+          ]);
+          const assignments = (crewAssignmentsData ?? []) as Array<{ assignUuid: string; signOnDate?: string | null; signOffDate?: string | null; assignmentType?: string }>;
+          const assignmentOrder = new Map(assignments.map((a, index) => [a.assignUuid, index]));
+          const groups = [...(home.groups ?? [])].sort((a, b) => {
+            const aOrder = assignmentOrder.get(a.subjectRef);
+            const bOrder = assignmentOrder.get(b.subjectRef);
+            if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+            if (aOrder !== undefined) return -1;
+            if (bOrder !== undefined) return 1;
+            return 0;
+          });
+          for (const group of groups) {
+            const assignment = assignments.find(a => a.assignUuid === group.subjectRef);
+            const heading = group.display?.label?.trim()
+              || (assignment ? (assignment.assignmentType?.trim() || 'Crew assignment') : 'Historical assignment');
+            const assignmentText = assignment
+              ? `${heading} · Sign-on ${sailDate(assignment.signOnDate)} · Sign-off ${sailDate(assignment.signOffDate)}`
+              : heading;
+            if (group.submissions.length === 0) {
+              companyForms.push({ assignment: assignmentText, formName: 'No saved forms for this assignment', version: '', stage: '', type: '', status: '', dateRecorded: '', remarks: '' });
+              continue;
+            }
+            for (const submission of group.submissions) {
+              const remarks: string[] = [];
+              if (submission.status === 'voided') {
+                remarks.push(`Voided by ${submission.voidedByName?.trim() || 'Unavailable'}${submission.voidedByDesignation ? ` · ${submission.voidedByDesignation}` : ''}${submission.voidedAt ? ` · ${sailDate(submission.voidedAt)}` : ' · void date unavailable'}`);
+                const handovers = submission.handovers ?? [];
+                const originalHandover = handovers.find(h => (h.copyKind ?? 'original') === 'original');
+                const currentNoticeHandover = handovers.find(h => h.copyKind === 'void_notice' && h.currentNotice === true);
+                if (originalHandover && !currentNoticeHandover) {
+                  remarks.push(`A copy was handed to the seafarer on ${sailDate(originalHandover.recordedAt)}. The void notice has not been handed over.`);
+                }
+              }
+              for (const handover of submission.handovers ?? []) {
+                remarks.push(`${handover.copyKind === 'void_notice' ? 'Void notice copy' : 'Original copy'} handed to seafarer by ${handover.actorName || 'A user'} · ${sailUtcTimestamp(handover.recordedAt)}${handover.copyKind === 'void_notice' && handover.currentNotice ? ' · Current notice' : ''}`);
+              }
+              companyForms.push({
+                assignment: assignmentText,
+                formName: submission.formName || '',
+                version: submission.versionNo || '',
+                stage: submission.stageLabel || '',
+                type: submission.origin === 'REQUIRED' ? 'Required' : submission.origin === 'MANUAL' ? 'Manual' : '',
+                status: crewCompanyFormStatusLabel(submission.status) || '',
+                dateRecorded: submission.systemSnapshotAt
+                  ? sailDate(submission.systemSnapshotAt)
+                  : `Unavailable · Created ${sailDate(submission.createdAt)}`,
+                remarks: remarks.join('; '),
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load company forms for PDF:', error);
+          companyForms = [];
+          companyFormsLoadFailed = true;
+        }
+      }
       const pdfFormData: CrewInfoFormData = {
         firstName: formData.firstName,
         middleName: formData.middleName,
@@ -8607,7 +8745,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           archivedAt: l.archivedAt,
           archivedReason: l.archivedReason,
         })),
-        trainingCourses: formData.trainingCourses.map(t => ({
+        trainingCourses: sortedTrainingCourses.map(t => ({
           id: t.id,
           courseId: t.courseId,
           companyId: t.companyId,
@@ -8669,6 +8807,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           complaint: v.complaint,
           doctorComments: v.doctorComments,
         })),
+        briefings: formData.briefings.map(b => ({
+          id: b.id,
+          vessel: b.vessel,
+          joiningRank: b.joiningRank,
+          dateSignOn: b.dateSignOn,
+        })),
+        debriefings: formData.debriefings.map(d => ({
+          id: d.id,
+          vessel: d.vessel,
+          rankServed: d.rankServed,
+          dateSignOn: d.dateSignOn,
+          dateSignedOff: d.dateSignedOff,
+          reasonForSignOff: d.reasonForSignOff,
+        })),
+        companyForms,
+        companyFormsLoadFailed,
       };
 
       const nokInfoStr = formData.nokFirstName 
@@ -9497,54 +9651,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     handleD3Close();
   };
 
-  // Enhanced scroll detection for continuous scroll layout
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const observerOptions = {
-      root: null,
-      rootMargin: '-10% 0px -60% 0px', // More sensitive detection
-      threshold: [0.1, 0.3, 0.5, 0.7] // Multiple thresholds for better detection
-    };
-
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      // Find the section with the highest intersection ratio
-      let maxRatio = 0;
-      let mostVisibleSection = '';
-      
-      entries.forEach((entry) => {
-        if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-          maxRatio = entry.intersectionRatio;
-          const targetId = entry.target.getAttribute('data-section');
-          if (targetId) {
-            mostVisibleSection = targetId;
-          }
-        }
-      });
-      
-      // Update active section only if we found a more visible section
-      if (mostVisibleSection && mostVisibleSection !== activeSection) {
-        setActiveSection(mostVisibleSection);
-      }
-    };
-
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
-
-    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
+  const scrollSections = useMemo(() => {
+    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
       D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
     };
-    sections.forEach((s) => {
-      const ref = sectionRefMap[s.id];
-      if (ref?.current) {
-        observer.observe(ref.current);
-      }
-    });
+    return sections.map(section => ({ id: section.id, ref: sectionRefMap[section.id] }));
+  }, [sections]);
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [isOpen, activeSection, sections]);
+  useFormSectionHighlight(sectionScrollContainerRef, scrollSections, setActiveSection, isOpen && !briefingSubmissionUuid && !debriefingSubmissionUuid && !isD3Blocked());
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
@@ -9580,6 +9695,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     
     if (targetRef.current) {
+      setActiveSection(sectionId);
       targetRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
@@ -9955,7 +10071,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </aside>
           
           {/* Main Content Area - Continuous Scroll */}
-          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
+          <div ref={sectionScrollContainerRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
             <div className="space-y-6">
             {/* A - Dashboard */}
             {canViewSection('A') && (

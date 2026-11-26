@@ -1,3 +1,4 @@
+import { useFormSectionHighlight } from '@/hooks/useFormSectionHighlight';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -462,44 +463,12 @@ export function DrugAlcoholTestForm_v2({
     { id: 'B' as const, title: 'Part B: Personnel Details', number: 'B', ref: partBRef },
   ], []);
 
-  // Intersection Observer for continuous scroll tracking
-  useEffect(() => {
-    if (!continuousScrollContainerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
-
-        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id') as 'A' | 'B';
-          if (sectionId && sectionId !== activeContinuousSection) {
-            setActiveContinuousSection(sectionId);
-          }
-        }
-      },
-      {
-        root: continuousScrollContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-50px 0px -50px 0px'
-      }
-    );
-
-    sections.forEach(section => {
-      if (section.ref?.current) {
-        observer.observe(section.ref.current);
-      }
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [activeContinuousSection, sections]);
+  useFormSectionHighlight(
+    continuousScrollContainerRef,
+    sections,
+    setActiveContinuousSection,
+    !recordUuid || (!recordLoading && !recordError),
+  );
 
   // Populate personnelTested when crew members are loaded or vessel changes
   // Skip if editing (recordUuid provided) as personnel will be loaded from the existing record
@@ -626,6 +595,7 @@ export function DrugAlcoholTestForm_v2({
 
   const handleSectionNavigation = (sectionId: 'A' | 'B') => {
     setActiveSection(sectionId);
+    setActiveContinuousSection(sectionId);
     const section = sections.find(s => s.id === sectionId);
     if (section?.ref) {
       scrollToSection(section.ref);

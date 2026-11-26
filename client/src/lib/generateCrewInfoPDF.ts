@@ -100,6 +100,33 @@ interface DoctorVisit {
   doctorComments: string;
 }
 
+interface BriefingInfo {
+  id: string;
+  vessel: string;
+  joiningRank: string;
+  dateSignOn: string;
+}
+
+interface DebriefingInfo {
+  id: string;
+  vessel: string;
+  rankServed: string;
+  dateSignOn: string;
+  dateSignedOff: string;
+  reasonForSignOff: string;
+}
+
+export interface CompanyFormPdfRow {
+  assignment: string;
+  formName: string;
+  version: string;
+  stage: string;
+  type: string;
+  status: string;
+  dateRecorded: string;
+  remarks: string;
+}
+
 export interface CrewInfoFormData {
   firstName: string;
   middleName: string;
@@ -156,6 +183,10 @@ export interface CrewInfoFormData {
   externalSeaService: SeaService[];
   preJoiningMedicals: PreJoiningMedical[];
   doctorVisits: DoctorVisit[];
+  briefings?: BriefingInfo[];
+  debriefings?: DebriefingInfo[];
+  companyForms?: CompanyFormPdfRow[];
+  companyFormsLoadFailed?: boolean;
 }
 
 export interface DashboardData {
@@ -687,6 +718,7 @@ export async function generateCrewInfoPDF(
   drawPartD(builder, formData);
   drawPartE(builder, formData);
   drawPartF(builder, formData);
+  drawPartG(builder, formData);
 
   builder.finalizeDocument();
 
@@ -1031,5 +1063,69 @@ function drawPartF(builder: PDFBuilder, formData: CrewInfoFormData): void {
     }
   } else {
     builder.drawTableRow(['-', '-', '-', '-', '-'], visitColWidths);
+  }
+}
+
+function pdfSafeText(text: string): string {
+  return text.replace(/[^\t\n\r\x20-\x7E\xA0-\xFF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]/g, '?');
+}
+
+function drawPartG(builder: PDFBuilder, formData: CrewInfoFormData): void {
+  builder.drawSectionHeader('PART G - BRIEFING, DEBRIEFING & OTHER FORMS');
+
+  builder.drawSubsectionHeader('G1. Briefing');
+  const briefingColWidths = [CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.30];
+  builder.drawTableHeader(['Vessel', 'Joining Rank', 'Date Sign on'], briefingColWidths);
+  if (formData.briefings && formData.briefings.length > 0) {
+    for (const briefing of formData.briefings) {
+      builder.drawTableRow([
+        pdfSafeText(briefing.vessel || ''),
+        pdfSafeText(briefing.joiningRank || ''),
+        pdfSafeText(formatDate(briefing.dateSignOn)),
+      ], briefingColWidths);
+    }
+  } else {
+    builder.drawTableRow(['-', '-', '-'], briefingColWidths);
+  }
+
+  builder.moveDown(5);
+  builder.drawSubsectionHeader('G2. De briefing');
+  const debriefingColWidths = [CONTENT_WIDTH * 0.24, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.26];
+  builder.drawTableHeader(['Vessel', 'Rank Served', 'Date Sign on', 'Date Signed off', 'Reason for Sign off'], debriefingColWidths);
+  if (formData.debriefings && formData.debriefings.length > 0) {
+    for (const debriefing of formData.debriefings) {
+      builder.drawTableRow([
+        pdfSafeText(debriefing.vessel || ''),
+        pdfSafeText(debriefing.rankServed || ''),
+        pdfSafeText(formatDate(debriefing.dateSignOn)),
+        pdfSafeText(formatDate(debriefing.dateSignedOff)),
+        pdfSafeText(debriefing.reasonForSignOff || ''),
+      ], debriefingColWidths);
+    }
+  } else {
+    builder.drawTableRow(['-', '-', '-', '-', '-'], debriefingColWidths);
+  }
+
+  builder.moveDown(5);
+  builder.drawSubsectionHeader('G3. Company Forms');
+  const companyFormColWidths = [CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.18];
+  builder.drawTableHeader(['Assignment', 'Form', 'Version', 'Stage', 'Type', 'Status', 'Date Recorded', 'Remarks'], companyFormColWidths);
+  if (formData.companyFormsLoadFailed) {
+    builder.drawTableRow(['Company forms could not be loaded', '-', '-', '-', '-', '-', '-', '-'], companyFormColWidths);
+  } else if (formData.companyForms && formData.companyForms.length > 0) {
+    for (const row of formData.companyForms) {
+      builder.drawTableRow([
+        pdfSafeText(row.assignment),
+        pdfSafeText(row.formName),
+        pdfSafeText(row.version),
+        pdfSafeText(row.stage),
+        pdfSafeText(row.type),
+        pdfSafeText(row.status),
+        pdfSafeText(row.dateRecorded),
+        pdfSafeText(row.remarks),
+      ], companyFormColWidths);
+    }
+  } else {
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-'], companyFormColWidths);
   }
 }
