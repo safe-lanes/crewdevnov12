@@ -7,6 +7,8 @@ import type {
 } from "../../../../shared/v2/rest-hours/types";
 import { rhOfficeCommentUuid } from "../utils/rhUuid";
 import { insertOnNaturalKey } from "../utils/naturalKeyInsert";
+import { captureChange } from "../../sync/changeCapture";
+import { actorOf, capturedUpdate, inTx, lockByUuid } from "../../sync/capturedWrite";
 
 export class OfficeCommentsRepository {
   async findAll(filters?: {
@@ -47,41 +49,37 @@ export class OfficeCommentsRepository {
   }
 
   async create(
-    data: Omit<InsertRhOfficeViolationCommentV2, "officeCommentUuid">
+    data: Omit<InsertRhOfficeViolationCommentV2, "officeCommentUuid">, tx?: any
   ): Promise<RhOfficeViolationCommentV2> {
-    const db = getDb();
-    // Atomic create-or-update on (vessel_id, month_value); id derived from the key (RH-02).
-    return insertOnNaturalKey(db, rhOfficeViolationCommentsV2, {
-      uuidColumn: "officeCommentUuid",
-      uuid: rhOfficeCommentUuid(data.vesselId, data.monthValue),
-      keyColumns: ["vesselId", "monthValue"],
-      values: data,
+    const uuid = rhOfficeCommentUuid(data.vesselId, data.monthValue);
+    return inTx(tx, async (db) => {
+      const old = await lockByUuid(db, rhOfficeViolationCommentsV2, "officeCommentUuid", uuid);
+      // Atomic create-or-update on (vessel_id, month_value); id derived from the key (RH-02).
+      const row = await insertOnNaturalKey(db, rhOfficeViolationCommentsV2, {
+        uuidColumn: "officeCommentUuid",
+        uuid,
+        keyColumns: ["vesselId", "monthValue"],
+        values: data,
+      });
+      await captureChange(db, {
+        table: rhOfficeViolationCommentsV2, rowUuid: row.officeCommentUuid, oldRow: old ?? null, newRow: row,
+        actorUuid: actorOf(data),
+      });
+      return row;
     });
   }
 
   async update(
     officeCommentUuid: string,
-    data: Partial<InsertRhOfficeViolationCommentV2>
+    data: Partial<InsertRhOfficeViolationCommentV2>, tx?: any
   ): Promise<RhOfficeViolationCommentV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(rhOfficeViolationCommentsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhOfficeViolationCommentsV2.officeCommentUuid, officeCommentUuid))
-      .returning();
-    return results[0];
+    return capturedUpdate<RhOfficeViolationCommentV2>(
+      tx, rhOfficeViolationCommentsV2, "officeCommentUuid", officeCommentUuid, { ...data, updatedAt: new Date() });
   }
 
-  async softDelete(officeCommentUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(rhOfficeViolationCommentsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhOfficeViolationCommentsV2.officeCommentUuid, officeCommentUuid))
-      .returning();
-    return results.length > 0;
+  async softDelete(officeCommentUuid: string, tx?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      tx, rhOfficeViolationCommentsV2, "officeCommentUuid", officeCommentUuid, { isDeleted: true, updatedAt: new Date() });
+    return !!row;
   }
 }

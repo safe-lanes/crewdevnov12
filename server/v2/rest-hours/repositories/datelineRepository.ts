@@ -6,6 +6,7 @@ import type {
   InsertRhDatelineAdjustmentV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 
 export class DatelineRepository {
   async findAll(filters?: {
@@ -46,42 +47,25 @@ export class DatelineRepository {
   }
 
   async create(
-    data: Omit<InsertRhDatelineAdjustmentV2, "adjustmentUuid">
+    data: Omit<InsertRhDatelineAdjustmentV2, "adjustmentUuid">, tx?: any
   ): Promise<RhDatelineAdjustmentV2> {
-    const db = getDb();
-    const results = await db
-      .insert(rhDatelineAdjustmentsV2)
-      .values({
-        ...data,
-        adjustmentUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    return capturedInsert<RhDatelineAdjustmentV2>(tx, rhDatelineAdjustmentsV2, "adjustmentUuid", {
+      ...data,
+      adjustmentUuid: uuidv4(),
+    });
   }
 
   async update(
     adjustmentUuid: string,
-    data: Partial<InsertRhDatelineAdjustmentV2>
+    data: Partial<InsertRhDatelineAdjustmentV2>, tx?: any
   ): Promise<RhDatelineAdjustmentV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(rhDatelineAdjustmentsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhDatelineAdjustmentsV2.adjustmentUuid, adjustmentUuid))
-      .returning();
-    return results[0];
+    return capturedUpdate<RhDatelineAdjustmentV2>(
+      tx, rhDatelineAdjustmentsV2, "adjustmentUuid", adjustmentUuid, { ...data, updatedAt: new Date() });
   }
 
-  async softDelete(adjustmentUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(rhDatelineAdjustmentsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhDatelineAdjustmentsV2.adjustmentUuid, adjustmentUuid))
-      .returning();
-    return results.length > 0;
+  async softDelete(adjustmentUuid: string, tx?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      tx, rhDatelineAdjustmentsV2, "adjustmentUuid", adjustmentUuid, { isDeleted: true, updatedAt: new Date() });
+    return !!row;
   }
 }

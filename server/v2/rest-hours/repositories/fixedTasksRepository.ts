@@ -6,6 +6,7 @@ import type {
   InsertRhFixedTaskV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 
 export class FixedTasksRepository {
   private parseFixedTask(task: RhFixedTaskV2): RhFixedTaskV2 {
@@ -101,42 +102,27 @@ export class FixedTasksRepository {
   }
 
   async create(
-    data: Omit<InsertRhFixedTaskV2, "fixedTaskUuid">
+    data: Omit<InsertRhFixedTaskV2, "fixedTaskUuid">, tx?: any
   ): Promise<RhFixedTaskV2> {
-    const db = getDb();
-    const results = await db
-      .insert(rhFixedTasksV2)
-      .values({
-        ...data,
-        fixedTaskUuid: uuidv4(),
-      })
-      .returning();
-    return this.parseFixedTask(results[0]);
+    const row = await capturedInsert<RhFixedTaskV2>(tx, rhFixedTasksV2, "fixedTaskUuid", {
+      ...data,
+      fixedTaskUuid: uuidv4(),
+    });
+    return this.parseFixedTask(row);
   }
 
   async update(
     fixedTaskUuid: string,
-    data: Partial<InsertRhFixedTaskV2>
+    data: Partial<InsertRhFixedTaskV2>, tx?: any
   ): Promise<RhFixedTaskV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(rhFixedTasksV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhFixedTasksV2.fixedTaskUuid, fixedTaskUuid))
-      .returning();
-    return results[0] ? this.parseFixedTask(results[0]) : undefined;
+    const row = await capturedUpdate<RhFixedTaskV2>(
+      tx, rhFixedTasksV2, "fixedTaskUuid", fixedTaskUuid, { ...data, updatedAt: new Date() });
+    return row ? this.parseFixedTask(row) : undefined;
   }
 
-  async softDelete(fixedTaskUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(rhFixedTasksV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhFixedTasksV2.fixedTaskUuid, fixedTaskUuid))
-      .returning();
-    return results.length > 0;
+  async softDelete(fixedTaskUuid: string, tx?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      tx, rhFixedTasksV2, "fixedTaskUuid", fixedTaskUuid, { isDeleted: true, updatedAt: new Date() });
+    return !!row;
   }
 }

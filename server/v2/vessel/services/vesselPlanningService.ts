@@ -1122,6 +1122,7 @@ export const vesselPlanningService = {
         updatedByUuid: clearedBy,
         updatedAt: sql`NOW()`,
       }).where(eq(vesselPlanningV2.planUuid, planUuid)).returning();
+      await captureRow(tx, vesselPlanningV2, planUuid, locked, planning, clearedBy);
       const [audit] = await tx.insert(vesselPlanningRelieverClearAudit).values({
         planUuid,
         relieverCrewUuid: locked.relieverCrewUuid,
@@ -1204,7 +1205,7 @@ export const vesselPlanningService = {
          assignment.assignmentType !== "OnBoard" || !assignment.isCurrent) {
        throw new Error("Linked incumbent assignment is inconsistent; reconcile before updating assignment details");
      }
-     await tx.update(crewAssignments).set({
+     const [assignmentAfter] = await tx.update(crewAssignments).set({
         ...(reliefDueChanged ? { reliefDue: (resolvedData as any).reliefDue ?? null } : {}),
         ...(contractChanged ? {
           contractPeriod: (resolvedData as any).contractPeriodMonths != null
@@ -1212,7 +1213,8 @@ export const vesselPlanningService = {
         } : {}),
        updatedByUuid: data.auditUserUuid || null,
        updatedAt: sql`NOW()`,
-     }).where(eq(crewAssignments.assignUuid, locked.crewAssignUuid));
+     }).where(eq(crewAssignments.assignUuid, locked.crewAssignUuid)).returning();
+     await captureRow(tx, crewAssignments, locked.crewAssignUuid, assignment, assignmentAfter, data.auditUserUuid);
    };
 
   let updated;
@@ -1237,7 +1239,7 @@ export const vesselPlanningService = {
           throw new Error("Reliever assignment is unlinked; reconcile its assignment before unassigning");
         }
         const [assignment] = await tx
-          .select({ assignUuid: crewAssignments.assignUuid })
+          .select()
           .from(crewAssignments)
           .where(
             and(
@@ -1252,7 +1254,7 @@ export const vesselPlanningService = {
         if (!assignment) {
           throw new Error("Linked reliever assignment is no longer Planned; reconcile before unassigning");
         }
-        await tx
+        const [cancelledAssignment] = await tx
           .update(crewAssignments)
           .set({
             assignmentType: "Cancelled",
@@ -1261,7 +1263,9 @@ export const vesselPlanningService = {
             updatedByUuid: data.auditUserUuid || null,
             updatedAt: sql`NOW()`,
           })
-          .where(eq(crewAssignments.assignUuid, assignment.assignUuid));
+          .where(eq(crewAssignments.assignUuid, assignment.assignUuid))
+          .returning();
+        await captureRow(tx, crewAssignments, assignment.assignUuid, assignment, cancelledAssignment, data.auditUserUuid);
       }
 
       const planning = await vesselPlanningRepository.update(
@@ -1343,7 +1347,7 @@ export const vesselPlanningService = {
     if (effectiveAuditUser) {
       await vesselPlanningRepository.update(planUuid, { updatedByUuid: effectiveAuditUser });
     }
-    return vesselPlanningRepository.archive(planUuid, archivedByUuid);
+    return vesselPlanningRepository.archive(planUuid, effectiveAuditUser);
   },
 
   async getIncumbentReconciliation(planUuid: string) {
@@ -1419,6 +1423,7 @@ export const vesselPlanningService = {
         updatedByUuid: reviewedBy,
         updatedAt: new Date(),
       }).where(eq(vesselPlanningV2.planUuid, planUuid)).returning();
+      await captureRow(tx, vesselPlanningV2, planUuid, planning, updated, reviewedBy);
       await tx.execute(sql`
         INSERT INTO vessel_planning_assignment_reconciliations
           (plan_uuid, assign_uuid, crew_uuid, vessel_uuid, reviewed_by, evidence_note)
@@ -1634,9 +1639,11 @@ export const vesselPlanningService = {
       secondaryCrew = secondaryByName ?? null;
     }
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: any) => {
       console.log(`📋 [VESSEL-PLANNING-V2] Rank-change sign-off + archive (tx): planUuid=${planUuid}, signOffDate=${data.signOffDate}`);
-      await tx
+      const [lockedPrimary] = await tx.select().from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, planUuid)).for("update");
+      const [signedOffRow] = await tx
         .update(vesselPlanningV2)
         .set({
           signOffDate: data.signOffDate,
@@ -1648,18 +1655,24 @@ export const vesselPlanningService = {
           updatedByUuid: data.auditUserUuid || null,
           updatedAt: new Date(),
         })
-        .where(eq(vesselPlanningV2.planUuid, planUuid));
+        .where(eq(vesselPlanningV2.planUuid, planUuid))
+        .returning();
+      await captureRow(tx, vesselPlanningV2, planUuid, lockedPrimary ?? null, signedOffRow, data.auditUserUuid);
 
       if (secondaryCrew) {
         console.log(`📋 [VESSEL-PLANNING-V2] Promoting secondary to primary on rank change (tx): planUuid=${secondaryCrew.planUuid}`);
-        await tx
+        const [lockedSecondary] = await tx.select().from(vesselPlanningV2)
+          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid)).for("update");
+        const [promotedRow] = await tx
           .update(vesselPlanningV2)
           .set({
             crewStatus: 'primary',
             updatedByUuid: data.auditUserUuid || null,
             updatedAt: new Date(),
           })
-          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid));
+          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid))
+          .returning();
+        await captureRow(tx, vesselPlanningV2, secondaryCrew.planUuid, lockedSecondary ?? null, promotedRow, data.auditUserUuid);
       }
     });
 
@@ -2169,20 +2182,24 @@ export const vesselPlanningService = {
           console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 auto-create skipped: crew ${finalCrewUuid} already has an open company sea service record (overlapping period)`);
         } else {
           const { v4: uuidv4e1 } = await import("uuid");
-          await db3.insert(crewSeaService).values({
-            seaUuid: uuidv4e1(),
-            crewUuid: finalCrewUuid,
-            serviceType: 'company',
-            vesselUuid: vesselUuid,
-            vesselName: resolvedVesselName,
-            vesselTypeUuid: resolvedVesselTypeUuid,
-            rank: planning.rank || null,
-            fromDate: finalSignOnDate,
-            toDate: null,
-            isDeleted: false,
-            isSync: false,
-            createdByUuid: data.auditUserUuid || null,
-            updatedByUuid: data.auditUserUuid || null,
+          // Insert and capture in one transaction so the row is never written unreported.
+          await db3.transaction(async (tx3: any) => {
+            const [seaRow] = await tx3.insert(crewSeaService).values({
+              seaUuid: uuidv4e1(),
+              crewUuid: finalCrewUuid,
+              serviceType: 'company',
+              vesselUuid: vesselUuid,
+              vesselName: resolvedVesselName,
+              vesselTypeUuid: resolvedVesselTypeUuid,
+              rank: planning.rank || null,
+              fromDate: finalSignOnDate,
+              toDate: null,
+              isDeleted: false,
+              isSync: false,
+              createdByUuid: data.auditUserUuid || null,
+              updatedByUuid: data.auditUserUuid || null,
+            }).returning();
+            await captureRow(tx3, crewSeaService, seaRow.seaUuid, null, seaRow, data.auditUserUuid);
           });
           console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service auto-created for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
         }

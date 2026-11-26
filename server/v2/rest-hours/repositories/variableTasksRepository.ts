@@ -6,6 +6,7 @@ import type {
   InsertRhVariableTaskV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 
 export class VariableTasksRepository {
   async findAll(filters?: {
@@ -50,42 +51,25 @@ export class VariableTasksRepository {
   }
 
   async create(
-    data: Omit<InsertRhVariableTaskV2, "variableTaskUuid">
+    data: Omit<InsertRhVariableTaskV2, "variableTaskUuid">, tx?: any
   ): Promise<RhVariableTaskV2> {
-    const db = getDb();
-    const results = await db
-      .insert(rhVariableTasksV2)
-      .values({
-        ...data,
-        variableTaskUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    return capturedInsert<RhVariableTaskV2>(tx, rhVariableTasksV2, "variableTaskUuid", {
+      ...data,
+      variableTaskUuid: uuidv4(),
+    });
   }
 
   async update(
     variableTaskUuid: string,
-    data: Partial<InsertRhVariableTaskV2>
+    data: Partial<InsertRhVariableTaskV2>, tx?: any
   ): Promise<RhVariableTaskV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(rhVariableTasksV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhVariableTasksV2.variableTaskUuid, variableTaskUuid))
-      .returning();
-    return results[0];
+    return capturedUpdate<RhVariableTaskV2>(
+      tx, rhVariableTasksV2, "variableTaskUuid", variableTaskUuid, { ...data, updatedAt: new Date() });
   }
 
-  async softDelete(variableTaskUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(rhVariableTasksV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhVariableTasksV2.variableTaskUuid, variableTaskUuid))
-      .returning();
-    return results.length > 0;
+  async softDelete(variableTaskUuid: string, tx?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      tx, rhVariableTasksV2, "variableTaskUuid", variableTaskUuid, { isDeleted: true, updatedAt: new Date() });
+    return !!row;
   }
 }

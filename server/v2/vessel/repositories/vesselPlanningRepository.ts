@@ -7,6 +7,7 @@ import { masterPorts, masterNationalities } from "../../../../shared/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 
 function getRankSortIndex(rankStr: string, rankOrderMap: Map<string, number>): number {
   const normRank = (rankStr || "").toLowerCase().trim();
@@ -153,11 +154,9 @@ export class VesselPlanningRepository {
       }
     }
 
-    if (dupPlanUuidsToDelete.length > 0) {
-      await db
-        .update(vesselPlanningV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
-        .where(inArray(vesselPlanningV2.planUuid, dupPlanUuidsToDelete));
+    // Housekeeping soft delete: each purged row is still reported to sync.
+    for (const dupUuid of dupPlanUuidsToDelete) {
+      await this.delete(dupUuid);
     }
 
     // Filter out deleted rows
@@ -416,86 +415,45 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertVesselPlanningV2, "planUuid">, executor: any = getDb()): Promise<VesselPlanningV2> {
-    const results = await executor
-      .insert(vesselPlanningV2)
-      .values({
-        planUuid: uuidv4(),
-        ...data,
-      })
-      .returning();
-    return results[0];
+  // Every write below reports the change to the sync engine on the same
+  // transaction (SYN-02). Pass `executor` to join the caller's transaction.
+  async create(data: Omit<InsertVesselPlanningV2, "planUuid">, executor?: any): Promise<VesselPlanningV2> {
+    return capturedInsert<VesselPlanningV2>(executor, vesselPlanningV2, "planUuid", {
+      planUuid: uuidv4(),
+      ...data,
+    });
   }
 
   async update(
     planUuid: string,
     data: Partial<InsertVesselPlanningV2>,
-    executor: any = getDb(),
+    executor?: any,
   ): Promise<VesselPlanningV2 | undefined> {
-    const results = await executor
-      .update(vesselPlanningV2)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(vesselPlanningV2.planUuid, planUuid),
-          eq(vesselPlanningV2.isDeleted, false)
-        )
-      )
-      .returning();
-    return results[0];
+    return capturedUpdate<VesselPlanningV2>(
+      executor, vesselPlanningV2, "planUuid", planUuid,
+      { ...data, updatedAt: new Date() }, null, eq(vesselPlanningV2.isDeleted, false));
   }
 
-  async archive(planUuid: string, auditUserUuid?: string): Promise<VesselPlanningV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(vesselPlanningV2)
-      .set({
-        isArchived: true,
-        updatedAt: new Date(),
-        ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}),
-      })
-      .where(
-        and(
-          eq(vesselPlanningV2.planUuid, planUuid),
-          eq(vesselPlanningV2.isDeleted, false)
-        )
-      )
-      .returning();
-    return results[0];
+  async archive(planUuid: string, auditUserUuid?: string, executor?: any): Promise<VesselPlanningV2 | undefined> {
+    return capturedUpdate<VesselPlanningV2>(
+      executor, vesselPlanningV2, "planUuid", planUuid,
+      { isArchived: true, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) },
+      auditUserUuid ?? null, eq(vesselPlanningV2.isDeleted, false));
   }
 
-  async unarchive(planUuid: string): Promise<VesselPlanningV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(vesselPlanningV2)
-      .set({
-        isArchived: false,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(vesselPlanningV2.planUuid, planUuid),
-          eq(vesselPlanningV2.isDeleted, false)
-        )
-      )
-      .returning();
-    return results[0];
+  async unarchive(planUuid: string, auditUserUuid?: string, executor?: any): Promise<VesselPlanningV2 | undefined> {
+    return capturedUpdate<VesselPlanningV2>(
+      executor, vesselPlanningV2, "planUuid", planUuid,
+      { isArchived: false, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) },
+      auditUserUuid ?? null, eq(vesselPlanningV2.isDeleted, false));
   }
 
-  async delete(planUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(vesselPlanningV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(vesselPlanningV2.planUuid, planUuid))
-      .returning();
-    return results.length > 0;
+  async delete(planUuid: string, auditUserUuid?: string, executor?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      executor, vesselPlanningV2, "planUuid", planUuid,
+      { isDeleted: true, updatedAt: new Date(), ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}) },
+      auditUserUuid ?? null);
+    return !!row;
   }
 
   async getAttachments(planUuid: string): Promise<VesselPlanningAttachmentsV2[]> {
@@ -512,16 +470,10 @@ export class VesselPlanningRepository {
       .orderBy(desc(vesselPlanningAttachmentsV2.createdAt));
   }
 
-  async addAttachment(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid">): Promise<VesselPlanningAttachmentsV2> {
-    const db = getDb();
-    const results = await db
-      .insert(vesselPlanningAttachmentsV2)
-      .values({
-        attUuid: uuidv4(),
-        ...data,
-      })
-      .returning();
-    return results[0];
+  async addAttachment(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid">, executor?: any): Promise<VesselPlanningAttachmentsV2> {
+    return capturedInsert<VesselPlanningAttachmentsV2>(
+      executor, vesselPlanningAttachmentsV2, "attUuid", { attUuid: uuidv4(), ...data },
+      (data as any).uploadedByUuid ?? null);
   }
 
   async getAttachmentByUuid(attUuid: string): Promise<VesselPlanningAttachmentsV2 | undefined> {
@@ -539,17 +491,11 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async deleteAttachment(attUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(vesselPlanningAttachmentsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(vesselPlanningAttachmentsV2.attUuid, attUuid))
-      .returning();
-    return results.length > 0;
+  async deleteAttachment(attUuid: string, auditUserUuid?: string, executor?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      executor, vesselPlanningAttachmentsV2, "attUuid", attUuid,
+      { isDeleted: true, updatedAt: new Date() }, auditUserUuid ?? null);
+    return !!row;
   }
 }
 
@@ -568,16 +514,11 @@ export class VesselPlanningAttachmentsRepository {
       .orderBy(desc(vesselPlanningAttachmentsV2.createdAt));
   }
 
-  async create(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid"> & { attUuid?: string }): Promise<VesselPlanningAttachmentsV2> {
-    const db = getDb();
-    const results = await db
-      .insert(vesselPlanningAttachmentsV2)
-      .values({
-        attUuid: data.attUuid || uuidv4(),
-        ...data,
-      })
-      .returning();
-    return results[0];
+  async create(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid"> & { attUuid?: string }, executor?: any): Promise<VesselPlanningAttachmentsV2> {
+    return capturedInsert<VesselPlanningAttachmentsV2>(
+      executor, vesselPlanningAttachmentsV2, "attUuid",
+      { attUuid: data.attUuid || uuidv4(), ...data },
+      (data as any).uploadedByUuid ?? null);
   }
 
   async findByUuid(attUuid: string): Promise<VesselPlanningAttachmentsV2 | undefined> {
@@ -595,17 +536,11 @@ export class VesselPlanningAttachmentsRepository {
     return results[0];
   }
 
-  async softDelete(attUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(vesselPlanningAttachmentsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(vesselPlanningAttachmentsV2.attUuid, attUuid))
-      .returning();
-    return results.length > 0;
+  async softDelete(attUuid: string, auditUserUuid?: string, executor?: any): Promise<boolean> {
+    const row = await capturedUpdate(
+      executor, vesselPlanningAttachmentsV2, "attUuid", attUuid,
+      { isDeleted: true, updatedAt: new Date() }, auditUserUuid ?? null);
+    return !!row;
   }
 }
 

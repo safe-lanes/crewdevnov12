@@ -6,6 +6,7 @@ import type {
   InsertRhDailyRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 
 export class DailyRecordsRepository {
   async findAll(filters?: {
@@ -99,39 +100,22 @@ export class DailyRecordsRepository {
 
   async create(
     data: Omit<InsertRhDailyRecordV2, "rhDailyUuid">, tx?: any): Promise<RhDailyRecordV2> {
-    const db = tx ?? getDb();
-    const results = await db
-      .insert(rhDailyRecordsV2)
-      .values({
-        ...data,
-        rhDailyUuid: uuidv4(),
-      })
-      .returning();
-    return results[0];
+    return capturedInsert<RhDailyRecordV2>(tx, rhDailyRecordsV2, "rhDailyUuid", {
+      ...data,
+      rhDailyUuid: uuidv4(),
+    });
   }
 
   async update(
     rhDailyUuid: string,
     data: Partial<InsertRhDailyRecordV2>, tx?: any): Promise<RhDailyRecordV2 | undefined> {
-    const db = tx ?? getDb();
-    const results = await db
-      .update(rhDailyRecordsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(rhDailyRecordsV2.rhDailyUuid, rhDailyUuid))
-      .returning();
-    return results[0];
+    return capturedUpdate<RhDailyRecordV2>(
+      tx, rhDailyRecordsV2, "rhDailyUuid", rhDailyUuid, { ...data, updatedAt: new Date() });
   }
 
   async softDelete(rhDailyUuid: string, tx?: any): Promise<boolean> {
-    const db = tx ?? getDb();
-    const results = await db
-      .update(rhDailyRecordsV2)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rhDailyRecordsV2.rhDailyUuid, rhDailyUuid))
-      .returning();
-    return results.length > 0;
+    const row = await capturedUpdate(
+      tx, rhDailyRecordsV2, "rhDailyUuid", rhDailyUuid, { isDeleted: true, updatedAt: new Date() });
+    return !!row;
   }
 }
