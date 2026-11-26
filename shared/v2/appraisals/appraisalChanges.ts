@@ -5,7 +5,7 @@
 // so a stale copy of the form cannot overwrite someone else's edits. Child rows
 // are identified by their row uuid, never by list position.
 
-import { v5 as uuidv5 } from "uuid";
+import { uuidV5Name } from "../uuid/deterministicUuid";
 import type { AppraisalRatings } from "./appraisalRatings";
 
 export const SECTION_KEYS = [
@@ -139,5 +139,5 @@ const AUTO_TRAINING_ROW_NAMESPACE = "2b0e69a5-509a-4543-8e9a-4d4d753e70d1";
 // keeping two. `courseKey` is the crew training's trainUuid (else its course
 // id, else its name).
 export function autoTrainingRowUuid(appraisalUuid: string, courseKey: string): string {
-  return uuidv5(`${appraisalUuid}:${courseKey}`, AUTO_TRAINING_ROW_NAMESPACE);
+  return uuidV5Name(AUTO_TRAINING_ROW_NAMESPACE, `${appraisalUuid}:${courseKey}`);
 }

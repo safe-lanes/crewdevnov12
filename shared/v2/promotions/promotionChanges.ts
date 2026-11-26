@@ -1,4 +1,4 @@
-import { v5 as uuidv5 } from "uuid";
+import { uuidV5Name } from "../uuid/deterministicUuid";
 import { z } from "zod";
 import { sameValue } from "../appraisals/appraisalChanges";
 
@@ -94,18 +94,18 @@ export const LEGACY_LIST_FIELDS = [
 const PROMO_ROW_NAMESPACE = "89ed21b2-ce08-5dd2-befc-5a92da8e2bb5";
 
 export function promoRowUuid(reviewUuid: string, section: PromoKeyedSection, key: string): string {
-  return uuidv5(`${reviewUuid}:${section}:${String(key).trim()}`, PROMO_ROW_NAMESPACE);
+  return uuidV5Name(PROMO_ROW_NAMESPACE, `${reviewUuid}:${section}:${String(key).trim()}`);
 }
 
 // One row per review and criteria code (promo_criteria_status_v2), and one per
 // review (promo_suitability_v2) (PRD-09). Ship and office derive the same uuid
 // for the same row, so a row made on both sides is one row after sync.
 export function criteriaStatusUuid(reviewUuid: string, criteriaCode: string): string {
-  return uuidv5(`${reviewUuid}:criteriaStatus:${String(criteriaCode).trim()}`, PROMO_ROW_NAMESPACE);
+  return uuidV5Name(PROMO_ROW_NAMESPACE, `${reviewUuid}:criteriaStatus:${String(criteriaCode).trim()}`);
 }
 
 export function suitabilityUuid(reviewUuid: string): string {
-  return uuidv5(`${reviewUuid}:suitability`, PROMO_ROW_NAMESPACE);
+  return uuidV5Name(PROMO_ROW_NAMESPACE, `${reviewUuid}:suitability`);
 }
 
 function isKeyed(section: PromoSectionKey): section is PromoKeyedSection {
@@ -223,7 +223,7 @@ export function buildPromotionChanges(
 // either side hangs off the same parent. Never change the format: stored rows
 // depend on it.
 export function checklistPointUuid(reviewUuid: string, sectionId: string, pointId: string): string {
-  return uuidv5(`${reviewUuid}:checklist:${String(sectionId).trim()}:${String(pointId).trim()}`, PROMO_ROW_NAMESPACE);
+  return uuidV5Name(PROMO_ROW_NAMESPACE, `${reviewUuid}:checklist:${String(sectionId).trim()}:${String(pointId).trim()}`);
 }
 
 // The verifications and comments of one point, as the checklist saves them.

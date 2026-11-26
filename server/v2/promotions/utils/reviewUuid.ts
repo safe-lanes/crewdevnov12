@@ -1,4 +1,4 @@
-import { v5 as uuidv5 } from "uuid";
+import { uuidV5Name } from "@shared/v2/uuid/deterministicUuid";
 
 /**
  * A promotion review's review_uuid, worked out from the crew member and the
@@ -15,5 +15,5 @@ export function promotionReviewUuid(crewMemberId: string, promotionToRank: strin
   const crew = String(crewMemberId ?? "").trim();
   const rank = String(promotionToRank ?? "").trim().toLowerCase();
   if (!crew || !rank) throw new Error("A promotion review needs a crew member and a target rank to get its id");
-  return uuidv5(`${crew}|${rank}`, PROMOTION_REVIEW_UUID_NAMESPACE);
+  return uuidV5Name(PROMOTION_REVIEW_UUID_NAMESPACE, `${crew}|${rank}`);
 }
