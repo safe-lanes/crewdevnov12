@@ -6,10 +6,12 @@ import { masterVessels, masterPorts } from "../../../../shared/schema";
 import { admCompanyRanksV2, admVesselRevisionsV2 } from "../../../../shared/v2/admin/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselRevisionsService } from "../../admin/services/vesselRevisionsService";
+import { VesselRevisionsRepository } from "../../admin/repositories/vesselRevisionsRepository";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
 import { recordImportedCompanyService, type ImportSeaServiceOutcome } from "./crewImportSeaService";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { capturedInsert, capturedUpdate } from "../../sync/capturedWrite";
 import { parseDateString } from "../utils/dateUtils";
 import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 
@@ -131,10 +133,14 @@ async function rollbackHierarchyImport(
   try {
     const allCreatedUuids = committed.flatMap((c) => c.createdPlanUuids);
     if (allCreatedUuids.length > 0) {
-      await db
-        .update(vesselPlanningV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
-        .where(inArray(vesselPlanningV2.planUuid, allCreatedUuids));
+      // One capture per row, all in one transaction (SYN-02: a write that is not
+      // captured never reaches the other side).
+      await db.transaction(async (tx: any) => {
+        for (const planUuid of allCreatedUuids) {
+          await capturedUpdate(tx, vesselPlanningV2, "planUuid", planUuid,
+            { isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid ?? null }, auditUserUuid ?? null);
+        }
+      });
     }
   } catch (e: any) {
     failedSteps.push(`Step 1 (remove new planning rows): ${e.message || e}`);
@@ -145,26 +151,24 @@ async function rollbackHierarchyImport(
   try {
     const allPreSyncUuids = committed.flatMap((c) => c.preSyncPlanUuids);
     if (allPreSyncUuids.length > 0) {
-      await db
-        .update(vesselPlanningV2)
-        .set({ isDeleted: false, updatedAt: new Date() })
-        .where(
-          and(
-            inArray(vesselPlanningV2.planUuid, allPreSyncUuids),
-            eq(vesselPlanningV2.isDeleted, true),
-          ),
-        );
+      await db.transaction(async (tx: any) => {
+        for (const planUuid of allPreSyncUuids) {
+          // Only rows that are still soft-deleted; others match nothing and capture nothing.
+          await capturedUpdate(tx, vesselPlanningV2, "planUuid", planUuid,
+            { isDeleted: false, updatedAt: new Date(), updatedByUuid: auditUserUuid ?? null }, auditUserUuid ?? null,
+            eq(vesselPlanningV2.isDeleted, true));
+        }
+      });
     }
   } catch (e: any) {
     failedSteps.push(`Step 2 (restore pre-existing planning rows): ${e.message || e}`);
     console.error("[VESSEL IMPORT] Rollback Step 2 failed:", e);
   }
 
-  // Step 3 — Hard-delete the exact revision rows created by this import.
+  // Step 3 — Soft-delete the exact revision rows created by this import (a hard
+  // delete would never reach the ship; the table syncs office to ship).
   try {
-    await db
-      .delete(admVesselRevisionsV2)
-      .where(inArray(admVesselRevisionsV2.id, revisionIds));
+    await new VesselRevisionsRepository().softDeleteByIds(revisionIds, auditUserUuid ?? null);
   } catch (e: any) {
     failedSteps.push(`Step 3 (delete new revisions): ${e.message || e}`);
     console.error("[VESSEL IMPORT] Rollback Step 3 failed:", e);
@@ -1189,20 +1193,17 @@ export async function importCrewAssignments(
 
         if (!matchedSlot) {
           // item.resolvedRankId is guaranteed non-null here (pre-flight validated)
-          const [newSlot] = await tx
-            .insert(vesselPlanningV2)
-            .values({
-              planUuid: uuidv4(),
-              vesselUuid: vessel.vesselUuid,
-              rankId: item.resolvedRankId!,
-              rank: targetPos,
-              crewStatus: "primary",
-              isArchived: false,
-              isDeleted: false,
-              createdByUuid: auditUserUuid ?? null,
-              updatedByUuid: auditUserUuid ?? null,
-            })
-            .returning();
+          const newSlot = await capturedInsert(tx, vesselPlanningV2, "planUuid", {
+            planUuid: uuidv4(),
+            vesselUuid: vessel.vesselUuid,
+            rankId: item.resolvedRankId!,
+            rank: targetPos,
+            crewStatus: "primary",
+            isArchived: false,
+            isDeleted: false,
+            createdByUuid: auditUserUuid ?? null,
+            updatedByUuid: auditUserUuid ?? null,
+          }, auditUserUuid ?? null);
           matchedSlot = newSlot;
           // Register in the in-transaction map so subsequent rows find it
           if (!txPlanningByVessel.has(vessel.vesselUuid))
@@ -1271,20 +1272,17 @@ export async function importCrewAssignments(
 
         if (existingAssignment) {
           // Already imported — update mutable fields only
-          await tx
-            .update(crewAssignments)
-            .set({
-              reliefDue: finalReliefDue ?? existingAssignment.reliefDue ?? null,
-              contractPeriod: item.contractPeriod
-                ? String(item.contractPeriod)
-                : existingAssignment.contractPeriod,
-              updatedAt: new Date(),
-              updatedByUuid: auditUserUuid ?? null,
-            })
-            .where(eq(crewAssignments.assignUuid, existingAssignment.assignUuid));
+          await capturedUpdate(tx, crewAssignments, "assignUuid", existingAssignment.assignUuid, {
+            reliefDue: finalReliefDue ?? existingAssignment.reliefDue ?? null,
+            contractPeriod: item.contractPeriod
+              ? String(item.contractPeriod)
+              : existingAssignment.contractPeriod,
+            updatedAt: new Date(),
+            updatedByUuid: auditUserUuid ?? null,
+          }, auditUserUuid ?? null);
           result.alreadyImportedCount++;
         } else {
-          await tx.insert(crewAssignments).values({
+          await capturedInsert(tx, crewAssignments, "assignUuid", {
             assignUuid: assignmentUuid,
             crewUuid: crew.crewUuid,
             vesselUuid: vessel.vesselUuid,
@@ -1297,7 +1295,7 @@ export async function importCrewAssignments(
             isDeleted: false,
             createdByUuid: auditUserUuid ?? null,
             updatedByUuid: auditUserUuid ?? null,
-          });
+          }, auditUserUuid ?? null);
 
           if (isPrimary) result.primaryAssignedCount++;
           else result.secondaryAssignedCount++;
@@ -1306,7 +1304,7 @@ export async function importCrewAssignments(
         // ── Update the slot after the assignment exists (FK is immediate). ───
         // Keep import's assignment identity exact, even when it reuses a row.
         if (isPrimary) {
-          await tx.update(vesselPlanningV2).set({
+          await capturedUpdate(tx, vesselPlanningV2, "planUuid", matchedSlot.planUuid, {
             crewUuid: crew.crewUuid,
             crewAssignUuid: assignmentUuid,
             crewStatus: matchedSlot.crewStatus === "secondary" ? "secondary" : "primary",
@@ -1317,7 +1315,7 @@ export async function importCrewAssignments(
             contractPeriodMonths: item.contractPeriod ?? null,
             updatedAt: new Date(),
             updatedByUuid: auditUserUuid ?? null,
-          }).where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
+          }, auditUserUuid ?? null);
           matchedSlot.crewUuid = crew.crewUuid;
           matchedSlot.crewAssignUuid = assignmentUuid;
         } else {
@@ -1332,24 +1330,23 @@ export async function importCrewAssignments(
           if (matchedSlot.relieverAssignUuid && matchedSlot.relieverAssignUuid !== assignmentUuid) {
             // Preserve the previous reliever's history; never overwrite its
             // assignment or cancel another crew's matching Planned row.
-            const [cancelled] = await tx.update(crewAssignments).set({
+            const cancelled = await capturedUpdate(tx, crewAssignments, "assignUuid", matchedSlot.relieverAssignUuid, {
               assignmentType: "Cancelled",
               isCurrent: false,
               reason: "Replaced by crew list import",
               updatedAt: new Date(),
               updatedByUuid: auditUserUuid ?? null,
-            }).where(and(
-              eq(crewAssignments.assignUuid, matchedSlot.relieverAssignUuid),
+            }, auditUserUuid ?? null, and(
               eq(crewAssignments.crewUuid, matchedSlot.relieverCrewUuid),
               eq(crewAssignments.vesselUuid, vessel.vesselUuid),
               eq(crewAssignments.assignmentType, "Planned"),
               eq(crewAssignments.isDeleted, false),
-            )).returning({ assignUuid: crewAssignments.assignUuid });
+            ));
             if (!cancelled) {
               throw new Error(`Linked reliever assignment for planning ${matchedSlot.planUuid} is no longer Planned; reconcile before import.`);
             }
           }
-          await tx.update(vesselPlanningV2).set({
+          await capturedUpdate(tx, vesselPlanningV2, "planUuid", matchedSlot.planUuid, {
             relieverCrewUuid: crew.crewUuid,
             relieverAssignUuid: assignmentUuid,
             relieverSignOnDate: item.signOnDate ?? null,
@@ -1359,7 +1356,7 @@ export async function importCrewAssignments(
             relieverContractPeriodMonths: item.contractPeriod ?? null,
             updatedAt: new Date(),
             updatedByUuid: auditUserUuid ?? null,
-          }).where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
+          }, auditUserUuid ?? null);
           matchedSlot.relieverCrewUuid = crew.crewUuid;
           matchedSlot.relieverAssignUuid = assignmentUuid;
         }

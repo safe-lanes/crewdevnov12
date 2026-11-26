@@ -6,6 +6,7 @@ import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/
 import { rotationEntriesRepository, rotationArchiveRepository } from "../repositories";
 import { vesselPlanningRepository } from "../../vessel/repositories";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert } from "../../sync/capturedWrite";
 import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 import { captureDeployRank } from "../../company-forms/subjects/crewAssignmentRuleContext";
 import { checkLifecycle, finishLifecycle } from "../../company-forms/stageResolutionService";
@@ -164,25 +165,23 @@ export const rotationDeployService = {
           }
           planUuid = existingPlan.planUuid;
         } else {
-          const [newPlan] = await tx
-            .insert(vesselPlanningV2)
-            .values({
-              planUuid: uuidv4(),
-              vesselUuid,
-              rankId: entry.rankId || entry.rank,
-              rank: entry.rank,
-              relieverCrewUuid: entry.crewUuid,
-              relieverAssignUuid,
-              relieverSignOnDate: entry.signOnDate,
-              joiningPortUuid: entry.joiningPortUuid,
-              joiningStatus: "Planned",
-              plannedConfirmedDate: entry.signOnDate,
-              travelStartDate: null,
-              relieverContractPeriodMonths: entry.contractPeriod,
-              createdByUuid: effectiveAuditUser,
-              updatedByUuid: effectiveAuditUser,
-            })
-            .returning();
+          // Captured on the deploy transaction (SYN-02).
+          const newPlan = await capturedInsert(tx, vesselPlanningV2, "planUuid", {
+            planUuid: uuidv4(),
+            vesselUuid,
+            rankId: entry.rankId || entry.rank,
+            rank: entry.rank,
+            relieverCrewUuid: entry.crewUuid,
+            relieverAssignUuid,
+            relieverSignOnDate: entry.signOnDate,
+            joiningPortUuid: entry.joiningPortUuid,
+            joiningStatus: "Planned",
+            plannedConfirmedDate: entry.signOnDate,
+            travelStartDate: null,
+            relieverContractPeriodMonths: entry.contractPeriod,
+            createdByUuid: effectiveAuditUser,
+            updatedByUuid: effectiveAuditUser,
+          }, effectiveAuditUser);
           planUuid = newPlan.planUuid;
         }
 

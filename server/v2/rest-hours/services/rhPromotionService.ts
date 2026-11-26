@@ -169,25 +169,30 @@ export const rhPromotionService = {
           fixedTasks[fixedTasks.length - 1];
         if (prevFixed) {
           const blankTemplate = JSON.stringify(Array(48).fill(""));
-          await fixedTasksRepository.update(prevFixed.fixedTaskUuid, {
-            applicableFrom: prevFixed.applicableFrom || monthStart,
-            applicableTo: dayBeforeSplit,
-            isLocked: true,
-            updatedByUuid: auditUserUuid ?? null,
-          });
-          await fixedTasksRepository.create({
-            crewMemberId: empNo,
-            vesselId,
-            rank: newRank,
-            name: prevFixed.name,
-            monthYear,
-            seaHours: blankTemplate,
-            portHours: blankTemplate,
-            applicableFrom: splitDate,
-            applicableTo: prevFixed.applicableTo || monthEnd,
-            isLocked: false,
-            createdByUuid: auditUserUuid ?? null,
-            updatedByUuid: auditUserUuid ?? null,
+          // Lock the old row and open the new one together, so a failure cannot
+          // leave the old period locked with no new-rank row (and a half-sent
+          // pair if it were synced).
+          await getDb().transaction(async (tx: any) => {
+            await fixedTasksRepository.update(prevFixed.fixedTaskUuid, {
+              applicableFrom: prevFixed.applicableFrom || monthStart,
+              applicableTo: dayBeforeSplit,
+              isLocked: true,
+              updatedByUuid: auditUserUuid ?? null,
+            }, tx);
+            await fixedTasksRepository.create({
+              crewMemberId: empNo,
+              vesselId,
+              rank: newRank,
+              name: prevFixed.name,
+              monthYear,
+              seaHours: blankTemplate,
+              portHours: blankTemplate,
+              applicableFrom: splitDate,
+              applicableTo: prevFixed.applicableTo || monthEnd,
+              isLocked: false,
+              createdByUuid: auditUserUuid ?? null,
+              updatedByUuid: auditUserUuid ?? null,
+            }, tx);
           });
         }
       }

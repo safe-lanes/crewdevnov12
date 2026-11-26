@@ -8,6 +8,7 @@ import type {
 import { v4 as uuidv4 } from "uuid";
 import { ncReportUpdatePatch } from "../services/ncReportWorkflow";
 import { captureChange } from "../../sync/changeCapture";
+import { inTx } from "../../sync/capturedWrite";
 
 export class NcReportsRepository {
   async findAll(filters?: {
@@ -51,11 +52,13 @@ export class NcReportsRepository {
     return results[0];
   }
 
+  // Each write takes the caller's transaction (outerTx) so a request that writes
+  // several rows stays one transaction; without one it opens its own.
   async create(
-    data: Omit<InsertRhNcReportV2, "ncReportUuid">
+    data: Omit<InsertRhNcReportV2, "ncReportUuid">,
+    outerTx?: any,
   ): Promise<RhNcReportV2> {
-    const db = getDb();
-    return db.transaction(async (tx: any) => {
+    return inTx(outerTx, async (tx: any) => {
       const [row] = await tx
         .insert(rhNcReportsV2)
         .values({
@@ -73,10 +76,10 @@ export class NcReportsRepository {
 
   async update(
     ncReportUuid: string,
-    data: Partial<InsertRhNcReportV2>
+    data: Partial<InsertRhNcReportV2>,
+    outerTx?: any,
   ): Promise<RhNcReportV2 | undefined> {
-    const db = getDb();
-    return db.transaction(async (tx: any) => {
+    return inTx(outerTx, async (tx: any) => {
       const identity = and(
         eq(rhNcReportsV2.ncReportUuid, ncReportUuid),
         eq(rhNcReportsV2.isDeleted, false),
@@ -98,9 +101,8 @@ export class NcReportsRepository {
     });
   }
 
-  async softDelete(ncReportUuid: string): Promise<boolean> {
-    const db = getDb();
-    return db.transaction(async (tx: any) => {
+  async softDelete(ncReportUuid: string, outerTx?: any): Promise<boolean> {
+    return inTx(outerTx, async (tx: any) => {
       const [old] = await tx.select().from(rhNcReportsV2)
         .where(eq(rhNcReportsV2.ncReportUuid, ncReportUuid)).for("update");
       const results = await tx

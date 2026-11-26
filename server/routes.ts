@@ -6,6 +6,7 @@ import { vesselV2Routes } from "./v2/vessel";
 import { rotationV2Routes } from "./v2/rotation";
 import portsV2Routes from "./v2/ports/portsRoutes";
 import restHoursV2Routes from "./v2/rest-hours/routes";
+import { createSyncAdminRouter, createSyncProtocolRouter } from "./v2/sync/syncRoutes";
 import drugsAlcoholV2Routes from "./v2/drugs-alcohol/routes";
 import { adminV2Routes } from "./v2/admin";
 import mastersV2Routes from "./v2/masters/routes";
@@ -89,6 +90,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 rest hours routes
   app.use("/api/v2/rest-hours", restHoursV2Routes);
+
+  // Ship-office sync. The protocol is machine-authenticated (no JWT, office only);
+  // the admin routes need a person with permission and refuse ship users.
+  app.use("/api/sync", createSyncProtocolRouter());
+  app.use("/api/v2/sync", createSyncAdminRouter());
 
   // Mount v2 drugs & alcohol routes
   app.use("/api/v2/drugs-alcohol", drugsAlcoholV2Routes);

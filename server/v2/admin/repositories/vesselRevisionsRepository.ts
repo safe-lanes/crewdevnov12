@@ -1,8 +1,9 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { admVesselRevisionsV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmVesselRevisionV2, InsertAdmVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
+import { capturedInsert, capturedUpdate, inTx } from "../../sync/capturedWrite";
 
 export class VesselRevisionsRepository {
   async findAll(): Promise<AdmVesselRevisionV2[]> {
@@ -41,33 +42,47 @@ export class VesselRevisionsRepository {
       .orderBy(desc(admVesselRevisionsV2.createdAt));
   }
 
+  // Writes go through the capture helpers (SYN-02): adm_vessel_revisions_v2 syncs
+  // office to ship, so a write that is not captured would never reach the ship.
   async create(data: Omit<InsertAdmVesselRevisionV2, "vrUuid">): Promise<AdmVesselRevisionV2> {
-    const db = getDb();
-    const results = await db
-      .insert(admVesselRevisionsV2)
-      .values({ ...data, vrUuid: uuidv4() })
-      .returning();
-    return results[0];
+    return capturedInsert<AdmVesselRevisionV2>(null, admVesselRevisionsV2, "vrUuid", {
+      ...data,
+      vrUuid: uuidv4(),
+    });
   }
 
   async updateById(id: number, data: Partial<InsertAdmVesselRevisionV2>): Promise<AdmVesselRevisionV2 | undefined> {
-    const db = getDb();
-    const results = await db
-      .update(admVesselRevisionsV2)
-      .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(admVesselRevisionsV2.id, id), eq(admVesselRevisionsV2.isDeleted, false)))
-      .returning();
-    return results[0];
+    const current = await this.findById(id);
+    if (!current) return undefined;
+    return capturedUpdate<AdmVesselRevisionV2>(
+      null, admVesselRevisionsV2, "vrUuid", current.vrUuid,
+      { ...data, updatedAt: new Date() }, undefined, eq(admVesselRevisionsV2.isDeleted, false),
+    );
   }
 
   async softDeleteById(id: number): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(admVesselRevisionsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(admVesselRevisionsV2.id, id), eq(admVesselRevisionsV2.isDeleted, false)))
-      .returning();
-    return results.length > 0;
+    const current = await this.findById(id);
+    if (!current) return false;
+    const row = await capturedUpdate<AdmVesselRevisionV2>(
+      null, admVesselRevisionsV2, "vrUuid", current.vrUuid,
+      { isDeleted: true, updatedAt: new Date() }, undefined, eq(admVesselRevisionsV2.isDeleted, false),
+    );
+    return !!row;
+  }
+
+  // Import rollback: soft delete the revisions an import created (they used to be
+  // hard deleted, which no other side could ever learn about). One transaction.
+  async softDeleteByIds(ids: number[], actorUuid?: string | null): Promise<number> {
+    if (ids.length === 0) return 0;
+    return inTx(null, async (tx: any) => {
+      const rows = await tx.select().from(admVesselRevisionsV2)
+        .where(and(inArray(admVesselRevisionsV2.id, ids), eq(admVesselRevisionsV2.isDeleted, false)));
+      for (const row of rows) {
+        await capturedUpdate(tx, admVesselRevisionsV2, "vrUuid", row.vrUuid,
+          { isDeleted: true, updatedAt: new Date(), ...(actorUuid ? { updatedByUuid: actorUuid } : {}) }, actorUuid ?? null);
+      }
+      return rows.length;
+    });
   }
 
   async getNextRevision(vesselId: string): Promise<string> {

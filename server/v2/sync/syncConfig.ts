@@ -14,6 +14,11 @@ export interface TableSyncConfig {
   scopeMode: string;
   vesselColumn: string | null;
   skipColumns: string[];
+  // SQL predicate a row must meet to be sent as a whole row (null = every row).
+  // Written by migrations only: it is pasted into the gather query.
+  rowFilter: string | null;
+  // For scopeMode 'parent': the join to the table that carries the vessel.
+  parent: { table: string; fkColumn: string; identityColumn: string } | null;
 }
 
 type Queryable = { execute: (q: any) => Promise<any> };
@@ -30,7 +35,9 @@ const rowsOf = (res: any): any[] => res?.rows ?? res ?? [];
 export async function refreshSyncConfig(db: Queryable): Promise<Map<string, TableSyncConfig>> {
   const cfgRows = rowsOf(
     await db.execute(
-      sql`SELECT table_name, category, identity_column, scope_mode, vessel_column, skip_columns FROM sync_table_config`,
+      sql`SELECT table_name, category, identity_column, scope_mode, vessel_column, skip_columns,
+             row_filter, parent_table, parent_fk_column, parent_identity_column
+      FROM sync_table_config`,
     ),
   );
   const tables = new Map<string, TableSyncConfig>();
@@ -42,6 +49,11 @@ export async function refreshSyncConfig(db: Queryable): Promise<Map<string, Tabl
       scopeMode: r.scope_mode,
       vesselColumn: r.vessel_column ?? null,
       skipColumns: Array.isArray(r.skip_columns) ? r.skip_columns : [],
+      rowFilter: r.row_filter ?? null,
+      parent:
+        r.parent_table && r.parent_fk_column && r.parent_identity_column
+          ? { table: r.parent_table, fkColumn: r.parent_fk_column, identityColumn: r.parent_identity_column }
+          : null,
     });
   }
   const trigRows = rowsOf(
@@ -72,6 +84,14 @@ export async function requiresFieldLogging(db: Queryable, table: string): Promis
   const { tables, triggerTables } = await loaded(db);
   const cfg = tables.get(table);
   return !!cfg && cfg.category === "BOTH_EDITABLE" && !triggerTables.has(table);
+}
+
+// Tables synced as whole rows, by direction:
+//   pull: ONE_WAY_SHORE_TO_SHIP (shore sends, ship receives)
+//   push: SHIP_ONLY (ship sends, shore receives)
+// BOTH_EDITABLE tables travel as field logs instead.
+export async function tablesByCategory(db: Queryable, category: string): Promise<TableSyncConfig[]> {
+  return [...(await loaded(db)).tables.values()].filter((c) => c.category === category);
 }
 
 // For tests.

@@ -32,8 +32,9 @@ router.get("/list", vesselListController.getAll);
 router.post("/import/parse-zip",              importUploadMiddleware, tenantContextGuard, vesselImportController.parseZip);
 router.post("/import/generate-workbook",      importUploadMiddleware, tenantContextGuard, vesselImportController.generateWorkbook);
 router.post("/import/generate-workbook-from-db",                      tenantContextGuard, vesselImportController.generateWorkbookFromDb);
-router.post("/import/hierarchy",              importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
-router.post("/import/assignments",            importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
+// VS-04: these two write planning (office-owned), so ship users get 403 before the upload is read.
+router.post("/import/hierarchy",              denyShipPlanningWrites, importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
+router.post("/import/assignments",            denyShipPlanningWrites, importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
 router.post("/import/first-service-backfill", tenantContextGuard,
   requirePermission("Vessel", "edit"), vesselImportController.rerunFirstService);
 
@@ -75,8 +76,9 @@ router.post("/planning/:planUuid/defer-relief", denyShipPlanningWrites, requireP
 router.post("/planning/:planUuid/archive", denyShipPlanningWrites, vesselPlanningController.archive);
 router.get("/planning/attachments/:attUuid/raw", vesselPlanningController.serveAttachment);
 router.get("/planning/:planUuid/attachments", vesselPlanningController.getAttachments);
-router.post("/planning/:planUuid/attachments", vesselPlanningController.addAttachment);
-router.delete("/planning/:planUuid/attachments/:attUuid", vesselPlanningController.deleteAttachment);
+// VS-04 / P0-4: plan attachments are office-only; ships get 403.
+router.post("/planning/:planUuid/attachments", denyShipPlanningWrites, vesselPlanningController.addAttachment);
+router.delete("/planning/:planUuid/attachments/:attUuid", denyShipPlanningWrites, vesselPlanningController.deleteAttachment);
 
 // Reliever sign-on and status update endpoints
 router.post("/planning/:planUuid/sign-on", denyShipPlanningWrites, vesselPlanningController.signOnReliever);

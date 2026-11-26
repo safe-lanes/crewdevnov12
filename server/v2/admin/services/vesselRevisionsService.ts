@@ -6,6 +6,7 @@ import { CompanyRanksRepository } from "../repositories/companyRanksRepository";
 import { VesselPlanningRepository } from "../../vessel/repositories/vesselPlanningRepository";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { eq } from "drizzle-orm";
+import { capturedUpdate } from "../../sync/capturedWrite";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmVesselRevisionV2, InsertAdmVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 
@@ -248,10 +249,9 @@ export const vesselRevisionsService = {
         const keepVacantCount = assignedCount > 0 ? 0 : 1;
         for (let i = keepVacantCount; i < vacantRecords.length; i++) {
           const dupVacant = vacantRecords[i];
-          await db
-            .update(vesselPlanningV2)
-            .set({ isDeleted: true, updatedAt: new Date() })
-            .where(eq(vesselPlanningV2.planUuid, dupVacant.planUuid));
+          // Captured, so the removal reaches the other side (SYN-02).
+          await capturedUpdate(null, vesselPlanningV2, "planUuid", dupVacant.planUuid,
+            { isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid ?? null }, auditUserUuid ?? null);
           console.log(`[VESSEL PLANNING V2 SYNC] Removed duplicate vacant planning row for ${dupVacant.rank} (${dupVacant.planUuid})`);
         }
       }

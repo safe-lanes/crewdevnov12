@@ -1344,10 +1344,14 @@ export const vesselPlanningService = {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
     const effectiveAuditUser = auditUserUuid || archivedByUuid;
-    if (effectiveAuditUser) {
-      await vesselPlanningRepository.update(planUuid, { updatedByUuid: effectiveAuditUser });
-    }
-    return vesselPlanningRepository.archive(planUuid, effectiveAuditUser);
+    // The actor stamp and the archive are one change, so they share one
+    // transaction (and one set of log rows).
+    return getDb().transaction(async (tx: any) => {
+      if (effectiveAuditUser) {
+        await vesselPlanningRepository.update(planUuid, { updatedByUuid: effectiveAuditUser }, tx);
+      }
+      return vesselPlanningRepository.archive(planUuid, effectiveAuditUser, tx);
+    });
   },
 
   async getIncumbentReconciliation(planUuid: string) {
