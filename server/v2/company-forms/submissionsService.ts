@@ -518,6 +518,9 @@ export class CompanyFormSubmissionsService {
       submittedByUuid: state.submittedByUuid,
       submittedByName: state.submittedByName,
       submittedAt: isoDate(state.submittedAt),
+      lastDraftSavedAt: isoDate(state.lastDraftSavedAt),
+      lastDraftSavedByUuid: state.lastDraftSavedByUuid ?? null,
+      lastDraftSavedByName: state.lastDraftSavedByName ?? null,
       signatures: signaturesByState.get(state.sectionStateUuid) ?? [],
     }));
     const answers = (data.answers as any[]).map((answer) => ({
@@ -905,13 +908,14 @@ export class CompanyFormSubmissionsService {
     sectionUuid: string;
     answers: CompanyFormDraftAnswerInput[];
     sectionComment?: string | null;
-  }): Promise<void> {
+    explicitDraftSave?: boolean;
+  }) {
     const { submission, adapter, principal } = await this.authorizeSubmission(
       input.req,
       input.submissionUuid,
       "edit_draft",
     );
-    await this.draftRepository.updateDraft({
+    return this.draftRepository.updateDraft({
       submissionUuid: input.submissionUuid,
       sectionUuid: input.sectionUuid,
       expectedSubmission: {
@@ -922,6 +926,7 @@ export class CompanyFormSubmissionsService {
         stageKey: submission.stageKey,
       },
       actorUserId: principal.userId,
+      explicitDraftSave: input.explicitDraftSave,
       answers: input.answers,
       sectionComment: input.sectionComment,
       lockSubject: (subjectRef, executor) => adapter.lockForStart(subjectRef, executor),

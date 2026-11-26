@@ -31,6 +31,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { companyFormErrorMessage } from "@/lib/companyFormErrors";
 import { getSystemFieldsForSubject, isCompanyFormSubjectType } from "@shared/v2/forms-engine/systemFields";
 import { companyFormNumbers } from "./displayNumbering";
+import { SectionDraftActions } from "./SectionDraftActions";
 
 export type ConfiguredFormMode = "preview" | "live";
 
@@ -149,7 +150,9 @@ export interface ConfiguredFormLiveProps {
   sectionComments?: Record<string, string>;
   onSectionCommentChange?: (sectionId: string, comment: string) => void;
   sectionOwnership?: Record<string, { ownerLabel: string; canEdit: boolean }>;
-  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatures?: Partial<Record<ConfiguredSignatureType, ConfiguredSignature>>; /** Legacy single signature state. */ signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
+  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; lastDraftSavedAt?: string | null; lastDraftSavedByName?: string | null; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatures?: Partial<Record<ConfiguredSignatureType, ConfiguredSignature>>; /** Legacy single signature state. */ signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
+  /** Opt-in saved-event display and identity boundary for affected live hosts. */
+  draftSaveScope?: string;
   submissionStatus?: "in_progress" | "completed" | "voided";
   signatureDefaults?: Partial<Record<ConfiguredSignatureType, { name?: string | null; rank?: string | null }>>;
   signatureMethodOptions?: Partial<Record<ConfiguredSignatureType, ConfiguredSignatureMethodOption[]>>;
@@ -1092,7 +1095,10 @@ function ConfiguredSection({
       {vesselSignatureRequired && (mode === "preview"
         ? <div className="rounded-md border border-dashed px-4 py-4" data-testid={`preview-signature-vessel_management-${sectionId}`}><p className="font-semibold">Vessel Management</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p></div>
         : <SignatureBlock sectionId={sectionId} type="vessel_management" readOnly={readOnly && !(companyForm && section.can_sign?.vessel_management === true && !state?.signatures?.vessel_management)} live={live} companyForm canSign={section.can_sign?.vessel_management === true} state={state?.signatures?.vessel_management} />)}
-        {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : companyForm && !requiresSubmission ? "Informational" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && requiresSubmission && <><Button type="button" variant="outline" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={() => { void Promise.resolve(live?.onSaveDraft?.(sectionId)).catch(() => undefined); }}>Save draft</Button>{(!companyForm || (section.can_submit === true && !!live?.onSubmitSection)) && <Button type="button" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={submitSection}>{live?.sectionSubmitting?.[sectionId] ? "Submitting…" : "Submit"}</Button>}</>}{live?.sectionActionErrors?.[sectionId] && <p className="basis-full text-sm text-destructive" role="alert">{live.sectionActionErrors[sectionId]}</p>}</div>}
+        {mode === "live" && <SectionDraftActions key={live?.draftSaveScope || sectionId}
+          sectionId={sectionId} live={live} readOnly={readOnly} requiresSubmission={requiresSubmission}
+          companyForm={companyForm} canSubmit={!companyForm || (section.can_submit === true && !!live?.onSubmitSection)}
+          submitSection={submitSection} />}
     </div>
   ) : undefined;
 

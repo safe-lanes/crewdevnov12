@@ -1,4 +1,5 @@
 import { authorizeStandardSignature } from "../shared/standardSignatureAccess";
+import { draftSaveMetadata, draftSaveReceipt } from "../shared/draftSave";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../db";
@@ -404,6 +405,9 @@ export const debriefingService = {
         status: state.status, section_comment: state.sectionComment,
         submitted_by_uuid: state.submittedByUuid, submitted_by_name: state.submittedByName,
         submitted_at: state.submittedAt,
+        last_draft_saved_at: state.lastDraftSavedAt,
+        last_draft_saved_by_uuid: state.lastDraftSavedByUuid,
+        last_draft_saved_by_name: state.lastDraftSavedByName,
       })),
       answers: data.answers.map((answer: any) => ({
         answer_uuid: answer.answerUuid, question_uuid: answer.questionUuid,
@@ -510,6 +514,7 @@ export const debriefingService = {
       | Record<string, { value: string | string[] | boolean | null; comment?: string | null }>,
     sectionComment: string | null | undefined,
     req: Request,
+    explicitDraftSave = false,
   ) {
     await authorizeDebriefingRead(req);
     const answerItems = Array.isArray(rawAnswers)
@@ -519,7 +524,7 @@ export const debriefingService = {
     const tree = await debriefingRepository.structure(submission.formVersionUuid);
     const section = tree.sections.find((candidate: any) => candidate.sectionUuid === sectionUuid);
     if (!section) throw new DebriefingError("Section not found", 404);
-    await this.assertOwner(req, section);
+    const actor = await this.assertOwner(req, section);
 
     const validatedAnswers = answerItems.map((item) => {
       const question = tree.questions.find((candidate: any) => candidate.questionUuid === item.questionUuid);
@@ -555,8 +560,9 @@ export const debriefingService = {
     });
 
     const db = getDb();
-    await db.transaction(async (tx: any) => {
-      await lockWritableSection(tx, submissionUuid, sectionUuid);
+    return db.transaction(async (tx: any) => {
+      const locked = await lockWritableSection(tx, submissionUuid, sectionUuid);
+      if (explicitDraftSave && locked.submission.status !== "in_progress") throw new DebriefingError("This submission is read-only", 409);
       for (const answer of validatedAnswers) {
         const row = {
           answerValue: answer.answerValue,
@@ -586,6 +592,11 @@ export const debriefingService = {
           eq(frmSectionStates.sectionUuid, sectionUuid),
           eq(frmSectionStates.isDeleted, false),
         ));
+      }
+      if (explicitDraftSave) {
+        const metadata = draftSaveMetadata(actor);
+        await tx.update(frmSectionStates).set(metadata).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
+        return draftSaveReceipt(metadata);
       }
     });
   },

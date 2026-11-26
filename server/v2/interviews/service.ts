@@ -1,4 +1,5 @@
 import { authorizeStandardSignature } from "../shared/standardSignatureAccess";
+import { draftSaveMetadata, draftSaveReceipt } from "../shared/draftSave";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import type { Request } from "express";
@@ -148,7 +149,7 @@ export const interviewService = {
         office_reviewed_at: submission.officeReviewedAt,
       },
       parts: serializeInterviewFormParts(parts), structure: serializeInterviewStructure(tree, roleNames),
-      section_states: data.states.map((state:any) => ({ section_state_uuid:state.sectionStateUuid, section_uuid:state.sectionUuid, status:state.status, section_comment:state.sectionComment, submitted_by_uuid:state.submittedByUuid, submitted_by_name:state.submittedByName, submitted_at:state.submittedAt })),
+      section_states: data.states.map((state:any) => ({ section_state_uuid:state.sectionStateUuid, section_uuid:state.sectionUuid, status:state.status, section_comment:state.sectionComment, submitted_by_uuid:state.submittedByUuid, submitted_by_name:state.submittedByName, submitted_at:state.submittedAt, last_draft_saved_at:state.lastDraftSavedAt, last_draft_saved_by_uuid:state.lastDraftSavedByUuid,last_draft_saved_by_name:state.lastDraftSavedByName })),
       answers: data.answers.map((answer:any) => ({ answer_uuid:answer.answerUuid, question_uuid:answer.questionUuid, answer_value:answer.answerValue, answer_comment:answer.answerComment })),
       seafarer_default: { signer_name:candidateName, signer_rank:candidate?.rankAppliedFor ?? null },
       officer_default: { signer_name: officer?.fullname ?? officer?.displayName ?? (`${officer?.firstname ?? ""} ${officer?.lastname ?? ""}`.trim() || null), signer_rank: officer?.designation ?? null },
@@ -184,13 +185,13 @@ export const interviewService = {
       office_reviewed_at: reviewedAt,
     };
   },
-  async saveAnswers(submissionUuid: string, sectionUuid: string, answers: any[], sectionComment: string|null|undefined, req: Request) {
+  async saveAnswers(submissionUuid: string, sectionUuid: string, answers: any[], sectionComment: string|null|undefined, req: Request, explicitDraftSave = false) {
     await authorizeInterviewRead(req);
     const s = await interviewRepository.submission(submissionUuid); if (!s) throw new InterviewError("Crew Interview submission not found", 404);
     const tree: any = await interviewRepository.structure(s.formVersionUuid);
     const section = tree.sections.find((q: any) => q.sectionUuid === sectionUuid);
     if (!section) throw new InterviewError("Section not found", 404);
-    await assertOwner(req, section);
+    const actor = await assertOwner(req, section);
     for (const a of answers) {
       const question = tree.questions.find((q: any) => q.questionUuid === a.questionUuid && q.sectionUuid === sectionUuid);
       if (!question) throw new InterviewError("Question does not belong to this pinned section");
@@ -211,7 +212,19 @@ export const interviewService = {
       }
       if (!question.commentEnabled && valueIsPresent(a.comment ?? null)) throw new InterviewError("Comments are not enabled for this question");
     }
-    await getDb().transaction(async (tx: any) => { await writable(tx, submissionUuid, sectionUuid); for (const a of answers) await tx.insert(frmAnswers).values({ answerUuid: uuid(), submissionUuid, questionUuid: a.questionUuid, answerValue: a.value === null ? null : Array.isArray(a.value) ? JSON.stringify(a.value) : String(a.value), answerComment: a.comment ?? null, createdByUuid: String(req.user!.id), isSync:false }).onConflictDoUpdate({ target:[frmAnswers.submissionUuid, frmAnswers.questionUuid], set:{ answerValue:a.value === null ? null : Array.isArray(a.value) ? JSON.stringify(a.value) : String(a.value), answerComment:a.comment ?? null } }); if(sectionComment !== undefined) await tx.update(frmSectionStates).set({sectionComment}).where(and(eq(frmSectionStates.submissionUuid,submissionUuid),eq(frmSectionStates.sectionUuid,sectionUuid))); });
+    return getDb().transaction(async (tx: any) => {
+      const locked = await writable(tx, submissionUuid, sectionUuid);
+      if (explicitDraftSave && (locked.s.status !== "in_progress" || locked.state?.status === "not_applicable")) {
+        throw new InterviewError("This section is read-only", 409);
+      }
+      for (const a of answers) await tx.insert(frmAnswers).values({ answerUuid: uuid(), submissionUuid, questionUuid: a.questionUuid, answerValue: a.value === null ? null : Array.isArray(a.value) ? JSON.stringify(a.value) : String(a.value), answerComment: a.comment ?? null, createdByUuid: String(req.user!.id), isSync:false }).onConflictDoUpdate({ target:[frmAnswers.submissionUuid, frmAnswers.questionUuid], set:{ answerValue:a.value === null ? null : Array.isArray(a.value) ? JSON.stringify(a.value) : String(a.value), answerComment:a.comment ?? null } });
+      if(sectionComment !== undefined) await tx.update(frmSectionStates).set({sectionComment}).where(and(eq(frmSectionStates.submissionUuid,submissionUuid),eq(frmSectionStates.sectionUuid,sectionUuid)));
+      if (explicitDraftSave) {
+        const metadata = draftSaveMetadata(actor);
+        await tx.update(frmSectionStates).set(metadata).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
+        return draftSaveReceipt(metadata);
+      }
+    });
   },
   async submit(submissionUuid: string, sectionUuid: string, comment: string|null|undefined, req: Request) {
     await authorizeInterviewRead(req); const s=await interviewRepository.submission(submissionUuid); if(!s) throw new InterviewError("Crew Interview submission not found",404); const tree:any=await interviewRepository.structure(s.formVersionUuid), data:any=await interviewRepository.data(submissionUuid); const section=tree.sections.find((q:any)=>q.sectionUuid===sectionUuid); if(!section) throw new InterviewError("Section not found",404); const user=await assertOwner(req, section);

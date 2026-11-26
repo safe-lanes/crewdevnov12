@@ -18,7 +18,7 @@ router.get("/submissions/candidate/:recCanUuid", params(["recCanUuid"], intervie
 router.get("/submissions/:uuid", params(["uuid"], interviewController.get));
 router.put("/submissions/:uuid/part-a", params(["uuid"], body(partA, interviewController.partA)));
 router.put("/submissions/:uuid/part-c", params(["uuid"], body(partC, interviewController.partC)));
-router.put("/submissions/:uuid/sections/:sectionUuid/answers", params(["uuid","sectionUuid"], body(z.object({answers:z.array(answer).max(500),sectionComment:z.string().max(10000).nullable().optional()}).strict(), interviewController.answers)));
+router.put("/submissions/:uuid/sections/:sectionUuid/answers", params(["uuid","sectionUuid"], body(z.object({answers:z.array(answer).max(500),sectionComment:z.string().max(10000).nullable().optional(),explicitDraftSave:z.boolean().optional()}).strict(), interviewController.answers)));
 router.post("/submissions/:uuid/sections/:sectionUuid/signature", params(["uuid","sectionUuid"], body(signature, interviewController.signature)));
 router.delete("/submissions/:uuid/sections/:sectionUuid/signature/:type", params(["uuid","sectionUuid","type"], interviewController.deleteSignature));
 router.post("/submissions/:uuid/sections/:sectionUuid/submit", params(["uuid","sectionUuid"], body(z.object({comment:z.string().max(10000).nullable().optional()}).strict(), interviewController.submit)));
